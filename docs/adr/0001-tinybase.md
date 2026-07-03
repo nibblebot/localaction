@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-We need a local-first stack that gives us: a reactive in-memory store, IndexedDB persistence in the browser, multi-device sync, and minimal infrastructure on the server side. The sync server should be small — ideally a single Node process with nothing else to manage.
+We need a local-first stack that gives us: a reactive in-memory store, browser persistence that composes with sync, multi-device sync, and minimal infrastructure on the server side. The sync server should be small — ideally a single Node process with nothing else to manage. (Client persistence moved from a hand-rolled IndexedDB blob to TinyBase's built-in OPFS persister — see `ADR-0003` for why.)
 
 Options considered:
 

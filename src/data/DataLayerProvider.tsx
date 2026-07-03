@@ -9,13 +9,14 @@
  * Why a Provider, not a module-level singleton: tests can mount the tree with
  * a custom provider, and React StrictMode double-renders the effect safely.
  *
- * See ADR-0001 (storage / sync) and ADR-0002 (conflict resolution) for the
- * architectural decisions behind this seam.
+ * See ADR-0001 (storage / sync), ADR-0002 (conflict resolution), and
+ * ADR-0003 (OPFS persister) for the architectural decisions behind this seam.
  */
 
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import type { ReactElement, ReactNode } from 'react';
@@ -27,11 +28,18 @@ import type { DataLayerValue } from './dataLayerContext.ts';
 
 export type { DataLayerValue } from './dataLayerContext.ts';
 
+/** Surface exposed on `window.__LOCALACTION` in dev/test only. */
+export interface LocalActionDebug {
+  readonly store: ReturnType<typeof getStore>;
+  /** Pollable readiness flag mirroring the provider's `persistenceReady`. */
+  readonly persistenceReady: boolean;
+}
+
 export interface DataLayerProviderProps {
   children: ReactNode;
   /**
    * Disable persistence + sync. Used by the smoke script and by SSR / test
-   * harnesses that don't have IndexedDB or a network.
+   * harnesses that don't have OPFS or a network.
    */
   offline?: boolean;
 }
@@ -45,25 +53,60 @@ export function DataLayerProvider({
   const [sync, setSync] = useState<SyncClient | undefined>(undefined);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ kind: 'idle' });
 
+  // `persistenceReady` is captured in the dev-hook getter via a ref so the
+  // hook always reads the current value without re-running the effect.
+  const persistenceReadyRef = useRef(persistenceReady);
+  persistenceReadyRef.current = persistenceReady;
+
   useEffect(() => {
     if (offline) {
       setPersistenceReady(true);
       return;
     }
-    startLocalPersistence();
-    setPersistenceReady(true);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        await startLocalPersistence();
+      } catch (err) {
+        console.warn('[localaction] persistence disabled', err);
+      }
+      if (!cancelled) setPersistenceReady(true);
+    })();
 
     const client = startSync();
     setSync(client);
     const unsubscribe = client.subscribe(setSyncStatus);
     client.start();
 
+    const exposeDevHook =
+      typeof import.meta !== 'undefined' &&
+      'env' in import.meta &&
+      import.meta.env.DEV === true;
+    if (exposeDevHook && typeof window !== 'undefined') {
+      Object.defineProperty(window, '__LOCALACTION', {
+        configurable: true,
+        enumerable: false,
+        get: () =>
+          ({
+            store,
+            get persistenceReady() {
+              return persistenceReadyRef.current;
+            },
+          }) satisfies LocalActionDebug,
+      });
+    }
+
     return () => {
+      cancelled = true;
       unsubscribe();
       void client.destroy();
       setSync(undefined);
+      if (exposeDevHook && typeof window !== 'undefined') {
+        delete (window as { __LOCALACTION?: unknown }).__LOCALACTION;
+      }
     };
-  }, [offline]);
+  }, [offline, store]);
 
   const value = useMemo<DataLayerValue>(
     () => ({ store, sync, syncStatus, persistenceReady }),

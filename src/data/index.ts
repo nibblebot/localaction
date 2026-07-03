@@ -21,7 +21,8 @@ export type {
 
 export { getStore } from './store.ts';
 
-export { startLocalPersistence, INDEXED_DB_NAME } from './persistence.ts';
+export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
+export type { LocalActionDebug } from './DataLayerProvider.tsx';
 
 export { startSync } from './sync.ts';
 export type { SyncClient, SyncClientOptions, SyncStatus } from './sync.ts';

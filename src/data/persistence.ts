@@ -1,114 +1,78 @@
 /**
- * Browser-side persistence for the local-first store.
+ * Browser-side persistence for the local-first store, using TinyBase's
+ * built-in OPFS persister.
  *
- * TinyBase's built-in IndexedDbPersister does not support MergeableStore (and
- * MergeableStore is what we use for sync — see ADR-0002). We hand-roll a
- * tiny one based on `createCustomPersister` instead. It serialises the
- * MergeableStore's content (which includes HLC metadata) to JSON and stores
- * the blob in a single key in IndexedDB.
+ * ## Why OPFS
  *
- * We don't wire `addPersisterListener` because no other writer mutates this
- * database: saves happen reactively via `startAutoSave`, and `load()` is
- * called explicitly on boot. If we ever want a second tab on the same origin
- * to react to the first tab's writes, we'd add a BroadcastChannel listener
- * here. Cross-device sync still goes through the server.
+ * TinyBase's IndexedDB persister (`createIndexedDbPersister`) does **not**
+ * support `MergeableStore`, and `MergeableStore` is what the sync protocol
+ * requires (see ADR-0001, ADR-0003). Before this file existed we hand-rolled
+ * a `createCustomPersister` that shunted the JSON into a single IndexedDB
+ * key; that worked but reimplemented what TinyBase now ships, and it never
+ * rehydrated on boot — the persisted blob was written by `startAutoSave`
+ * but `load()` was never called, so rehydration relied entirely on the
+ * sync server.
  *
- * `createCustomPersister` is a stable public API. See
- * https://tinybase.org/api/persisters/functions/creation/createcustompersister/
+ * `createOpfsPersister` (from `tinybase/persisters/persister-browser`, since
+ * v6.7.0) officially supports both `Store` and `MergeableStore` and writes
+ * to the **origin private file system** — a sandboxed, sync-compatible
+ * per-origin file area exposed by the File System Access API. We now:
+ *
+ *   1. Resolve the OPFS directory and a file handle for `OPFS_FILE_NAME`.
+ *   2. Build the persister against the singleton `MergeableStore`.
+ *   3. `await persister.load()` so a newly-booted tab rehydrates from disk
+ *      immediately (fixes the pre-OPFS never-load bug).
+ *   4. `startAutoSave()` so subsequent writes are persisted asynchronously.
+ *
+ * We do **not** call `startAutoLoad()` / `startAutoPersist()` (which would
+ * register a `FileSystemObserver` for live cross-tab reactivity). The
+ * observer is Chromium 134+ only and adds risk; single-tab reload
+ * persistence — the property tests care about — is fully covered by the
+ * explicit `load()` + `startAutoSave()` pair. Cross-device convergence stays
+ * the job of the sync server (see `sync.ts`).
+ *
+ * If the File System Access API or OPFS is unavailable (private mode, ancient
+ * browser, Node), `startLocalPersistence` rejects with a clear message; the
+ * `DataLayerProvider` keeps `persistenceReady=false` and the app still runs
+ * against the in-memory store.
+ *
+ * See `https://tinybase.org/api/persisters/persister-browser/functions/creation/createopfspersister/`.
  */
 
-import { createCustomPersister } from 'tinybase/persisters';
+import { createOpfsPersister } from 'tinybase/persisters/persister-browser';
+import type { OpfsPersister } from 'tinybase/persisters/persister-browser';
 import { getStore } from './store.ts';
 
-export const INDEXED_DB_NAME = 'localaction';
-const DATA_OBJECT_STORE = 'data';
-const DATA_KEY = 'mergeableContent';
+export const OPFS_FILE_NAME = 'localaction.json';
+
+const onError = (err: unknown): void => {
+  console.warn('[localaction] OPFS persister ignored error', err);
+};
+
+let started: Promise<OpfsPersister> | undefined;
 
 /**
- * Number value understood by `createCustomPersister` to mean "supports both
- * Store and MergeableStore" — TinyBase's `Persists.StoreOrMergeableStore`
- * constant. We can't import that as a `const enum` under
- * `verbatimModuleSyntax` (`erasableSyntaxOnly`), so we pin the literal here
- * with a runtime assertion at startup.
+ * Start browser-side persistence. Idempotent: the first caller wins and
+ * subsequent callers await the same in-flight promise.
+ *
+ * Resolves with the persister once the store has been rehydrated from disk
+ * and autosave is running. The caller (the data-layer provider) treats
+ * resolution as "persistenceReady".
  */
-const PERSISTS_STORE_OR_MERGEABLE = 3;
-
-let started: ReturnType<typeof createMergeablePersister> | undefined;
-
-export function startLocalPersistence(): ReturnType<typeof createMergeablePersister> {
+export function startLocalPersistence(): Promise<OpfsPersister> {
   if (started) return started;
-  started = createMergeablePersister();
-  void started.startAutoSave();
+  started = (async () => {
+    if (typeof navigator === 'undefined' || !navigator.storage?.getDirectory) {
+      throw new Error(
+        'OPFS / File System Access API unavailable — persistence disabled',
+      );
+    }
+    const root = await navigator.storage.getDirectory();
+    const handle = await root.getFileHandle(OPFS_FILE_NAME, { create: true });
+    const persister = createOpfsPersister(getStore(), handle, onError);
+    await persister.load();
+    void persister.startAutoSave();
+    return persister;
+  })();
   return started;
-}
-
-function createMergeablePersister() {
-  return createCustomPersister(
-    getStore(),
-    async () => {
-      const raw = await idbGet<unknown>(INDEXED_DB_NAME, DATA_KEY);
-      if (raw == null) return undefined;
-      try {
-        return typeof raw === 'string' ? JSON.parse(raw) : raw;
-      } catch (err) {
-        console.warn('[localaction] persisted content is corrupt — ignoring', err);
-        return undefined;
-      }
-    },
-    async (getContent) => {
-      const content = getContent();
-      await idbPut(INDEXED_DB_NAME, DATA_KEY, JSON.stringify(content));
-    },
-    () => undefined,
-    () => undefined,
-    console.warn,
-    PERSISTS_STORE_OR_MERGEABLE,
-  );
-}
-
-function openDb(name: string): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(name);
-    req.onupgradeneeded = () => {
-      const db = req.result;
-      if (!db.objectStoreNames.contains(DATA_OBJECT_STORE)) {
-        db.createObjectStore(DATA_OBJECT_STORE);
-      }
-    };
-    req.onerror = () => reject(req.error ?? new Error('IndexedDB open failed'));
-    req.onsuccess = () => resolve(req.result);
-  });
-}
-
-function withStore<T>(
-  name: string,
-  mode: IDBTransactionMode,
-  fn: (store: IDBObjectStore) => IDBRequest<T> | Promise<T>,
-): Promise<T> {
-  return openDb(name).then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const tx = db.transaction(DATA_OBJECT_STORE, mode);
-        const store = tx.objectStore(DATA_OBJECT_STORE);
-        let result: T | undefined;
-        const req = fn(store);
-        if (req instanceof IDBRequest) {
-          req.onsuccess = () => {
-            result = req.result;
-          };
-          req.onerror = () => reject(req.error ?? new Error('IndexedDB op failed'));
-        }
-        tx.oncomplete = () => resolve(result as T);
-        tx.onerror = () => reject(tx.error ?? new Error('IndexedDB tx failed'));
-        tx.onabort = () => reject(tx.error ?? new Error('IndexedDB tx aborted'));
-      }).finally(() => db.close()),
-  );
-}
-
-function idbGet<T>(name: string, key: IDBValidKey): Promise<T | undefined> {
-  return withStore<T | undefined>(name, 'readonly', (store) => store.get(key) as IDBRequest<T | undefined>);
-}
-
-function idbPut(name: string, key: IDBValidKey, value: unknown): Promise<unknown> {
-  return withStore<unknown>(name, 'readwrite', (store) => store.put(value, key) as IDBRequest<unknown>);
 }

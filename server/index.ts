@@ -81,6 +81,29 @@ export function attachSyncServer(
     const db = await openDatabase(dbPath);
     const store = createMergeableStore();
     const persister = createSqlite3Persister(store, db);
+    process.stderr.write(
+      `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
+    );
+    if (process.env['LOCALACTION_DEBUG']) {
+      const touched = new Set<string>();
+      store.addCellListener(
+        null,
+        null,
+        null,
+        (_store, _tableId, _rowId, _cellId) => {
+          touched.add(_tableId);
+          process.stderr.write(
+            `[srv ${safePathId}] cell changed: ${_tableId}/${_rowId}/${_cellId}\n`,
+          );
+        },
+      );
+      store.addDidFinishTransactionListener(() => {
+        process.stderr.write(
+          `[srv ${safePathId}] tx finished | touched: ${Array.from(touched).sort().join(',')} | store tables: ${Object.keys(store.getTables()).sort().join(',')}\n`,
+        );
+        touched.clear();
+      });
+    }
     return persister;
   });
 

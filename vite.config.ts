@@ -34,7 +34,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
-      devOptions: { enabled: true },
+      // Under `LOCALACTION_E2E=1` (set by the Playwright `webServer` for
+      // the OPFS-only project on a dedicated port) disable the PWA dev
+      // layer entirely. In dev the plugin injects a `<script>` that calls
+      // `registerDevSW()` → `import.meta.hot.send('vite-pwa-plugin:dev-ready')`.
+      // In a fresh test browser context the HMR WebSocket isn't open yet, so
+      // that throws `SendBeforeConnectError`, and the page enters an
+      // infinite reload loop that destroys every `page.evaluate`'s
+      // execution context. Disabling `devOptions.enabled` skips the dev
+      // SW script injection. The foundation e2e suite runs against a
+      // separate dev server WITHOUT this env so the full PWA (manifest + SW)
+      // is exercised. Prod builds run with the env unset, so the SW
+      // registers normally.
+      devOptions: { enabled: process.env['LOCALACTION_E2E'] !== '1' },
       includeAssets: ['favicon.svg', 'icons.svg'],
       manifest: {
         name: 'LocalAction',

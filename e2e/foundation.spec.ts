@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { evalStable } from './helpers.ts';
 
 /**
  * Phase 0 / 01-foundation smoke test: the app boots, the two-pane shell
@@ -27,7 +28,7 @@ test.describe('foundation shell', () => {
 
   test('the PWA manifest is registered and well-formed', async ({ page }) => {
     await page.goto('/');
-    const manifest = await page.evaluate(async () => {
+    const manifest = await evalStable(page, async () => {
       const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
       if (!link) return null;
       const res = await fetch(link.href);

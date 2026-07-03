@@ -40,3 +40,17 @@
 1. `pnpm lint`
 2. `pnpm build` (covers TS typecheck of both projects + bundle)
 
+## Agent skills
+
+### Issue tracker
+
+Local markdown under `.scratch/<feature>/`. No external PRs as a triage surface (no remote configured). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at root + `docs/adr/`. See `docs/agents/domain.md`.
+

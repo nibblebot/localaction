@@ -43,6 +43,14 @@ export default defineConfig({
       testMatch: /opfs-persistence\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5174' },
     },
+    {
+      // CRUD/feature suites run against the PWA-disabled dev server (:5174)
+      // so the `vite-plugin-pwa` dev SW reload loop can't destroy execution
+      // contexts mid-interaction. See `vite.config.ts` + `e2e/helpers.ts`.
+      name: 'chromium-crud',
+      testMatch: /crud\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5174' },
+    },
   ],
   webServer: [
     {

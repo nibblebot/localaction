@@ -1,28 +1,24 @@
-/**
- * Right-pane editor for a Project. Inline title, move-to-domain control
- * (issue 10), delete, the Task list (issues 05/06), and the Notes panel.
- */
-
-import { useRow } from 'tinybase/ui-react';
+import { useState } from 'react';
 import {
   useDataLayer,
   updateProject,
   deleteProject,
+  useProject,
   getDomain,
-  getTopLevelDomainIds,
-  COLUMNS,
-  TABLES,
+  getAllDomainIdsFlat,
+  getDomainPath,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import { EditableTitle } from './EditableTitle.tsx';
-import { ConfirmButton } from './ConfirmButton.tsx';
-import { TaskList } from './TaskList.tsx';
-import { NotesPanel } from './NotesPanel.tsx';
+import EditableTitle from './EditableTitle.tsx';
+import ConfirmModal from './ConfirmModal.tsx';
+import TaskList from './TaskList.tsx';
+import NotesPanel from './NotesPanel.tsx';
 
-export function ProjectEditor({ id }: { id: string }): React.JSX.Element {
+export default function ProjectEditor({ id }: { id: string }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const project = useProjectReactive(store, id);
+  const project = useProject(store, id);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   if (!project) return <></>;
 
   function remove(): void {
@@ -40,7 +36,9 @@ export function ProjectEditor({ id }: { id: string }): React.JSX.Element {
           onCommit={(next) => updateProject(store, id, { name: next })}
           placeholder="Project name"
         />
-        <ConfirmButton onConfirm={remove} title="Delete project" />
+        <button type="button" className="btn btn-danger" onClick={() => setConfirmDelete(true)}>
+          Delete
+        </button>
       </div>
 
       <div className="entity-meta">
@@ -58,7 +56,9 @@ export function ProjectEditor({ id }: { id: string }): React.JSX.Element {
               if (!d) return null;
               return (
                 <option key={cid} value={cid}>
-                  {d.name || 'Untitled'}
+                  {getDomainPath(store, cid)
+                    .map((dn) => dn.name || 'Untitled')
+                    .join(' / ')}
                 </option>
               );
             })}
@@ -68,36 +68,15 @@ export function ProjectEditor({ id }: { id: string }): React.JSX.Element {
 
       <TaskList projectId={id} />
       <NotesPanel entityType="project" entityId={id} />
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete project?"
+        message={`“${project.name || 'Untitled'}” will be deleted. Tasks and notes attached to it will become orphans.`}
+        confirmLabel="Delete"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
-}
-
-function getAllDomainIdsFlat(store: ReturnType<typeof useDataLayer>['store']): string[] {
-  const out: string[] = [];
-  const walk = (parentId: string | null): void => {
-    for (const cid of store.getRowIds(TABLES.domains)) {
-      const p = store.getCell(TABLES.domains, cid, COLUMNS.domains.parentId);
-      if ((p ?? null) === parentId) {
-        out.push(cid);
-        walk(cid);
-      }
-    }
-  };
-  walk(null);
-  // Ensure top-level list seed for the empty-store case.
-  if (out.length === 0) getTopLevelDomainIds(store);
-  return out;
-}
-
-function useProjectReactive(
-  store: ReturnType<typeof useDataLayer>['store'],
-  id: string,
-): { name: string; domainId: string | null } | undefined {
-  const row = useRow(TABLES.projects, id, store);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  const domainId = row[COLUMNS.projects.domainId];
-  return {
-    name: String(row[COLUMNS.projects.name] ?? ''),
-    domainId: domainId === undefined || domainId === null || domainId === '' ? null : String(domainId),
-  };
 }

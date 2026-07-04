@@ -1,31 +1,3 @@
-/**
- * Markdown rendering with `[[Wiki Link]]` resolution.
- *
- * `markdown-it` does the heavy lifting (headings, lists, code, emphasis). We
- * add a single inline rule that recognises `[[Title]]` and emits a custom
- * `wiki_link` token, plus a renderer rule that turns that token into an
- * anchor:
- *
- *   • resolved (a note with that title or slug exists) →
- *       `<a class="wiki-link" href="#/n/<slug>">Title</a>`
- *   • missing →
- *       `<a class="wiki-link wiki-link-missing" href="#/n/<slug>">Title</a>`
- *
- * The href is always slug-shaped so a click can drive the hash router
- * (issue 11); a missing link's href points at the would-be slug so the
- * router can offer to create a note with that title.
- *
- * Code spans and fenced blocks are skipped — markdown-it tokenises them as
- * `code_inline` / `fence` before inline rules run, so their content never
- * reaches this rule. (`extractWikiLinks` in `wikiLinks.ts` does its own
- * code-masking for the *text* analysis the slug-lock uses; the two paths
- * agree on "links inside code don't count".)
- *
- * The note index travels through markdown-it's `env` (the second argument to
- * `md.render`), so each render resolves against a fresh snapshot without any
- * module-level state.
- */
-
 import MarkdownIt from 'markdown-it';
 import type { RenderRule } from 'markdown-it/lib/renderer.mjs';
 import { slugify } from '../data/slug.ts';
@@ -38,7 +10,6 @@ export interface NoteIndexEntry {
 
 export interface NoteIndex {
   bySlug: Map<string, NoteIndexEntry>;
-  /** lowercased title → entry */
   byTitleLower: Map<string, NoteIndexEntry>;
 }
 
@@ -53,22 +24,17 @@ export function buildNoteIndex(notes: Iterable<NoteIndexEntry>): NoteIndex {
 }
 
 export interface ResolvedLink {
-  /** Target slug (the route href). */
   slug: string;
-  /** Display label (the inner text). */
   title: string;
-  /** True when no note matches — renderer styles it "missing". */
   missing: boolean;
 }
 
-/** Resolve a `[[…]]` inner text against the note index. */
 export function resolveWikiLink(title: string, index?: NoteIndex): ResolvedLink {
   const trimmed = title.trim();
   const byTitle = index?.byTitleLower.get(trimmed.toLowerCase());
   if (byTitle) {
     return { slug: byTitle.slug, title: byTitle.title, missing: false };
   }
-  // Allow `[[existing-slug]]` as well as `[[Existing Title]]`.
   const bySlug = index?.bySlug.get(trimmed);
   if (bySlug) {
     return { slug: bySlug.slug, title: bySlug.title, missing: false };
@@ -83,8 +49,6 @@ export interface RenderEnv {
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: false });
 
-// Inline rule: recognise `[[...]]` as a single `wiki_link` token. Runs before
-// the default emphasis/link rules consume the brackets.
 md.inline.ruler.before('emphasis', 'localaction_wikilink', (state, silent) => {
   const src = state.src;
   const start = state.pos;
@@ -96,7 +60,6 @@ md.inline.ruler.before('emphasis', 'localaction_wikilink', (state, silent) => {
 
   const inner = src.slice(start + 2, end).trim();
   if (inner.length === 0) return false;
-  // Wiki-links are single-line.
   if (inner.includes('\n')) return false;
 
   if (!silent) {

@@ -1,7 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES } from '../../src/data/schema.ts';
 import {
   createProject,
   updateProject,
@@ -9,6 +8,7 @@ import {
   getProject,
   getProjectsForDomain,
   getOrphanedProjectIds,
+  isProjectOrphaned,
 } from '../../src/data/projects.ts';
 import { createDomain, deleteDomain } from '../../src/data/domains.ts';
 
@@ -22,22 +22,24 @@ describe('projects', () => {
     store = freshStore();
   });
 
-  it('createProject writes a row scoped to a domain', () => {
+  it('createProject writes a project scoped to a domain', () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'Plan vacation', domainId: d });
-    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.name)).toBe('Plan vacation');
-    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.domainId)).toBe(d);
-    expect(typeof store.getCell(TABLES.projects, p, COLUMNS.projects.createdAt)).toBe('string');
+    const project = getProject(store, p);
+    expect(project?.name).toBe('Plan vacation');
+    expect(project?.domainId).toBe(d);
+    expect(typeof project?.createdAt).toBe('string');
   });
 
   it('updateProject patches name and bumps updatedAt', async () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'Plan vacation', domainId: d });
-    const before = store.getCell(TABLES.projects, p, COLUMNS.projects.updatedAt);
+    const before = getProject(store, p)?.updatedAt;
     await new Promise((r) => setTimeout(r, 5));
     updateProject(store, p, { name: 'Plan vacation 2026' });
-    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.name)).toBe('Plan vacation 2026');
-    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.updatedAt)).not.toBe(before);
+    const after = getProject(store, p);
+    expect(after?.name).toBe('Plan vacation 2026');
+    expect(after?.updatedAt).not.toBe(before);
   });
 
   it('updateProject can move the project to a different domain', () => {
@@ -45,14 +47,14 @@ describe('projects', () => {
     const b = createDomain(store, { name: 'B' });
     const p = createProject(store, { name: 'P', domainId: a });
     updateProject(store, p, { domainId: b });
-    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.domainId)).toBe(b);
+    expect(getProject(store, p)?.domainId).toBe(b);
   });
 
   it('deleteProject removes the row', () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'P', domainId: d });
     deleteProject(store, p);
-    expect(store.hasRow(TABLES.projects, p)).toBe(false);
+    expect(getProject(store, p)).toBeUndefined();
   });
 
   it('getProject returns a normalised entity', () => {
@@ -78,5 +80,6 @@ describe('projects', () => {
     const p = createProject(store, { name: 'P', domainId: d });
     deleteDomain(store, d);
     expect(getOrphanedProjectIds(store)).toContain(p);
+    expect(isProjectOrphaned(store, p)).toBe(true);
   });
 });

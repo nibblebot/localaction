@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES, NOTE_ENTITY_TYPE } from '../../src/data/schema.ts';
+import { NOTE_ENTITY_TYPE } from '../../src/data/schema.ts';
 import {
   createNote,
   updateNote,
@@ -22,46 +22,48 @@ describe('notes', () => {
     store = freshStore();
   });
 
-  it('createNote writes a row with a kebab slug derived from the title', () => {
+  it('createNote writes a note with a kebab slug derived from the title', () => {
     const id = createNote(store, {
       title: 'Meeting Notes',
       entityType: NOTE_ENTITY_TYPE.domain,
       entityId: 'd1',
     });
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.title)).toBe('Meeting Notes');
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.slug)).toBe('meeting-notes');
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.entityType)).toBe(NOTE_ENTITY_TYPE.domain);
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.entityId)).toBe('d1');
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.body)).toBe('');
+    const note = getNote(store, id);
+    expect(note?.title).toBe('Meeting Notes');
+    expect(note?.slug).toBe('meeting-notes');
+    expect(note?.entityType).toBe(NOTE_ENTITY_TYPE.domain);
+    expect(note?.entityId).toBe('d1');
+    expect(note?.body).toBe('');
   });
 
   it('createNote de-duplicates slug collisions with a suffix', () => {
     const a = createNote(store, { title: 'Sync', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
     const b = createNote(store, { title: 'Sync', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
-    expect(store.getCell(TABLES.notes, a, COLUMNS.notes.slug)).toBe('sync');
-    expect(store.getCell(TABLES.notes, b, COLUMNS.notes.slug)).toBe('sync-2');
+    expect(getNote(store, a)?.slug).toBe('sync');
+    expect(getNote(store, b)?.slug).toBe('sync-2');
   });
 
   it('createNote falls back to a placeholder slug for empty titles', () => {
     const id = createNote(store, { title: '   ', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
-    const slug = store.getCell(TABLES.notes, id, COLUMNS.notes.slug) as string;
+    const slug = getNote(store, id)?.slug ?? '';
     expect(slug.length).toBeGreaterThan(0);
     expect(slug).toMatch(/^(untitled|note)/);
   });
 
   it('updateNote patches body and bumps updatedAt', async () => {
     const id = createNote(store, { title: 'N', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
-    const before = store.getCell(TABLES.notes, id, COLUMNS.notes.updatedAt);
+    const before = getNote(store, id)?.updatedAt;
     await new Promise((r) => setTimeout(r, 5));
     updateNote(store, id, { body: '# Hello' });
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.body)).toBe('# Hello');
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.updatedAt)).not.toBe(before);
+    const after = getNote(store, id);
+    expect(after?.body).toBe('# Hello');
+    expect(after?.updatedAt).not.toBe(before);
   });
 
   it('updateNote re-derives slug on rename when nothing else links to the old title', () => {
     const id = createNote(store, { title: 'Old Name', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
     updateNote(store, id, { title: 'New Name' });
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.slug)).toBe('new-name');
+    expect(getNote(store, id)?.slug).toBe('new-name');
   });
 
   it('updateNote keeps the slug when another note body links the old title (lock)', () => {
@@ -69,7 +71,7 @@ describe('notes', () => {
     const b = createNote(store, { title: 'Other', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
     updateNote(store, b, { body: 'See [[Linked]] for details' });
     updateNote(store, a, { title: 'Renamed' });
-    expect(store.getCell(TABLES.notes, a, COLUMNS.notes.slug)).toBe('linked');
+    expect(getNote(store, a)?.slug).toBe('linked');
   });
 
   it('getNoteSlugLockReason reports which note is holding the slug', () => {
@@ -83,14 +85,15 @@ describe('notes', () => {
   it('updateNote can re-attach a note to a different entity', () => {
     const id = createNote(store, { title: 'N', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
     updateNote(store, id, { entityType: NOTE_ENTITY_TYPE.project, entityId: 'p1' });
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.entityType)).toBe(NOTE_ENTITY_TYPE.project);
-    expect(store.getCell(TABLES.notes, id, COLUMNS.notes.entityId)).toBe('p1');
+    const after = getNote(store, id);
+    expect(after?.entityType).toBe(NOTE_ENTITY_TYPE.project);
+    expect(after?.entityId).toBe('p1');
   });
 
   it('deleteNote removes the row', () => {
     const id = createNote(store, { title: 'N', entityType: NOTE_ENTITY_TYPE.domain, entityId: 'd1' });
     deleteNote(store, id);
-    expect(store.hasRow(TABLES.notes, id)).toBe(false);
+    expect(getNote(store, id)).toBeUndefined();
   });
 
   it('getNotesForEntity lists notes attached to a given entity', () => {

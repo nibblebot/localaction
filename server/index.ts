@@ -1,27 +1,3 @@
-/**
- * LocalAction Node entry — single process serving the built SPA and the
- * TinyBase sync WebSocket on the same port.
- *
- * Two roles:
- *   • `pnpm start` boots this directly (production): serves `dist/` and
- *     upgrades `/ws` for TinyBase synchronisation.
- *   • In dev, Vite calls `attachSyncServer(httpServer)` via
- *     `configureServer` to reuse the same WS handler. See `vite.config.ts`.
- *
- * Env:
- *   `LOCALACTION_PORT`      — TCP port to listen on. Default 5173 (matches
- *                              Vite's default so `pnpm dev` and `pnpm start`
- *                              hit the same URL after proxying).
- *   `LOCALACTION_SYNC_SECRET` — shared secret required on `/ws` upgrades.
- *                                Empty in dev. Required (and logged) in prod.
- *   `LOCALACTION_DB_PATH`   — path to the SQLite file. Default `./data.db`.
- *
- * Sync protocol: TinyBase v9 `createWsServer` over `ws.WebSocketServer`,
- * per-path `Sqlite3Persister`. Each path component in the WS URL gets its
- * own server-side store, so future multi-document setups can coexist by
- * mounting additional WS endpoints (`/ws`, `/ws-notes`, …).
- */
-
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { readFileSync, statSync, existsSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
@@ -55,12 +31,6 @@ export interface RunningServer {
   close(): Promise<void>;
 }
 
-/**
- * Attach the WS sync handler to an existing HTTP server.
- *
- * Vite calls this from `configureServer` in dev. Prod also calls it after it
- * builds its own HTTP server, so the logic is shared.
- */
 export function attachSyncServer(
   httpServer: Server,
   options: ServerOptions = {},
@@ -70,10 +40,6 @@ export function attachSyncServer(
 
   const wsServer = new WebSocketServer({ noServer: true });
   const tinyServer = createWsServer(wsServer, async (pathId) => {
-    // Sanitize so that one client cannot drive the server into deep or
-    // out-of-tree paths. TinyBase derives pathId from the URL path component
-    // (e.g. `/ws` → 'ws', `/ws-notes` → 'ws-notes'); we accept a controlled
-    // character set and cap length.
     const safePathId = sanitizePathId(pathId);
     if (!safePathId) {
       throw new Error(`invalid sync path: ${pathId}`);
@@ -191,8 +157,6 @@ export function createStaticFileServer(staticRoot: string) {
       });
       res.end(data);
     } catch {
-      // SPA fallback: serve index.html for unknown paths so client-side
-      // routing (added in 11-routing-and-deep-links) works on hard reload.
       try {
         const html = readFileSync(join(staticRoot, 'index.html'));
         res.writeHead(200, {
@@ -224,7 +188,6 @@ function mimeFor(path: string): string {
   return MIME_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream';
 }
 
-/** Boot the full production server (static files + WS on one port). */
 export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
   const port = options.port ?? portFromEnv() ?? DEFAULT_PORT;
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';

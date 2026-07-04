@@ -1,35 +1,36 @@
-/**
- * Right-pane detail view for a single Task (selected from the list or via a
- * deep link). Shows the title, status toggle, move controls (re-parent to
- * another project or another task), the sub-task list, and notes.
- */
-
-import { useRow } from 'tinybase/ui-react';
+import { useState } from 'react';
 import {
   useDataLayer,
   updateTask,
   deleteTask,
   setTaskStatus,
+  useTask,
   getProject,
-  COLUMNS,
+  getChildTasks,
+  getTasksForProject,
   TABLES,
+  COLUMNS,
   TASK_STATUS,
 } from '../data/index.ts';
-import type { TaskStatus } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import { EditableTitle } from './EditableTitle.tsx';
-import { ConfirmButton } from './ConfirmButton.tsx';
-import { TaskList } from './TaskList.tsx';
-import { NotesPanel } from './NotesPanel.tsx';
+import EditableTitle from './EditableTitle.tsx';
+import ConfirmModal from './ConfirmModal.tsx';
+import TaskList from './TaskList.tsx';
+import NotesPanel from './NotesPanel.tsx';
 
-export function TaskDetail({ id }: { id: string }): React.JSX.Element {
+export default function TaskDetail({ id }: { id: string }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const task = useTaskReactive(store, id);
+  const task = useTask(store, id);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   if (!task) return <></>;
 
   const done = task.status === TASK_STATUS.done;
   const projectIds = store.getRowIds(TABLES.projects);
+  const siblingIds = task.projectId
+    ? getTasksForProject(store, task.projectId).filter((tid) => tid !== id)
+    : [];
+  const descendantIds = new Set(collectDescendants(store, id));
 
   function remove(): void {
     deleteTask(store, id);
@@ -53,7 +54,9 @@ export function TaskDetail({ id }: { id: string }): React.JSX.Element {
           onCommit={(next) => updateTask(store, id, { title: next })}
           placeholder="Task title"
         />
-        <ConfirmButton onConfirm={remove} title="Delete task" />
+        <button type="button" className="btn btn-danger" onClick={() => setConfirmDelete(true)}>
+          Delete
+        </button>
       </div>
 
       <div className="entity-meta">
@@ -62,7 +65,9 @@ export function TaskDetail({ id }: { id: string }): React.JSX.Element {
           <select
             className="field-select"
             value={task.projectId ?? ''}
-            onChange={(e) => updateTask(store, id, { projectId: e.target.value, parentTaskId: null })}
+            onChange={(e) =>
+              updateTask(store, id, { projectId: e.target.value, parentTaskId: null })
+            }
           >
             {projectIds.map((pid) => {
               const p = getProject(store, pid);
@@ -75,29 +80,60 @@ export function TaskDetail({ id }: { id: string }): React.JSX.Element {
             })}
           </select>
         </label>
+        <label className="field">
+          <span className="field-label">Parent task</span>
+          <select
+            className="field-select"
+            value={task.parentTaskId ?? ''}
+            onChange={(e) => updateTask(store, id, { parentTaskId: e.target.value || null })}
+          >
+            <option value="">(Top level)</option>
+            {siblingIds
+              .filter((tid) => !descendantIds.has(tid))
+              .map((tid) => (
+                <option key={tid} value={tid}>
+                  {getTaskTitle(store, tid)}
+                </option>
+              ))}
+          </select>
+        </label>
       </div>
 
       {task.projectId && <TaskList projectId={task.projectId} />}
       <NotesPanel entityType="task" entityId={id} />
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete task?"
+        message={`“${task.title || 'Untitled'}” will be deleted. Sub-tasks will become orphans.`}
+        confirmLabel="Delete"
+        onConfirm={remove}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
 
-function useTaskReactive(
+function getTaskTitle(
   store: ReturnType<typeof useDataLayer>['store'],
   id: string,
-): { title: string; status: TaskStatus; projectId: string | null; parentTaskId: string | null } | undefined {
-  const row = useRow(TABLES.tasks, id, store);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  const projectId = row[COLUMNS.tasks.projectId];
-  const parentTaskId = row[COLUMNS.tasks.parentTaskId];
-  return {
-    title: String(row[COLUMNS.tasks.title] ?? ''),
-    status: String(row[COLUMNS.tasks.status] ?? TASK_STATUS.open) as TaskStatus,
-    projectId: projectId === undefined || projectId === null || projectId === '' ? null : String(projectId),
-    parentTaskId:
-      parentTaskId === undefined || parentTaskId === null || parentTaskId === ''
-        ? null
-        : String(parentTaskId),
-  };
+): string {
+  const row = store.getRow(TABLES.tasks, id);
+  return String(row[COLUMNS.tasks.title] ?? 'Untitled');
+}
+
+function collectDescendants(
+  store: ReturnType<typeof useDataLayer>['store'],
+  rootId: string,
+): string[] {
+  const out: string[] = [];
+  const stack = [rootId];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    for (const child of getChildTasks(store, cur)) {
+      out.push(child);
+      stack.push(child);
+    }
+  }
+  return out;
 }

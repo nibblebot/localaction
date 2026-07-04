@@ -1,13 +1,3 @@
-/**
- * Two-step delete confirmation rendered inline (no native `confirm()` dialog).
- *
- * First click arms the button ("Delete?" label, destructive style); the
- * second click within `RESET_MS` fires `onConfirm`. Blurring or waiting
- * resets it. This keeps the flow keyboard- and screen-reader-friendly and
- * stays within normal DOM (Playwright can drive it with two clicks, no
- * `window.confirm` dialog handling required).
- */
-
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
@@ -21,7 +11,7 @@ export interface ConfirmButtonProps {
   disabled?: boolean;
 }
 
-export function ConfirmButton({
+export default function ConfirmButton({
   onConfirm,
   label = 'Delete',
   confirmLabel = 'Delete?',

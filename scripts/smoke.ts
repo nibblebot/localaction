@@ -1,18 +1,3 @@
-/**
- * Smoke test for the data layer + sync server.
- *
- * Runs entirely in Node (no browser required): boots the same Node server
- * the production `pnpm start` uses, then connects two TinyBase
- * MergeableStores to it as if they were two browser tabs. Verifies that:
- *
- *   1. The WS handshake completes and each client sees a `connected` status.
- *   2. A write on the first store appears on the second.
- *   3. The SQLite file actually persists the row (read it back directly).
- *
- * This is the phase-0 equivalent of an integration test, since this repo has
- * no test framework per `AGENTS.md`. Run with `pnpm smoke`.
- */
-
 import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -53,7 +38,6 @@ async function main() {
   console.log(`smoke: server up on :${server.port}, db=${DB_PATH}`);
 
   try {
-    // Wait for both clients to receive each other's writes.
     const a = createMergeableStore();
     const b = createMergeableStore();
 
@@ -92,8 +76,6 @@ async function main() {
     );
     console.log('smoke: write B replicated to A');
 
-    // Disconnect both clients so the server-side SQLite persister flushes
-    // and a third (fresh) client can join and observe the same data.
     await syncA.destroy();
     await syncB.destroy();
 
@@ -122,13 +104,6 @@ async function main() {
     console.log('smoke: fresh client loaded persisted state');
     await freshSync.destroy();
 
-    // Independent sanity check: open the SQLite file directly and confirm
-    // TinyBase actually wrote a row into its default `tinybase` table. The
-    // SQLite persister in DpcJson mode (the default for MergeableStore)
-    // serialises the full content into a single JSON blob with HLC metadata,
-    // so we parse the blob and assert the cells are present at the right
-    // shape. We round-trip through a fresh MergeableStore to validate the
-    // data we wrote can actually be re-loaded (TinyBase's own contract).
     const persisted = await new Promise<unknown>((resolve, reject) => {
       const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
         if (err) return reject(err);
@@ -166,7 +141,6 @@ async function main() {
     try {
       unlinkSync(DB_PATH);
     } catch {
-      // ignore
     }
   }
 }

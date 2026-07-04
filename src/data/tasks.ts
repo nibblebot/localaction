@@ -1,16 +1,3 @@
-/**
- * Task entity actions and read helpers.
- *
- * A Task is a unit of action. Phase 0 tasks live under a Project and may nest
- * arbitrarily under other Tasks (via `parentTaskId`). The `order` column is a
- * float so reordering never needs to rewrite the whole list (insertion uses
- * `nextTaskOrder`).
- *
- * Orphan policy (issue 06): deleting a Task never cascades. Sub-Tasks keep
- * their `parentTaskId` pointing at the deleted row; `getOrphanedTaskIds`
- * surfaces them so the UI marks them "Orphaned" and lets the user re-attach.
- */
-
 import { useRow, useRowIds } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
@@ -18,7 +5,6 @@ import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Task, TaskInput, TaskPatch } from './types.ts';
 
-/** Next float ordering key for a new task — one more than the current max. */
 export function nextTaskOrder(
   store: MergeableStore,
   projectId: string,
@@ -32,8 +18,6 @@ export function nextTaskOrder(
       return (
         pid === projectId &&
         ptask === parentTaskId &&
-        // Only count siblings whose parent pointer is intact — orphans
-        // sitting under a deleted parent shouldn't inflate the order.
         (ptask === null || store.hasRow(TABLES.tasks, ptask))
       );
     })
@@ -111,14 +95,14 @@ export function getTask(store: MergeableStore, id: string): Task | undefined {
   };
 }
 
-/** Top-level tasks for a project (parentTaskId unset). */
 export function getTasksForProject(store: MergeableStore, projectId: string): string[] {
   return store
     .getRowIds(TABLES.tasks)
     .filter((id) => {
       const pid = store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId);
       const ptask = store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId);
-      return pid === projectId && ptask === undefined;
+      const orphan = ptask !== undefined && !store.hasRow(TABLES.tasks, String(ptask));
+      return pid === projectId && (ptask === undefined || orphan);
     })
     .sort((a, b) =>
       Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0) -
@@ -126,7 +110,11 @@ export function getTasksForProject(store: MergeableStore, projectId: string): st
     );
 }
 
-/** Direct child tasks of `parentTaskId`. */
+export function isTaskOrphaned(store: MergeableStore, id: string): boolean {
+  const parent = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId));
+  return parent !== null && !store.hasRow(TABLES.tasks, parent);
+}
+
 export function getChildTasks(store: MergeableStore, parentTaskId: string): string[] {
   return store
     .getRowIds(TABLES.tasks)
@@ -137,12 +125,6 @@ export function getChildTasks(store: MergeableStore, parentTaskId: string): stri
     );
 }
 
-/**
- * Orphaned tasks — `parentTaskId` points at a Task that no longer exists.
- * (Tasks belonging to a deleted Project are not "orphaned" by this rule;
- * the Project-delete cascade lives in the action layer if/when we choose
- * to enforce it.)
- */
 export function getOrphanedTaskIds(store: MergeableStore): string[] {
   return store.getRowIds(TABLES.tasks).filter((id) => {
     const parent = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId));
@@ -150,7 +132,6 @@ export function getOrphanedTaskIds(store: MergeableStore): string[] {
   });
 }
 
-// --- React read hooks -------------------------------------------------------
 
 export function useTasks(store: MergeableStore, projectId: string): string[] {
   const allIds = useRowIds(TABLES.tasks, store);

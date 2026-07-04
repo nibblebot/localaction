@@ -1,8 +1,3 @@
-/**
- * Read the current `Selection` (and a navigate helper) from the nearest
- * `SelectionProvider`. Throws when called outside one.
- */
-
 import { useContext } from 'react';
 import {
   SelectionContext,

@@ -1,21 +1,3 @@
-/**
- * TinyBase table and column names for LocalAction.
- *
- * Every entity in the app — Domain, Project, Task, Note — lives in a single
- * TinyBase table. The strings in this file are the single source of truth that
- * the rest of the app reaches through, so we never hand-write 'domains' / 'id'
- * / 'parentId' literals anywhere else.
- *
- * Why constants and not types: TinyBase itself does not enforce column types
- * at write time. Using string constants lets the rest of the app stay tiny and
- * keeps the data layer the only place that knows TinyBase's table shape. See
- * `src/data/README.md` and `docs/adr/0001-tinybase.md`.
- *
- * Schema versioning: phase 0 has no migrations (greenfield). When the schema
- * evolves, add a `schemaVersion` row in the mergeable store's `Values` and a
- * migration function on boot.
- */
-
 export const TABLES = {
   domains: 'domains',
   projects: 'projects',
@@ -25,10 +7,6 @@ export const TABLES = {
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
 
-/**
- * Column names per table. Mirrors the PRD's "Schema" subsection under
- * `Implementation Decisions`.
- */
 export const COLUMNS = {
   domains: {
     id: 'id',

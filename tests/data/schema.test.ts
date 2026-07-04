@@ -29,7 +29,6 @@ describe('schema constants', () => {
   });
 
   it('keeps the note entity-type enum aligned with the glossary', () => {
-    // A note attaches to exactly one of Domain, Project, or Task.
     expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(
       ['domain', 'project', 'task'],
     );

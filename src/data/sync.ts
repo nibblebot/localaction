@@ -1,20 +1,3 @@
-/**
- * Browser-side sync client that connects the local MergeableStore to the
- * server's WebSocket synchronizer.
- *
- * Reconnect: TinyBase's WsSynchronizer does not retry by itself — once the
- * underlying WebSocket closes, the synchronizer is considered done. So we own
- * the reconnect loop here: when the socket closes (or `startSync` rejects),
- * we wait with exponential backoff and try again.
- *
- * Auth: the secret is read from `VITE_LOCALACTION_SYNC_SECRET` (mirrors
- * `LOCALACTION_SYNC_SECRET` on the server). Empty defaults are rejected so
- * misconfigured prod deployments don't accidentally ship an open WS endpoint.
- *
- * Why sync is opt-in from `startSync`: the React provider calls this from an
- * effect; we don't want the start promise to block first paint.
- */
-
 import { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { getStore } from './store.ts';
 
@@ -25,7 +8,6 @@ export interface SyncClient {
   start(): void;
   destroy(): Promise<void>;
   readonly status: SyncStatus;
-  /** Fires whenever the connection status changes. */
   subscribe(listener: (status: SyncStatus) => void): () => void;
 }
 
@@ -37,9 +19,7 @@ export type SyncStatus =
   | { kind: 'error'; message: string };
 
 export interface SyncClientOptions {
-  /** Override the WebSocket constructor (used in tests). */
   webSocketImpl?: typeof WebSocket;
-  /** Override the endpoint URL entirely (used in tests). */
   endpoint?: string;
 }
 
@@ -99,7 +79,6 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       try {
         ws.close();
       } catch {
-        // ignore
       }
       scheduleReconnect(reasonForReconnect ?? (err as Error).message);
     }
@@ -124,7 +103,6 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
         try {
           await sync.destroy();
         } catch {
-          // best-effort cleanup
         }
       }
     },

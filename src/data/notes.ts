@@ -1,19 +1,4 @@
-/**
- * Note entity actions and read helpers.
- *
- * A Note is a markdown body attached to exactly one entity (Domain, Project,
- * or Task). Each note has a unique `slug` derived from its title — the stable
- * key wiki-links navigate by (see `src/markdown/wikiLinks.ts`).
- *
- * Slug lifecycle (issue 07):
- *   • On create, the slug is `slugify(title)`, suffixed `-2`, `-3`, … until
- *     unique within the store.
- *   • On rename, the slug is re-derived UNLESS another note's body contains a
- *     `[[<old title>]]` link to it — in that case the slug is locked so
- *     existing links keep resolving. `getNoteSlugLockReason` surfaces the
- *     linking note so the UI can show a soft warning.
- */
-
+import { useMemo } from 'react';
 import { useRow, useRowIds } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, NOTE_ENTITY_TYPE } from './schema.ts';
@@ -21,11 +6,11 @@ import type { NoteEntityType } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import { slugify } from './slug.ts';
 import { extractWikiLinks } from '../markdown/wikiLinks.ts';
+import { buildNoteIndex } from '../markdown/render.ts';
 import type { Note, NoteInput, NotePatch } from './types.ts';
 
 const PLACEHOLDER_SLUG_PREFIX = 'note';
 
-/** Find a unique slug for `title`, suffixing collisions with -2, -3, … */
 function uniqueSlug(
   store: MergeableStore,
   title: string,
@@ -65,11 +50,6 @@ export function createNote(store: MergeableStore, input: NoteInput): string {
   return id;
 }
 
-/**
- * If another note links to `noteId` via `[[<expectedTitle>]]`, return that
- * linking note's id — the slug is "locked" and a rename must not re-derive
- * it. `undefined` means the slug is free to follow a rename.
- */
 export function getNoteSlugLockReason(
   store: MergeableStore,
   noteId: string,
@@ -104,8 +84,6 @@ export function updateNote(store: MergeableStore, id: string, patch: NotePatch):
   if (patch.title !== undefined) {
     next[COLUMNS.notes.title] = patch.title;
     const oldTitle = String(store.getCell(TABLES.notes, id, COLUMNS.notes.title) ?? '');
-    // Re-derive the slug unless another note links to the OLD title — in
-    // which case the slug stays put so existing wiki-links keep resolving.
     const locked = getNoteSlugLockReason(store, id, oldTitle);
     if (!locked) {
       next[COLUMNS.notes.slug] = uniqueSlug(store, patch.title, id);
@@ -133,7 +111,6 @@ export function getNote(store: MergeableStore, id: string): Note | undefined {
   };
 }
 
-/** Notes attached to a given entity. */
 export function getNotesForEntity(
   store: MergeableStore,
   entityType: NoteEntityType,
@@ -148,7 +125,6 @@ export function getNotesForEntity(
     );
 }
 
-/** Resolve a note by its slug. */
 export function getNoteBySlug(store: MergeableStore, slug: string): Note | undefined {
   const id = store
     .getRowIds(TABLES.notes)
@@ -156,7 +132,6 @@ export function getNoteBySlug(store: MergeableStore, slug: string): Note | undef
   return id ? getNote(store, id) : undefined;
 }
 
-// --- React read hooks -------------------------------------------------------
 
 export function useNotesForEntity(
   store: MergeableStore,
@@ -184,4 +159,38 @@ export function useNote(store: MergeableStore, id: string | undefined): Note | u
     createdAt: String(r[COLUMNS.notes.createdAt] ?? ''),
     updatedAt: String(r[COLUMNS.notes.updatedAt] ?? ''),
   };
+}
+
+export function useNoteBySlug(store: MergeableStore, slug: string | undefined): Note | undefined {
+  useRowIds(TABLES.notes, store);
+  if (!slug) return undefined;
+  return getNoteBySlug(store, slug);
+}
+
+export function useNoteIndex(
+  store: MergeableStore,
+  excludeId?: string,
+): import('../markdown/render.ts').NoteIndex {
+  const allIds = useRowIds(TABLES.notes, store);
+  return useMemo(
+    () =>
+      buildNoteIndex(
+        allIds
+          .filter((id) => id !== excludeId)
+          .map((id) => getNote(store, id))
+          .filter((n): n is NonNullable<typeof n> => !!n)
+          .map((n) => ({ id: n.id, slug: n.slug, title: n.title })),
+      ),
+    [store, allIds, excludeId],
+  );
+}
+
+export function useAllNoteIds(store: MergeableStore): string[] {
+  return useRowIds(TABLES.notes, store);
+}
+
+export function useNoteIdForSlug(store: MergeableStore, slug: string | undefined): string | undefined {
+  useRowIds(TABLES.notes, store);
+  if (!slug) return undefined;
+  return getNoteBySlug(store, slug)?.id;
 }

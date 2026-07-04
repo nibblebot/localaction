@@ -2,11 +2,7 @@ import { useResolvedSelection } from './useBreadcrumbs.ts';
 import { useSelection } from './useSelection.ts';
 import type { Selection } from '../router.ts';
 
-/**
- * Breadcrumb trail for the current selection. Renders "Home" plus each
- * resolved segment as a clickable link. An empty trail shows just "Home".
- */
-export function Breadcrumbs(): React.JSX.Element {
+export default function Breadcrumbs(): React.JSX.Element {
   const { selection } = useSelection();
   const { trail } = useResolvedSelection(selection);
   const { navigate } = useSelection();
@@ -22,7 +18,7 @@ export function Breadcrumbs(): React.JSX.Element {
       </button>
       {trail.map((seg, i) => (
         <span key={`${seg.selection.kind}-${segmentKey(seg.selection)}`} className="breadcrumb-segment">
-          <span className="breadcrumb-sep" aria-hidden="true">/</span>
+          <span className="breadcrumb-sep" aria-hidden="true">&gt;</span>
           <button
             type="button"
             className="breadcrumb-link"

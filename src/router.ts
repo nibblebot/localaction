@@ -1,19 +1,3 @@
-/**
- * Hash-based router for deep links to entities.
- *
- * URL shapes (issue 11):
- *   `#/d/<domain-id>`     — Domain
- *   `#/p/<project-id>`    — Project
- *   `#/t/<task-id>`       — Task
- *   `#/n/<note-slug>`     — Note (by slug, the stable wiki-link target)
- *   `#/`                  — Home (no selection)
- *
- * Parsing and formatting are pure so they can be unit-tested in isolation;
- * the React glue (`useRoute` / `navigate`) lives in the components and just
- * shuttles between `window.location.hash` and these functions. Invalid or
- * truncated hashes fall back to `home` so the app always lands somewhere.
- */
-
 export type Selection =
   | { kind: 'home' }
   | { kind: 'domain'; id: string }
@@ -32,7 +16,6 @@ type Prefix = keyof typeof PREFIXES;
 
 const HOME: Selection = { kind: 'home' };
 
-/** Parse a hash (or bare path) into a Selection. Unknown → home. */
 export function parseRoute(raw: string): Selection {
   const hash = raw.startsWith('#') ? raw : raw.startsWith('/') ? `#${raw}` : `#/${raw}`;
   const match = hash.match(/^#\/([dptn])\/(.+)$/);
@@ -44,7 +27,6 @@ export function parseRoute(raw: string): Selection {
   return { kind, id };
 }
 
-/** Format a Selection back into a hash string. */
 export function formatRoute(sel: Selection): string {
   switch (sel.kind) {
     case 'home':

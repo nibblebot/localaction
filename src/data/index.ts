@@ -1,13 +1,3 @@
-/**
- * Public surface of the data layer seam.
- *
- * Anything in `src/components/` should import from here, never from tinybase
- * directly. New entity hooks (useDomains / createDomain / …) are added in
- * future issues and re-exported through this file.
- *
- * See `src/data/README.md` for the seam-level contract.
- */
-
 export { TABLES, COLUMNS, TASK_STATUS, NOTE_ENTITY_TYPE } from './schema.ts';
 export type {
   TableName,
@@ -20,6 +10,8 @@ export type {
 } from './schema.ts';
 
 export { getStore } from './store.ts';
+
+export { useStoreVersion } from './internal.ts';
 
 export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
 export type { LocalActionDebug } from './DataLayerProvider.tsx';
@@ -56,11 +48,13 @@ export {
   getDomainPath,
   getTopLevelDomainIds,
   getChildDomainIds,
+  getAllDomainIdsFlat,
   getOrphanedDomainIds,
   getAllDomainIds,
   useDomains,
   useDomain,
   useChildDomains,
+  useOrphanedDomainIds,
 } from './domains.ts';
 
 export {
@@ -70,6 +64,7 @@ export {
   getProject,
   getProjectsForDomain,
   getOrphanedProjectIds,
+  isProjectOrphaned,
   useProjects,
   useProject,
 } from './projects.ts';
@@ -83,6 +78,7 @@ export {
   getTasksForProject,
   getChildTasks,
   getOrphanedTaskIds,
+  isTaskOrphaned,
   nextTaskOrder,
   useTasks,
   useChildTasks,
@@ -98,7 +94,11 @@ export {
   getNoteBySlug,
   getNoteSlugLockReason,
   useNotesForEntity,
+  useAllNoteIds,
   useNote,
+  useNoteBySlug,
+  useNoteIndex,
+  useNoteIdForSlug,
 } from './notes.ts';
 
 export { slugify } from './slug.ts';

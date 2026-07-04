@@ -10,7 +10,6 @@ describe('startSync URL handling', () => {
     });
   });
 
-  /** Wait for `predicate` to return true, polling each tick. */
   async function waitFor(predicate: () => boolean, maxMs = 200): Promise<void> {
     const step = 5;
     for (let elapsed = 0; elapsed < maxMs; elapsed += step) {

@@ -1,12 +1,3 @@
-/**
- * Inline-editable title used by the Domain / Project editors.
- *
- * Renders the title as a text input styled to look like a heading; committing
- * (blur or Enter) writes through `onCommit`. Escape reverts to the current
- * `value`. Editing never calls `navigate`, so the URL stays stable while
- * typing (issue 11 — "committed" updates only).
- */
-
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 
@@ -17,7 +8,7 @@ export interface EditableTitleProps {
   autoFocusOnCreate?: boolean;
 }
 
-export function EditableTitle({
+export default function EditableTitle({
   value,
   onCommit,
   placeholder = 'Untitled',
@@ -26,8 +17,6 @@ export function EditableTitle({
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement>(null);
 
-  // Keep the draft in sync when the upstream value changes (e.g. sync from
-  // another device) and the field isn't focused.
   useEffect(() => {
     if (document.activeElement !== ref.current) setDraft(value);
   }, [value]);

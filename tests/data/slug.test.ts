@@ -21,7 +21,6 @@ describe('slugify', () => {
   });
 
   it('preserves digits and accented letters as their base form when possible', () => {
-    // We don't promise full ICU transliteration; we promise ASCII-safe slugs.
     expect(slugify('Café 2026')).toBe('cafe-2026');
   });
 });

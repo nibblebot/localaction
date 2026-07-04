@@ -1,12 +1,3 @@
-/**
- * Project entity actions and read helpers.
- *
- * A Project lives under a Domain (or sub-Domain) and represents a bounded
- * effort with a clear end state. Optional relation: `domainId` may become
- * a dangling reference if the owning Domain is deleted (orphan policy, see
- * `domains.ts`).
- */
-
 import { useRow, useRowIds } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES } from './schema.ts';
@@ -66,14 +57,12 @@ export function getProject(store: MergeableStore, id: string): Project | undefin
   };
 }
 
-/** Projects whose `domainId` equals `domainId`. */
 export function getProjectsForDomain(store: MergeableStore, domainId: string): string[] {
   return store
     .getRowIds(TABLES.projects)
     .filter((id) => store.getCell(TABLES.projects, id, COLUMNS.projects.domainId) === domainId);
 }
 
-/** Orphaned projects — `domainId` points at a missing Domain. */
 export function getOrphanedProjectIds(store: MergeableStore): string[] {
   return store.getRowIds(TABLES.projects).filter((id) => {
     const domain = normalizeRelation(store.getCell(TABLES.projects, id, COLUMNS.projects.domainId));
@@ -81,7 +70,11 @@ export function getOrphanedProjectIds(store: MergeableStore): string[] {
   });
 }
 
-// --- React read hooks -------------------------------------------------------
+export function isProjectOrphaned(store: MergeableStore, id: string): boolean {
+  const domain = normalizeRelation(store.getCell(TABLES.projects, id, COLUMNS.projects.domainId));
+  return domain !== null && !store.hasRow(TABLES.domains, domain);
+}
+
 
 export function useProjects(store: MergeableStore, domainId: string): string[] {
   const allIds = useRowIds(TABLES.projects, store);

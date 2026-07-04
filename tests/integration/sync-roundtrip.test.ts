@@ -84,12 +84,34 @@ async function connectClient(store: MergeableStore): Promise<Awaited<ReturnType<
   return sync;
 }
 
+function waitForRowAbsent(
+  store: MergeableStore,
+  table: string,
+  row: string,
+  timeoutMs = 5_000,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    const tick = (): void => {
+      if (!store.hasRow(table, row)) {
+        resolve();
+        return;
+      }
+      if (Date.now() > deadline) {
+        reject(
+          new Error(
+            `timeout waiting for ${table}.${row} to be deleted (still present)`,
+          ),
+        );
+        return;
+      }
+      setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
 describe('sync server round-trip', () => {
-  // Retried because the final sqlite3 persister flush is occasionally slow on
-  // bleeding-edge Node (the repo runs Node 26 + sqlite3 native bindings; see
-  // AGENTS.md "bleeding-edge" note). The fresh client sometimes loads a
-  // snapshot taken before the `projects` table flushed. The behaviour under
-  // test is correct; the retry absorbs the transient flush timing.
   it(
     'two clients exchange writes and a fresh client reads the persisted state',
     { retry: 3, timeout: 20_000 },
@@ -101,8 +123,6 @@ describe('sync server round-trip', () => {
     const syncB = await connectClient(b);
 
     try {
-      // Both clients write into their own stores; each write should reach
-      // the other via the server.
       a.setCell('domains', 'd1', 'name', 'Family');
       a.setCell('domains', 'd1', 'createdAt', '2026-01-01T00:00:00Z');
       a.setCell('domains', 'd2', 'name', 'Health');
@@ -117,14 +137,12 @@ describe('sync server round-trip', () => {
       await waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation');
       console.log('[debug] A has domains+projects:', JSON.stringify(a.getTables()));
 
-      // Let the server's autoSave flush before tearing the path down.
       await new Promise((r) => setTimeout(r, 250));
     } finally {
       await syncA.destroy();
       await syncB.destroy();
     }
 
-    // A fresh client joins and reads what the server persisted.
     const fresh = createMergeableStore();
     const freshSync = await connectClient(fresh);
     try {
@@ -143,8 +161,6 @@ describe('sync server round-trip', () => {
       await freshSync.destroy();
     }
 
-    // Independent sanity check: open the SQLite file directly and confirm
-    // the mergeable-content blob is parseable and round-trips.
     const raw = await readSqliteBlob(dbPath);
     expect(raw).toBeTypeOf('string');
     console.log('[debug] sqlite blob length:', raw.length);
@@ -158,6 +174,45 @@ describe('sync server round-trip', () => {
     expect(reload.getCell('domains', 'd1', 'name')).toBe('Family');
     expect(reload.getCell('domains', 'd2', 'parentId')).toBe('d1');
     expect(reload.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
+    },
+  );
+
+  it(
+    'a row deleted on one client disappears on the other and on a fresh client',
+    { retry: 3, timeout: 20_000 },
+    async () => {
+      const a = createMergeableStore();
+      const b = createMergeableStore();
+
+      const syncA = await connectClient(a);
+      const syncB = await connectClient(b);
+
+      try {
+        a.setCell('domains', 'd-del', 'name', 'Doomed');
+        a.setCell('domains', 'd-del', 'createdAt', '2026-01-01T00:00:00Z');
+        a.setCell('domains', 'd-keep', 'name', 'Kept');
+        a.setCell('domains', 'd-keep', 'createdAt', '2026-01-01T00:00:00Z');
+        await waitForCell(b, 'domains', 'd-del', 'name', 'Doomed');
+        await waitForCell(b, 'domains', 'd-keep', 'name', 'Kept');
+
+        a.delRow('domains', 'd-del');
+        await waitForRowAbsent(b, 'domains', 'd-del');
+        expect(b.hasRow('domains', 'd-keep')).toBe(true);
+      } finally {
+        await syncA.destroy();
+        await syncB.destroy();
+      }
+
+      await new Promise((r) => setTimeout(r, 250));
+
+      const fresh = createMergeableStore();
+      const freshSync = await connectClient(fresh);
+      try {
+        await waitForCell(fresh, 'domains', 'd-keep', 'name', 'Kept');
+        expect(fresh.hasRow('domains', 'd-del')).toBe(false);
+      } finally {
+        await freshSync.destroy();
+      }
     },
   );
 });

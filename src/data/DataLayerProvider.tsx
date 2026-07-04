@@ -1,18 +1,3 @@
-/**
- * Single React entry point into the data layer.
- *
- * Hides TinyBase from the rest of the app behind a typed context. Children get
- * `useDataLayer()` to read the store directly, the sync status, and the sync
- * client. CRUD hooks (useDomains / createDomain / …) are added in
- * 02-domain-crud and live in sibling files.
- *
- * Why a Provider, not a module-level singleton: tests can mount the tree with
- * a custom provider, and React StrictMode double-renders the effect safely.
- *
- * See ADR-0001 (storage / sync), ADR-0002 (conflict resolution), and
- * ADR-0003 (OPFS persister) for the architectural decisions behind this seam.
- */
-
 import {
   useEffect,
   useMemo,
@@ -28,19 +13,13 @@ import type { DataLayerValue } from './dataLayerContext.ts';
 
 export type { DataLayerValue } from './dataLayerContext.ts';
 
-/** Surface exposed on `window.__LOCALACTION` in dev/test only. */
 export interface LocalActionDebug {
   readonly store: ReturnType<typeof getStore>;
-  /** Pollable readiness flag mirroring the provider's `persistenceReady`. */
   readonly persistenceReady: boolean;
 }
 
 export interface DataLayerProviderProps {
   children: ReactNode;
-  /**
-   * Disable persistence + sync. Used by the smoke script and by SSR / test
-   * harnesses that don't have OPFS or a network.
-   */
   offline?: boolean;
 }
 
@@ -53,8 +32,6 @@ export function DataLayerProvider({
   const [sync, setSync] = useState<SyncClient | undefined>(undefined);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ kind: 'idle' });
 
-  // `persistenceReady` is captured in the dev-hook getter via a ref so the
-  // hook always reads the current value without re-running the effect.
   const persistenceReadyRef = useRef(persistenceReady);
   persistenceReadyRef.current = persistenceReady;
 

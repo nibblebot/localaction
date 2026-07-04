@@ -1,7 +1,7 @@
 import { DataLayerProvider } from './data/index.ts';
-import { SelectionProvider } from './components/selection.tsx';
-import { Tree } from './components/Tree.tsx';
-import { RightPane } from './components/RightPane.tsx';
+import SelectionProvider from './components/selection.tsx';
+import Tree from './components/Tree.tsx';
+import RightPane from './components/RightPane.tsx';
 import './App.css';
 
 function App(): React.JSX.Element {

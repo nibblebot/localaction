@@ -217,11 +217,32 @@
   font-size: 12px;
   text-align: center;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.tree-caret-icon,
+.task-caret-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
 }
 .tree-caret-leaf,
 .task-caret:disabled {
   cursor: default;
   opacity: 0.4;
+}
+
+.btn-icon,
+.btn-ghost-icon {
+  width: 12px;
+  height: 12px;
+  fill: currentColor;
+  vertical-align: -2px;
+  margin-inline-end: 4px;
+}
+.btn-ghost-icon {
+  margin-inline-end: 0;
 }
 
 .tree-label {
@@ -377,6 +398,36 @@
   margin: 0;
 }
 
+.notes-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+.notes-tab {
+  background: none;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+.notes-tab:hover {
+  background: var(--code-bg);
+}
+.notes-tab-active {
+  color: var(--text-h);
+  border-bottom-color: var(--accent);
+}
+.notes-tabs-spacer {
+  flex: 1;
+}
+
 .task-list {
   list-style: none;
   margin: 8px 0 0;
@@ -497,6 +548,10 @@
   gap: 12px;
   min-height: 320px;
 }
+.note-textarea-wrap {
+  position: relative;
+  display: flex;
+}
 .note-textarea {
   font: 14px/150% var(--mono);
   border: 1px solid var(--border);
@@ -506,10 +561,43 @@
   color: var(--text-h);
   resize: vertical;
   min-height: 320px;
+  flex: 1 1 auto;
+  width: 100%;
 }
 .note-textarea:focus {
   outline: none;
   border-color: var(--accent-border);
+}
+.wikilink-autocomplete {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  max-height: 200px;
+  overflow: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--bg);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  z-index: 10;
+}
+.wikilink-autocomplete li button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font: inherit;
+  color: var(--text-h);
+  cursor: pointer;
+}
+.wikilink-autocomplete li button:hover {
+  background: var(--accent-bg);
 }
 .note-preview {
   border: 1px solid var(--border);
@@ -546,6 +634,42 @@
   font: inherit;
   padding: 2px 0;
   text-align: left;
+}
+
+/* ---- Modal ---- */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: var(--shadow);
+}
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: var(--text-h);
+}
+.modal-message {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--text);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* ---- Markdown body ---- */

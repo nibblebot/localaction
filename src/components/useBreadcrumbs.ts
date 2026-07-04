@@ -1,21 +1,4 @@
-/**
- * Resolve the current selection into a clickable breadcrumb trail and the
- * "focus" selection the right pane should render (entity editor / note).
- *
- * The trail is a list of `Selection`s from the topmost reachable ancestor
- * down to the selected entity (or its note). The `Breadcrumbs` component
- * prepends a "Home" entry. Each entry is independently navigable.
- *
- * Reactivity: we subscribe to the store's full tables snapshot
- * (`useTables`) so renames / moves / deletes anywhere along the chain
- * refresh the trail. This is a blunt subscription, but the trail is a tiny
- * piece of DOM and phase 0 is a single-user personal app — correctness and
- * freshness win over micro-optimising re-renders here.
- */
-
-import { useTables } from 'tinybase/ui-react';
-import type { MergeableStore } from 'tinybase';
-import { useDataLayer } from '../data/index.ts';
+import { useDataLayer, useStoreVersion } from '../data/index.ts';
 import {
   getDomain,
   getDomainPath,
@@ -31,23 +14,14 @@ export interface BreadcrumbSegment {
 }
 
 export interface ResolvedSelection {
-  /** Clickable trail, root-first, excluding the leading "Home". */
   trail: BreadcrumbSegment[];
-  /**
-   * What the right pane should render. `null` when the selection points at
-   * a missing entity (e.g. a stale deep link) — the pane shows an empty
-   * state and the trail is empty.
-   */
   focus: Selection | null;
 }
 
-function useStoreTick(store: MergeableStore): void {
-  // Subscribe to the tables snapshot purely for its re-render side effect.
-  useTables(store);
-}
-
-/** Resolve the domain ancestry for a domain id into breadcrumb segments. */
-function domainTrail(store: MergeableStore, id: string): BreadcrumbSegment[] {
+function domainTrail(
+  store: ReturnType<typeof useDataLayer>['store'],
+  id: string,
+): BreadcrumbSegment[] {
   return getDomainPath(store, id).map((d) => ({
     selection: { kind: 'domain', id: d.id },
     label: d.name || 'Untitled',
@@ -56,7 +30,7 @@ function domainTrail(store: MergeableStore, id: string): BreadcrumbSegment[] {
 
 export function useResolvedSelection(sel: Selection): ResolvedSelection {
   const { store } = useDataLayer();
-  useStoreTick(store);
+  useStoreVersion(store);
 
   if (sel.kind === 'home') {
     return { trail: [], focus: null };
@@ -87,7 +61,6 @@ export function useResolvedSelection(sel: Selection): ResolvedSelection {
   if (sel.kind === 'task') {
     const task = getTask(store, sel.id);
     if (!task) return { trail: [], focus: null };
-    // Walk parentTaskId up to the root task, root-first.
     const chain: BreadcrumbSegment[] = [];
     let cur: string | null = task.id;
     const seen = new Set<string>();
@@ -117,7 +90,6 @@ export function useResolvedSelection(sel: Selection): ResolvedSelection {
     return { trail: [...trail, ...chain], focus: sel };
   }
 
-  // note
   const note = getNoteBySlug(store, sel.slug);
   if (!note) return { trail: [], focus: null };
   const entitySel: Selection =
@@ -136,8 +108,10 @@ export function useResolvedSelection(sel: Selection): ResolvedSelection {
   };
 }
 
-/** Trail for a non-note entity selection (no store tick — caller ticks). */
-function entityTrail(store: MergeableStore, sel: Selection): BreadcrumbSegment[] {
+function entityTrail(
+  store: ReturnType<typeof useDataLayer>['store'],
+  sel: Selection,
+): BreadcrumbSegment[] {
   if (sel.kind === 'domain') return domainTrail(store, sel.id);
   if (sel.kind === 'project') {
     const project = getProject(store, sel.id);

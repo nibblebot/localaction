@@ -1,33 +1,18 @@
-/**
- * Task list for a Project. Top-level tasks render first; each task can be
- * expanded to show its sub-Tasks (arbitrary depth via `parentTaskId`).
- * Checkbox toggles `open`/`done`; "Add Task" appends a sibling; each task
- * row has an add-sub-task and a delete action.
- *
- * Orphaned tasks (whose parent task was deleted) are NOT shown here — they
- * belong to the project only via `projectId`, and a deleted parent leaves
- * `parentTaskId` dangling. They still appear at their project's top level so
- * the user can re-parent them. (See issue 06 orphan policy.)
- */
-
-import { useState } from 'react';
-import { useRow, useRowIds } from 'tinybase/ui-react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useDataLayer,
   createTask,
   updateTask,
   deleteTask,
   setTaskStatus,
-  getChildTasks,
-  getTasksForProject,
-  COLUMNS,
-  TABLES,
+  useTasks,
+  useChildTasks,
+  useTask,
+  isTaskOrphaned,
   TASK_STATUS,
 } from '../data/index.ts';
-import type { MergeableStore } from 'tinybase';
-import type { TaskStatus } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import { ConfirmButton } from './ConfirmButton.tsx';
+import ConfirmButton from './ConfirmButton.tsx';
 
 const NEW_TASK_TITLE = 'New task';
 
@@ -35,10 +20,11 @@ export interface TaskListProps {
   projectId: string;
 }
 
-export function TaskList({ projectId }: TaskListProps): React.JSX.Element {
+export default function TaskList({ projectId }: TaskListProps): React.JSX.Element {
   const { store } = useDataLayer();
-  const taskIds = useTopLevelTasksReactive(store, projectId);
+  const taskIds = useTasks(store, projectId);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [justCreatedId, setJustCreatedId] = useState<string | null>(null);
 
   function toggle(id: string): void {
     setExpanded((prev) => {
@@ -50,7 +36,8 @@ export function TaskList({ projectId }: TaskListProps): React.JSX.Element {
   }
 
   function addTask(): void {
-    createTask(store, { title: NEW_TASK_TITLE, projectId });
+    const id = createTask(store, { title: NEW_TASK_TITLE, projectId });
+    setJustCreatedId(id);
   }
 
   if (taskIds.length === 0) {
@@ -84,6 +71,9 @@ export function TaskList({ projectId }: TaskListProps): React.JSX.Element {
             depth={0}
             expanded={expanded}
             onToggle={toggle}
+            justCreatedId={justCreatedId}
+            onFocused={() => setJustCreatedId(null)}
+            onAddSubTask={setJustCreatedId}
           />
         ))}
       </ul>
@@ -97,23 +87,35 @@ interface TaskItemProps {
   depth: number;
   expanded: Set<string>;
   onToggle: (id: string) => void;
+  justCreatedId: string | null;
+  onFocused: () => void;
+  onAddSubTask: (id: string) => void;
 }
 
-function TaskItem({ id, projectId, depth, expanded, onToggle }: TaskItemProps): React.JSX.Element {
+function TaskItem({ id, projectId, depth, expanded, onToggle, justCreatedId, onFocused, onAddSubTask }: TaskItemProps): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const task = useTaskReactive(store, id);
-  const childIds = useChildTasksReactive(store, id);
+  const task = useTask(store, id);
+  const childIds = useChildTasks(store, id);
+  const titleRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (justCreatedId === id && titleRef.current) {
+      titleRef.current.focus();
+      titleRef.current.select();
+      onFocused();
+    }
+  }, [justCreatedId, id, onFocused]);
   if (!task) return <></>;
 
   const isOpen = expanded.has(id);
   const done = task.status === TASK_STATUS.done;
   const hasChildren = childIds.length > 0;
+  const orphaned = isTaskOrphaned(store, id);
 
   function addSubTask(): void {
     const child = createTask(store, { title: NEW_TASK_TITLE, projectId, parentTaskId: id });
     onToggle(id);
-    void child;
+    onAddSubTask?.(child);
   }
 
   return (
@@ -129,7 +131,11 @@ function TaskItem({ id, projectId, depth, expanded, onToggle }: TaskItemProps): 
           aria-label={isOpen ? 'Collapse' : 'Expand'}
           disabled={!hasChildren}
         >
-          {hasChildren ? (isOpen ? '▾' : '▸') : ''}
+          {hasChildren ? (
+            <svg className="task-caret-icon" aria-hidden="true">
+              <use href={isOpen ? '/icons.svg#caret-down-icon' : '/icons.svg#caret-right-icon'} />
+            </svg>
+          ) : null}
         </button>
         <input
           type="checkbox"
@@ -141,11 +147,13 @@ function TaskItem({ id, projectId, depth, expanded, onToggle }: TaskItemProps): 
           aria-label={done ? 'Mark not done' : 'Mark done'}
         />
         <input
+          ref={titleRef}
           className={`task-title${done ? ' task-title-done' : ''}`}
           value={task.title}
           onChange={(e) => updateTask(store, id, { title: e.target.value })}
           aria-label="Task title"
         />
+        {orphaned && <span className="pill pill-orphan">Orphaned</span>}
         <span className="task-actions">
           <button type="button" className="btn btn-ghost" title="Add sub-task" onClick={addSubTask}>
             +
@@ -171,38 +179,13 @@ function TaskItem({ id, projectId, depth, expanded, onToggle }: TaskItemProps): 
               depth={depth + 1}
               expanded={expanded}
               onToggle={onToggle}
+              justCreatedId={justCreatedId}
+              onFocused={onFocused}
+              onAddSubTask={onAddSubTask}
             />
           ))}
         </ul>
       )}
     </li>
   );
-}
-
-function useTopLevelTasksReactive(store: MergeableStore, projectId: string): string[] {
-  // Subscribe to the tasks table so the list re-renders on add/remove/reorder.
-  const allIds = useTableRowIds(store, TABLES.tasks);
-  return getTasksForProject(store, projectId).filter((id) => allIds.includes(id));
-}
-
-function useChildTasksReactive(store: MergeableStore, parentTaskId: string): string[] {
-  const allIds = useTableRowIds(store, TABLES.tasks);
-  return getChildTasks(store, parentTaskId).filter((id) => allIds.includes(id));
-}
-
-function useTaskReactive(
-  store: MergeableStore,
-  id: string,
-): { title: string; status: TaskStatus } | undefined {
-  const row = useRow(TABLES.tasks, id, store);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  return {
-    title: String(row[COLUMNS.tasks.title] ?? ''),
-    status: String(row[COLUMNS.tasks.status] ?? TASK_STATUS.open) as TaskStatus,
-  };
-}
-
-/** Subscribe to a table's row-id list (re-renders on add/remove). */
-function useTableRowIds(store: MergeableStore, table: string): string[] {
-  return useRowIds(table, store);
 }

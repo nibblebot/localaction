@@ -1,19 +1,12 @@
-/**
- * Right pane: breadcrumbs + sync status, then the editor for the focused
- * entity. When the selection resolves to nothing (home, or a stale deep
- * link), show an empty state.
- */
-
-import { useDataLayer } from '../data/index.ts';
+import { useDataLayer, useNoteIdForSlug } from '../data/index.ts';
 import type { SyncStatus } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import { useResolvedSelection } from './useBreadcrumbs.ts';
-import { Breadcrumbs } from './Breadcrumbs.tsx';
-import { DomainEditor } from './DomainEditor.tsx';
-import { ProjectEditor } from './ProjectEditor.tsx';
-import { TaskDetail } from './TaskDetail.tsx';
-import { NoteEditor } from './NoteEditor.tsx';
-import { useNoteIdForSlug } from './noteHooks.ts';
+import Breadcrumbs from './Breadcrumbs.tsx';
+import DomainEditor from './DomainEditor.tsx';
+import ProjectEditor from './ProjectEditor.tsx';
+import TaskDetail from './TaskDetail.tsx';
+import NoteEditor from './NoteEditor.tsx';
 
 function SyncStatusBadge(): React.JSX.Element {
   const { syncStatus } = useDataLayer();
@@ -39,10 +32,11 @@ function labelFor(status: SyncStatus): string {
   }
 }
 
-export function RightPane(): React.JSX.Element {
+export default function RightPane(): React.JSX.Element {
+  const { store } = useDataLayer();
   const { selection } = useSelection();
   const { focus } = useResolvedSelection(selection);
-  const noteId = useNoteIdForSlug(focus?.kind === 'note' ? focus.slug : undefined);
+  const noteId = useNoteIdForSlug(store, focus?.kind === 'note' ? focus.slug : undefined);
 
   return (
     <main className="pane pane-right" aria-label="Editor">

@@ -1,52 +1,38 @@
-/**
- * Left-pane tree: Domains (with arbitrary sub-Domain nesting) and the
- * Projects under each. Top-level Domains come from `useDomains`; orphans
- * (Domains whose parent was deleted) surface in a separate section with an
- * "Orphaned" pill so the user can re-attach them.
- *
- * Expand/collapse is local UI state keyed by domain id. The selection's
- * domain-ancestor chain is auto-expanded (merged into that state via an
- * effect) so deep-linking / navigating into a sub-Domain always reveals it.
- */
-
 import { useEffect, useState } from 'react';
-import { useRow, useTables } from 'tinybase/ui-react';
 import {
   useDataLayer,
   useDomains,
   useChildDomains,
   useProjects,
+  useOrphanedDomainIds,
+  useDomain,
+  useProject,
   createDomain,
   createProject,
   deleteDomain,
   deleteProject,
   getDomainPath,
-  getOrphanedDomainIds,
   getProject,
   getTask,
-  COLUMNS,
-  TABLES,
+  isProjectOrphaned,
+  useStoreVersion,
 } from '../data/index.ts';
-import type { MergeableStore } from 'tinybase';
 import type { Selection } from '../router.ts';
 import { useSelection } from './useSelection.ts';
-import { ConfirmButton } from './ConfirmButton.tsx';
+import ConfirmButton from './ConfirmButton.tsx';
 
 const NEW_DOMAIN_NAME = 'New Domain';
 const NEW_SUBDOMAIN_NAME = 'New Sub-Domain';
 const NEW_PROJECT_NAME = 'New Project';
 
-export function Tree(): React.JSX.Element {
+export default function Tree(): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
   const rootIds = useDomains(store);
-  const orphanIds = getOrphanedDomainIds(store);
-  // Orphan ids are derived (not a hook) — subscribe to tables so the
-  // derived list refreshes when a parent is deleted.
-  useTables(store);
+  const orphanIds = useOrphanedDomainIds(store);
+  useStoreVersion(store);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Auto-expand every domain on the selection's domain-ancestor chain.
   useEffect(() => {
     const wanted = expandedDomainIdsForSelection(store, selection);
     if (wanted.size === 0) return;
@@ -87,7 +73,7 @@ export function Tree(): React.JSX.Element {
         <div className="pane-title-row">
           <h2>Tree</h2>
           <button type="button" className="btn" onClick={addTopLevelDomain}>
-            + Domain
+            <svg className="btn-icon" aria-hidden="true"><use href="/icons.svg#add-icon" /></svg> Domain
           </button>
         </div>
       </header>
@@ -149,7 +135,7 @@ interface DomainNodeProps extends NodeSharedProps {
 function DomainNode({ id, depth, expanded, onToggle, onExpand, orphaned }: DomainNodeProps): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
-  const domain = useDomainReactive(store, id);
+  const domain = useDomain(store, id);
   const childIds = useChildDomains(store, id);
   const projectIds = useProjects(store, id);
 
@@ -187,19 +173,25 @@ function DomainNode({ id, depth, expanded, onToggle, onExpand, orphaned }: Domai
           onClick={() => onToggle(id)}
           aria-label={isOpen ? 'Collapse' : 'Expand'}
         >
-          {childIds.length > 0 || projectIds.length > 0 ? (isOpen ? '▾' : '▸') : '•'}
+          {childIds.length > 0 || projectIds.length > 0 ? (
+            <svg className="tree-caret-icon" aria-hidden="true">
+              <use href={isOpen ? '/icons.svg#caret-down-icon' : '/icons.svg#caret-right-icon'} />
+            </svg>
+          ) : (
+            <svg className="tree-caret-icon tree-caret-leaf" aria-hidden="true"><use href="/icons.svg#leaf-icon" /></svg>
+          )}
         </button>
         <button type="button" className="tree-label" onClick={() => navigate({ kind: 'domain', id })}>
-          <span className="tree-icon" aria-hidden="true">◈</span>
+          <svg className="tree-icon" aria-hidden="true"><use href="/icons.svg#domain-icon" /></svg>
           <span className="tree-name">{domain.name || 'Untitled'}</span>
           {orphaned && <span className="pill pill-orphan">Orphaned</span>}
         </button>
         <span className="tree-actions">
           <button type="button" className="btn btn-ghost" title="Add sub-domain" onClick={addSubDomain}>
-            +
+            <svg className="btn-ghost-icon" aria-hidden="true"><use href="/icons.svg#add-icon" /></svg>
           </button>
           <button type="button" className="btn btn-ghost" title="Add project" onClick={addProject}>
-            ▢
+            <svg className="btn-ghost-icon" aria-hidden="true"><use href="/icons.svg#add-project-icon" /></svg>
           </button>
           <ConfirmButton onConfirm={remove} title="Delete domain" />
         </span>
@@ -233,7 +225,8 @@ interface ProjectNodeProps extends NodeSharedProps {
 function ProjectNode({ id, depth, onExpand }: ProjectNodeProps): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
-  const project = useProjectReactive(store, id);
+  const project = useProject(store, id);
+  const orphaned = isProjectOrphaned(store, id);
   const isSelected = selection.kind === 'project' && selection.id === id;
   if (!project) return <></>;
 
@@ -248,7 +241,7 @@ function ProjectNode({ id, depth, onExpand }: ProjectNodeProps): React.JSX.Eleme
         className={`tree-row${isSelected ? ' tree-row-selected' : ''}`}
         style={{ paddingInlineStart: `${depth * 14}px` }}
       >
-        <span className="tree-caret tree-caret-leaf" aria-hidden="true">•</span>
+        <svg className="tree-caret-icon tree-caret-leaf" aria-hidden="true"><use href="/icons.svg#leaf-icon" /></svg>
         <button
           type="button"
           className="tree-label"
@@ -257,8 +250,9 @@ function ProjectNode({ id, depth, onExpand }: ProjectNodeProps): React.JSX.Eleme
             navigate({ kind: 'project', id });
           }}
         >
-          <span className="tree-icon tree-icon-project" aria-hidden="true">▣</span>
+          <svg className="tree-icon tree-icon-project" aria-hidden="true"><use href="/icons.svg#project-icon" /></svg>
           <span className="tree-name">{project.name || 'Untitled'}</span>
+          {orphaned && <span className="pill pill-orphan">Orphaned</span>}
         </button>
         <span className="tree-actions">
           <ConfirmButton onConfirm={remove} title="Delete project" />
@@ -268,38 +262,25 @@ function ProjectNode({ id, depth, onExpand }: ProjectNodeProps): React.JSX.Eleme
   );
 }
 
-// --- small reactive helpers -----------------------------------------------
 
-function useDomainReactive(store: MergeableStore, id: string): { name: string } | undefined {
-  const row = useRow(TABLES.domains, id, store);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  return { name: String(row[COLUMNS.domains.name] ?? '') };
-}
-
-function useProjectReactive(store: MergeableStore, id: string): { name: string } | undefined {
-  const row = useRow(TABLES.projects, id, store);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  return { name: String(row[COLUMNS.projects.name] ?? '') };
-}
-
-/**
- * Domain ids that should be expanded so `selection` is visible. For a
- * domain selection, that's its full ancestor chain. For a project/task/note
- * selection, it's the ancestor chain of the domain that owns the project.
- */
-function expandedDomainIdsForSelection(store: MergeableStore, sel: Selection): Set<string> {
+function expandedDomainIdsForSelection(
+  store: ReturnType<typeof useDataLayer>['store'],
+  sel: Selection,
+): Set<string> {
   const domainId = domainIdForSelection(store, sel);
   if (!domainId) return new Set();
   return new Set(getDomainPath(store, domainId).map((d) => d.id));
 }
 
-function domainIdForSelection(store: MergeableStore, sel: Selection): string | null {
+function domainIdForSelection(
+  store: ReturnType<typeof useDataLayer>['store'],
+  sel: Selection,
+): string | null {
   if (sel.kind === 'home' || sel.kind === 'note') return null;
   if (sel.kind === 'domain') return sel.id;
   if (sel.kind === 'project') {
     return getProject(store, sel.id)?.domainId ?? null;
   }
-  // task: walk up to the root task, then its project's domain.
   const task = getTask(store, sel.id);
   if (!task) return null;
   let root = task;

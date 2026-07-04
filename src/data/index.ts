@@ -32,3 +32,73 @@ export type { DataLayerValue } from './dataLayerContext.ts';
 
 export { DataLayerProvider } from './DataLayerProvider.tsx';
 export type { DataLayerProviderProps } from './DataLayerProvider.tsx';
+
+export type {
+  Domain,
+  Project,
+  Task,
+  Note,
+  DomainInput,
+  DomainPatch,
+  ProjectInput,
+  ProjectPatch,
+  TaskInput,
+  TaskPatch,
+  NoteInput,
+  NotePatch,
+} from './types.ts';
+
+export {
+  createDomain,
+  updateDomain,
+  deleteDomain,
+  getDomain,
+  getDomainPath,
+  getTopLevelDomainIds,
+  getChildDomainIds,
+  getOrphanedDomainIds,
+  getAllDomainIds,
+  useDomains,
+  useDomain,
+  useChildDomains,
+} from './domains.ts';
+
+export {
+  createProject,
+  updateProject,
+  deleteProject,
+  getProject,
+  getProjectsForDomain,
+  getOrphanedProjectIds,
+  useProjects,
+  useProject,
+} from './projects.ts';
+
+export {
+  createTask,
+  updateTask,
+  deleteTask,
+  setTaskStatus,
+  getTask,
+  getTasksForProject,
+  getChildTasks,
+  getOrphanedTaskIds,
+  nextTaskOrder,
+  useTasks,
+  useChildTasks,
+  useTask,
+} from './tasks.ts';
+
+export {
+  createNote,
+  updateNote,
+  deleteNote,
+  getNote,
+  getNotesForEntity,
+  getNoteBySlug,
+  getNoteSlugLockReason,
+  useNotesForEntity,
+  useNote,
+} from './notes.ts';
+
+export { slugify } from './slug.ts';

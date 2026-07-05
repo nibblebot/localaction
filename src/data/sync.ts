@@ -34,6 +34,11 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
   let destroyed = false;
   let attempt = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  // Holds the in-flight WebSocket between construction and either
+  // synchronizer hand-off or destroy(). Required so `destroy()` can close
+  // a still-connecting socket — otherwise React 19 StrictMode's double-mount
+  // leaks the first WS and a second one opens on re-mount.
+  let currentWs: WebSocket | undefined;
 
   function setStatus(next: SyncStatus): void {
     status = next;
@@ -63,25 +68,45 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       scheduleReconnect(reasonForReconnect ?? 'socket-construction-failed');
       return;
     }
+    currentWs = ws;
 
+    let sync: Awaited<ReturnType<typeof createWsSynchronizer>>;
     try {
-      const sync = await createWsSynchronizer(store, ws);
-      currentSync = sync;
-      await sync.startSync();
-      attempt = 0;
-      setStatus({ kind: 'connected' });
-      ws.addEventListener('close', () => {
-        currentSync = undefined;
-        scheduleReconnect('socket-closed');
-      });
+      sync = await createWsSynchronizer(store, ws);
     } catch (err) {
       setStatus({ kind: 'error', message: (err as Error).message });
+      if (!destroyed) {
+        try {
+          ws.close();
+        } catch {
+        }
+        currentWs = undefined;
+        scheduleReconnect(reasonForReconnect ?? (err as Error).message);
+      }
+      return;
+    }
+
+    // If destroy() ran during the createWsSynchronizer await, the socket is
+    // already closed and reaped — bail without registering reconnect handlers
+    // or claiming this WS as the live one.
+    if (destroyed) {
       try {
         ws.close();
       } catch {
       }
-      scheduleReconnect(reasonForReconnect ?? (err as Error).message);
+      currentWs = undefined;
+      return;
     }
+
+    currentSync = sync;
+    await sync.startSync();
+    attempt = 0;
+    setStatus({ kind: 'connected' });
+    ws.addEventListener('close', () => {
+      if (currentSync === sync) currentSync = undefined;
+      if (currentWs === ws) currentWs = undefined;
+      scheduleReconnect('socket-closed');
+    });
   }
 
   return {
@@ -96,6 +121,14 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       if (retryTimer) {
         clearTimeout(retryTimer);
         retryTimer = undefined;
+      }
+      const ws = currentWs;
+      currentWs = undefined;
+      if (ws) {
+        try {
+          ws.close();
+        } catch {
+        }
       }
       const sync = currentSync;
       currentSync = undefined;

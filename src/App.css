@@ -222,7 +222,11 @@
   justify-content: center;
 }
 .tree-caret-icon,
-.task-caret-icon {
+.task-caret-icon,
+.tree-icon,
+.tree-icon-project,
+.btn-icon,
+.btn-ghost-icon {
   width: 12px;
   height: 12px;
   fill: currentColor;
@@ -235,9 +239,6 @@
 
 .btn-icon,
 .btn-ghost-icon {
-  width: 12px;
-  height: 12px;
-  fill: currentColor;
   vertical-align: -2px;
   margin-inline-end: 4px;
 }
@@ -261,7 +262,6 @@
 }
 .tree-icon {
   opacity: 0.7;
-  font-size: 13px;
 }
 .tree-icon-project {
   opacity: 0.5;

@@ -113,12 +113,14 @@ export function attachSyncServer(
 
   httpServer.on('upgrade', (req, socket, head) => {
     if (!req.url) {
-      socket.destroy();
       return;
     }
+    // Only handle our sync path. Anything else (notably Vite's own HMR
+    // WebSocket on its own path) must fall through to other listeners
+    // — destroying the socket here was killing Vite's HMR client and
+    // surfacing "[vite] failed to connect to websocket" in Firefox.
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
     if (url.pathname !== WS_PATH) {
-      socket.destroy();
       return;
     }
     if (!checkSecret(url, secret)) {

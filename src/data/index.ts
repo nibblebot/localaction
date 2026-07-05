@@ -16,7 +16,11 @@ export { useStoreVersion } from './internal.ts';
 export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
 export type { LocalActionDebug } from './DataLayerProvider.tsx';
 
-export { startSync } from './sync.ts';
+export {
+  startSync,
+  getSyncClient,
+  destroySyncClient,
+} from './sync.ts';
 export type { SyncClient, SyncClientOptions, SyncStatus } from './sync.ts';
 
 export { DataLayerContext, useDataLayer } from './dataLayerContext.ts';

@@ -7,7 +7,12 @@ import {
 import type { ReactElement, ReactNode } from 'react';
 import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
-import { startSync, type SyncClient, type SyncStatus } from './sync.ts';
+import {
+  getSyncClient,
+  destroySyncClient,
+  type SyncClient,
+  type SyncStatus,
+} from './sync.ts';
 import { DataLayerContext } from './dataLayerContext.ts';
 import type { DataLayerValue } from './dataLayerContext.ts';
 
@@ -51,10 +56,16 @@ export function DataLayerProvider({
       if (!cancelled) setPersistenceReady(true);
     })();
 
-    const client = startSync();
+    // Use the module-level singleton SyncClient. `getSyncClient()` lazily
+    // constructs and starts the WebSocket exactly once for the lifetime
+    // of the page, so React 19 StrictMode's mount → unmount → remount
+    // cycle never opens (and tears down) a second WebSocket during the
+    // page-load handshake. Without this, the first socket gets closed
+    // mid-handshake on the fake unmount and Firefox logs "connection
+    // interrupted while the page was loading" for ws://…/ws.
+    const client = getSyncClient();
     setSync(client);
     const unsubscribe = client.subscribe(setSyncStatus);
-    client.start();
 
     const exposeDevHook =
       typeof import.meta !== 'undefined' &&
@@ -74,14 +85,27 @@ export function DataLayerProvider({
       });
     }
 
+    // Tear down the WebSocket only when the page itself is going away.
+    // React's StrictMode fake-unmount cleanup does NOT destroy the
+    // client — that was the bug. `beforeunload` covers tab close,
+    // navigation, and full reloads.
+    const onBeforeUnload = (): void => {
+      void destroySyncClient();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', onBeforeUnload);
+    }
+
     return () => {
       cancelled = true;
       unsubscribe();
-      void client.destroy();
-      setSync(undefined);
       if (exposeDevHook && typeof window !== 'undefined') {
         delete (window as { __LOCALACTION?: unknown }).__LOCALACTION;
       }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('beforeunload', onBeforeUnload);
+      }
+      // Intentionally NOT calling destroySyncClient() here — see above.
     };
   }, [offline, store]);
 

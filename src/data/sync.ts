@@ -1,6 +1,14 @@
 import { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { getStore } from './store.ts';
 
+// Module-level singleton. One SyncClient per page, started lazily and
+// never destroyed by React effects. Survives StrictMode's mount →
+// unmount → remount cycle, which would otherwise open the WebSocket
+// twice and have the first connection torn down mid-handshake on the
+// fake unmount — surfacing as "Firefox can’t establish a connection
+// to the server at ws://…/ws" / "interrupted while the page was
+// loading" in the browser console.
+
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 15_000;
 
@@ -23,6 +31,38 @@ export interface SyncClientOptions {
   endpoint?: string;
 }
 
+let singleton: SyncClient | undefined;
+
+/**
+ * Returns a process-wide singleton SyncClient, creating it on first call.
+ * The returned client is auto-started exactly once and is intentionally
+ * never destroyed by React lifecycle effects — destroying it on
+ * StrictMode's fake unmount would close an in-flight WebSocket during
+ * page load, which Firefox reports as an interrupted connection.
+ *
+ * Tests and isolated consumers can still call {@link startSync}
+ * directly to spin up independent clients.
+ */
+export function getSyncClient(): SyncClient {
+  if (!singleton) {
+    singleton = startSync();
+    singleton.start();
+  }
+  return singleton;
+}
+
+/**
+ * Tears down the module singleton (and its WebSocket). Intended for
+ * `beforeunload` handlers and tests only; do not call from React
+ * effects, which would defeat the StrictMode-safe lifecycle above.
+ */
+export async function destroySyncClient(): Promise<void> {
+  if (!singleton) return;
+  const c = singleton;
+  singleton = undefined;
+  await c.destroy();
+}
+
 export function startSync(options: SyncClientOptions = {}): SyncClient {
   const store = getStore();
   const url = options.endpoint ?? defaultEndpoint();
@@ -34,6 +74,11 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
   let destroyed = false;
   let attempt = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
+  // True while a `connect()` attempt is mid-flight. Prevents React 19
+  // StrictMode's double-start from racing a second socket against the
+  // first, and prevents the retry timer from re-entering while a connect
+  // is already underway.
+  let connecting = false;
   // Holds the in-flight WebSocket between construction and either
   // synchronizer hand-off or destroy(). Required so `destroy()` can close
   // a still-connecting socket — otherwise React 19 StrictMode's double-mount
@@ -58,22 +103,41 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
 
   async function connect(reasonForReconnect?: string): Promise<void> {
     if (destroyed) return;
+    // Guard against React 19 StrictMode double-mount: `start()` may be
+    // invoked twice in quick succession. The first attempt is already in
+    // flight; let it complete rather than racing a second socket.
+    if (connecting) return;
+    connecting = true;
     setStatus({ kind: 'connecting' });
 
     let ws: WebSocket;
     try {
       ws = new WS(url);
     } catch (err) {
+      connecting = false;
       setStatus({ kind: 'error', message: (err as Error).message });
       scheduleReconnect(reasonForReconnect ?? 'socket-construction-failed');
       return;
     }
     currentWs = ws;
 
+    // Attach error/close listeners BEFORE handing the socket to TinyBase.
+    // `createWsSynchronizer` only wires its own handlers after the WS `open`
+    // event, so an aborted or failed handshake (e.g. when React 19
+    // StrictMode tears down the first mount mid-handshake) would otherwise
+    // surface as "connection interrupted while the page was loading".
+    const earlyClose = (reason: string): void => {
+      if (currentWs === ws) currentWs = undefined;
+      if (!destroyed) scheduleReconnect(reason);
+    };
+    ws.addEventListener('error', () => earlyClose('socket-error'));
+    ws.addEventListener('close', () => earlyClose('socket-closed'));
+
     let sync: Awaited<ReturnType<typeof createWsSynchronizer>>;
     try {
       sync = await createWsSynchronizer(store, ws);
     } catch (err) {
+      connecting = false;
       setStatus({ kind: 'error', message: (err as Error).message });
       if (!destroyed) {
         try {
@@ -101,6 +165,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     currentSync = sync;
     await sync.startSync();
     attempt = 0;
+    connecting = false;
     setStatus({ kind: 'connected' });
     ws.addEventListener('close', () => {
       if (currentSync === sync) currentSync = undefined;

@@ -2,7 +2,7 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { readFileSync, statSync, existsSync } from 'node:fs';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, type WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
@@ -37,8 +37,46 @@ export function attachSyncServer(
 ): { wsServer: WebSocketServer; tinyServer: ReturnType<typeof createWsServer> } {
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data.db';
+  const debug = !!process.env['LOCALACTION_DEBUG'];
+
+  // Monotonic connection counter so log lines can be correlated without
+  // touching the WebSocket (whose `id` is library-defined and may collide).
+  let nextConnId = 0;
+
+  const log = (connId: number, msg: string): void => {
+    process.stderr.write(`[srv conn=${connId}] ${msg}\n`);
+  };
 
   const wsServer = new WebSocketServer({ noServer: true });
+
+  if (debug) {
+    wsServer.on('connection', (ws, req) => {
+      const connId = ++nextConnId;
+      const remote = `${req.socket.remoteAddress ?? '?'}:${req.socket.remotePort ?? '?'}`;
+      log(connId, `connected from ${remote}`);
+      ws.on('message', (data, isBinary) => {
+        let size: number;
+        if (Array.isArray(data)) {
+          size = Buffer.concat(data).byteLength;
+        } else if (Buffer.isBuffer(data)) {
+          size = data.byteLength;
+        } else if (data instanceof ArrayBuffer) {
+          size = data.byteLength;
+        } else {
+          size = Buffer.byteLength(data);
+        }
+        const kind = isBinary ? 'binary' : 'text';
+        log(connId, `recv ${kind} ${size}B`);
+      });
+      ws.on('close', (code, reason) => {
+        log(connId, `closed code=${code} reason=${reason.toString('utf8') || '(empty)'}`);
+      });
+      ws.on('error', (err) => {
+        log(connId, `error: ${err.message}`);
+      });
+    });
+  }
+
   const tinyServer = createWsServer(wsServer, async (pathId) => {
     const safePathId = sanitizePathId(pathId);
     if (!safePathId) {
@@ -88,7 +126,7 @@ export function attachSyncServer(
       socket.destroy();
       return;
     }
-    wsServer.handleUpgrade(req, socket, head, (ws: import('ws').WebSocket) => {
+    wsServer.handleUpgrade(req, socket, head, (ws: WebSocket) => {
       wsServer.emit('connection', ws, req);
     });
   });

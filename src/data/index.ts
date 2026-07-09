@@ -106,3 +106,12 @@ export {
 } from './notes.ts';
 
 export { slugify } from './slug.ts';
+
+export {
+  extractTags,
+  getAllTagCounts,
+  getNoteIdsForTag,
+  useAllTagCounts,
+  useNoteIdsForTag,
+} from './tags.ts';
+export type { TagCount } from './tags.ts';

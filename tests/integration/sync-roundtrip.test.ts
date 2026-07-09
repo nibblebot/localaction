@@ -9,7 +9,7 @@
  *   2. A write on one client's store replicates to the other.
  *   3. After both clients disconnect, a third "fresh" client sees the
  *      full persisted state (Domain, Sub-Domain, Project).
- *   4. The SQLite file contains a parseable mergeable-content blob.
+ *   4. The SQLite file round-trips through `createSqlite3Persister.load()`.
  *
  * Lives under tests/integration so the vitest "node" project picks it up.
  */
@@ -21,6 +21,7 @@ import { join } from 'node:path';
 import { WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
+import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
 import {
   createWsSynchronizer,
 } from 'tinybase/synchronizers/synchronizer-ws-client';
@@ -161,12 +162,17 @@ describe('sync server round-trip', () => {
       await freshSync.destroy();
     }
 
-    const raw = await readSqliteBlob(dbPath);
-    expect(raw).toBeTypeOf('string');
-    console.log('[debug] sqlite blob length:', raw.length);
-    const parsed = JSON.parse(raw) as [unknown[], unknown];
     const reload = createMergeableStore();
-    reload.setMergeableContent(parsed as never);
+    const reloadDb = await new Promise<sqlite3.Database>((resolve, reject) => {
+      const db = new sqlite3.Database(
+        dbPath,
+        sqlite3.OPEN_READONLY,
+        (err) => (err ? reject(err) : resolve(db)),
+      );
+    });
+    const reloadPersister = createSqlite3Persister(reload, reloadDb);
+    await reloadPersister.load();
+    await new Promise<void>((resolve) => reloadDb.close(() => resolve()));
     console.log(
       '[debug] reload tables:',
       JSON.stringify(reload.getTables()),
@@ -216,19 +222,3 @@ describe('sync server round-trip', () => {
     },
   );
 });
-
-function readSqliteBlob(file: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(file, sqlite3.OPEN_READONLY, (err) => {
-      if (err) return reject(err);
-      db.get<{ store?: unknown }>('SELECT store FROM tinybase WHERE _id = ?', '_', (err2, row) => {
-        db.close();
-        if (err2) return reject(err2);
-        if (!row || typeof row.store !== 'string') {
-          return reject(new Error('tinybase row missing or wrong shape'));
-        }
-        resolve(row.store);
-      });
-    });
-  });
-}

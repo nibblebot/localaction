@@ -19,20 +19,20 @@ export default defineConfig({
       // the same `attachSyncServer` directly. Keeps the WS code in one
       // place and avoids drift between modes.
       name: 'localaction-sync',
-      configureServer(server) {
+      async configureServer(server) {
         if (!server.httpServer) return
         // Vite's typed `HttpServer` is `http.Server | Http2SecureServer`; we
         // only support plain HTTP.
         if ('maxHeadersCount' in server.httpServer) {
           dbg('attaching WS sync handler to Vite dev server (no proxy: WS shares Vite\'s HTTP server via the upgrade event)')
-          attachSyncServer(server.httpServer)
+          await attachSyncServer(server.httpServer)
         }
       },
-      configurePreviewServer(server) {
+      async configurePreviewServer(server) {
         if (!server.httpServer) return
         if ('maxHeadersCount' in server.httpServer) {
           dbg('attaching WS sync handler to Vite preview server')
-          attachSyncServer(server.httpServer)
+          await attachSyncServer(server.httpServer)
         }
       },
     },

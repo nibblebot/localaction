@@ -3,10 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
+import type { MergeableStore } from 'tinybase';
+import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
+import sqlite3 from 'sqlite3';
 import {
   createWsSynchronizer,
 } from 'tinybase/synchronizers/synchronizer-ws-client';
-import sqlite3 from 'sqlite3';
 import { startServer } from '../server/index.ts';
 
 const PORT = 5190 + Math.floor(Math.random() * 100);
@@ -20,7 +22,7 @@ function assert(condition: unknown, message: string): asserts condition {
 }
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([
       promise,
@@ -104,37 +106,31 @@ async function main() {
     console.log('smoke: fresh client loaded persisted state');
     await freshSync.destroy();
 
-    const persisted = await new Promise<unknown>((resolve, reject) => {
-      const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
-        if (err) return reject(err);
-        db.get('SELECT store FROM tinybase WHERE _id = ?', '_', (err2, row) => {
-          db.close();
-          if (err2) return reject(err2);
-          try {
-            resolve(JSON.parse(row.store));
-          } catch (parseErr) {
-            reject(parseErr);
-          }
-        });
-      });
-    });
-
     const reload = createMergeableStore();
-    reload.setMergeableContent(persisted as never);
+    const reloadDb = await new Promise<sqlite3.Database>((resolve, reject) => {
+      const db = new sqlite3.Database(
+        DB_PATH,
+        sqlite3.OPEN_READONLY,
+        (err) => (err ? reject(err) : resolve(db)),
+      );
+    });
+    const reloadPersister = createSqlite3Persister(reload, reloadDb);
+    await reloadPersister.load();
+    await new Promise<void>((resolve) => reloadDb.close(() => resolve()));
     assert(
       reload.getCell('domains', 'd1', 'name') === 'Family',
-      'sqlite blob does not contain domains/d1/name',
+      'persister.load() did not return domains/d1/name',
     );
     assert(
       reload.getCell('domains', 'd2', 'parentId') === 'd1',
-      'sqlite blob does not contain domains/d2/parentId (sub-domain)',
+      'persister.load() did not return domains/d2/parentId (sub-domain)',
     );
     assert(
       reload.getCell('projects', 'p1', 'name') === 'Plan vacation',
-      'sqlite blob does not contain projects/p1/name',
+      'persister.load() did not return projects/p1/name',
     );
     console.log(
-      'smoke: sqlite blob round-trips Domain, Sub-Domain, and Project rows',
+      'smoke: persister.load() round-trips Domain, Sub-Domain, and Project rows',
     );
   } finally {
     await server.close();
@@ -146,7 +142,7 @@ async function main() {
 }
 
 async function waitForCell(
-  store: ReturnType<typeof createMergeableStore>,
+  store: MergeableStore,
   table: string,
   row: string,
   cell: string,

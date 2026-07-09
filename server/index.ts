@@ -23,18 +23,33 @@ export interface ServerOptions {
   staticRoot?: string;
 }
 
+/**
+ * Return type of `createWsServer` from `tinybase/synchronizers/synchronizer-ws-server`.
+ * TinyBase does not export a name for it, so we declare it here for use
+ * across the public `RunningServer` surface and the `attachSyncServer`
+ * return type — keeps callers off `ReturnType<typeof createWsServer>`.
+ */
+export type TinySyncServer = ReturnType<typeof createWsServer>;
+
 export interface RunningServer {
   port: number;
   httpServer: Server;
   wsServer: WebSocketServer;
-  tinyServer: ReturnType<typeof createWsServer>;
+  tinyServer: TinySyncServer;
   close(): Promise<void>;
 }
 
-export function attachSyncServer(
+export interface AttachedSyncServer {
+  wsServer: WebSocketServer;
+  tinyServer: TinySyncServer;
+  db: Database;
+  close(): Promise<void>;
+}
+
+export async function attachSyncServer(
   httpServer: Server,
   options: ServerOptions = {},
-): { wsServer: WebSocketServer; tinyServer: ReturnType<typeof createWsServer> } {
+): Promise<AttachedSyncServer> {
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data.db';
   const debug = !!process.env['LOCALACTION_DEBUG'];
@@ -77,12 +92,16 @@ export function attachSyncServer(
     });
   }
 
+  // One shared sqlite3 connection for the whole process. `createSqlite3Persister`
+  // only needs a `Database`; opening it per WebSocket connection leaked
+  // FDs (no `db.close()`) and forced the per-connection persister factory
+  // to redo the schema bootstrap. The `Database` is closed in `close()`.
+  const db = await openDatabase(dbPath);
   const tinyServer = createWsServer(wsServer, async (pathId) => {
     const safePathId = sanitizePathId(pathId);
     if (!safePathId) {
       throw new Error(`invalid sync path: ${pathId}`);
     }
-    const db = await openDatabase(dbPath);
     const store = createMergeableStore();
     const persister = createSqlite3Persister(store, db);
     process.stderr.write(
@@ -133,7 +152,17 @@ export function attachSyncServer(
     });
   });
 
-  return { wsServer, tinyServer };
+  return {
+    wsServer,
+    tinyServer,
+    db,
+    async close() {
+      await tinyServer.destroy();
+      await new Promise<void>((resolve, reject) =>
+        db.close((err) => (err ? reject(err) : resolve())),
+      );
+    },
+  };
 }
 
 function checkSecret(url: URL, expected: string): boolean {
@@ -235,10 +264,13 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
-  const { wsServer, tinyServer } = attachSyncServer(httpServer, {
-    secret,
-    dbPath,
-  });
+  const { wsServer, tinyServer, close: closeSync } = await attachSyncServer(
+    httpServer,
+    {
+      secret,
+      dbPath,
+    },
+  );
 
   await new Promise<void>((resolve) => httpServer.listen(port, () => resolve()));
 
@@ -255,7 +287,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     wsServer,
     tinyServer,
     async close() {
-      await tinyServer.destroy();
+      await closeSync();
       await new Promise<void>((resolve, reject) =>
         httpServer.close((err) => (err ? reject(err) : resolve())),
       );

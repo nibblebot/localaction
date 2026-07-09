@@ -34,5 +34,16 @@ export default function Breadcrumbs(): React.JSX.Element {
 }
 
 function segmentKey(sel: Selection): string {
-  return sel.kind === 'note' ? sel.slug : sel.kind === 'home' ? 'home' : sel.id;
+  switch (sel.kind) {
+    case 'home':
+      return 'home';
+    case 'note':
+      return sel.slug;
+    case 'tag':
+      return `tag:${sel.value}`;
+    case 'domain':
+    case 'project':
+    case 'task':
+      return sel.id;
+  }
 }

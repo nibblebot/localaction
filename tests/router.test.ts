@@ -20,6 +20,11 @@ describe('parseRoute', () => {
     expect(parseRoute('#/n/my-note')).toEqual<Selection>({ kind: 'note', slug: 'my-note' });
   });
 
+  it('parses a tag route with URL-decoded value', () => {
+    expect(parseRoute('#/g/work')).toEqual<Selection>({ kind: 'tag', value: 'work' });
+    expect(parseRoute('#/g/sys%20admin')).toEqual<Selection>({ kind: 'tag', value: 'sys admin' });
+  });
+
   it('parses a bare path without the leading hash', () => {
     expect(parseRoute('/d/dom1')).toEqual<Selection>({ kind: 'domain', id: 'dom1' });
   });
@@ -39,6 +44,7 @@ describe('formatRoute', () => {
     expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
     expect(formatRoute({ kind: 'task', id: 't1' })).toBe('#/t/t1');
     expect(formatRoute({ kind: 'note', slug: 'my-note' })).toBe('#/n/my-note');
+    expect(formatRoute({ kind: 'tag', value: 'sys admin' })).toBe('#/g/sys%20admin');
   });
 });
 
@@ -48,5 +54,11 @@ describe('routeEquals', () => {
     expect(routeEquals(a, { kind: 'task', id: 't1' })).toBe(true);
     expect(routeEquals(a, { kind: 'task', id: 't2' })).toBe(false);
     expect(routeEquals(a, { kind: 'home' })).toBe(false);
+  });
+
+  it('compares tag selections by value', () => {
+    expect(routeEquals({ kind: 'tag', value: 'a' }, { kind: 'tag', value: 'a' })).toBe(true);
+    expect(routeEquals({ kind: 'tag', value: 'a' }, { kind: 'tag', value: 'b' })).toBe(false);
+    expect(routeEquals({ kind: 'tag', value: 'a' }, { kind: 'home' })).toBe(false);
   });
 });

@@ -33,7 +33,7 @@ export function useResolvedSelection(sel: Selection): ResolvedSelection {
   useStoreVersion(store);
 
   if (sel.kind === 'home') {
-    return { trail: [], focus: null };
+    return { trail: [], focus: sel };
   }
 
   if (sel.kind === 'domain') {
@@ -89,6 +89,11 @@ export function useResolvedSelection(sel: Selection): ResolvedSelection {
     }
     return { trail: [...trail, ...chain], focus: sel };
   }
+
+  if (sel.kind === 'tag') {
+    return { trail: [], focus: sel };
+  }
+
 
   const note = getNoteBySlug(store, sel.slug);
   if (!note) return { trail: [], focus: null };

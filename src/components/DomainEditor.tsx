@@ -4,6 +4,7 @@ import {
   updateDomain,
   deleteDomain,
   useDomain,
+  useStoreVersion,
   getDomain,
   getTopLevelDomainIds,
   getDomainPath,
@@ -12,12 +13,13 @@ import {
 import { useSelection } from './useSelection.ts';
 import EditableTitle from './EditableTitle.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
-import NotesPanel from './NotesPanel.tsx';
+// TODO(restore): import NotesPanel from './NotesPanel.tsx';
 
 export default function DomainEditor({ id }: { id: string }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
   const domain = useDomain(store, id);
+  useStoreVersion(store);
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (!domain) return <></>;
 
@@ -26,11 +28,10 @@ export default function DomainEditor({ id }: { id: string }): React.JSX.Element 
     navigate({ kind: 'home' });
   }
 
-  const descendants = new Set(getDomainPath(store, id).map((d) => d.id));
+  const descendants = new Set(collectDescendants(store, id));
   const candidates = getTopLevelDomainIds(store)
     .flatMap((root) => collectDescendants(store, root))
     .filter((cid) => cid !== id && !descendants.has(cid));
-
   return (
     <div className="entity-editor">
       <div className="entity-editor-head">
@@ -74,7 +75,7 @@ export default function DomainEditor({ id }: { id: string }): React.JSX.Element 
         </label>
       </div>
 
-      <NotesPanel entityType="domain" entityId={id} />
+      {/* TODO(restore): <NotesPanel entityType="domain" entityId={id} /> */}
 
       <ConfirmModal
         open={confirmDelete}

@@ -8,6 +8,7 @@ export function createDomain(
   store: MergeableStore,
   input: DomainInput,
 ): string {
+
   const id = newId();
   const ts = nowIso();
   const parentId = input.parentId ?? null;
@@ -81,7 +82,6 @@ export function getTopLevelDomainIds(store: MergeableStore): string[] {
     .getRowIds(TABLES.domains)
     .filter((id) => normalizeRelation(store.getCell(TABLES.domains, id, COLUMNS.domains.parentId)) === null);
 }
-
 export function getChildDomainIds(store: MergeableStore, parentId: string): string[] {
   return store
     .getRowIds(TABLES.domains)
@@ -132,6 +132,7 @@ export function useChildDomains(store: MergeableStore, parentId: string): string
 
 export function useDomain(store: MergeableStore, id: string | undefined): Domain | undefined {
   const row = useRow(TABLES.domains, id ?? '', store);
+
   if (!id || !row || Object.keys(row).length === 0) return undefined;
   return {
     id,

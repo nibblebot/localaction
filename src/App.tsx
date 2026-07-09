@@ -1,14 +1,13 @@
-import { DataLayerProvider } from './data/index.ts';
-import SelectionProvider from './components/selection.tsx';
-import Tree from './components/Tree.tsx';
-import RightPane from './components/RightPane.tsx';
-import './App.css';
-import { Inspector } from 'tinybase/ui-react-inspector';
 import { Provider } from 'tinybase/ui-react';
+import { DataLayerProvider, getStore } from './data/index.ts';
+import SelectionProvider from './components/selection.tsx';
+// TODO(restore): import IconRail from './components/IconRail.tsx';
+import Sidebar from './components/Sidebar.tsx';
+import MainPane from './components/MainPane.tsx';
+import { Inspector } from 'tinybase/ui-react-inspector';
+import './App.css';
 
-import { getStore } from './data/store.ts';
-
-const store = getStore()
+const store = getStore();
 
 function App(): React.JSX.Element {
   return (
@@ -16,8 +15,8 @@ function App(): React.JSX.Element {
       <DataLayerProvider>
         <SelectionProvider>
           <div className="app-shell">
-            <Tree />
-            <RightPane />
+            <Sidebar />
+            <MainPane />
             <Inspector />
           </div>
         </SelectionProvider>

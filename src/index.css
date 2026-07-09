@@ -1,111 +1,193 @@
+@font-face {
+  font-family: 'Inter var';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
+}
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* Surfaces */
+  --bg: #f6efe5;            /* warm cream canvas */
+  --bg-elevated: #efe6d8;   /* sidebar / rail */
+  --surface: #fbf6ec;       /* cards, inputs */
+  --surface-hover: #f0e7d6; /* row hover */
+  --surface-active: #ecdfca;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  /* Borders */
+  --border: rgba(43, 34, 24, 0.12);
+  --border-strong: rgba(43, 34, 24, 0.22);
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
+  /* Text */
+  --text: #5a4f42;
+  --text-secondary: #7a6e5e;
+  --text-muted: #a89c8a;
+  --text-h: #2b2218;
+  --text-on-accent: #ffffff;
+
+  /* Accent — terracotta */
+  --accent: #c5532a;
+  --accent-hover: #b04a23;
+  --accent-bg: rgba(197, 83, 42, 0.10);
+  --accent-border: rgba(197, 83, 42, 0.45);
+  --accent-tint: rgba(197, 83, 42, 0.14);
+
+  /* Tag chip — terracotta */
+  --tag-bg: rgba(197, 83, 42, 0.12);
+  --tag-fg: #8c3a1d;
+  --tag-border: rgba(197, 83, 42, 0.28);
+
+  /* Code / preview surface */
+  --code-bg: #f0e7d6;
+  --code-fg: #2b2218;
+
+  /* Danger */
+  --danger: #b3261e;
+  --danger-bg: rgba(179, 38, 30, 0.08);
+  --danger-border: rgba(179, 38, 30, 0.32);
+  /* Success */
+  --success: #2f7d3a;
+  --success-bg: rgba(47, 125, 58, 0.10);
+  --success-border: rgba(47, 125, 58, 0.36);
+
+  /* Warning */
+  --warning: #8a5a00;
+  --warning-bg: rgba(196, 152, 32, 0.14);
+  --warning-border: rgba(196, 152, 32, 0.40);
+
+
+  /* Shadow — barely there, elevation-by-tone preferred */
+  --shadow: 0 1px 2px rgba(43, 34, 24, 0.06);
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+
+  /* Type */
+  --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
+
+  /* Layout */
+  --rail-w: 56px;
+  --sidebar-w: 200px;
+  --topbar-h: 52px;
+
+  font: 14px/1.5 var(--font-sans);
+  letter-spacing: 0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+    --bg: #0f1115;            /* near-black canvas */
+    --bg-elevated: #14171c;   /* sidebar / rail */
+    --surface: #181b21;       /* cards, inputs */
+    --surface-hover: #1d2128;
+    --surface-active: #232830;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
+    --border: rgba(237, 237, 237, 0.10);
+    --border-strong: rgba(237, 237, 237, 0.18);
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+    --text: #9aa3ad;
+    --text-secondary: #7a838c;
+    --text-muted: #555c64;
+    --text-h: #ededed;
+    --text-on-accent: #ffffff;
+
+    --accent: #2f7cf6;
+    --accent-hover: #1f6cf0;
+    --accent-bg: rgba(47, 124, 246, 0.14);
+    --accent-border: rgba(47, 124, 246, 0.45);
+    --accent-tint: rgba(47, 124, 246, 0.18);
+
+    --tag-bg: rgba(47, 124, 246, 0.14);
+    --tag-fg: #93b6fb;
+    --tag-border: rgba(47, 124, 246, 0.40);
+
+    --code-bg: #14171c;
+    --code-fg: #ededed;
+
+    /* Success */
+    --success: #4caf50;
+    --success-bg: rgba(76, 175, 80, 0.14);
+    --success-border: rgba(76, 175, 80, 0.40);
+
+    /* Warning */
+    --warning: #d4a72c;
+    --warning-bg: rgba(212, 167, 44, 0.14);
+    --warning-border: rgba(212, 167, 44, 0.40);
+
+    --danger: #ef5350;
+    --danger-bg: rgba(239, 83, 80, 0.10);
+    --danger-border: rgba(239, 83, 80, 0.36);
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
 }
 
 body {
   margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
   color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
   margin: 0;
+  letter-spacing: -0.005em;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
+h1 { font-size: 20px; font-weight: 600; }
+h2 { font-size: 17px; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+h4 { font-size: 13px; font-weight: 600; }
+
+p { margin: 0; }
+
+code, pre, .counter {
+  font-family: var(--font-mono);
   color: var(--text-h);
 }
 
 code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 1px 5px;
+  border-radius: 4px;
   background: var(--code-bg);
+}
+
+#root {
+  width: 100%;
+  min-height: 100svh;
+}
+
+/* Hide outline only for mouse, preserve for keyboard */
+:focus:not(:focus-visible) { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 1px;
+}
+
+/* Custom scrollbars (subtle) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }

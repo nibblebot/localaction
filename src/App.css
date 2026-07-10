@@ -228,8 +228,8 @@
 
 .domain-header {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
+  align-items: center;
+  gap: 4px;
   margin-bottom: var(--space-5);
 }
 
@@ -249,7 +249,7 @@
 }
 
 .domain-header-crumb {
-  font-size: 1.15rem;
+  font-size: 2rem;
   font-weight: 500;
   color: var(--text-muted);
   background: none;
@@ -263,6 +263,60 @@
 .domain-header-crumb:hover {
   color: var(--text-h);
   text-decoration: underline;
+}
+
+.domain-header-add {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.domain-header-add:hover {
+  color: var(--text-h);
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
+  border-style: solid;
+}
+
+.domain-header-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+.domain-header-add-input {
+  font: inherit;
+  font-size: 1.4rem;
+  font-weight: 500;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  min-width: 220px;
+  outline: none;
+  font-family: inherit;
+}
+
+.domain-header-add-input::placeholder {
+  color: var(--text-muted);
+}
+
+.domain-header .domain-header-project-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text-h);
+  flex-shrink: 0;
 }
 
 /* ============================================================
@@ -414,6 +468,17 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+}
+
+/* ============================================================
+   Breadcrumb separator (a "/" between every pair of segments)
+   ============================================================ */
+
+.domain-header-crumb-sep {
+  color: var(--text-muted);
+  font-size: 2rem;
+  line-height: 1;
+  user-select: none;
 }
 
 .project-row {

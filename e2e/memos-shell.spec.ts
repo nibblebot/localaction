@@ -63,6 +63,94 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
   });
 
+  test('a project under a sub-domain shows the full domain hierarchy in its pane', async ({ page }) => {
+    const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const root = `Root ${uniq()}`;
+    const sub = `Sub ${uniq()}`;
+    const projectName = `Honeymoon ${uniq()}`;
+    // Wait for the app shell + sidebar to be ready before interacting.
+    await page.goto('/#/');
+    await expect(page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' })).toBeVisible();
+    // Root domain
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.modal-input').fill(root);
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    // Sub-domain via the inline + on the root pane
+    await page.locator('.domain-header-add', { hasTitle: 'Add sub-domain' }).click();
+    await page.locator('.domain-header-add-input').fill(sub);
+    await page.locator('.domain-header-add-input').press('Enter');
+    await expect(page.locator('.domain-header-name')).toContainText(sub);
+    // Now we're on the sub-domain pane. Add a project.
+    await page.locator('.empty-tab .btn-primary', { hasText: '+ Project' }).click();
+    await page.locator('.modal-input').fill(projectName);
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await page.locator('.project-row-name', { hasText: projectName }).click();
+    // The project pane header shows a list-based document icon next to the name.
+    const projectIcon = page.locator('.domain-header-project-icon');
+    await expect(projectIcon).toBeVisible();
+    await expect(projectIcon).toHaveAttribute('aria-hidden', 'true');
+    await expect(projectIcon.locator('use')).toHaveAttribute('href', /#project-list-icon$/);
+    // 24x24, same color as the heading.
+    const iconSize = await projectIcon.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { w: r.width, h: r.height };
+    });
+    expect(iconSize.w).toBe(24);
+    expect(iconSize.h).toBe(24);
+    const iconColor = await projectIcon.evaluate((el) => getComputedStyle(el).color);
+    const headingColor = await page
+      .locator('.domain-header-name')
+      .evaluate((el) => getComputedStyle(el).color);
+    expect(iconColor).toBe(headingColor);
+    // The icon precedes the project name in DOM order, and the visible gap
+    // between the icon's right edge and the heading's left edge is small.
+    const order = await projectIcon.evaluate(
+      (el, heading) =>
+        el.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING
+          ? 'icon-before'
+          : 'icon-after',
+      await page.locator('.domain-header-name').elementHandle(),
+    );
+    expect(order).toBe('icon-before');
+    const gap = await projectIcon.evaluate(
+      (el, heading) => {
+        const a = el.getBoundingClientRect();
+        const b = heading.getBoundingClientRect();
+        return b.left - a.right;
+      },
+      await page.locator('.domain-header-name').elementHandle(),
+    );
+    expect(gap).toBeGreaterThanOrEqual(0);
+    expect(gap).toBeLessThanOrEqual(8);
+    const rootCrumb = page.locator('.domain-header-crumb', { hasText: root });
+    const subCrumb = page.locator('.domain-header-crumb', { hasText: sub });
+    await expect(rootCrumb).toBeVisible();
+    await expect(subCrumb).toBeVisible();
+    await expect(page.locator('.domain-header-name')).toContainText(projectName);
+    // Two separators: between the two domain crumbs, and between the
+    // last crumb and the project name. Each renders as "/".
+    const seps = page.locator('.domain-header-crumb-sep');
+    await expect(seps).toHaveCount(2);
+    await expect(seps).toHaveText(['/', '/']);
+    // Inter-segment flex gap is tight and uniform: assert the gap
+    // from the root crumb's right edge to the first separator's left
+    // edge equals the gap from the last separator's right edge to
+    // the project icon's left edge.
+    const gapRightOfRoot = await seps.first().evaluate((el, prev) => {
+      return el.getBoundingClientRect().left - prev.getBoundingClientRect().right;
+    }, await rootCrumb.elementHandle());
+    const gapLeftOfIcon = await projectIcon.evaluate((el, prev) => {
+      return el.getBoundingClientRect().left - prev.getBoundingClientRect().right;
+    }, await seps.nth(1).elementHandle());
+    expect(gapRightOfRoot).toBeLessThanOrEqual(8);
+    expect(gapLeftOfIcon).toBeLessThanOrEqual(8);
+    // dedicated .domain-header-slash class).
+    await expect(page.locator('.domain-header-slash')).toHaveCount(0);
+    // Clicking the root crumb navigates back to the root domain.
+    await rootCrumb.click();
+    await expect(page.locator('.domain-header-name')).toContainText(root);
+  });
+
   test('notes tab shows an empty state then allows adding a note', async ({ page }) => {
     await page.goto('/#/');
     await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();

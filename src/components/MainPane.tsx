@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
   useStoreVersion,
@@ -14,6 +15,8 @@ import {
   createProject,
   createTask,
   createNote,
+  createDomain,
+  getDomain,
   updateTask,
   setTaskStatus,
   deleteTask,
@@ -25,6 +28,7 @@ import {
   COLUMNS,
 } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
+import type { Domain } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import PromptModal from './PromptModal.tsx';
@@ -47,9 +51,11 @@ const PROJECT_TABS: { id: ProjectTab; label: string }[] = [
 
 export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
-  const { selection } = useSelection();
-  useStoreVersion(store);
+  const { selection, navigate } = useSelection();
   const counts = useDomainCounts(store);
+  // Subscribe to domains table so parent-chain / sub-domain list re-derive
+  // when any domain row changes (rename, reparent, delete, add).
+  const domainRowIds = useRowIds(TABLES.domains, store);
 
   const domainId = selection.kind === 'domain' ? selection.id : null;
   const domain = useDomain(store, domainId ?? undefined);
@@ -64,6 +70,14 @@ export default function MainPane(): React.JSX.Element {
     setTabByDomain((prev) => ({ ...prev, [domainId]: next }));
   };
 
+  // Parent chain for the active domain. Returns empty when no domain
+  // is selected. domainRowIds is touched to keep the linter (and us)
+  // honest about the subscription that drives re-derivation.
+  const parentChain = useMemo<readonly Domain[]>(() => {
+    if (!domainId) return [];
+    void domainRowIds.length;
+    return buildParentChain(store, domainId);
+  }, [store, domainId, domainRowIds]);
   // Project selection → dedicated project pane (Tasks / Notes only).
   if (selection.kind === 'project') {
     return <ProjectPane projectId={selection.id} />;
@@ -86,10 +100,33 @@ export default function MainPane(): React.JSX.Element {
   const taskCount = counts.find((c) => c.id === domainId)?.taskCount ?? 0;
   const noteCount = counts.find((c) => c.id === domainId)?.noteCount ?? 0;
 
+  const isTopLevel = parentChain.length === 0;
+
+  const goToDomain = (id: string): void => {
+    setAddPromptOpen(false);
+    navigate({ kind: 'domain', id });
+  };
+
+  const addSubDomain = (subName: string): void => {
+    const id = createDomain(store, {
+      name: subName,
+      parentId: domainId,
+      color: domain.color,
+    });
+    navigate({ kind: 'domain', id });
+  };
+
   return (
     <main className="main" aria-label="Editor">
       <div className="main-body">
-        <DomainHeader name={domain.name} color={domain.color} />
+        <DomainHeader
+          name={domain.name}
+          color={domain.color}
+          parentChain={parentChain}
+          showAddSubDomain={isTopLevel}
+          onNavigate={goToDomain}
+          onCreateSubDomain={isTopLevel ? addSubDomain : null}
+        />
         <PaneTabs
           tabs={TABS}
           tab={tab}
@@ -111,25 +148,123 @@ export default function MainPane(): React.JSX.Element {
     </main>
   );
 }
-
 function DomainHeader({
   name,
   color,
+  parentChain,
+  showAddSubDomain,
+  onNavigate,
+  onCreateSubDomain,
 }: {
   name: string;
   color: DomainColorId;
+  parentChain: readonly Domain[];
+  showAddSubDomain: boolean;
+  onNavigate: (id: string) => void;
+  onCreateSubDomain: ((name: string) => void) | null;
 }): React.JSX.Element {
   const hex = domainColorHex(color);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  function commit(): void {
+    const trimmed = draft.trim();
+    if (!trimmed) {
+      setAdding(false);
+      setDraft('');
+      return;
+    }
+    onCreateSubDomain?.(trimmed);
+    setAdding(false);
+    setDraft('');
+  }
+
+  function cancel(): void {
+    setAdding(false);
+    setDraft('');
+  }
+
   return (
     <div className="domain-header">
-      <span className="domain-header-slash" aria-hidden="true" style={{ color: hex }}>
-        /
-      </span>
+      {parentChain.map((p, i) => (
+        <Fragment key={p.id}>
+          {i > 0 && (
+            <span className="domain-header-crumb-sep" aria-hidden="true">
+              /
+            </span>
+          )}
+          <button
+            type="button"
+            className="domain-header-crumb"
+            onClick={() => onNavigate(p.id)}
+          >
+            {p.name || 'Untitled'}
+          </button>
+        </Fragment>
+      ))}
+      {parentChain.length > 0 && (
+        <span className="domain-header-slash" aria-hidden="true" style={{ color: hex }}>
+          /
+        </span>
+      )}
       <h1 className="domain-header-name">{name || 'Untitled'}</h1>
+      {showAddSubDomain && onCreateSubDomain && (
+        adding ? (
+          <input
+            type="text"
+            className="domain-header-add-input"
+            placeholder="Sub-domain name…"
+            value={draft}
+            autoFocus
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="domain-header-add"
+            onClick={() => setAdding(true)}
+            aria-label="Add sub-domain"
+            title="Add sub-domain"
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#add-icon" />
+            </svg>
+          </button>
+        )
+      )}
     </div>
   );
 }
 
+/**
+ * Walk the parent chain of a domain up to (and not including) the root.
+ * Result is root-first → parent-of-parent-of → direct parent, so a
+ * breadcrumb renders left-to-right from outer to inner. Cycle-safe.
+ */
+
+function buildParentChain(store: MergeableStore, domainId: string): Domain[] {
+  const chain: Domain[] = [];
+  const seen = new Set<string>([domainId]);
+  let cur = getDomain(store, domainId);
+  while (cur && cur.parentId && !seen.has(cur.parentId)) {
+    const parent = getDomain(store, cur.parentId);
+    if (!parent) break;
+    chain.push(parent);
+    seen.add(parent.id);
+    cur = parent;
+  }
+  return chain.reverse();
+}
 interface PaneTabsProps<T extends string> {
   tabs: readonly { id: T; label: string }[];
   tab: T;
@@ -848,22 +983,51 @@ function ProjectPaneHeader({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const domain = useDomain(store, domainId ?? undefined);
+  // Subscribe to the domains table so the chain re-derives when any
+  // ancestor is renamed / reparented.
+  const domainRowIds = useRowIds(TABLES.domains, store);
+  // Full path: root → … → direct parent of the project, then the
+  // project name. Walk up from the owning domain to compose ancestors,
+  // then reverse to root-first order.
+  const chain = useMemo<readonly Domain[]>(() => {
+    if (!domainId) return [];
+    void domainRowIds.length;
+    const direct = getDomain(store, domainId);
+    if (!direct) return [];
+    const ancestors = buildParentChain(store, direct.id);
+    return [...ancestors, direct];
+  }, [store, domainId, domainRowIds]);
+  const showSlash = chain.length > 0;
   return (
     <div className="domain-header">
-      {domain && (
-        <button
-          type="button"
-          className="domain-header-crumb"
-          onClick={() => navigate({ kind: 'domain', id: domain.id })}
-        >
-          {domain.name || 'Untitled'}
-        </button>
+      {chain.map((p, i) => (
+        <Fragment key={p.id}>
+          {i > 0 && (
+            <span className="domain-header-crumb-sep" aria-hidden="true">
+              /
+            </span>
+          )}
+          <button
+            type="button"
+            className="domain-header-crumb"
+            onClick={() => navigate({ kind: 'domain', id: p.id })}
+          >
+            {p.name || 'Untitled'}
+          </button>
+        </Fragment>
+      ))}
+      {showSlash && (
+        <span className="domain-header-crumb-sep" aria-hidden="true">
+          /
+        </span>
       )}
-      <span className="domain-header-slash" aria-hidden="true">
-        /
-      </span>
-      <h1 className="domain-header-name">{name}</h1>
+      <svg
+        className="svg-icon domain-header-project-icon"
+        aria-hidden="true"
+      >
+        <use href="/icons.svg#project-list-icon" />
+      </svg>
+      <h1 className="domain-header-name">{name || 'Untitled'}</h1>
     </div>
   );
 }

@@ -1,12 +1,11 @@
 /* ============================================================
-   App shell — 3-zone Memos layout
-   rail (56px) | sidebar (280px) | main (1fr)
+   App shell — 2-zone layout
+   sidebar (200px) | main (1fr)
    collapses to single column + drawer on mobile
    ============================================================ */
 
 .app-shell {
   display: grid;
-  /* TODO(restore): grid-template-columns: var(--rail-w) var(--sidebar-w) 1fr; */
   grid-template-columns: var(--sidebar-w) 1fr;
   height: 100svh;
   width: 100%;
@@ -17,75 +16,11 @@
 
 @media (max-width: 768px) {
   .app-shell {
-    grid-template-columns: 0 0 1fr;
+    grid-template-columns: 0 1fr;
   }
-  .app-shell > .rail,
   .app-shell > .sidebar {
     display: none;
   }
-}
-
-/* ============================================================
-   Rail (far-left icon strip)
-   ============================================================ */
-
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-3) 0;
-  background: var(--bg-elevated);
-  border-inline-end: 1px solid var(--border);
-  gap: 2px;
-}
-
-.rail-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  color: var(--accent);
-  margin-bottom: var(--space-2);
-}
-
-.rail-brand svg {
-  width: 24px;
-  height: 24px;
-}
-
-.rail-item {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
-  color: var(--text-secondary);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  padding: 0;
-}
-
-.rail-item:hover {
-  background: var(--surface-hover);
-  color: var(--text-h);
-}
-
-.rail-item-active {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-
-.rail-item svg {
-  width: 18px;
-  height: 18px;
-}
-
-.rail-spacer {
-  flex: 1 1 auto;
 }
 
 /* ============================================================
@@ -1020,12 +955,145 @@
   border-color: var(--accent-border);
 }
 
+.entity-projects {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.entity-projects-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.entity-projects-head h3 {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.entity-project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entity-project-item {
+  list-style: none;
+}
+
+.entity-project-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  background: transparent;
+}
+
+.entity-project-row:hover {
+  background: var(--surface-hover);
+}
+
+.entity-project-row:hover .entity-project-open {
+  opacity: 1;
+}
+
+.entity-project-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.entity-project-caret:hover {
+  background: var(--surface-hover);
+  color: var(--text-h);
+}
+
+.entity-project-caret svg {
+  width: 12px;
+  height: 12px;
+}
+
+.entity-project-icon {
+  color: var(--text-muted);
+  width: 14px;
+  height: 14px;
+}
+
+.entity-project-name {
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+  cursor: pointer;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-project-name:hover {
+  background: var(--surface-hover);
+}
+
+.entity-project-name:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+  background: var(--surface);
+}
+
+.entity-project-open {
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.entity-project-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 4px 4px 26px;
+}
+
+.entity-project-add-task {
+  align-self: flex-start;
+  font-size: 12.5px;
+  padding: 3px 8px;
+}
+
+.placeholder-sm {
+  font-size: 12.5px;
+  padding: 2px 0;
+  color: var(--text-muted);
+}
+
 /* ============================================================
    Tasks
    ============================================================ */
 
-.tasks,
-.notes {
+.tasks {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -1148,248 +1216,10 @@
   height: 18px;
   accent-color: var(--accent);
 }
-
-/* ============================================================
-   Notes panel
-   ============================================================ */
-
-.notes-tabs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-2);
-}
-
-.notes-tab {
-  background: none;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  color: var(--text-secondary);
-  font: inherit;
-  font-size: 12.5px;
-  padding: 6px 10px;
-  border-radius: 0;
-  cursor: pointer;
-}
-
-.notes-tab:hover {
-  color: var(--text-h);
-}
-
-.notes-tab-active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.notes-tabs-spacer {
-  flex: 1 1 auto;
-}
-
-.notes-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.notes-item {
-  padding: 0;
-  border-radius: var(--radius-md);
-}
-
-.notes-item:hover {
-  background: var(--surface-hover);
-}
-
-.notes-item-active {
-  background: var(--accent-bg);
-}
-
-.notes-item-title {
-  background: none;
-  border: 0;
-  font: inherit;
-  font-size: 13.5px;
-  color: var(--text-h);
-  cursor: pointer;
-  padding: 6px 10px;
-  text-align: start;
-  width: 100%;
-  display: block;
-}
-
-.notes-item-active .notes-item-title {
-  color: var(--accent);
-}
-
-/* ============================================================
-   Note editor
-   ============================================================ */
-
-.note-editor {
-  margin-top: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.note-editor-toolbar {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.note-title-input {
-  flex: 1 1 auto;
-  font: 600 18px/1.2 var(--font-sans);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 4px 8px;
-  color: var(--text-h);
-  box-sizing: border-box;
-  width: 100%;
-}
-
-.note-title-input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-  background: var(--surface);
-}
-
-.note-attach {
-  display: flex;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-}
-
-.note-editor-split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-  min-height: 320px;
-}
-
-@media (max-width: 720px) {
-  .note-editor-split {
-    grid-template-columns: 1fr;
-  }
-}
-
-.note-textarea-wrap {
-  position: relative;
-  display: flex;
-}
-
-.note-textarea {
-  font: 13.5px/1.55 var(--font-mono);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  background: var(--surface);
-  color: var(--text-h);
-  resize: vertical;
-  min-height: 320px;
-  flex: 1 1 auto;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.note-textarea:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-
-.note-preview {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  overflow: auto;
-  background: var(--code-bg);
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text-h);
-}
-
-.wikilink-autocomplete {
-  position: absolute;
-  top: 8px;
-  inset-inline-start: 8px;
-  inset-inline-end: 8px;
-  max-height: 200px;
-  overflow: auto;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  z-index: 10;
-}
-
-.wikilink-autocomplete li button {
-  display: block;
-  width: 100%;
-  text-align: start;
-  background: none;
-  border: 0;
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  font: inherit;
-  color: var(--text-h);
-  cursor: pointer;
-}
-
-.wikilink-autocomplete li button:hover {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-
-.backlinks {
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-3);
-}
-
-.backlinks h4 {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin: 0 0 var(--space-2);
-}
-
-.backlinks ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.backlinks button {
-  background: none;
-  border: 0;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  padding: 2px 0;
-  text-align: start;
-}
-
-.backlinks button:hover {
-  color: var(--accent-hover);
-  text-decoration: underline;
-}
-
 /* ============================================================
    Tag feed
    ============================================================ */
+
 
 .tag-feed-header {
   display: flex;
@@ -1648,6 +1478,138 @@
 
 .placeholder code {
   font-size: 12.5px;
+}
+
+/* ============================================================
+   Inline icon sizing
+   ============================================================ */
+
+.svg-icon {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  stroke: currentColor;
+  flex-shrink: 0;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* ============================================================
+   Single-note editor (EntityNote)
+   ============================================================ */
+
+.entity-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.entity-note .notes-header {
+  margin-bottom: 0;
+}
+
+.entity-note-display {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  cursor: text;
+  min-height: 60px;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+
+.entity-note-display:hover {
+  border-color: var(--accent-border);
+  background: var(--surface-hover);
+}
+
+.entity-note-display:focus-visible {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.entity-note-display > *:first-child {
+  margin-top: 0;
+}
+
+.entity-note-display > *:last-child {
+  margin-bottom: 0;
+}
+
+.entity-note-display-empty {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.entity-note-edit {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-h);
+  background: var(--surface);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  resize: vertical;
+  min-height: 120px;
+}
+
+.entity-note-edit:focus {
+  outline: none;
+}
+
+.entity-note-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: text;
+  text-align: start;
+}
+
+.entity-note-empty:hover {
+  border-color: var(--accent-border);
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+/* ============================================================
+   Note indicator (list-row icon)
+   ============================================================ */
+
+.note-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  flex-shrink: 0;
+  cursor: default;
+  color: var(--text-muted);
+}
+
+.note-indicator svg {
+  width: 12px;
+  height: 12px;
+}
+
+.note-indicator-off {
+  color: var(--text-muted);
+}
+
+.note-indicator-on {
+  color: var(--text-h);
 }
 
 /* ============================================================

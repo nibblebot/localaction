@@ -12,7 +12,7 @@ import { useSelection } from './useSelection.ts';
 import EditableTitle from './EditableTitle.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
 import TaskList from './TaskList.tsx';
-import NotesPanel from './NotesPanel.tsx';
+import EntityNote from './EntityNote.tsx';
 
 export default function ProjectEditor({ id }: { id: string }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -67,7 +67,7 @@ export default function ProjectEditor({ id }: { id: string }): React.JSX.Element
       </div>
 
       <TaskList projectId={id} />
-      <NotesPanel entityType="project" entityId={id} />
+      <EntityNote entityType="project" entityId={id} />
 
       <ConfirmModal
         open={confirmDelete}

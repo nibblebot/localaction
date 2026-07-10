@@ -1,8 +1,8 @@
 import { Provider } from 'tinybase/ui-react';
 import { DataLayerProvider, getStore } from './data/index.ts';
 import SelectionProvider from './components/selection.tsx';
-// TODO(restore): import IconRail from './components/IconRail.tsx';
 import Sidebar from './components/Sidebar.tsx';
+
 import MainPane from './components/MainPane.tsx';
 import { Inspector } from 'tinybase/ui-react-inspector';
 import './App.css';

@@ -1,20 +1,19 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Memos-style shell', () => {
-  test('renders the three-zone layout with rail, sidebar, and main pane', async ({ page }) => {
+  test('renders the two-zone layout with sidebar and main pane', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.app-shell')).toBeVisible();
-    await expect(page.locator('.rail')).toBeVisible();
     await expect(page.locator('.sidebar')).toBeVisible();
     await expect(page.locator('.main')).toBeVisible();
-    await expect(page.locator('.rail-brand')).toBeVisible();
     await expect(page.locator('.sidebar-search input')).toBeVisible();
     await expect(page.locator('.main-header-title')).toBeVisible();
   });
 
-  test('rail Home button navigates to the home selection', async ({ page }) => {
+  test('navigating to the home hash shows the home selection', async ({ page }) => {
     await page.goto('/#/d/anything');
-    await page.locator('.rail-item[aria-label="Home"]').click();
+    // No rail — navigate via URL hash
+    await page.goto('/#/');
     await expect(page).toHaveURL(/#\/$/);
     await expect(page.locator('.main-header-title')).toContainText('Home');
   });
@@ -25,7 +24,7 @@ test.describe('Memos-style shell', () => {
     const domains = await page.locator('.sidebar-section .sidebar-item-name').allTextContents();
     if (domains.length === 0) {
       await page.locator('.sidebar-link', { hasText: 'New domain' }).click();
-      await page.locator('.rail-item[aria-label="Home"]').click();
+      // Modal submission will create a domain; no rail to click for "home"
     }
     await page.locator('.sidebar-search input').fill('zzz-no-match-zzz');
     await expect(page.locator('.sidebar-empty')).toBeVisible();
@@ -49,9 +48,9 @@ test.describe('Memos-style shell', () => {
     await page.locator('.composer .btn-primary', { hasText: 'Save' }).click();
     await expect(page).toHaveURL(/#\/n\//);
     await expect(page.locator('.main-header-title')).toContainText('Note');
-    // Back home and verify the new tag appears in the sidebar, then click it.
+    // Back home via URL hash (no rail), then verify the new tag appears in the sidebar and click it.
     // Persisted store can take a tick to flush; allow retries.
-    await page.locator('.rail-item[aria-label="Home"]').click();
+    await page.goto('/#/');
     const tagLink = page.locator('.sidebar-link', { hasText: '#e2eautomated' });
     await expect(tagLink).toBeVisible({ timeout: 10_000 });
     await tagLink.click();

@@ -3,7 +3,6 @@ import type { MergeableStore } from 'tinybase';
 import {
   useDataLayer,
   useDomains,
-  useProjects,
   useOrphanedDomainIds,
   useStoreVersion,
   useAllTagCounts,
@@ -12,6 +11,7 @@ import {
 } from '../data/index.ts';
 import type { TagCount } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
+import NoteIndicator from './NoteIndicator.tsx';
 import PromptModal from './PromptModal.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
 
@@ -202,9 +202,7 @@ function DomainTreeItem({
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
   useStoreVersion(store);
-  const projectIds = useProjects(store, domain.id);
-  const isOpen = selection.kind === 'domain' && selection.id === domain.id;
-  const isActive = isOpen;
+  const isActive = selection.kind === 'domain' && selection.id === domain.id;
 
   return (
     <li>
@@ -216,10 +214,9 @@ function DomainTreeItem({
           onClick={() => navigate({ kind: 'domain', id: domain.id })}
         >
           <span className="sidebar-item-name">{domain.name}</span>
-          {projectIds.length > 0 && (
-            <span className="sidebar-link-count">{projectIds.length}</span>
-          )}
+          <NoteIndicator entityType="domain" entityId={domain.id} readonly />
         </button>
+
         <button
           type="button"
           className="sidebar-item-action"
@@ -246,38 +243,8 @@ function DomainTreeItem({
           ))}
         </ul>
       )}
-      {isOpen && projectIds.length > 0 && (
-        <ul className="sidebar-item-children" role="list">
-          {projectIds.map((pid) => (
-            <li key={pid}>
-              <ProjectShortcut id={pid} depth={domain.depth + 1} />
-            </li>
-          ))}
-        </ul>
-      )}
     </li>
-  );
-}
 
-function ProjectShortcut({ id, depth }: { id: string; depth: number }): React.JSX.Element {
-  const { store } = useDataLayer();
-  const { selection, navigate } = useSelection();
-  useStoreVersion(store);
-  const v = store.getCell('projects', id, 'name');
-  const name = (typeof v === 'string' ? v : '') || 'Untitled';
-  const isActive = selection.kind === 'project' && selection.id === id;
-  return (
-    <button
-      type="button"
-      className={`sidebar-item${isActive ? ' sidebar-item-active' : ''}`}
-      style={{ paddingInlineStart: `${8 + depth * 12}px` }}
-      onClick={() => navigate({ kind: 'project', id })}
-    >
-      <svg className="svg-icon" aria-hidden="true">
-        <use href="/icons.svg#project-icon" />
-      </svg>
-      <span className="sidebar-item-name">{name}</span>
-    </button>
   );
 }
 

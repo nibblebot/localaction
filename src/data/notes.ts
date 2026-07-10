@@ -194,3 +194,78 @@ export function useNoteIdForSlug(store: MergeableStore, slug: string | undefined
   if (!slug) return undefined;
   return getNoteBySlug(store, slug)?.id;
 }
+
+/**
+ * Return the id of the single note attached to the given entity, if any.
+ * If multiple notes are attached, the first one is returned (callers should
+ * not create more than one note per entity — the UI enforces this).
+ */
+export function getEntityNoteId(
+  store: MergeableStore,
+  entityType: NoteEntityType,
+  entityId: string,
+): string | null {
+  for (const id of store.getRowIds(TABLES.notes)) {
+    if (
+      store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) === entityType &&
+      store.getCell(TABLES.notes, id, COLUMNS.notes.entityId) === entityId
+    ) {
+      return id;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find the single note for an entity, or create a new one with an empty body.
+ * The title defaults to "Note" and is later re-derived on the first commit.
+ */
+export function getOrCreateEntityNote(
+  store: MergeableStore,
+  entityType: NoteEntityType,
+  entityId: string,
+): string {
+  const existing = getEntityNoteId(store, entityType, entityId);
+  if (existing) return existing;
+  return createNote(store, { title: 'Note', body: '', entityType, entityId });
+}
+
+/**
+ * Reactive: returns the id of the single note attached to the entity, or null.
+ * Subscribes to the notes table.
+ */
+export function useEntityNoteId(
+  store: MergeableStore,
+  entityType: NoteEntityType,
+  entityId: string,
+): string | null {
+  const allIds = useRowIds(TABLES.notes, store);
+  for (const id of allIds) {
+    if (
+      store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) === entityType &&
+      store.getCell(TABLES.notes, id, COLUMNS.notes.entityId) === entityId
+    ) {
+      return id;
+    }
+  }
+  return null;
+}
+
+/**
+ * Reactive: true if the entity has at least one note with a non-empty body.
+ * Subscribes to the note row so that body edits re-render the indicator.
+ */
+export function useEntityNoteExists(
+  store: MergeableStore,
+  entityType: NoteEntityType,
+  entityId: string,
+): boolean {
+  const noteId = useEntityNoteId(store, entityType, entityId);
+  // Subscribe to the entire row so that any cell change (notably the body)
+  // re-renders callers. Reading the cell is incidental; the subscription is
+  // what keeps the indicator in sync.
+  useRow(TABLES.notes, noteId ?? '', store);
+  if (!noteId) return false;
+  const body = String(store.getCell(TABLES.notes, noteId, COLUMNS.notes.body) ?? '');
+  return body.trim().length > 0;
+}

@@ -13,6 +13,7 @@ import {
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import ConfirmButton from './ConfirmButton.tsx';
+import NoteIndicator from './NoteIndicator.tsx';
 
 const NEW_TASK_TITLE = 'New task';
 
@@ -151,8 +152,12 @@ function TaskItem({ id, projectId, depth, expanded, onToggle, justCreatedId, onF
           className={`task-title${done ? ' task-title-done' : ''}`}
           value={task.title}
           onChange={(e) => updateTask(store, id, { title: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
           aria-label="Task title"
         />
+        <NoteIndicator entityType="task" entityId={id} />
         {orphaned && <span className="pill pill-orphan">Orphaned</span>}
         <span className="task-actions">
           <button type="button" className="btn btn-ghost" title="Add sub-task" onClick={addSubTask}>

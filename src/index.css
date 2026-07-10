@@ -78,8 +78,8 @@
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
   /* Layout */
-  --rail-w: 56px;
   --sidebar-w: 200px;
+
   --topbar-h: 52px;
 
   font: 14px/1.5 var(--font-sans);

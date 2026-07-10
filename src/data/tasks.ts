@@ -5,32 +5,11 @@ import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Task, TaskInput, TaskPatch } from './types.ts';
 
-export function nextTaskOrder(
-  store: MergeableStore,
-  projectId: string,
-  parentTaskId: string | null,
-): number {
-  const siblings = store
-    .getRowIds(TABLES.tasks)
-    .filter((id) => {
-      const pid = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId));
-      const ptask = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId));
-      return (
-        pid === projectId &&
-        ptask === parentTaskId &&
-        (ptask === null || store.hasRow(TABLES.tasks, ptask))
-      );
-    })
-    .map((id) => Number(store.getCell(TABLES.tasks, id, COLUMNS.tasks.order) ?? 0));
-  return siblings.length === 0 ? 0 : Math.max(...siblings) + 1;
-}
-
 export function createTask(store: MergeableStore, input: TaskInput): string {
   const id = newId();
   const ts = nowIso();
   const status = input.status ?? TASK_STATUS.open;
   const parent = input.parentTaskId ?? null;
-  const order = input.order ?? nextTaskOrder(store, input.projectId, parent);
   store.setRow(
     TABLES.tasks,
     id,
@@ -39,7 +18,7 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
       [COLUMNS.tasks.projectId]: input.projectId,
       [COLUMNS.tasks.parentTaskId]: parent,
       [COLUMNS.tasks.status]: status,
-      [COLUMNS.tasks.order]: order,
+      [COLUMNS.tasks.order]: 0,
       [COLUMNS.tasks.createdAt]: ts,
       [COLUMNS.tasks.updatedAt]: ts,
     }),
@@ -49,12 +28,11 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
 
 export function updateTask(store: MergeableStore, id: string, patch: TaskPatch): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
-  const next: Record<string, string | number | undefined> = {
+  const next: Record<string, string | undefined> = {
     [COLUMNS.tasks.updatedAt]: nowIso(),
   };
   if (patch.title !== undefined) next[COLUMNS.tasks.title] = patch.title;
   if (patch.status !== undefined) next[COLUMNS.tasks.status] = patch.status;
-  if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
   if (patch.projectId === null) {
     store.delCell(TABLES.tasks, id, COLUMNS.tasks.projectId);
   } else if (patch.projectId !== undefined) {
@@ -70,10 +48,14 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
 
 export function setTaskStatus(store: MergeableStore, id: string, status: TaskStatus): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
-  store.setPartialRow(TABLES.tasks, id, {
-    [COLUMNS.tasks.status]: status,
-    [COLUMNS.tasks.updatedAt]: nowIso(),
-  });
+  store.setPartialRow(
+    TABLES.tasks,
+    id,
+    row({
+      [COLUMNS.tasks.status]: status,
+      [COLUMNS.tasks.updatedAt]: nowIso(),
+    }),
+  );
 }
 
 export function deleteTask(store: MergeableStore, id: string): void {
@@ -95,65 +77,50 @@ export function getTask(store: MergeableStore, id: string): Task | undefined {
   };
 }
 
-export function getTasksForProject(store: MergeableStore, projectId: string): string[] {
-  return store
-    .getRowIds(TABLES.tasks)
-    .filter((id) => {
-      const pid = store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId);
-      const ptask = store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId);
-      const orphan = ptask !== undefined && !store.hasRow(TABLES.tasks, String(ptask));
-      return pid === projectId && (ptask === undefined || orphan);
-    })
-    .sort((a, b) =>
-      Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0) -
-      Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0),
-    );
+/**
+ * Non-reactive: walk all tasks under a project (top-level + nested).
+ * Use `useTasksForProjectDeep` from React to subscribe.
+ */
+export function getTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
+  const out: string[] = [];
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
+    out.push(id);
+  }
+  return out;
 }
 
-export function isTaskOrphaned(store: MergeableStore, id: string): boolean {
-  const parent = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId));
-  return parent !== null && !store.hasRow(TABLES.tasks, parent);
+function collectChildIds(
+  store: MergeableStore,
+  parentId: string,
+  out: string[],
+): void {
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === parentId) {
+      out.push(id);
+      collectChildIds(store, id, out);
+    }
+  }
 }
 
-export function getChildTasks(store: MergeableStore, parentTaskId: string): string[] {
-  return store
-    .getRowIds(TABLES.tasks)
-    .filter((id) => store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === parentTaskId)
-    .sort((a, b) =>
-      Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0) -
-      Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0),
-    );
-}
-
-export function getOrphanedTaskIds(store: MergeableStore): string[] {
-  return store.getRowIds(TABLES.tasks).filter((id) => {
-    const parent = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId));
-    return parent !== null && !store.hasRow(TABLES.tasks, parent);
-  });
-}
-
-
-export function useTasks(store: MergeableStore, projectId: string): string[] {
-  const allIds = useRowIds(TABLES.tasks, store);
-  return allIds
-    .filter((id) => store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) === projectId)
-    .filter((id) => store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === undefined)
-    .sort(
-      (a, b) =>
-        Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0) -
-        Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0),
-    );
-}
-
-export function useChildTasks(store: MergeableStore, parentTaskId: string): string[] {
-  const allIds = useRowIds(TABLES.tasks, store);
-  return allIds
-    .filter((id) => store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === parentTaskId)
-    .sort(
-      (a, b) =>
-        Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0) -
-        Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0),
-    );
+/**
+ * Reactive counterpart: returns the full flattened list of task ids in
+ * the project (top-level + nested). Subscribes to the tasks table so any
+ * descendant change re-renders callers.
+ */
+export function useTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
+  // Subscribe to the tasks table so any descendant change re-renders.
+  useRowIds(TABLES.tasks, store);
+  const out: string[] = [];
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
+    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) !== undefined) continue;
+    out.push(id);
+  }
+  // Recurse to gather nested children; `collectChildIds` walks via parent
+  // pointer which the table now provides.
+  for (const tid of [...out]) collectChildIds(store, tid, out);
+  return out;
 }
 
 export function useTask(store: MergeableStore, id: string | undefined): Task | undefined {

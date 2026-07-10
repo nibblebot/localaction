@@ -1,9 +1,11 @@
 import type { TaskStatus, NoteEntityType } from './schema.ts';
+import type { DomainColorId } from './colors.ts';
 
 export interface Domain {
   id: string;
   name: string;
   parentId: string | null;
+  color: DomainColorId;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,11 +43,13 @@ export interface Note {
 export interface DomainInput {
   name: string;
   parentId?: string | null;
+  color?: DomainColorId;
 }
 
 export interface DomainPatch {
   name?: string;
   parentId?: string | null;
+  color?: DomainColorId;
 }
 
 export interface ProjectInput {

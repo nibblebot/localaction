@@ -1,23 +1,27 @@
-import { useRow, useRowIds } from 'tinybase/ui-react';
+import { useRow } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
+import { isDomainColorId, type DomainColorId } from './colors.ts';
 import type { Domain, DomainInput, DomainPatch } from './types.ts';
 
 export function createDomain(
   store: MergeableStore,
   input: DomainInput,
 ): string {
-
   const id = newId();
   const ts = nowIso();
   const parentId = input.parentId ?? null;
+  const color: DomainColorId = isDomainColorId(input.color)
+    ? input.color
+    : 'gray';
   store.setRow(
     TABLES.domains,
     id,
     row({
       [COLUMNS.domains.name]: input.name,
       [COLUMNS.domains.parentId]: parentId,
+      [COLUMNS.domains.color]: color,
       [COLUMNS.domains.createdAt]: ts,
       [COLUMNS.domains.updatedAt]: ts,
     }),
@@ -40,6 +44,11 @@ export function updateDomain(
   } else if (patch.parentId !== undefined) {
     next[COLUMNS.domains.parentId] = patch.parentId;
   }
+  if (patch.color !== undefined) {
+    next[COLUMNS.domains.color] = isDomainColorId(patch.color)
+      ? patch.color
+      : 'gray';
+  }
   store.setPartialRow(TABLES.domains, id, row(next));
 }
 
@@ -50,42 +59,16 @@ export function deleteDomain(store: MergeableStore, id: string): void {
 export function getDomain(store: MergeableStore, id: string): Domain | undefined {
   const row = store.getRow(TABLES.domains, id);
   if (!row || Object.keys(row).length === 0) return undefined;
+  const rawColor: unknown = row[COLUMNS.domains.color];
+  const color: DomainColorId = isDomainColorId(rawColor) ? rawColor : 'gray';
   return {
     id,
     name: String(row[COLUMNS.domains.name] ?? ''),
     parentId: normalizeRelation(row[COLUMNS.domains.parentId]),
+    color,
     createdAt: String(row[COLUMNS.domains.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.domains.updatedAt] ?? ''),
   };
-}
-
-export function getDomainPath(store: MergeableStore, id: string): Domain[] {
-  const out: Domain[] = [];
-  let current: string | undefined = id;
-  const seen = new Set<string>();
-  while (current && !seen.has(current)) {
-    const domain = getDomain(store, current);
-    if (!domain) break;
-    seen.add(current);
-    out.unshift(domain);
-    current = domain.parentId ?? undefined;
-  }
-  return out;
-}
-
-export function getAllDomainIds(store: MergeableStore): string[] {
-  return store.getRowIds(TABLES.domains);
-}
-
-export function getTopLevelDomainIds(store: MergeableStore): string[] {
-  return store
-    .getRowIds(TABLES.domains)
-    .filter((id) => normalizeRelation(store.getCell(TABLES.domains, id, COLUMNS.domains.parentId)) === null);
-}
-export function getChildDomainIds(store: MergeableStore, parentId: string): string[] {
-  return store
-    .getRowIds(TABLES.domains)
-    .filter((id) => store.getCell(TABLES.domains, id, COLUMNS.domains.parentId) === parentId);
 }
 
 export function getAllDomainIdsFlat(store: MergeableStore): string[] {
@@ -103,41 +86,16 @@ export function getAllDomainIdsFlat(store: MergeableStore): string[] {
   return out;
 }
 
-export function getOrphanedDomainIds(store: MergeableStore): string[] {
-  return store.getRowIds(TABLES.domains).filter((id) => {
-    const parent = normalizeRelation(store.getCell(TABLES.domains, id, COLUMNS.domains.parentId));
-    return parent !== null && !store.hasRow(TABLES.domains, parent);
-  });
-}
-
-export function useOrphanedDomainIds(store: MergeableStore): string[] {
-  useRowIds(TABLES.domains, store);
-  return getOrphanedDomainIds(store);
-}
-
-
-export function useDomains(store: MergeableStore): string[] {
-  const allIds = useRowIds(TABLES.domains, store);
-  return allIds.filter(
-    (id) => store.getCell(TABLES.domains, id, COLUMNS.domains.parentId) === undefined,
-  );
-}
-
-export function useChildDomains(store: MergeableStore, parentId: string): string[] {
-  const allIds = useRowIds(TABLES.domains, store);
-  return allIds.filter(
-    (id) => store.getCell(TABLES.domains, id, COLUMNS.domains.parentId) === parentId,
-  );
-}
-
 export function useDomain(store: MergeableStore, id: string | undefined): Domain | undefined {
   const row = useRow(TABLES.domains, id ?? '', store);
-
   if (!id || !row || Object.keys(row).length === 0) return undefined;
+  const rawColor: unknown = row[COLUMNS.domains.color];
+  const color: DomainColorId = isDomainColorId(rawColor) ? rawColor : 'gray';
   return {
     id,
     name: String(row[COLUMNS.domains.name] ?? ''),
     parentId: normalizeRelation(row[COLUMNS.domains.parentId]),
+    color,
     createdAt: String(row[COLUMNS.domains.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.domains.updatedAt] ?? ''),
   };

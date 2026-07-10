@@ -7,53 +7,53 @@
 }
 
 :root {
-  /* Surfaces */
-  --bg: #f6efe5;            /* warm cream canvas */
-  --bg-elevated: #efe6d8;   /* sidebar / rail */
-  --surface: #fbf6ec;       /* cards, inputs */
-  --surface-hover: #f0e7d6; /* row hover */
-  --surface-active: #ecdfca;
+  /* Surfaces — cool lavender canvas */
+  --bg: #f5f3fa;            /* app canvas (light lavender) */
+  --bg-elevated: #f8f6fc;   /* sidebar / rail */
+  --surface: #ffffff;       /* cards, rows */
+  --surface-hover: #f1ecfa; /* row hover (lavender tint) */
+  --surface-active: #ece6fb;
 
   /* Borders */
-  --border: rgba(43, 34, 24, 0.12);
-  --border-strong: rgba(43, 34, 24, 0.22);
+  --border: #eae6f2;
+  --border-strong: #d8d2e8;
 
-  /* Text */
-  --text: #5a4f42;
-  --text-secondary: #7a6e5e;
-  --text-muted: #a89c8a;
-  --text-h: #2b2218;
+  /* Text — near-black with a violet undertone */
+  --text: #5b5670;
+  --text-secondary: #4a4458;
+  --text-muted: #9b96ae;
+  --text-h: #1f1b2e;
   --text-on-accent: #ffffff;
 
-  /* Accent — terracotta */
-  --accent: #c5532a;
-  --accent-hover: #b04a23;
-  --accent-bg: rgba(197, 83, 42, 0.10);
-  --accent-border: rgba(197, 83, 42, 0.45);
-  --accent-tint: rgba(197, 83, 42, 0.14);
+  /* Accent — vivid purple */
+  --accent: #7c3aed;
+  --accent-hover: #6d28d9;
+  --accent-bg: #ece6fb;          /* selected row / chip wash */
+  --accent-border: #c4b5fd;
+  --accent-tint: #e9e3fa;        /* active tab pill bg */
 
-  /* Tag chip — terracotta */
-  --tag-bg: rgba(197, 83, 42, 0.12);
-  --tag-fg: #8c3a1d;
-  --tag-border: rgba(197, 83, 42, 0.28);
+  /* Tag chip — purple */
+  --tag-bg: #ece6fb;
+  --tag-fg: #6d28d9;
+  --tag-border: #c4b5fd;
 
   /* Code / preview surface */
-  --code-bg: #f0e7d6;
-  --code-fg: #2b2218;
+  --code-bg: #f1ecfa;
+  --code-fg: #1f1b2e;
 
   /* Danger */
-  --danger: #b3261e;
-  --danger-bg: rgba(179, 38, 30, 0.08);
-  --danger-border: rgba(179, 38, 30, 0.32);
-  /* Success */
-  --success: #2f7d3a;
-  --success-bg: rgba(47, 125, 58, 0.10);
-  --success-border: rgba(47, 125, 58, 0.36);
+  --danger: #e11d48;
+  --danger-bg: #ffe4e6;
+  --danger-border: #fda4af;
+  /* Success — emerald (matches progress bars) */
+  --success: #10b981;
+  --success-bg: #d1fae5;
+  --success-border: #6ee7b7;
 
   /* Warning */
-  --warning: #8a5a00;
-  --warning-bg: rgba(196, 152, 32, 0.14);
-  --warning-border: rgba(196, 152, 32, 0.40);
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --warning-border: #fcd34d;
 
 
   /* Shadow — barely there, elevation-by-tone preferred */
@@ -66,12 +66,12 @@
   --radius-pill: 999px;
 
   /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
+  --space-1: 0.29rem;
+  --space-2: 0.57rem;
+  --space-3: 0.86rem;
+  --space-4: 1.14rem;
+  --space-5: 1.43rem;
+  --space-6: 1.71rem;
 
   /* Type */
   --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -82,7 +82,7 @@
 
   --topbar-h: 52px;
 
-  font: 14px/1.5 var(--font-sans);
+  font: 100%/1.5 var(--font-sans);
   letter-spacing: 0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -93,11 +93,58 @@
   background: var(--bg);
 }
 
+/* Dark theme tokens — applied via :root[data-la-theme="dark"] or the system
+   media query when the user hasn't forced light/dark. */
+:root[data-la-theme="dark"] {
+  --bg: #0f1115;            /* near-black canvas */
+  --bg-elevated: #14171c;   /* sidebar / rail */
+  --surface: #181b21;       /* cards, inputs */
+  --surface-hover: #1d2128;
+  --surface-active: #232830;
+
+  --border: rgba(237, 237, 237, 0.10);
+  --border-strong: rgba(237, 237, 237, 0.18);
+
+  --text: #9aa3ad;
+  --text-secondary: #7a838c;
+  --text-muted: #555c64;
+  --text-h: #ededed;
+  --text-on-accent: #ffffff;
+
+  --accent: #a78bfa;
+  --accent-hover: #8b5cf6;
+  --accent-bg: rgba(167, 139, 250, 0.18);
+  --accent-border: rgba(167, 139, 250, 0.50);
+  --accent-tint: rgba(167, 139, 250, 0.22);
+
+  --tag-bg: rgba(167, 139, 250, 0.18);
+  --tag-fg: #c4b5fd;
+  --tag-border: rgba(167, 139, 250, 0.45);
+
+  --code-bg: #14171c;
+  --code-fg: #ededed;
+
+  --success: #4caf50;
+  --success-bg: rgba(76, 175, 80, 0.14);
+  --success-border: rgba(76, 175, 80, 0.40);
+
+  --warning: #d4a72c;
+  --warning-bg: rgba(212, 167, 44, 0.14);
+  --warning-border: rgba(212, 167, 44, 0.40);
+
+  --danger: #ef5350;
+  --danger-bg: rgba(239, 83, 80, 0.10);
+  --danger-border: rgba(239, 83, 80, 0.36);
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* "System" follows the OS preference until the user pins light/dark. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;            /* near-black canvas */
-    --bg-elevated: #14171c;   /* sidebar / rail */
-    --surface: #181b21;       /* cards, inputs */
+  :root[data-la-theme="system"] {
+    --bg: #0f1115;
+    --bg-elevated: #14171c;
+    --surface: #181b21;
     --surface-hover: #1d2128;
     --surface-active: #232830;
 
@@ -110,25 +157,23 @@
     --text-h: #ededed;
     --text-on-accent: #ffffff;
 
-    --accent: #2f7cf6;
-    --accent-hover: #1f6cf0;
-    --accent-bg: rgba(47, 124, 246, 0.14);
-    --accent-border: rgba(47, 124, 246, 0.45);
-    --accent-tint: rgba(47, 124, 246, 0.18);
+    --accent: #a78bfa;
+    --accent-hover: #8b5cf6;
+    --accent-bg: rgba(167, 139, 250, 0.18);
+    --accent-border: rgba(167, 139, 250, 0.50);
+    --accent-tint: rgba(167, 139, 250, 0.22);
 
-    --tag-bg: rgba(47, 124, 246, 0.14);
-    --tag-fg: #93b6fb;
-    --tag-border: rgba(47, 124, 246, 0.40);
+    --tag-bg: rgba(167, 139, 250, 0.18);
+    --tag-fg: #c4b5fd;
+    --tag-border: rgba(167, 139, 250, 0.45);
 
     --code-bg: #14171c;
     --code-fg: #ededed;
 
-    /* Success */
     --success: #4caf50;
     --success-bg: rgba(76, 175, 80, 0.14);
     --success-border: rgba(76, 175, 80, 0.40);
 
-    /* Warning */
     --warning: #d4a72c;
     --warning-bg: rgba(212, 167, 44, 0.14);
     --warning-border: rgba(212, 167, 44, 0.40);
@@ -140,6 +185,24 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   }
 }
+
+/* Font family — overrides --font-sans for the whole app. */
+:root[data-la-font="inter"] {
+  --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root[data-la-font="dejavu"] {
+  --font-sans: 'DejaVu Sans', 'Bitstream Vera Sans', Verdana, sans-serif;
+}
+:root[data-la-font="liberation"] {
+  --font-sans: 'Liberation Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+}
+
+/* Density — scales the root font-size so every rem-derived size shifts together. */
+:root[data-la-density="compact"] { font-size: 12px; }
+:root[data-la-density="normal"]  { font-size: 14px; }
+:root[data-la-density="cozy"]    { font-size: 16px; }
+
+
 
 body {
   margin: 0;
@@ -154,10 +217,10 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.005em;
 }
 
-h1 { font-size: 20px; font-weight: 600; }
-h2 { font-size: 17px; font-weight: 600; }
-h3 { font-size: 15px; font-weight: 600; }
-h4 { font-size: 13px; font-weight: 600; }
+h1 { font-size: 1.43rem; font-weight: 600; }
+h2 { font-size: 1.21rem; font-weight: 600; }
+h3 { font-size: 1.07rem; font-weight: 600; }
+h4 { font-size: 0.93rem; font-weight: 600; }
 
 p { margin: 0; }
 
@@ -167,7 +230,7 @@ code, pre, .counter {
 }
 
 code {
-  font-size: 12.5px;
+  font-size: 0.89rem;
   line-height: 1.4;
   padding: 1px 5px;
   border-radius: 4px;

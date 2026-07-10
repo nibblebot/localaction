@@ -100,7 +100,8 @@ export function DataLayerProvider({
       cancelled = true;
       unsubscribe();
       if (exposeDevHook && typeof window !== 'undefined') {
-        delete (window as { __LOCALACTION?: unknown }).__LOCALACTION;
+        const w = window as Window & { __LOCALACTION?: unknown };
+        delete w.__LOCALACTION;
       }
       if (typeof window !== 'undefined') {
         window.removeEventListener('beforeunload', onBeforeUnload);

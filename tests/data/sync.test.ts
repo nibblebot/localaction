@@ -10,12 +10,14 @@ describe('startSync URL handling', () => {
     });
   });
 
-  async function waitFor(predicate: () => boolean, maxMs = 200): Promise<void> {
-    const step = 5;
-    for (let elapsed = 0; elapsed < maxMs; elapsed += step) {
-      if (predicate()) return;
-      await new Promise((r) => setTimeout(r, step));
-    }
+  /**
+   * The implementation constructs the WebSocket synchronously inside
+   * `connect()` and catches any constructor error. Yielding once after
+   * `start()` ensures the constructor has run before we read `calls`.
+   */
+  async function afterStart(): Promise<void> {
+    await Promise.resolve();
+    await Promise.resolve();
   }
 
   function fakeWebSocket(calls: string[]): typeof WebSocket {
@@ -34,7 +36,7 @@ describe('startSync URL handling', () => {
       webSocketImpl: fakeWebSocket(calls),
     });
     client.start();
-    await waitFor(() => calls.length > 0);
+    await afterStart();
     expect(calls[0]).toBe('ws://override.test/ws');
     await client.destroy();
   });
@@ -43,7 +45,7 @@ describe('startSync URL handling', () => {
     const calls: string[] = [];
     const client = startSync({ webSocketImpl: fakeWebSocket(calls) });
     client.start();
-    await waitFor(() => calls.length > 0);
+    await afterStart();
     expect(calls[0]).toBe('ws://example.test/ws');
     await client.destroy();
   });
@@ -57,7 +59,7 @@ describe('startSync URL handling', () => {
     const calls: string[] = [];
     const client = startSync({ webSocketImpl: fakeWebSocket(calls) });
     client.start();
-    await waitFor(() => calls.length > 0);
+    await afterStart();
     expect(calls[0]).toBe('wss://example.test/ws');
     await client.destroy();
   });

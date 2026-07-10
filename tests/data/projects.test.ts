@@ -5,12 +5,9 @@ import {
   createProject,
   updateProject,
   deleteProject,
-  getProject,
-  getProjectsForDomain,
-  getOrphanedProjectIds,
-  isProjectOrphaned,
 } from '../../src/data/projects.ts';
-import { createDomain, deleteDomain } from '../../src/data/domains.ts';
+import { createDomain } from '../../src/data/domains.ts';
+import { COLUMNS, TABLES } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -25,21 +22,24 @@ describe('projects', () => {
   it('createProject writes a project scoped to a domain', () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'Plan vacation', domainId: d });
-    const project = getProject(store, p);
-    expect(project?.name).toBe('Plan vacation');
-    expect(project?.domainId).toBe(d);
-    expect(typeof project?.createdAt).toBe('string');
+    const name = String(store.getCell(TABLES.projects, p, COLUMNS.projects.name));
+    const domainId = store.getCell(TABLES.projects, p, COLUMNS.projects.domainId);
+    expect(name).toBe('Plan vacation');
+    expect(domainId).toBe(d);
   });
 
-  it('updateProject patches name and bumps updatedAt', async () => {
+  it('updateProject patches name and bumps updatedAt', () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'Plan vacation', domainId: d });
-    const before = getProject(store, p)?.updatedAt;
-    await new Promise((r) => setTimeout(r, 5));
+    // Override the updatedAt cell to a sentinel so we can detect the bump
+    // without depending on wall-clock time.
+    store.setCell(TABLES.projects, p, COLUMNS.projects.updatedAt, '1999-01-01T00:00:00Z');
+    const before = String(store.getCell(TABLES.projects, p, COLUMNS.projects.updatedAt));
     updateProject(store, p, { name: 'Plan vacation 2026' });
-    const after = getProject(store, p);
-    expect(after?.name).toBe('Plan vacation 2026');
-    expect(after?.updatedAt).not.toBe(before);
+    const after = String(store.getCell(TABLES.projects, p, COLUMNS.projects.updatedAt));
+    const name = String(store.getCell(TABLES.projects, p, COLUMNS.projects.name));
+    expect(name).toBe('Plan vacation 2026');
+    expect(after).not.toBe(before);
   });
 
   it('updateProject can move the project to a different domain', () => {
@@ -47,39 +47,13 @@ describe('projects', () => {
     const b = createDomain(store, { name: 'B' });
     const p = createProject(store, { name: 'P', domainId: a });
     updateProject(store, p, { domainId: b });
-    expect(getProject(store, p)?.domainId).toBe(b);
+    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.domainId)).toBe(b);
   });
 
   it('deleteProject removes the row', () => {
     const d = createDomain(store, { name: 'Family' });
     const p = createProject(store, { name: 'P', domainId: d });
     deleteProject(store, p);
-    expect(getProject(store, p)).toBeUndefined();
-  });
-
-  it('getProject returns a normalised entity', () => {
-    const d = createDomain(store, { name: 'Family' });
-    const p = createProject(store, { name: 'P', domainId: d });
-    const project = getProject(store, p);
-    expect(project).toMatchObject({ id: p, name: 'P', domainId: d });
-    expect(getProject(store, 'nope')).toBeUndefined();
-  });
-
-  it('getProjectsForDomain lists projects scoped to that domain', () => {
-    const a = createDomain(store, { name: 'A' });
-    const b = createDomain(store, { name: 'B' });
-    const pa = createProject(store, { name: 'PA1', domainId: a });
-    const pa2 = createProject(store, { name: 'PA2', domainId: a });
-    createProject(store, { name: 'PB1', domainId: b });
-    expect(getProjectsForDomain(store, a).sort()).toEqual([pa, pa2].sort());
-    expect(getProjectsForDomain(store, b)).toHaveLength(1);
-  });
-
-  it('orphan detection flags projects whose domain is gone', () => {
-    const d = createDomain(store, { name: 'A' });
-    const p = createProject(store, { name: 'P', domainId: d });
-    deleteDomain(store, d);
-    expect(getOrphanedProjectIds(store)).toContain(p);
-    expect(isProjectOrphaned(store, p)).toBe(true);
+    expect(store.hasRow(TABLES.projects, p)).toBe(false);
   });
 });

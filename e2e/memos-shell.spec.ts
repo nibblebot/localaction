@@ -1,82 +1,95 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Memos-style shell', () => {
+test.describe('LocalAction shell', () => {
   test('renders the two-zone layout with sidebar and main pane', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('.app-shell')).toBeVisible();
     await expect(page.locator('.sidebar')).toBeVisible();
     await expect(page.locator('.main')).toBeVisible();
-    await expect(page.locator('.sidebar-search input')).toBeVisible();
-    await expect(page.locator('.main-header-title')).toBeVisible();
+    await expect(page.locator('.sidebar-app-name')).toContainText('LocalAction');
   });
 
-  test('navigating to the home hash shows the home selection', async ({ page }) => {
-    await page.goto('/#/d/anything');
-    // No rail — navigate via URL hash
+  test('home hash shows the welcome empty state', async ({ page }) => {
     await page.goto('/#/');
     await expect(page).toHaveURL(/#\/$/);
-    await expect(page.locator('.main-header-title')).toContainText('Home');
+    await expect(page.locator('.main-empty')).toContainText('Welcome to LocalAction');
   });
 
-  test('sidebar search filters the domain list', async ({ page }) => {
-    await page.goto('/');
-    // Ensure at least one domain exists
-    const domains = await page.locator('.sidebar-section .sidebar-item-name').allTextContents();
-    if (domains.length === 0) {
-      await page.locator('.sidebar-link', { hasText: 'New domain' }).click();
-      // Modal submission will create a domain; no rail to click for "home"
-    }
-    await page.locator('.sidebar-search input').fill('zzz-no-match-zzz');
-    await expect(page.locator('.sidebar-empty')).toBeVisible();
-    await page.locator('.sidebar-search input').fill('');
+  test('creating a domain navigates to its main pane with the tab strip', async ({ page }) => {
+    await page.goto('/#/');
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.modal-input').fill('Work');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page).toHaveURL(/#\/d\//);
+    await expect(page.locator('.domain-header-name')).toContainText('Work');
+    await expect(page.locator('.domain-tabs')).toBeVisible();
+    await expect(page.locator('.domain-tab', { hasText: 'Projects' })).toBeVisible();
+    await expect(page.locator('.domain-tab', { hasText: 'Tasks' })).toBeVisible();
+    await expect(page.locator('.domain-tab', { hasText: 'Notes' })).toBeVisible();
   });
 
-  test('home view shows the composer with disabled Save', async ({ page }) => {
+  test('projects tab shows an empty state and an add prompt', async ({ page }) => {
     await page.goto('/#/');
-    const composer = page.locator('.composer');
-    await expect(composer).toBeVisible();
-    const saveBtn = composer.locator('.btn-primary', { hasText: 'Save' });
-    await expect(saveBtn).toBeDisabled();
-    await composer.locator('.composer-textarea').fill('Test note from playwright #e2e');
-    await expect(saveBtn).toBeEnabled();
+    // Create a domain so we have something to render.
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.modal-input').fill('Health');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page.locator('.projects-tab')).toBeVisible();
+    await expect(page.locator('.empty-tab')).toContainText('No projects yet.');
   });
 
-  test('composer saves a note and routes to its editor', async ({ page }) => {
+  test('clicking a project opens its pane with Tasks and Notes tabs', async ({ page }) => {
     await page.goto('/#/');
-    const stamp = `e2e-${Date.now()}`;
-    await page.locator('.composer-textarea').fill(`${stamp} body #e2eautomated`);
-    await page.locator('.composer .btn-primary', { hasText: 'Save' }).click();
-    await expect(page).toHaveURL(/#\/n\//);
-    await expect(page.locator('.main-header-title')).toContainText('Note');
-    // Back home via URL hash (no rail), then verify the new tag appears in the sidebar and click it.
-    // Persisted store can take a tick to flush; allow retries.
-    await page.goto('/#/');
-    const tagLink = page.locator('.sidebar-link', { hasText: '#e2eautomated' });
-    await expect(tagLink).toBeVisible({ timeout: 10_000 });
-    await tagLink.click();
-    await expect(page).toHaveURL(/#\/g\/e2eautomated/);
-    await expect(page.locator('.memo-card', { hasText: stamp })).toBeVisible();
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.modal-input').fill('Family');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    // Projects tab: add a project.
+    await page.locator('.empty-tab .btn-primary', { hasText: '+ Project' }).click();
+    await page.locator('.modal-input').fill('Plan trip');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page.locator('.project-row-name', { hasText: 'Plan trip' })).toBeVisible();
+    // Clicking the project navigates to the project pane (no inline expand).
+    await page.locator('.project-row-name', { hasText: 'Plan trip' }).click();
+    await expect(page).toHaveURL(/#\/p\//);
+    await expect(page.locator('.domain-header-name')).toContainText('Plan trip');
+    // Project pane has Tasks + Notes tabs but no Projects tab.
+    await expect(page.locator('.domain-tab', { hasText: 'Projects' })).toHaveCount(0);
+    await expect(page.locator('.domain-tab', { hasText: 'Tasks' })).toBeVisible();
+    await expect(page.locator('.domain-tab', { hasText: 'Notes' })).toBeVisible();
+    // Default tab is Tasks; add a task scoped to this project.
+    await page.locator('.domain-tab-add').click();
+    await page.locator('.modal-input').fill('Book flights');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
   });
 
-  test('mobile drawer opens via hamburger and closes via close button / ESC / backdrop', async ({ page }) => {
-    await page.setViewportSize({ width: 480, height: 800 });
+  test('notes tab shows an empty state then allows adding a note', async ({ page }) => {
     await page.goto('/#/');
-    await expect(page.locator('.drawer')).toBeHidden();
-    // Open
-    await page.locator('.menu-toggle').click();
-    await expect(page.locator('.drawer-open')).toBeVisible();
-    // Close via ESC
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.drawer-open')).toHaveCount(0);
-    // Open again, close via the X button
-    await page.locator('.menu-toggle').click();
-    await expect(page.locator('.drawer-open')).toBeVisible();
-    await page.locator('.drawer-close').click();
-    await expect(page.locator('.drawer-open')).toHaveCount(0);
-    // Open again, close via backdrop (click at a point outside the drawer's 280px width)
-    await page.locator('.menu-toggle').click();
-    await expect(page.locator('.drawer-open')).toBeVisible();
-    await page.locator('.drawer-backdrop').click({ position: { x: 400, y: 400 } });
-    await expect(page.locator('.drawer-open')).toHaveCount(0);
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.modal-input').fill('Personal');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await page.locator('.domain-tab', { hasText: 'Notes' }).click();
+    await expect(page.locator('.empty-tab')).toContainText('No notes yet.');
+    await page.locator('.empty-tab .btn-primary', { hasText: '+ Note' }).click();
+    await page.locator('.modal-input').fill('Quick thought');
+    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page.locator('.note-line-title', { hasText: 'Quick thought' })).toBeVisible();
+  });
+
+  test('legacy task / note deep links show the welcome state', async ({ page }) => {
+    await page.goto('/#/t/whatever');
+    await expect(page.locator('.main-empty')).toBeVisible();
+    await page.goto('/#/n/whatever');
+    await expect(page.locator('.main-empty')).toBeVisible();
+  });
+
+  test('a deep link to a missing project shows the welcome state', async ({ page }) => {
+    await page.goto('/#/p/does-not-exist');
+    await expect(page.locator('.main-empty')).toBeVisible();
+  });
+
+  test('unknown hash shows the welcome state', async ({ page }) => {
+    await page.goto('/#/unknown/x');
+    await expect(page.locator('.main-empty')).toBeVisible();
   });
 });

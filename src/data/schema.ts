@@ -12,6 +12,7 @@ export const COLUMNS = {
     id: 'id',
     name: 'name',
     parentId: 'parentId',
+    color: 'color',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
   },

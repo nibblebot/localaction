@@ -1,12 +1,12 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
+import { COLUMNS, TABLES } from '../../src/data/schema.ts';
 import {
   createDomain,
   updateDomain,
   deleteDomain,
   getDomain,
-  getDomainPath,
 } from '../../src/data/domains.ts';
 
 function freshStore(): MergeableStore {
@@ -19,19 +19,26 @@ describe('createDomain', () => {
     store = freshStore();
   });
 
-  it('writes a domain with the given name and no parent', () => {
+  it('writes a domain with the given name, default color, and no parent', () => {
     const id = createDomain(store, { name: 'Family' });
-    const d = getDomain(store, id);
-    expect(d?.name).toBe('Family');
-    expect(d?.parentId).toBeNull();
-    expect(typeof d?.createdAt).toBe('string');
-    expect(d?.updatedAt).toBe(d?.createdAt);
+    const name = String(store.getCell(TABLES.domains, id, COLUMNS.domains.name));
+    const parentId = store.getCell(TABLES.domains, id, COLUMNS.domains.parentId);
+    const color = String(store.getCell(TABLES.domains, id, COLUMNS.domains.color));
+    expect(name).toBe('Family');
+    expect(parentId).toBeUndefined();
+    expect(color).toBe('gray');
+  });
+
+  it('persists a chosen color', () => {
+    const id = createDomain(store, { name: 'Work', color: 'purple' });
+    const color = String(store.getCell(TABLES.domains, id, COLUMNS.domains.color));
+    expect(color).toBe('purple');
   });
 
   it('records the parentId for a sub-Domain', () => {
-    const parent = createDomain(store, { name: 'Family' });
-    const child = createDomain(store, { name: 'Wife', parentId: parent });
-    expect(getDomain(store, child)?.parentId).toBe(parent);
+    const a = createDomain(store, { name: 'A' });
+    const child = createDomain(store, { name: 'C', parentId: a });
+    expect(getDomain(store, child)?.parentId).toBe(a);
   });
 
   it('returns distinct ids for each call', () => {
@@ -47,14 +54,13 @@ describe('updateDomain', () => {
     store = freshStore();
   });
 
-  it('patches name and bumps updatedAt', async () => {
+  it('patches name and bumps updatedAt', () => {
     const id = createDomain(store, { name: 'Family' });
-    const before = getDomain(store, id)?.updatedAt;
-    await new Promise((r) => setTimeout(r, 5));
+    store.setCell(TABLES.domains, id, COLUMNS.domains.updatedAt, '2000-01-01T00:00:00Z');
     updateDomain(store, id, { name: 'Family Life' });
     const after = getDomain(store, id);
     expect(after?.name).toBe('Family Life');
-    expect(after?.updatedAt).not.toBe(before);
+    expect(after?.updatedAt).not.toBe('2000-01-01T00:00:00Z');
   });
 
   it('reparents a sub-Domain by changing parentId', () => {
@@ -70,6 +76,12 @@ describe('updateDomain', () => {
     const child = createDomain(store, { name: 'C', parentId: a });
     updateDomain(store, child, { parentId: null });
     expect(getDomain(store, child)?.parentId).toBeNull();
+  });
+
+  it('patches the color', () => {
+    const id = createDomain(store, { name: 'Work' });
+    updateDomain(store, id, { color: 'blue' });
+    expect(getDomain(store, id)?.color).toBe('blue');
   });
 });
 
@@ -93,33 +105,19 @@ describe('deleteDomain', () => {
   });
 });
 
-describe('getDomain / getDomainPath', () => {
+describe('getDomain', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
   });
 
-  it('getDomain returns undefined for a missing id', () => {
+  it('returns undefined for a missing id', () => {
     expect(getDomain(store, 'nope')).toBeUndefined();
   });
 
-  it('getDomainPath walks parent chain root-first and includes the target', () => {
-    const root = createDomain(store, { name: 'Family' });
-    const mid = createDomain(store, { name: 'Wife', parentId: root });
-    const leaf = createDomain(store, { name: 'Wedding', parentId: mid });
-    const path = getDomainPath(store, leaf);
-    expect(path.map((d) => d.name)).toEqual(['Family', 'Wife', 'Wedding']);
-  });
-
-  it('getDomainPath truncates at a missing parent — orphan resolves to itself', () => {
-    const root = createDomain(store, { name: 'Family' });
-    const child = createDomain(store, { name: 'Wife', parentId: root });
-    deleteDomain(store, root);
-    const path = getDomainPath(store, child);
-    expect(path.map((d) => d.name)).toEqual(['Wife']);
-  });
-
-  it('getDomainPath returns [] for a missing id', () => {
-    expect(getDomainPath(store, 'nope')).toEqual([]);
+  it('returns a normalised entity', () => {
+    const id = createDomain(store, { name: 'Family', color: 'green' });
+    const domain = getDomain(store, id);
+    expect(domain).toMatchObject({ id, name: 'Family', color: 'green' });
   });
 });

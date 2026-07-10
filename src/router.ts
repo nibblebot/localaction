@@ -1,65 +1,35 @@
 export type Selection =
   | { kind: 'home' }
   | { kind: 'domain'; id: string }
-  | { kind: 'project'; id: string }
-  | { kind: 'task'; id: string }
-  | { kind: 'note'; slug: string }
-  | { kind: 'tag'; value: string };
+  | { kind: 'project'; id: string };
 
-const PREFIXES = {
-  d: 'domain',
-  p: 'project',
-  t: 'task',
-  n: 'note',
-  g: 'tag',
-} as const;
+export const HOME: Selection = { kind: 'home' };
 
-type Prefix = keyof typeof PREFIXES;
-
-const HOME: Selection = { kind: 'home' };
-
+/**
+ * Recognises `#/d/<id>` (domain) and `#/p/<id>` (project) deep links.
+ * Anything else — including legacy task / note / tag shapes — collapses
+ * to `home` so stale links fall back to the welcome screen.
+ */
 export function parseRoute(raw: string): Selection {
+  if (!raw) return HOME;
   const hash = raw.startsWith('#') ? raw : raw.startsWith('/') ? `#${raw}` : `#/${raw}`;
-  const match = hash.match(/^#\/([dptng])\/(.+)$/);
-  if (!match) return HOME;
-  const [, prefix, rawId] = match;
-  const kind = PREFIXES[prefix as Prefix];
-  if (!kind || !rawId) return HOME;
-  const id = decodeURIComponent(rawId);
-  if (kind === 'note') return { kind: 'note', slug: id };
-  if (kind === 'tag') return { kind: 'tag', value: id };
-  return { kind, id };
+  let m = hash.match(/^#\/d\/([^/?#]+)$/);
+  if (m && m[1]) return { kind: 'domain', id: decodeURIComponent(m[1]) };
+  m = hash.match(/^#\/p\/([^/?#]+)$/);
+  if (m && m[1]) return { kind: 'project', id: decodeURIComponent(m[1]) };
+  return HOME;
 }
 
 export function formatRoute(sel: Selection): string {
-  switch (sel.kind) {
-    case 'home':
-      return '#/';
-    case 'domain':
-      return `#/d/${sel.id}`;
-    case 'project':
-      return `#/p/${sel.id}`;
-    case 'task':
-      return `#/t/${sel.id}`;
-    case 'note':
-      return `#/n/${encodeURIComponent(sel.slug)}`;
-    case 'tag':
-      return `#/g/${encodeURIComponent(sel.value)}`;
-  }
+  if (sel.kind === 'home') return '#/';
+  if (sel.kind === 'domain') return `#/d/${encodeURIComponent(sel.id)}`;
+  return `#/p/${encodeURIComponent(sel.id)}`;
 }
 
 export function routeEquals(a: Selection, b: Selection): boolean {
   if (a.kind !== b.kind) return false;
-  switch (a.kind) {
-    case 'home':
-      return true;
-    case 'domain':
-    case 'project':
-    case 'task':
-      return a.id === (b as { id: string }).id;
-    case 'note':
-      return a.slug === (b as { slug: string }).slug;
-    case 'tag':
-      return a.value === (b as { value: string }).value;
-  }
+  if (a.kind === 'home' && b.kind === 'home') return true;
+  if (a.kind === 'domain' && b.kind === 'domain') return a.id === b.id;
+  if (a.kind === 'project' && b.kind === 'project') return a.id === b.id;
+  return false;
 }

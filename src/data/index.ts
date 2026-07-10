@@ -49,43 +49,21 @@ export {
   updateDomain,
   deleteDomain,
   getDomain,
-  getDomainPath,
-  getTopLevelDomainIds,
-  getChildDomainIds,
-  getAllDomainIdsFlat,
-  getOrphanedDomainIds,
-  getAllDomainIds,
-  useDomains,
   useDomain,
-  useChildDomains,
-  useOrphanedDomainIds,
 } from './domains.ts';
-
 export {
   createProject,
   updateProject,
   deleteProject,
-  getProject,
-  getProjectsForDomain,
-  getOrphanedProjectIds,
-  isProjectOrphaned,
-  useProjects,
   useProject,
 } from './projects.ts';
-
 export {
   createTask,
   updateTask,
   deleteTask,
   setTaskStatus,
-  getTask,
-  getTasksForProject,
-  getChildTasks,
-  getOrphanedTaskIds,
-  isTaskOrphaned,
-  nextTaskOrder,
-  useTasks,
-  useChildTasks,
+  getTasksForProjectDeep,
+  useTasksForProjectDeep,
   useTask,
 } from './tasks.ts';
 
@@ -93,29 +71,22 @@ export {
   createNote,
   updateNote,
   deleteNote,
-  getNote,
-  getNotesForEntity,
-  getEntityNoteId,
-  getOrCreateEntityNote,
-  getNoteBySlug,
-  getNoteSlugLockReason,
-  useNotesForEntity,
-  useEntityNoteId,
-  useEntityNoteExists,
-  useAllNoteIds,
   useNote,
-  useNoteBySlug,
-  useNoteIndex,
-  useNoteIdForSlug,
+  useAllNoteIds,
+  useNoteIdsForEntity,
 } from './notes.ts';
 
 export { slugify } from './slug.ts';
 
+export { DOMAIN_COLORS, isDomainColorId, domainColorHex } from './colors.ts';
+export type { DomainColorId } from './colors.ts';
+
 export {
-  extractTags,
-  getAllTagCounts,
-  getNoteIdsForTag,
-  useAllTagCounts,
-  useNoteIdsForTag,
-} from './tags.ts';
-export type { TagCount } from './tags.ts';
+  getDomainCounts,
+  getNotesForDomainTree,
+  useNotesForDomainTree,
+  getProjectRollups,
+  useDomainCounts,
+  useProjectRollups,
+} from './selectors.ts';
+export type { DomainCount, ProjectRollup } from './selectors.ts';

@@ -57,7 +57,7 @@ function waitForCell(
   value: unknown,
   timeoutMs = 5_000,
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const tick = (): void => {
       if (store.getCell(table, row, cell) === value) {
@@ -79,19 +79,13 @@ function waitForCell(
   });
 }
 
-async function connectClient(store: MergeableStore): Promise<Awaited<ReturnType<typeof createWsSynchronizer>>> {
-  const sync = await createWsSynchronizer(store, new WebSocket(url));
-  await sync.startSync();
-  return sync;
-}
-
 function waitForRowAbsent(
   store: MergeableStore,
   table: string,
   row: string,
   timeoutMs = 5_000,
 ): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const tick = (): void => {
       if (!store.hasRow(table, row)) {
@@ -110,6 +104,12 @@ function waitForRowAbsent(
     };
     tick();
   });
+}
+
+async function connectClient(store: MergeableStore): Promise<Awaited<ReturnType<typeof createWsSynchronizer>>> {
+  const sync = await createWsSynchronizer(store, new WebSocket(url));
+  await sync.startSync();
+  return sync;
 }
 
 describe('sync server round-trip', () => {

@@ -1,95 +1,124 @@
 import { useMemo, useState } from 'react';
-import type { MergeableStore } from 'tinybase';
 import {
   useDataLayer,
-  useDomains,
-  useOrphanedDomainIds,
   useStoreVersion,
-  useAllTagCounts,
+  useDomainCounts,
   createDomain,
-  getChildDomainIds,
+  type DomainCount,
 } from '../data/index.ts';
-import type { TagCount } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import NoteIndicator from './NoteIndicator.tsx';
 import PromptModal from './PromptModal.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
+import { domainColorHex, isDomainColorId } from '../data/colors.ts';
+import type { DomainColorId } from '../data/colors.ts';
 
+interface DomainNode {
+  count: DomainCount;
+  children: DomainNode[];
+}
 
-interface FlatDomain {
-  id: string;
-  name: string;
-  depth: number;
-  parentId: string | null;
-  isOrphan: boolean;
-  children: FlatDomain[];
+function buildTree(counts: DomainCount[]): DomainNode[] {
+  const byId = new Map<string, DomainNode>();
+  for (const c of counts) byId.set(c.id, { count: c, children: [] });
+  const roots: DomainNode[] = [];
+  for (const node of byId.values()) {
+    const parentId = node.count.parentId;
+    if (parentId && byId.has(parentId)) {
+      byId.get(parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+  // Stable order: by name asc, fall back to id.
+  const sortRec = (nodes: DomainNode[]): void => {
+    nodes.sort((a, b) => {
+      const an = a.count.name || '';
+      const bn = b.count.name || '';
+      if (an !== bn) return an.localeCompare(bn);
+      return a.count.id.localeCompare(b.count.id);
+    });
+    for (const n of nodes) sortRec(n.children);
+  };
+  sortRec(roots);
+  return roots;
+}
+
+function getColorHex(raw: string | null | undefined): string {
+  return isDomainColorId(raw) ? domainColorHex(raw) : domainColorHex('gray');
+}
+
+interface DomainTreeItemProps {
+  node: DomainNode;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+}
+
+function DomainTreeItem({
+  node,
+  selectedId,
+  onSelect,
+}: DomainTreeItemProps): React.JSX.Element {
+  const isActive = node.count.id === selectedId;
+  const dot = getColorHex(node.count.color);
+  return (
+    <li>
+      <div className="sidebar-item-row">
+        <button
+          type="button"
+          className={`sidebar-item${isActive ? ' sidebar-item-active' : ''}${
+            node.count.parentId == null ? ' sidebar-item-top' : ''
+          }`}
+          onClick={() => onSelect(node.count.id)}
+        >
+          <span
+            className={`sidebar-item-dot${
+              node.count.parentId == null ? '' : ' sidebar-item-dot-child'
+            }`}
+            aria-hidden="true"
+            style={{ background: dot }}
+          />
+          <span className="sidebar-item-name">
+            {node.count.name || 'Untitled'}
+          </span>
+          <span className="sidebar-link-count">{node.count.childCount}</span>
+        </button>
+      </div>
+      {node.children.length > 0 && (
+        <ul className="sidebar-domain-children" role="list">
+          {node.children.map((child) => (
+            <DomainTreeItem
+              key={child.count.id}
+              node={child}
+              selectedId={selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
 }
 
 export default function Sidebar(): React.JSX.Element {
   const { store } = useDataLayer();
-  const rootIds = useDomains(store);
-  const orphanIds = useOrphanedDomainIds(store);
   useStoreVersion(store);
+  const counts = useDomainCounts(store);
+  const { selection, navigate } = useSelection();
+  const [promptOpen, setPromptOpen] = useState(false);
+  const tree = useMemo(() => buildTree(counts), [counts]);
+  const activeColor: DomainColorId = useMemo(() => {
+    if (selection.kind !== 'domain') return 'gray';
+    const c = counts.find((x) => x.id === selection.id);
+    return c ? c.color : 'gray';
+  }, [selection, counts]);
 
-  const { navigate } = useSelection();
-  // Hoist tag subscription to the always-mounted parent so the subscription
-  // survives even when no tags are present yet — otherwise adding the first
-  const tagCounts = useAllTagCounts(store);
-  const [query, setQuery] = useState('');
-  type PromptContext =
-    | { kind: 'top' }
-    | { kind: 'sub'; parentId: string };
-  const [promptCtx, setPromptCtx] = useState<PromptContext | null>(null);
-
-  function openPrompt(ctx: PromptContext): void {
-    setPromptCtx(ctx);
-  }
-  function closePrompt(): void {
-    setPromptCtx(null);
-  }
-  function createWithName(name: string): void {
-    if (!promptCtx) return;
-    const parentId = promptCtx.kind === 'sub' ? promptCtx.parentId : null;
-    const id = createDomain(store, { name, parentId });
-    setPromptCtx(null);
+  function createNew(name: string): void {
+    const id = createDomain(store, { name, color: activeColor });
+    setPromptOpen(false);
     navigate({ kind: 'domain', id });
   }
-  const flat = useMemo<FlatDomain[]>(() => {
-    const byId = new Map<string, FlatDomain>();
-    const visit = (
-      id: string,
-      depth: number,
-      parentId: string | null,
-    ): FlatDomain => {
-      const node: FlatDomain = {
-        id,
-        name: getName(store, id),
-        depth,
-        parentId,
-        isOrphan: false,
-        children: [],
-      };
-      byId.set(id, node);
-      const childIds = getChildDomainIds(store, id);
-      for (const cid of childIds) {
-        node.children.push(visit(cid, depth + 1, id));
-      }
-      return node;
-    };
-    const roots: FlatDomain[] = [];
-    for (const id of rootIds) roots.push(visit(id, 0, null));
-    if (orphanIds.length) {
-      for (const id of orphanIds) {
-        if (byId.has(id)) continue;
-        roots.push(visit(id, 0, null));
-        const node = byId.get(id)!;
-        node.isOrphan = true;
-      }
-    }
-    return roots;
-  }, [store, rootIds, orphanIds]);
-  const q = query.trim().toLowerCase();
-  const visible = filterTree(flat, q);
+
+  const selectedId = selection.kind === 'domain' ? selection.id : null;
 
   return (
     <aside className="sidebar" aria-label="Sidebar">
@@ -98,43 +127,16 @@ export default function Sidebar(): React.JSX.Element {
         <SyncStatusBadge />
       </div>
 
-      <div className="sidebar-section">
-        <div className="sidebar-search">
-          <svg className="sidebar-search-icon" aria-hidden="true">
-            <use href="/icons.svg#search-icon" />
-          </svg>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
-            aria-label="Search"
-          />
-          {query && (
-            <button
-              type="button"
-              className="sidebar-search-clear"
-              aria-label="Clear search"
-              onClick={() => setQuery('')}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#close-icon" />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="sidebar-section" style={{ flex: '1 1 auto', overflow: 'auto' }}>
+      <div
+        className="sidebar-section"
+        style={{ flex: '1 1 auto', overflow: 'auto' }}
+      >
         <h2 className="sidebar-section-title">
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#tag-icon" />
-          </svg>
-          Domains
+          <span>Domains</span>
           <button
             type="button"
             className="sidebar-section-title-action"
-            onClick={() => openPrompt({ kind: 'top' })}
+            onClick={() => setPromptOpen(true)}
             aria-label="New domain"
             title="New domain"
           >
@@ -143,141 +145,33 @@ export default function Sidebar(): React.JSX.Element {
             </svg>
           </button>
         </h2>
-        {visible.length === 0 ? (
+        {tree.length === 0 ? (
           <p className="sidebar-empty">
-            {q ? 'No matches.' : 'No domains yet. Create one to get started.'}
+            No domains yet. Create one to get started.
           </p>
         ) : (
           <ul className="sidebar-section-body" role="list">
-            {visible.map((d) => (
+            {tree.map((n) => (
               <DomainTreeItem
-                key={d.id}
-                domain={d}
-                onAddSubdomain={(parentId) => openPrompt({ kind: 'sub', parentId })}
+                key={n.count.id}
+                node={n}
+                selectedId={selectedId}
+                onSelect={(id) => navigate({ kind: 'domain', id })}
               />
             ))}
           </ul>
         )}
       </div>
 
-      {tagCounts.length > 0 && <TagsSection tags={tagCounts} />}
       <PromptModal
-        open={promptCtx !== null}
+        open={promptOpen}
         title="New domain"
         label="Name"
         placeholder="e.g. Work, Personal, Side project"
         submitLabel="Create"
-        onSubmit={createWithName}
-        onCancel={closePrompt}
+        onSubmit={createNew}
+        onCancel={() => setPromptOpen(false)}
       />
     </aside>
-  );
-}
-
-function getName(store: MergeableStore, id: string): string {
-  const v = store.getCell('domains', id, 'name');
-  const name = typeof v === 'string' ? v : '';
-  return name || 'Untitled';
-}
-
-function filterTree(nodes: FlatDomain[], q: string): FlatDomain[] {
-  if (!q) return nodes;
-  const out: FlatDomain[] = [];
-  for (const node of nodes) {
-    const filteredChildren = filterTree(node.children, q);
-    if (node.name.toLowerCase().includes(q) || filteredChildren.length > 0) {
-      out.push({ ...node, children: filteredChildren });
-    }
-  }
-  return out;
-}
-
-function DomainTreeItem({
-  domain,
-  onAddSubdomain,
-}: {
-  domain: FlatDomain;
-  onAddSubdomain: (parentId: string) => void;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const { selection, navigate } = useSelection();
-  useStoreVersion(store);
-  const isActive = selection.kind === 'domain' && selection.id === domain.id;
-
-  return (
-    <li>
-      <div className="sidebar-item-row">
-        <button
-          type="button"
-          className={`sidebar-item${isActive ? ' sidebar-item-active' : ''}${domain.depth === 0 ? ' sidebar-item-top' : ''}`}
-          style={{ paddingInlineStart: `${8 + domain.depth * 12}px` }}
-          onClick={() => navigate({ kind: 'domain', id: domain.id })}
-        >
-          <span className="sidebar-item-name">{domain.name}</span>
-          <NoteIndicator entityType="domain" entityId={domain.id} readonly />
-        </button>
-
-        <button
-          type="button"
-          className="sidebar-item-action"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAddSubdomain(domain.id);
-          }}
-          aria-label={`Add sub-domain to ${domain.name || 'domain'}`}
-          title="Add sub-domain"
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#add-icon" />
-          </svg>
-        </button>
-      </div>
-      {domain.children.length > 0 && (
-        <ul className="sidebar-domain-children" role="list">
-          {domain.children.map((child) => (
-            <DomainTreeItem
-              key={child.id}
-              domain={child}
-              onAddSubdomain={onAddSubdomain}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
-
-  );
-}
-
-function TagsSection({ tags }: { tags: TagCount[] }): React.JSX.Element {
-  const { selection, navigate } = useSelection();
-  return (
-    <div className="sidebar-section">
-      <h2 className="sidebar-section-title">
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#tag-icon" />
-        </svg>
-        Tags
-      </h2>
-      <ul className="sidebar-section-body" role="list">
-        {tags.map((t) => {
-          const active = selection.kind === 'tag' && selection.value === t.tag;
-          return (
-            <li key={t.tag}>
-              <button
-                type="button"
-                className={`sidebar-link${active ? ' sidebar-link-active' : ''}`}
-                onClick={() => navigate({ kind: 'tag', value: t.tag })}
-              >
-                <svg className="svg-icon" aria-hidden="true">
-                  <use href="/icons.svg#tag-icon" />
-                </svg>
-                <span>#{t.tag}</span>
-                <span className="sidebar-link-count">{t.count}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }

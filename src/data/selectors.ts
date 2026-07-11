@@ -1,5 +1,5 @@
 import type { MergeableStore } from 'tinybase';
-import { useRowIds } from 'tinybase/ui-react';
+import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import { getDomain, getAllDomainIdsFlat } from './domains.ts';
 import type { Domain } from './types.ts';
@@ -9,6 +9,7 @@ export interface DomainCount {
   name: string;
   parentId: string | null;
   color: Domain['color'];
+  order: number;
   childCount: number;
   projectCount: number;
   taskCount: number;
@@ -22,7 +23,7 @@ export interface DomainCount {
  * the cached `useRowIds` results). The token has no semantic value —
  * its sole purpose is to keep the subscription hooks alive.
  */
-export function getDomainCounts(store: MergeableStore, _version = 0): DomainCount[] {
+export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: unknown): DomainCount[] {
   const projectIds = store.getRowIds(TABLES.projects);
   const taskIds = store.getRowIds(TABLES.tasks);
   const noteIds = store.getRowIds(TABLES.notes);
@@ -124,6 +125,7 @@ export function getDomainCounts(store: MergeableStore, _version = 0): DomainCoun
       name: d?.name ?? '',
       parentId: d?.parentId ?? null,
       color: d?.color ?? 'gray',
+      order: d?.order ?? 0,
       childCount:
         (directSubDomainCount.get(did) ?? 0) + (directProjectCount.get(did) ?? 0),
       projectCount: projectCount.get(did) ?? 0,
@@ -134,19 +136,24 @@ export function getDomainCounts(store: MergeableStore, _version = 0): DomainCoun
 }
 
 export function useDomainCounts(store: MergeableStore): DomainCount[] {
-  // Subscribe via useRowIds; the lengths become a "version" token that the
-  // function call consumes so the React Compiler doesn't elide it.
+  // Subscribe via useRowIds (length changes) and useTables (cell changes).
+  // Both feed the cache key the React Compiler uses to decide whether
+  // to re-run the body; without useTables, a row whose `order` cell
+  // changes (e.g. via `reorderDomain`) does not invalidate the memoised
+  // result, so the sidebar tree keeps showing the stale order.
   const d = useRowIds(TABLES.domains, store);
   const p = useRowIds(TABLES.projects, store);
   const t = useRowIds(TABLES.tasks, store);
   const n = useRowIds(TABLES.notes, store);
-  return getDomainCounts(store, d.length + p.length + t.length + n.length);
+  const tables = useTables(store);
+  return getDomainCounts(store, d.length + p.length + t.length + n.length, tables);
 }
 
 export function getNotesForDomainTree(
   store: MergeableStore,
   domainId: string,
   _version = 0,
+  _tables?: unknown,
 ): { domainNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
   const descendants = new Set<string>([domainId]);
   let added = true;
@@ -195,23 +202,47 @@ export function useNotesForDomainTree(
   const p = useRowIds(TABLES.projects, store);
   const t = useRowIds(TABLES.tasks, store);
   const n = useRowIds(TABLES.notes, store);
-  return getNotesForDomainTree(store, domainId, d.length + p.length + t.length + n.length);
+  const tables = useTables(store);
+  return getNotesForDomainTree(store, domainId, d.length + p.length + t.length + n.length, tables);
 }
 
 export interface ProjectRollup {
   projectId: string;
   domainId: string | null;
   projectName: string;
+  order: number;
   done: number;
   total: number;
 }
 
-export function getProjectRollups(store: MergeableStore, _version = 0): ProjectRollup[] {
-  const out: ProjectRollup[] = [];
-  for (const pid of store.getRowIds(TABLES.projects)) {
+export function useProjectRollups(store: MergeableStore): ProjectRollup[] {
+  const p = useRowIds(TABLES.projects, store);
+  const t = useRowIds(TABLES.tasks, store);
+  const tables = useTables(store);
+  return getProjectRollups(store, p.length + t.length, tables);
+}
+
+export function getProjectRollups(
+  store: MergeableStore,
+  _version = 0,
+  _tables?: unknown,
+): ProjectRollup[] {
+  const projectIds = store.getRowIds(TABLES.projects);
+  const projectDomain = new Map<string, string | null>();
+  for (const pid of projectIds) {
+    projectDomain.set(
+      pid,
+      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId) === 'string'
+        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId))
+        : null,
+    );
+  }
+  const projectRollups: ProjectRollup[] = [];
+  for (const pid of projectIds) {
     const domainIdRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId);
     const domainId = typeof domainIdRaw === 'string' ? domainIdRaw : null;
     const name = String(store.getCell(TABLES.projects, pid, COLUMNS.projects.name) ?? '');
+    const order = Number(store.getCell(TABLES.projects, pid, COLUMNS.projects.order) ?? 0);
     let done = 0;
     let total = 0;
     for (const tid of store.getRowIds(TABLES.tasks)) {
@@ -221,13 +252,7 @@ export function getProjectRollups(store: MergeableStore, _version = 0): ProjectR
         done += 1;
       }
     }
-    out.push({ projectId: pid, domainId, projectName: name, done, total });
+    projectRollups.push({ projectId: pid, domainId, projectName: name, order, done, total });
   }
-  return out;
-}
-
-export function useProjectRollups(store: MergeableStore): ProjectRollup[] {
-  const p = useRowIds(TABLES.projects, store);
-  const t = useRowIds(TABLES.tasks, store);
-  return getProjectRollups(store, p.length + t.length);
+  return projectRollups;
 }

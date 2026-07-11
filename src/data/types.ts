@@ -6,6 +6,7 @@ export interface Domain {
   name: string;
   parentId: string | null;
   color: DomainColorId;
+  order: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,6 +15,7 @@ export interface Project {
   id: string;
   name: string;
   domainId: string | null;
+  order: number;
   createdAt: string;
   updatedAt: string;
 }

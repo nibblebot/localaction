@@ -4,6 +4,14 @@ import { COLUMNS, TABLES } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import { isDomainColorId, type DomainColorId } from './colors.ts';
 import type { Domain, DomainInput, DomainPatch } from './types.ts';
+import { readSiblingOrders } from './order.ts';
+
+function nextOrder(store: MergeableStore, parentId: string | null): number {
+  const siblings = readSiblingOrders(store, TABLES.domains, COLUMNS.domains.parentId, parentId);
+  const last = siblings[siblings.length - 1];
+  if (!last) return 1000;
+  return last.order + 1000;
+}
 
 export function createDomain(
   store: MergeableStore,
@@ -15,6 +23,7 @@ export function createDomain(
   const color: DomainColorId = isDomainColorId(input.color)
     ? input.color
     : 'gray';
+  const order = nextOrder(store, parentId);
   store.setRow(
     TABLES.domains,
     id,
@@ -22,6 +31,7 @@ export function createDomain(
       [COLUMNS.domains.name]: input.name,
       [COLUMNS.domains.parentId]: parentId,
       [COLUMNS.domains.color]: color,
+      [COLUMNS.domains.order]: order,
       [COLUMNS.domains.createdAt]: ts,
       [COLUMNS.domains.updatedAt]: ts,
     }),
@@ -35,7 +45,7 @@ export function updateDomain(
   patch: DomainPatch,
 ): void {
   if (!store.hasRow(TABLES.domains, id)) return;
-  const next: Record<string, string | undefined> = {
+  const next: Record<string, string | number | null | undefined> = {
     [COLUMNS.domains.updatedAt]: nowIso(),
   };
   if (patch.name !== undefined) next[COLUMNS.domains.name] = patch.name;
@@ -66,6 +76,7 @@ export function getDomain(store: MergeableStore, id: string): Domain | undefined
     name: String(row[COLUMNS.domains.name] ?? ''),
     parentId: normalizeRelation(row[COLUMNS.domains.parentId]),
     color,
+    order: Number(row[COLUMNS.domains.order] ?? 0),
     createdAt: String(row[COLUMNS.domains.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.domains.updatedAt] ?? ''),
   };
@@ -96,6 +107,7 @@ export function useDomain(store: MergeableStore, id: string | undefined): Domain
     name: String(row[COLUMNS.domains.name] ?? ''),
     parentId: normalizeRelation(row[COLUMNS.domains.parentId]),
     color,
+    order: Number(row[COLUMNS.domains.order] ?? 0),
     createdAt: String(row[COLUMNS.domains.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.domains.updatedAt] ?? ''),
   };

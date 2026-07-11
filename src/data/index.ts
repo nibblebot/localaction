@@ -68,6 +68,14 @@ export {
 } from './tasks.ts';
 
 export {
+  reorderDomain,
+  reorderProject,
+  reorderTask,
+  backfillOrder,
+  readSiblingOrders,
+} from './order.ts';
+
+export {
   createNote,
   updateNote,
   deleteNote,

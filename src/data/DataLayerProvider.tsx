@@ -5,8 +5,10 @@ import {
   useState,
 } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import type { MergeableStore } from 'tinybase';
 import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
+import { backfillOrder } from './order.ts';
 import {
   getSyncClient,
   destroySyncClient,
@@ -19,7 +21,7 @@ import type { DataLayerValue } from './dataLayerContext.ts';
 export type { DataLayerValue } from './dataLayerContext.ts';
 
 export interface LocalActionDebug {
-  readonly store: ReturnType<typeof getStore>;
+  readonly store: MergeableStore;
   readonly persistenceReady: boolean;
 }
 
@@ -42,6 +44,9 @@ export function DataLayerProvider({
 
   useEffect(() => {
     if (offline) {
+      // Offline mode skips persistence + sync; still normalise the
+      // store once so any seeded rows from dev tests pick up `order`.
+      backfillOrder(store);
       setPersistenceReady(true);
       return;
     }
@@ -50,6 +55,9 @@ export function DataLayerProvider({
     void (async () => {
       try {
         await startLocalPersistence();
+        // After OPFS has loaded the persisted snapshot, fill in any
+        // missing `order` cells. Idempotent — re-running is a no-op.
+        backfillOrder(store);
       } catch (err) {
         console.warn('[localaction] persistence disabled', err);
       }

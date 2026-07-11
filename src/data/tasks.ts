@@ -1,15 +1,24 @@
-import { useRow, useRowIds } from 'tinybase/ui-react';
+import { useRow, useRowIds, useTables } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Task, TaskInput, TaskPatch } from './types.ts';
+import { readSiblingOrders } from './order.ts';
+
+function nextOrder(store: MergeableStore, parentTaskId: string | null): number {
+  const siblings = readSiblingOrders(store, TABLES.tasks, COLUMNS.tasks.parentTaskId, parentTaskId);
+  const last = siblings[siblings.length - 1];
+  if (!last) return 1000;
+  return last.order + 1000;
+}
 
 export function createTask(store: MergeableStore, input: TaskInput): string {
   const id = newId();
   const ts = nowIso();
   const status = input.status ?? TASK_STATUS.open;
   const parent = input.parentTaskId ?? null;
+  const order = input.order ?? nextOrder(store, parent);
   store.setRow(
     TABLES.tasks,
     id,
@@ -18,7 +27,7 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
       [COLUMNS.tasks.projectId]: input.projectId,
       [COLUMNS.tasks.parentTaskId]: parent,
       [COLUMNS.tasks.status]: status,
-      [COLUMNS.tasks.order]: 0,
+      [COLUMNS.tasks.order]: order,
       [COLUMNS.tasks.createdAt]: ts,
       [COLUMNS.tasks.updatedAt]: ts,
     }),
@@ -28,7 +37,7 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
 
 export function updateTask(store: MergeableStore, id: string, patch: TaskPatch): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
-  const next: Record<string, string | undefined> = {
+  const next: Record<string, string | number | null | undefined> = {
     [COLUMNS.tasks.updatedAt]: nowIso(),
   };
   if (patch.title !== undefined) next[COLUMNS.tasks.title] = patch.title;
@@ -43,6 +52,7 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
   } else if (patch.parentTaskId !== undefined) {
     next[COLUMNS.tasks.parentTaskId] = patch.parentTaskId;
   }
+  if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
   store.setPartialRow(TABLES.tasks, id, row(next));
 }
 
@@ -109,12 +119,33 @@ function collectChildIds(
  * descendant change re-renders callers.
  */
 export function useTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
-  // Subscribe to the tasks table so any descendant change re-renders.
-  useRowIds(TABLES.tasks, store);
+  // Subscribe to the tasks table; the row-id array is the subscription
+  // handle. We also fold its length into the cache key the React
+  // Compiler uses to decide whether to re-run the body, so newly-added
+  // tasks invalidate the memoised result. Without this the compiler
+  // happily returns a stale `out` array after new tasks land in the
+  // store, even though `useRowIds` correctly fires the subscription.
+  // useTables() additionally subscribes to cell-only changes (e.g. the
+  // `order` cell after a `reorderTask`) so reorders re-render.
+  const taskRowIds = useRowIds(TABLES.tasks, store);
+  useTables(store);
+  return collectTasksForProjectDeep(store, projectId, taskRowIds.length);
+}
+
+function collectTasksForProjectDeep(
+  store: MergeableStore,
+  projectId: string,
+  version: number,
+): string[] {
+  void version;
   const out: string[] = [];
   for (const id of store.getRowIds(TABLES.tasks)) {
     if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) !== undefined) continue;
+    // Treat both undefined (cell absent) and null (cell explicitly null) as
+    // "no parent". `createTask` stores the parent as `null` for top-level
+    // tasks; TinyBase strips null cells, so the cell reads back as
+    // undefined. Either way the task is a top-level child of the project.
+    if (normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId)) !== null) continue;
     out.push(id);
   }
   // Recurse to gather nested children; `collectChildIds` walks via parent

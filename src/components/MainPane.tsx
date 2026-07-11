@@ -22,6 +22,8 @@ import {
   deleteTask,
   deleteProject,
   deleteNote,
+  reorderProject,
+  reorderTask,
   TABLES,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
@@ -35,6 +37,8 @@ import PromptModal from './PromptModal.tsx';
 import { domainColorHex } from '../data/colors.ts';
 import type { DomainColorId } from '../data/colors.ts';
 import { renderMarkdown } from '../markdown/render.ts';
+import { SortableList } from './SortableList.tsx';
+import type { SortableHandleProps } from './SortableList.tsx';
 type Tab = 'projects' | 'tasks' | 'notes';
 type ProjectTab = 'tasks' | 'notes';
 
@@ -53,14 +57,11 @@ export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
   const counts = useDomainCounts(store);
-  // Subscribe to domains table so parent-chain / sub-domain list re-derive
-  // when any domain row changes (rename, reparent, delete, add).
   const domainRowIds = useRowIds(TABLES.domains, store);
 
   const domainId = selection.kind === 'domain' ? selection.id : null;
   const domain = useDomain(store, domainId ?? undefined);
 
-  // Per-domain tab state so each domain remembers which tab is open.
   const [tabByDomain, setTabByDomain] = useState<Record<string, Tab>>({});
   const tab: Tab = (domainId ? tabByDomain[domainId] : undefined) ?? 'projects';
   const [addPromptOpen, setAddPromptOpen] = useState(false);
@@ -70,15 +71,12 @@ export default function MainPane(): React.JSX.Element {
     setTabByDomain((prev) => ({ ...prev, [domainId]: next }));
   };
 
-  // Parent chain for the active domain. Returns empty when no domain
-  // is selected. domainRowIds is touched to keep the linter (and us)
-  // honest about the subscription that drives re-derivation.
   const parentChain = useMemo<readonly Domain[]>(() => {
     if (!domainId) return [];
     void domainRowIds.length;
     return buildParentChain(store, domainId);
   }, [store, domainId, domainRowIds]);
-  // Project selection → dedicated project pane (Tasks / Notes only).
+
   if (selection.kind === 'project') {
     return <ProjectPane projectId={selection.id} />;
   }
@@ -148,6 +146,7 @@ export default function MainPane(): React.JSX.Element {
     </main>
   );
 }
+
 function DomainHeader({
   name,
   color,
@@ -246,12 +245,6 @@ function DomainHeader({
   );
 }
 
-/**
- * Walk the parent chain of a domain up to (and not including) the root.
- * Result is root-first → parent-of-parent-of → direct parent, so a
- * breadcrumb renders left-to-right from outer to inner. Cycle-safe.
- */
-
 function buildParentChain(store: MergeableStore, domainId: string): Domain[] {
   const chain: Domain[] = [];
   const seen = new Set<string>([domainId]);
@@ -265,6 +258,7 @@ function buildParentChain(store: MergeableStore, domainId: string): Domain[] {
   }
   return chain.reverse();
 }
+
 interface PaneTabsProps<T extends string> {
   tabs: readonly { id: T; label: string }[];
   tab: T;
@@ -326,8 +320,6 @@ function PaneTabs<T extends string>({
   );
 }
 
-/* -------------------------------------------------------------- Projects */
-
 function ProjectsTab({
   domainId,
   addPromptOpen,
@@ -343,7 +335,10 @@ function ProjectsTab({
     () =>
       rollups
         .filter((r) => r.domainId === domainId)
-        .sort((a, b) => a.projectName.localeCompare(b.projectName)),
+        .sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.projectName.localeCompare(b.projectName);
+        }),
     [rollups, domainId],
   );
 
@@ -352,9 +347,10 @@ function ProjectsTab({
     setAddPromptOpen(false);
   }
 
-  // A project is "done" only when it has tasks and all are complete;
-  // everything else (including taskless projects) is active so the list
-  // never silently hides projects the badge already counts.
+  function onReorder(activeId: string, beforeId: string | undefined): void {
+    reorderProject(store, activeId, beforeId);
+  }
+
   const done = inDomain.filter((p) => p.total > 0 && p.done === p.total);
   const active = inDomain.filter((p) => p.total === 0 || p.done < p.total);
 
@@ -366,15 +362,26 @@ function ProjectsTab({
         <>
           {active.length > 0 && (
             <Group title="ACTIVE" count={active.length}>
-              {active.map((p) => (
-                <ProjectRow
-                  key={p.projectId}
-                  projectId={p.projectId}
-                  name={p.projectName}
-                  done={p.done}
-                  total={p.total}
-                />
-              ))}
+              <SortableList
+                itemIds={active.map((p) => p.projectId)}
+                onReorder={onReorder}
+                ariaLabel="Active projects"
+                className="sortable-list"
+              >
+                {(projectId, handle) => {
+                  const p = active.find((x) => x.projectId === projectId);
+                  if (!p) return <></>;
+                  return (
+                    <SortableProjectRow
+                      handle={handle}
+                      projectId={p.projectId}
+                      name={p.projectName}
+                      done={p.done}
+                      total={p.total}
+                    />
+                  );
+                }}
+              </SortableList>
             </Group>
           )}
           {done.length > 0 && (
@@ -538,11 +545,137 @@ function ProjectRow({
   );
 }
 
-/* ----------------------------------------------------------------- Tasks */
+function SortableProjectRow({
+  handle,
+  projectId,
+  name,
+  done,
+  total,
+}: {
+  handle: SortableHandleProps;
+  projectId: string;
+  name: string;
+  done: number;
+  total: number;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const project = useProject(store, projectId);
+  const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { navigate } = useSelection();
+
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  const display = (project?.name ?? '') || name || 'Untitled';
+
+  const classes = ['project-row', 'sortable-row'];
+  if (handle.isDragging) classes.push('sortable-row-active');
+  if (handle.isOver) classes.push('sortable-row-over');
+
+  return (
+    <li
+      ref={handle.ref}
+      style={handle.style}
+      className={classes.join(' ')}
+      data-drag-over={handle.isOver ? 'true' : undefined}
+    >
+      <div className="project-row-line">
+        <button
+          type="button"
+          className="project-row-drag-handle"
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          onClick={(e) => e.preventDefault()}
+          {...(handle.listeners ?? {})}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#drag-icon" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="project-row-name"
+          title="Open project"
+          onClick={() => navigate({ kind: 'project', id: projectId })}
+        >
+          {editing ? (
+            <input
+              type="text"
+              className="project-row-name-input"
+              defaultValue={display}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => {
+                const next = e.currentTarget.value.trim() || 'Untitled';
+                if (next !== display) {
+                  store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
+                }
+                setEditing(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+                else if (e.key === 'Escape') setEditing(false);
+              }}
+            />
+          ) : (
+            display
+          )}
+        </button>
+        <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
+          <div className="project-row-progress-bar">
+            <div className="project-row-progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <span className="project-row-progress-count">
+            {done} / {total}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="project-row-action"
+          aria-label="Rename project"
+          title="Rename"
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditing(true);
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#edit-icon" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="project-row-action project-row-action-danger"
+          aria-label="Delete project"
+          title="Delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmDelete(true);
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#trash-icon" />
+          </svg>
+        </button>
+      </div>
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete project?"
+        message={`"${display}" will be deleted. Tasks and notes attached to it will become orphans.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          deleteProject(store, projectId);
+          setConfirmDelete(false);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </li>
+  );
+}
 
 interface TasksTabProject {
   id: string;
   name: string;
+  order: number;
 }
 
 function TasksTab({
@@ -560,8 +693,11 @@ function TasksTab({
     () =>
       rollups
         .filter((r) => r.domainId === domainId)
-        .map((r) => ({ id: r.projectId, name: r.projectName }))
-        .sort((a, b) => a.name.localeCompare(b.name)),
+        .map((r) => ({ id: r.projectId, name: r.projectName, order: r.order }))
+        .sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.name.localeCompare(b.name);
+        }),
     [rollups, domainId],
   );
 
@@ -617,11 +753,6 @@ function TasksTab({
   );
 }
 
-/**
- * A single project's task list, grouped into ACTIVE / DONE rows. Lives
- * in its own component so `useTasksForProjectDeep` is called a fixed
- * number of times regardless of how many projects the user has.
- */
 function ProjectTasksGroup({
   projectId,
   projectName,
@@ -632,22 +763,46 @@ function ProjectTasksGroup({
   const { store } = useDataLayer();
   useStoreVersion(store);
   const taskIds = useTasksForProjectDeep(store, projectId);
-  if (taskIds.length === 0) return null;
-  // Partition into open / done using a non-reactive helper; the
-  // TaskLineRow's own `useTask` re-render keeps the visual state in sync.
+  if (taskIds.length === 0) {
+    return null;
+  }
+  const orderedIds = [...taskIds].sort((a, b) => {
+    const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
+    const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
+    if (oa !== ob) return oa - ob;
+    return a.localeCompare(b);
+  });
   const open: string[] = [];
   const done: string[] = [];
-  for (const tid of taskIds) {
+  for (const tid of orderedIds) {
     if (isTaskDone(store, tid)) done.push(tid);
     else open.push(tid);
   }
   if (open.length === 0 && done.length === 0) return null;
+
+  function onReorder(activeId: string, beforeId: string | undefined): void {
+    reorderTask(store, activeId, beforeId);
+  }
+
   return (
     <>
-      <ProjectHeader name={projectName} count={taskIds.length} />
-      {open.map((tid) => (
-        <TaskLineRow key={tid} taskId={tid} projectName={projectName} />
-      ))}
+      <ProjectHeader name={projectName} count={orderedIds.length} />
+      {open.length > 0 && (
+        <SortableList
+          itemIds={open}
+          onReorder={onReorder}
+          ariaLabel={`Open tasks for ${projectName}`}
+          className="sortable-list"
+        >
+          {(tid, handle) => (
+            <SortableTaskLineRow
+              handle={handle}
+              taskId={tid}
+              projectName={projectName}
+            />
+          )}
+        </SortableList>
+      )}
       {done.length > 0 && (
         <Group title="DONE" count={done.length}>
           {done.map((tid) => (
@@ -740,7 +895,88 @@ function TaskLineRow({
   );
 }
 
-/* ----------------------------------------------------------------- Notes */
+function SortableTaskLineRow({
+  handle,
+  taskId,
+  projectName,
+}: {
+  handle: SortableHandleProps;
+  taskId: string;
+  projectName: string;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const task = useTask(store, taskId);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  if (!task) return <></>;
+  const done = task.status === TASK_STATUS.done;
+  const classes = ['task-line', 'sortable-row'];
+  if (done) classes.push('task-line-done');
+  if (handle.isDragging) classes.push('sortable-row-active');
+  if (handle.isOver) classes.push('sortable-row-over');
+
+  return (
+    <li
+      ref={handle.ref}
+      style={handle.style}
+      className={classes.join(' ')}
+      data-drag-over={handle.isOver ? 'true' : undefined}
+    >
+      <button
+        type="button"
+        className="task-line-drag-handle"
+        aria-label="Drag to reorder"
+        title="Drag to reorder"
+        onClick={(e) => e.preventDefault()}
+        {...(handle.listeners ?? {})}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#drag-icon" />
+        </svg>
+      </button>
+      <input
+        type="checkbox"
+        className="task-line-check"
+        checked={done}
+        onChange={() =>
+          setTaskStatus(store, taskId, done ? TASK_STATUS.open : TASK_STATUS.done)
+        }
+        aria-label={done ? 'Mark not done' : 'Mark done'}
+      />
+      <input
+        className="task-line-title"
+        value={task.title}
+        onChange={(e) => updateTask(store, taskId, { title: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+        }}
+        aria-label="Task title"
+      />
+      <span className="task-line-project">{projectName || 'Untitled'}</span>
+      <button
+        type="button"
+        className="task-line-action task-line-action-danger"
+        aria-label="Delete task"
+        title="Delete"
+        onClick={() => setConfirmDelete(true)}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#trash-icon" />
+        </svg>
+      </button>
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete task?"
+        message={`"${task.title || 'Untitled'}" will be deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          deleteTask(store, taskId);
+          setConfirmDelete(false);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </li>
+  );
+}
 
 function NotesTab({
   domainId,
@@ -912,8 +1148,6 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
   );
 }
 
-/* -------------------------------------------------------- Project pane */
-
 function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
@@ -983,12 +1217,7 @@ function ProjectPaneHeader({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  // Subscribe to the domains table so the chain re-derives when any
-  // ancestor is renamed / reparented.
   const domainRowIds = useRowIds(TABLES.domains, store);
-  // Full path: root → … → direct parent of the project, then the
-  // project name. Walk up from the owning domain to compose ancestors,
-  // then reverse to root-first order.
   const chain = useMemo<readonly Domain[]>(() => {
     if (!domainId) return [];
     void domainRowIds.length;
@@ -1044,11 +1273,6 @@ function ProjectTasksTab({
   setAddPromptOpen: (open: boolean) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  // Local listener-driven state. `useTasksForProjectDeep` discards the
-  // return of `useRowIds` inside, which React Compiler's optimizer can
-  // treat as a non-effecting call — leaving a stale "No tasks yet" body
-  // until a tab toggle. Driving `taskIds` from a local subscription
-  // pinned to the component lifecycle gives predictable re-renders.
   const [taskIds, setTaskIds] = useState<string[]>(() => {
     const ids: string[] = [];
     collectTaskIds(store, projectId, ids);
@@ -1066,9 +1290,19 @@ function ProjectTasksTab({
       store.delListener(listenerId);
     };
   }, [store, projectId]);
+  const orderedIds = useMemo(
+    () =>
+      [...taskIds].sort((a, b) => {
+        const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
+        const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
+        if (oa !== ob) return oa - ob;
+        return a.localeCompare(b);
+      }),
+    [store, taskIds],
+  );
   const open: string[] = [];
   const done: string[] = [];
-  for (const tid of taskIds) {
+  for (const tid of orderedIds) {
     if (isTaskDone(store, tid)) done.push(tid);
     else open.push(tid);
   }
@@ -1078,6 +1312,10 @@ function ProjectTasksTab({
     setAddPromptOpen(false);
   }
 
+  function onReorder(activeId: string, beforeId: string | undefined): void {
+    reorderTask(store, activeId, beforeId);
+  }
+
   return (
     <section className="tasks-tab" aria-label="Tasks">
       {taskIds.length === 0 ? (
@@ -1085,11 +1323,20 @@ function ProjectTasksTab({
       ) : (
         <>
           {open.length > 0 && (
-            <Group title="ACTIVE" count={open.length}>
-              {open.map((tid) => (
-                <TaskLineRow key={tid} taskId={tid} projectName={projectName} />
-              ))}
-            </Group>
+            <SortableList
+              itemIds={open}
+              onReorder={onReorder}
+              ariaLabel="Open tasks"
+              className="sortable-list"
+            >
+              {(tid, handle) => (
+                <SortableTaskLineRow
+                  handle={handle}
+                  taskId={tid}
+                  projectName={projectName}
+                />
+              )}
+            </SortableList>
           )}
           {done.length > 0 && (
             <Group title="DONE" count={done.length}>
@@ -1175,8 +1422,6 @@ function ProjectNotesTab({
   );
 }
 
-/* ------------------------------------------------------------- Shared */
-
 function EmptyTab({
   message,
   onAdd,
@@ -1203,11 +1448,6 @@ function stripPreview(body: string): string {
   return first.length > 140 ? `${first.slice(0, 140)}…` : first;
 }
 
-/**
- * Recursive top-level + nested task ids for a project, mirroring the
- * shape of `useTasksForProjectDeep` but driven imperatively from a
- * transaction listener in `ProjectTasksTab`.
- */
 function collectTaskIds(
   store: MergeableStore,
   projectId: string,
@@ -1215,10 +1455,17 @@ function collectTaskIds(
 ): void {
   for (const id of store.getRowIds(TABLES.tasks)) {
     if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) !== undefined) continue;
+    // `createTask` stores null parents as null cells, but TinyBase drops
+    // null cells, so the cell reads back as undefined. Treat both as
+    // "no parent" so top-level tasks are not skipped.
+    const rawParent = store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId);
+    if (rawParent !== null && rawParent !== undefined) continue;
     out.push(id);
   }
-  collectChildIds(store, out[0] ?? '', out);
+  // Walk nested children from every top-level task — not just the first —
+  // so sub-tasks of any sibling are included.
+  const tops = [...out];
+  for (const tid of tops) collectChildIds(store, tid, out);
 }
 
 function collectChildIds(

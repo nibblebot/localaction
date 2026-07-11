@@ -1344,3 +1344,223 @@
   box-shadow: 0 1px 2px rgba(15, 17, 21, 0.08);
 }
 
+
+/* ============================================================
+   Drag and drop (dnd-kit)
+   ------------------------------------------------------------
+   - `.sortable-list` is a generic vertical container. It must
+     not collapse row gaps, otherwise the dnd-kit transform
+     "open the gap" effect is invisible.
+   - `.sortable-item-slot` is the wrapper SortableList places
+     around each row. The slot itself is visually transparent;
+     the row inside carries its own styles.
+   - `.sortable-row` marks any draggable row. While the user
+     drags it, the source row fades to `.sortable-row-active`
+     and a dnd-kit `DragOverlay` (positioned by the library
+     next to the cursor) renders the floating preview.
+   - The visible "placeholder space" is the gap left behind by
+     the translated source row; the actively-over row picks up
+     `.sortable-row-placeholder` to show an outline drop zone.
+   ============================================================ */
+
+.sortable-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sortable-item-slot {
+  /* Wrapper around each draggable row. No padding/border so the
+     dnd-kit transform animation on the row itself looks crisp. */
+  display: block;
+  position: relative;
+}
+
+.sortable-row {
+  position: relative;
+  cursor: grab;
+  touch-action: none; /* prevent browser intercepting touch drags */
+}
+
+.sortable-row:active {
+  cursor: grabbing;
+}
+
+.sortable-row-active {
+  /* The source row while it is being dragged. The DragOverlay
+     draws the floating preview; we just dim the source. */
+  opacity: 0.35;
+  box-shadow: var(--shadow);
+}
+
+/* Outline shown around the row the cursor is currently above
+   (the row that the dnd-kit collision detection chose as the
+   drop target). The default dnd-kit `useSortable` does not
+   surface an "over" boolean, but the source row, while being
+   dragged, applies `isDragging` and the closest target row
+   picks up the `sortable-row-placeholder` class via the row's
+   own hover/drag-over detection. We use the `data-drag-over`
+   attribute set by SortableList for a portable selector. */
+.sortable-row[data-drag-over="true"] {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+
+.sortable-row[data-drag-over="above"]::before,
+.sortable-row[data-drag-over="below"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.sortable-row[data-drag-over="above"]::before {
+  top: -1px;
+}
+
+.sortable-row[data-drag-over="below"]::after {
+  bottom: -1px;
+}
+
+/* The DragOverlay renders the floating preview. dnd-kit places
+   it in a portal at the body root and positions it next to the
+   cursor. The overlay's children inherit no styling from the
+   sortable-list container, so we re-apply the surface look. */
+.drag-overlay {
+  pointer-events: none;
+  /* dnd-kit transforms via CSS translate; let it. */
+  transform-origin: top left;
+}
+
+.drag-overlay > * {
+  /* Mirror the surface card look so the preview matches the
+     source row. The `is-dragging-overlay` class is added by
+     SortableList's renderOverlay wrapper. */
+  box-shadow: 0 8px 24px rgba(15, 17, 21, 0.18);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+/* ------------------------------------------------------------
+   Sidebar: drag handle is the whole row, the dot + name
+   keep their existing role as the click target.
+   ------------------------------------------------------------ */
+
+.sidebar-domain-row {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-item-drag-handle {
+  cursor: grab;
+}
+
+.sidebar-item-drag-handle:active {
+  cursor: grabbing;
+}
+
+.sidebar-domain-siblings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-domain-siblings > .sortable-item-slot {
+  /* Sub-domains indent one level further. The padding matches
+     the existing `.sidebar-domain-children` rule so the visual
+     hierarchy is unchanged when DnD is inactive. */
+  padding-left: 10px;
+}
+
+/* ------------------------------------------------------------
+   Project row drag handle (grip on the left of the row).
+   ------------------------------------------------------------ */
+
+.project-row-drag-handle {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  padding: 0;
+  flex-shrink: 0;
+  margin-right: 6px;
+  touch-action: none;
+}
+
+.project-row-drag-handle:active {
+  cursor: grabbing;
+}
+
+.project-row-drag-handle:hover {
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+.project-row-drag-handle svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* When the user is actively dragging a project row, hide the
+   grip and show a faint outline so the preview reads as
+   "carried". The DragOverlay copies the row's full chrome. */
+.project-row.sortable-row-active {
+  outline: 1px solid var(--accent-border);
+}
+
+/* ------------------------------------------------------------
+   Task line drag handle.
+   ------------------------------------------------------------ */
+
+.task-line-drag-handle {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  padding: 0;
+  flex-shrink: 0;
+  margin-right: 2px;
+  touch-action: none;
+}
+
+.task-line-drag-handle:active {
+  cursor: grabbing;
+}
+
+.task-line-drag-handle:hover {
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+.task-line-drag-handle svg {
+  width: 12px;
+  height: 12px;
+}
+
+.task-line.sortable-row-active {
+  outline: 1px solid var(--accent-border);
+}

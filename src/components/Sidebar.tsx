@@ -4,6 +4,7 @@ import {
   useStoreVersion,
   useDomainCounts,
   createDomain,
+  reorderDomain,
   type DomainCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
@@ -11,6 +12,8 @@ import PromptModal from './PromptModal.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
 import { domainColorHex, isDomainColorId } from '../data/colors.ts';
 import type { DomainColorId } from '../data/colors.ts';
+import { SortableList } from './SortableList.tsx';
+import type { SortableHandleProps } from './SortableList.tsx';
 
 interface DomainNode {
   count: DomainCount;
@@ -29,9 +32,9 @@ function buildTree(counts: DomainCount[]): DomainNode[] {
       roots.push(node);
     }
   }
-  // Stable order: by name asc, fall back to id.
   const sortRec = (nodes: DomainNode[]): void => {
     nodes.sort((a, b) => {
+      if (a.count.order !== b.count.order) return a.count.order - b.count.order;
       const an = a.count.name || '';
       const bn = b.count.name || '';
       if (an !== bn) return an.localeCompare(bn);
@@ -47,55 +50,99 @@ function getColorHex(raw: string | null | undefined): string {
   return isDomainColorId(raw) ? domainColorHex(raw) : domainColorHex('gray');
 }
 
-interface DomainTreeItemProps {
+interface SortableDomainRowProps {
+  handle: SortableHandleProps;
   node: DomainNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  isTopLevel: boolean;
 }
 
-function DomainTreeItem({
+function SortableDomainRow({
+  handle,
   node,
   selectedId,
   onSelect,
-}: DomainTreeItemProps): React.JSX.Element {
+  isTopLevel,
+}: SortableDomainRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const dot = getColorHex(node.count.color);
+  const displayName = node.count.name || 'Untitled';
   return (
-    <li>
+    <li
+      ref={handle.ref}
+      style={handle.style}
+      className={`sidebar-domain-row sortable-row${handle.isDragging ? ' sortable-row-active' : ''}${handle.isOver ? ' sortable-row-over' : ''}`}
+      data-drag-over={handle.isOver ? 'true' : undefined}
+    >
       <div className="sidebar-item-row">
         <button
           type="button"
-          className={`sidebar-item${isActive ? ' sidebar-item-active' : ''}${
-            node.count.parentId == null ? ' sidebar-item-top' : ''
+          className={`sidebar-item sidebar-item-drag-handle${isActive ? ' sidebar-item-active' : ''}${
+            isTopLevel ? ' sidebar-item-top' : ''
           }`}
-          onClick={() => onSelect(node.count.id)}
+          aria-label={`${displayName} (drag to reorder)`}
+          title="Drag to reorder"
+          onClick={(e) => {
+            if (handle.isDragging) return;
+            e.preventDefault();
+            onSelect(node.count.id);
+          }}
+          {...(handle.listeners ?? {})}
         >
           <span
-            className={`sidebar-item-dot${
-              node.count.parentId == null ? '' : ' sidebar-item-dot-child'
-            }`}
+            className={`sidebar-item-dot${isTopLevel ? '' : ' sidebar-item-dot-child'}`}
             aria-hidden="true"
             style={{ background: dot }}
           />
-          <span className="sidebar-item-name">
-            {node.count.name || 'Untitled'}
-          </span>
+          <span className="sidebar-item-name">{displayName}</span>
           <span className="sidebar-link-count">{node.count.childCount}</span>
         </button>
       </div>
-      {node.children.length > 0 && (
-        <ul className="sidebar-domain-children" role="list">
-          {node.children.map((child) => (
-            <DomainTreeItem
-              key={child.count.id}
-              node={child}
-              selectedId={selectedId}
-              onSelect={onSelect}
-            />
-          ))}
-        </ul>
-      )}
     </li>
+  );
+}
+
+interface SubDomainListProps {
+  parent: DomainNode;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onReorder: (activeId: string, beforeId: string | undefined) => void;
+}
+
+/**
+ * Sub-domains under a single parent, in their own SortableList so
+ * reordering is scoped to siblings. Dragging across parents is not
+ * supported by drag (slice 10 owns that explicit Move action).
+ */
+function SubDomainList({
+  parent,
+  selectedId,
+  onSelect,
+  onReorder,
+}: SubDomainListProps): React.JSX.Element | null {
+  if (parent.children.length === 0) return null;
+  return (
+    <SortableList
+      itemIds={parent.children.map((c) => c.count.id)}
+      onReorder={onReorder}
+      ariaLabel={`Sub-domains of ${parent.count.name || 'Untitled'}`}
+      className="sidebar-domain-siblings"
+    >
+      {(id, handle) => {
+        const child = parent.children.find((c) => c.count.id === id);
+        if (!child) return <></>;
+        return (
+          <SortableDomainRow
+            handle={handle}
+            node={child}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            isTopLevel={false}
+          />
+        );
+      }}
+    </SortableList>
   );
 }
 
@@ -118,7 +165,12 @@ export default function Sidebar(): React.JSX.Element {
     navigate({ kind: 'domain', id });
   }
 
+  function onReorder(activeId: string, beforeId: string | undefined): void {
+    reorderDomain(store, activeId, beforeId);
+  }
+
   const selectedId = selection.kind === 'domain' ? selection.id : null;
+  const rootIds = tree.map((n) => n.count.id);
 
   return (
     <aside className="sidebar" aria-label="Sidebar">
@@ -150,16 +202,34 @@ export default function Sidebar(): React.JSX.Element {
             No domains yet. Create one to get started.
           </p>
         ) : (
-          <ul className="sidebar-section-body" role="list">
-            {tree.map((n) => (
-              <DomainTreeItem
-                key={n.count.id}
-                node={n}
-                selectedId={selectedId}
-                onSelect={(id) => navigate({ kind: 'domain', id })}
-              />
-            ))}
-          </ul>
+          <SortableList
+            itemIds={rootIds}
+            onReorder={onReorder}
+            ariaLabel="Top-level domains"
+            className="sidebar-section-body"
+          >
+            {(id, handle) => {
+              const node = tree.find((n) => n.count.id === id);
+              if (!node) return <></>;
+              return (
+                <div className="sidebar-domain-li-root">
+                  <SortableDomainRow
+                    handle={handle}
+                    node={node}
+                    selectedId={selectedId}
+                    onSelect={(sid) => navigate({ kind: 'domain', id: sid })}
+                    isTopLevel
+                  />
+                  <SubDomainList
+                    parent={node}
+                    selectedId={selectedId}
+                    onSelect={(sid) => navigate({ kind: 'domain', id: sid })}
+                    onReorder={onReorder}
+                  />
+                </div>
+              );
+            }}
+          </SortableList>
         )}
       </div>
 

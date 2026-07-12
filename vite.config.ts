@@ -14,10 +14,10 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     {
       // Wires the TinyBase WS sync handler into Vite's HTTP server upgrade
-      // events. Used in both `pnpm dev` (configureServer) and `pnpm preview`
-      // (configurePreviewServer); the Node prod server (`pnpm start`) calls
-      // the same `attachSyncServer` directly. Keeps the WS code in one
-      // place and avoids drift between modes.
+      // events. Used in both `bun run dev` (configureServer) and
+      // `bun run preview` (configurePreviewServer); the prod server
+      // (`bun run start`) calls the same `attachSyncServer` directly.
+      // Keeps the WS code in one place and avoids drift between modes.
       name: 'localaction-sync',
       async configureServer(server) {
         if (!server.httpServer) return

@@ -2,25 +2,25 @@
 
 ## Stack
 - Vite 8 + React 19 + TypeScript (~6), ESM (`"type": "module"`).
-- Package manager: **pnpm** (lockfile: `pnpm-lock.yaml`). No `packageManager` pin.
+- Package manager: **bun** (lockfile: `bun.lock`). No `packageManager` pin. Bun runs `.ts` files natively, so `scripts/` and `server/` have no `tsx` runtime needed; Vite's optional peer may still pull `tsx` into `node_modules` but nothing in our code imports it.
 - Linter: **oxlint** (not eslint). Config: `.oxlintrc.json` — `react`, `typescript`, `oxc` plugins.
 - Unit / integration tests: **vitest** (`vitest.config.ts`, jsdom env for React-side tests).
-- End-to-end tests: **@playwright/test** (`playwright.config.ts`, real browser). Browser binaries are *not* committed — run `pnpm exec playwright install chromium` once after install.
+- End-to-end tests: **@playwright/test** (`playwright.config.ts`, real browser). Browser binaries are *not* committed — run `bun x playwright install chromium` once after install.
 - No state lib, no router — install explicitly when needed.
 - No `.nvmrc` and no `engines` field; Node version is unpinned.
 - Stack versions are bleeding-edge; generic tutorials may target older majors.
 
 ## Commands
-- `pnpm dev` — Vite dev server with HMR (also spins up the TinyBase sync WS).
-- `pnpm build` — runs `tsc -b` (both tsconfig projects via references) then `vite build`. TS errors fail the build.
-- `pnpm lint` — `oxlint` over the workspace.
-- `pnpm preview` — serve the built `dist/` (same WS handler as dev).
-- `pnpm start` — boot the unified prod server (`server/index.ts`) on `LOCALACTION_PORT`.
-- `pnpm smoke` — boot the server in Node and assert the TinyBase sync round-trip.
-- `pnpm test` — vitest in run-once mode (CI-shaped).
-- `pnpm test:watch` — vitest in watch mode.
-- `pnpm test:e2e` — Playwright (assumes `pnpm exec playwright install chromium` has been run).
-- `pnpm test:e2e:headed` — Playwright with the browser visible.
+- `bun run dev` — Vite dev server with HMR (also spins up the TinyBase sync WS).
+- `bun run build` — runs `tsc -b` (both tsconfig projects via references) then `vite build`. TS errors fail the build.
+- `bun run lint` — `oxlint` over the workspace.
+- `bun run preview` — serve the built `dist/` (same WS handler as dev).
+- `bun run start` — boot the unified prod server (`server/index.ts`) on `LOCALACTION_PORT`. Bun runs the TS entry directly.
+- `bun run smoke` — boot the server and assert the TinyBase sync round-trip.
+- `bun run test` — vitest in run-once mode (CI-shaped).
+- `bun run test:watch` — vitest in watch mode.
+- `bun run test:e2e` — Playwright (assumes `bun x playwright install chromium` has been run).
+- `bun run test:e2e:headed` — Playwright with the browser visible.
 
 ## Repo layout
 - `index.html` → `src/main.tsx` → `src/App.tsx` is the only entry chain. `main.tsx` wraps the tree in `<StrictMode>` (dev-time double render).
@@ -30,8 +30,8 @@
 - `src/assets/` holds images imported by TS (e.g. `hero.png`).
 - `dist/` is build output (gitignored). Do not hand-edit.
 - `src/data/` — the single seam (TinyBase MergeableStore, IndexedDB persister, WS sync, `DataLayerProvider`). Anything outside it should import from its public surface, never from `tinybase` directly. See `docs/adr/0001-tinybase.md`.
-- `server/` — Node entry that serves `dist/` and upgrades `/ws` for production (`pnpm start`). Vite reuses `attachSyncServer` in dev/preview.
-- `scripts/` — Node-runnable tooling (smoke test). `scripts/*.ts` run via `tsx`.
+- `server/` — Node entry that serves `dist/` and upgrades `/ws` for production (`bun run start`). Vite reuses `attachSyncServer` in dev/preview.
+- `scripts/` — Node-runnable tooling (smoke test). `scripts/*.ts` are executed directly by bun (`bun run smoke`) — no separate TS loader needed.
 - `tests/` (optional) — vitest unit and integration suites. Component tests for React live here and use jsdom.
 - `e2e/` — Playwright end-to-end suites, one `*.spec.ts` per user-visible journey.
 - `README.md` is the unmodified Vite scaffold template — not project documentation. Trust `package.json` and `src/` over it.
@@ -43,7 +43,7 @@
 - `erasableSyntaxOnly` forbids enums and namespaces.
 - `tsc -b` uses project references, so TS errors in `vite.config.ts` block the build even though it's not under `src/`.
 - **vitest env split**: `vitest.config.ts` runs React-side suites in jsdom and Node-side suites (e.g. `scripts/`, `server/`) in the `node` env. Defaults pick the env from file extension.
-- **Playwright config** auto-starts `pnpm dev` on port 5173 if it isn't already running. Tests expect the data layer's `/ws` handshake to succeed.
+- **Playwright config** auto-starts `bun run dev` on port 5173 if it isn't already running. Tests expect the data layer's `/ws` handshake to succeed.
 
 ## Conventions
 - Components are default-exported function components (see `src/App.tsx`).
@@ -53,10 +53,10 @@
 - Lint rules in force: `react/rules-of-hooks` (error), `react/only-export-components` (warn, allows constant exports). Type-aware mode is **not** enabled (`oxlint-tsgolint` not installed).
 
 ## Verification order for changes
-1. `pnpm lint`
-2. `pnpm test` (vitest, run-once — fast, blocks on regressions)
-3. `pnpm build` (covers TS typecheck of both projects + bundle)
-4. `pnpm test:e2e` (Playwright — only when UI behavior touched)
+1. `bun run lint`
+2. `bun run test` (vitest, run-once — fast, blocks on regressions)
+3. `bun run build` (covers TS typecheck of both projects + bundle)
+4. `bun run test:e2e` (Playwright — only when UI behavior touched)
 
 Tests should exercise **external behavior**, not implementation. The data layer is the seam: tests should use the typed hooks / sync protocol, not reach inside TinyBase.
 

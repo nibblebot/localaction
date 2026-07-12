@@ -2,7 +2,7 @@
  * Sync-server round-trip integration test.
  *
  * Runs entirely in Node (no browser required): boots the same Node server
- * the production `pnpm start` uses, then connects two TinyBase
+ * the production `bun run start` uses, then connects two TinyBase
  * MergeableStores to it as if they were two browser tabs. Asserts that:
  *
  *   1. Two clients can each start sync against the server.

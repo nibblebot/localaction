@@ -260,7 +260,7 @@ function mimeFor(path: string): string {
 export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
   const port = options.port ?? portFromEnv() ?? DEFAULT_PORT;
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
-  const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data.db';
+  const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data/data.db';
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
@@ -277,7 +277,7 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
   if (!secret) {
     console.warn(
       '[localaction] LOCALACTION_SYNC_SECRET is empty; /ws accepts any client. ' +
-        'Set this env var in production.',
+      'Set this env var in production.',
     );
   }
 

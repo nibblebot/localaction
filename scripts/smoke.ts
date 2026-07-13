@@ -5,7 +5,7 @@ import { WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
-import sqlite3 from 'sqlite3';
+import { openDatabase } from '../server/db.ts';
 import {
   createWsSynchronizer,
 } from 'tinybase/synchronizers/synchronizer-ws-client';
@@ -23,15 +23,13 @@ function assert(condition: unknown, message: string): asserts condition {
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
+  const { promise: timeout, reject: timeoutReject } =
+    Promise.withResolvers<T>();
+  timer = setTimeout(() => timeoutReject(new Error(`timeout: ${label}`)), ms);
   try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`timeout: ${label}`)), ms);
-      }),
-    ]);
+    return await Promise.race([promise, timeout]);
   } finally {
-    if (timer) clearTimeout(timer);
+    clearTimeout(timer);
   }
 }
 
@@ -107,16 +105,9 @@ async function main() {
     await freshSync.destroy();
 
     const reload = createMergeableStore();
-    const reloadDb = await new Promise<sqlite3.Database>((resolve, reject) => {
-      const db = new sqlite3.Database(
-        DB_PATH,
-        sqlite3.OPEN_READONLY,
-        (err) => (err ? reject(err) : resolve(db)),
-      );
-    });
+    const reloadDb = await openDatabase(DB_PATH, { readonly: true });
     const reloadPersister = createSqlite3Persister(reload, reloadDb);
     await reloadPersister.load();
-    await new Promise<void>((resolve) => reloadDb.close(() => resolve()));
     assert(
       reload.getCell('domains', 'd1', 'name') === 'Family',
       'persister.load() did not return domains/d1/name',

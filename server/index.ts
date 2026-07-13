@@ -6,8 +6,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
-import sqlite3 from 'sqlite3';
-import type { Database } from 'sqlite3';
+import { openDatabase, type ServerDatabase } from './db.ts';
 
 export const DEFAULT_PORT = 5173;
 export const WS_PATH = '/ws';
@@ -42,7 +41,7 @@ export interface RunningServer {
 export interface AttachedSyncServer {
   wsServer: WebSocketServer;
   tinyServer: TinySyncServer;
-  db: Database;
+  db: ServerDatabase;
   close(): Promise<void>;
 }
 
@@ -174,14 +173,6 @@ function sanitizePathId(pathId: string): string {
   return pathId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
 }
 
-function openDatabase(file: string): Promise<Database> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(file, (err) => {
-      if (err) reject(err);
-      else resolve(db);
-    });
-  });
-}
 
 const MIME_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',
@@ -297,8 +288,61 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
 
 const isMain =
   process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+interface CliArgs {
+  dbPath?: string;
+  port?: number;
+  help: boolean;
+}
+
+// CLI flag parsing for the prod-server entrypoint (`bun run start`).
+// `ServerOptions` already accepts a literal `dbPath`; these flags exist so
+// a `bun build`-compiled binary can pick the DB at runtime without env
+// tweaks. CLI values win over `LOCALACTION_DB_PATH` / `LOCALACTION_PORT`
+// because `startServer` checks explicit options first, falling back to
+// the env var, then the default. Unknown flags are ignored so the
+// compiled binary is robust to stray args.
+function parseServerArgs(argv: readonly string[]): CliArgs {
+  const out: CliArgs = { help: false };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--help' || arg === '-h') {
+      out.help = true;
+    } else if (arg === '--db') {
+      const next = argv[++i];
+      if (next) out.dbPath = next;
+    } else if (arg.startsWith('--db=')) {
+      out.dbPath = arg.slice('--db='.length);
+    } else if (arg === '--port') {
+      const next = argv[++i];
+      const parsed = next ? Number(next) : NaN;
+      if (Number.isFinite(parsed)) out.port = parsed;
+    } else if (arg.startsWith('--port=')) {
+      const parsed = Number(arg.slice('--port='.length));
+      if (Number.isFinite(parsed)) out.port = parsed;
+    }
+  }
+  return out;
+}
+
+function printServerUsage(stream: NodeJS.WriteStream): void {
+  stream.write(
+    'Usage: localaction [options]\n' +
+      '\n' +
+      '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
+      '                   Overrides LOCALACTION_DB_PATH. Default: ./data/data.db\n' +
+      '  --port <n>       TCP port to listen on. Overrides LOCALACTION_PORT.\n' +
+      '                   Default: 5173\n' +
+      '  -h, --help       Show this help and exit.\n',
+  );
+}
+
 if (isMain) {
-  const server = await startServer();
+  const cli = parseServerArgs(process.argv.slice(2));
+  if (cli.help) {
+    printServerUsage(process.stdout);
+    process.exit(0);
+  }
+  const server = await startServer({ dbPath: cli.dbPath, port: cli.port });
   console.log(`[localaction] listening on http://localhost:${server.port}`);
 }
 

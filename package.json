@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "start": "bun run server/index.ts",
     "smoke": "bun run scripts/smoke.ts",
-    "test": "vitest run",
+    "test": "vitest run && bun test",
+    "test:unit": "vitest run",
+    "test:integration": "bun test",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"

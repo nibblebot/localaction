@@ -18,6 +18,10 @@ export default defineConfig({
       // `bun run preview` (configurePreviewServer); the prod server
       // (`bun run start`) calls the same `attachSyncServer` directly.
       // Keeps the WS code in one place and avoids drift between modes.
+      //
+      // Runs under `bunx --bun vite` (see package.json scripts), which
+      // makes Bun's loader available for the `bun:sqlite` import that
+      // the server module pulls in transitively.
       name: 'localaction-sync',
       async configureServer(server) {
         if (!server.httpServer) return

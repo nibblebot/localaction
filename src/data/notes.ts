@@ -2,7 +2,7 @@ import { useRow, useRowIds } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, NOTE_ENTITY_TYPE } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
-import { newId, nowIso, normalizeRelation, row } from './internal.ts';
+import { newId, nowIso, row } from './internal.ts';
 import { slugify } from './slug.ts';
 import type { Note, NoteInput, NotePatch } from './types.ts';
 
@@ -73,7 +73,7 @@ export function getNote(store: MergeableStore, id: string): Note | undefined {
     title: String(r[COLUMNS.notes.title] ?? ''),
     body: String(r[COLUMNS.notes.body] ?? ''),
     entityType: String(r[COLUMNS.notes.entityType] ?? NOTE_ENTITY_TYPE.domain) as NoteEntityType,
-    entityId: normalizeRelation(r[COLUMNS.notes.entityId]),
+    entityId: String(r[COLUMNS.notes.entityId] ?? ''),
     createdAt: String(r[COLUMNS.notes.createdAt] ?? ''),
     updatedAt: String(r[COLUMNS.notes.updatedAt] ?? ''),
   };
@@ -88,7 +88,7 @@ export function useNote(store: MergeableStore, id: string | undefined): Note | u
     title: String(r[COLUMNS.notes.title] ?? ''),
     body: String(r[COLUMNS.notes.body] ?? ''),
     entityType: String(r[COLUMNS.notes.entityType] ?? NOTE_ENTITY_TYPE.domain) as NoteEntityType,
-    entityId: normalizeRelation(r[COLUMNS.notes.entityId]),
+    entityId: String(r[COLUMNS.notes.entityId] ?? ''),
     createdAt: String(r[COLUMNS.notes.createdAt] ?? ''),
     updatedAt: String(r[COLUMNS.notes.updatedAt] ?? ''),
   };

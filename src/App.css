@@ -1186,17 +1186,6 @@
   text-underline-offset: 2px;
 }
 
-.markdown-body a.wiki-link {
-  color: var(--accent);
-  text-decoration: none;
-}
-
-.markdown-body a.wiki-link-missing {
-  color: var(--danger);
-  text-decoration: underline dashed;
-  text-underline-offset: 2px;
-}
-
 .markdown-body blockquote {
   border-inline-start: 3px solid var(--border);
   margin: 6px 0;

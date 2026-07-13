@@ -24,7 +24,8 @@ A Task that fires on a recurrence rule (e.g. every Monday). Lives directly under
 
 ## Note
 
-A markdown body attached to exactly one entity (Domain, Project, or Task). Supports `[[Wiki Links]]` to other Notes by title or slug.
+A markdown body attached to exactly one entity (Domain, Project, or Task).
+Supports standard markdown rendering (CommonMark subset).
 
 ## Slug
 

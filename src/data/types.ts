@@ -37,7 +37,7 @@ export interface Note {
   title: string;
   body: string;
   entityType: NoteEntityType;
-  entityId: string | null;
+  entityId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +90,4 @@ export interface NoteInput {
 export interface NotePatch {
   title?: string;
   body?: string;
-  entityType?: NoteEntityType;
-  entityId?: string | null;
 }

@@ -68,3 +68,17 @@
 4. `bun run test:e2e` (Playwright — only when UI behavior touched)
 
 Tests should exercise **external behavior**, not implementation. The data layer is the seam: tests should use the typed hooks / sync protocol, not reach inside TinyBase.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown — issues live under `.scratch/<feature>/issues/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) recorded as `Status:` lines. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.

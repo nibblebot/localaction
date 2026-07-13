@@ -10,8 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
-*.db
 *.local
+
+data/
 
 # Test artifacts
 playwright-report/

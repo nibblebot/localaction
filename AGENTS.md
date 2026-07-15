@@ -43,7 +43,9 @@
   - `tests/router.test.ts` — loose vitest file at the top level.
   - `tests/integration/` — `bun test` root (`bunfig.toml`); sync + persistence round-trip.
 - `e2e/` — Playwright end-to-end suites, one `*.spec.ts` per user-visible journey.
-- `docs/glossary.md` — project terminology. Trust `package.json` and `src/` for behavior; trust this file for decisions; trust inline JSDoc for the rest.
+- `docs/architecture.md` — high-level system shape (client/server/sync/data model, runtime modes, testing strategy).
+- `docs/ux.md` — high-level user-experience overview (shell, navigation, views, appearance, interaction patterns).
+- `docs/glossary.md` — domain vocabulary / ubiquitous language. Trust `package.json` and `src/` for behavior; trust this file for the vocabulary; trust inline JSDoc for the rest.
 
 ## Quirks
 - **React Compiler is enabled** via `babel-plugin-react-compiler` (see `vite.config.ts`). The compiler pass slows dev/build. Code must stay compiler-clean — no mutation of props/hooks patterns the compiler cannot reason about.
@@ -81,4 +83,4 @@ Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context — vocabulary lives in `docs/glossary.md` (not a root `CONTEXT.md`); no ADRs yet (`docs/adr/` is absent). The skill convention (`docs/agents/domain.md`) still describes where it *would* look; if it can't find those files it proceeds silently.

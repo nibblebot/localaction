@@ -76,6 +76,8 @@ async function main() {
     );
     console.log('smoke: write B replicated to A');
 
+    await waitForPersisted(DB_PATH, 'projects', 'p1', 'name', 'Plan vacation');
+    console.log('smoke: writes persisted to SQLite');
     await syncA.destroy();
     await syncB.destroy();
 
@@ -93,13 +95,15 @@ async function main() {
       'fresh persist load',
     );
     console.log('smoke: fresh observed initial area');
-    assert(
-      fresh.getCell('projects', 'p1', 'name') === 'Plan vacation',
-      'fresh client did not see persisted project',
+    await withTimeout(
+      waitForCell(fresh, 'projects', 'p1', 'name', 'Plan vacation'),
+      5000,
+      'fresh project load',
     );
-    assert(
-      fresh.getCell('areas', 'd2', 'parentId') === 'd1',
-      'fresh client did not see persisted sub-area relation',
+    await withTimeout(
+      waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1'),
+      5000,
+      'fresh sub-area load',
     );
     console.log('smoke: fresh client loaded persisted state');
     await freshSync.destroy();
@@ -145,6 +149,42 @@ async function waitForCell(
   }
   throw new Error(
     `timeout waiting for ${table}.${row}.${cell} to equal ${JSON.stringify(value)} (got ${JSON.stringify(store.getCell(table, row, cell))})`,
+  );
+}
+
+// Confirm the server's autoSave flushed `cell` to SQLite before we disconnect
+// the last client. TinyBase destroys a path's server store on last
+// disconnect; a fresh client connecting afterwards reloads from SQLite, so
+// without this guarantee that reload races autoSave and can miss the most
+// recent writes. Polling the file is deterministic. (Real timers are
+// intentional: the server's autoSave runs on its own clock with no completion
+// event, so we poll the file — fake timers cannot observe another process's
+// SQLite commits.)
+async function waitForPersisted(
+  file: string,
+  table: string,
+  row: string,
+  cell: string,
+  value: unknown,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const probe = createMergeableStore();
+    const db = await openDatabase(file, { readonly: true });
+    const persister = createSqlite3Persister(probe, db);
+    try {
+      await persister.load();
+      if (probe.getCell(table, row, cell) === value) return;
+    } catch {
+      // transient SQLite lock while the server auto-saves; retry
+    }
+    await persister.destroy();
+    await new Promise<void>((resolve) => db.close(() => resolve()));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(
+    `timeout waiting for ${table}.${row}.${cell} to persist as ${JSON.stringify(value)}`,
   );
 }
 

@@ -121,6 +121,45 @@ async function waitForRowAbsent(
   return promise;
 }
 
+// Confirm the server's autoSave has flushed `cell` to SQLite. TinyBase
+// destroys a path's server store when its last client disconnects; a fresh
+// client connecting afterwards reloads from SQLite, so writes must be
+// persisted BEFORE that disconnect — otherwise the reload races autoSave and
+// can miss the most recent writes. Polling the file is deterministic.
+// (Real timers are intentional here: the server's autoSave runs on its own
+// clock with no completion event, so we poll the file — fake timers cannot
+// observe another process's SQLite commits.)
+async function waitForPersisted(
+  file: string,
+  table: string,
+  row: string,
+  cell: string,
+  value: unknown,
+  timeoutMs = 5_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let last: unknown;
+  while (Date.now() < deadline) {
+    const probe = createMergeableStore();
+    const db = await openDatabase(file, { readonly: true });
+    const persister = createSqlite3Persister(probe, db);
+    try {
+      await persister.load();
+      last = probe.getCell(table, row, cell);
+      if (last === value) return;
+    } catch {
+      // transient SQLite lock while the server auto-saves; retry
+    }
+    await persister.destroy();
+    await new Promise<void>((resolve) => db.close(() => resolve()));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error(
+    `timeout waiting for ${table}.${row}.${cell} to persist as ${JSON.stringify(value)} ` +
+      `(got ${JSON.stringify(last)})`,
+  );
+}
+
 async function connectClient(store: MergeableStore): Promise<WsSynchronizer> {
   const sync = await createWsSynchronizer(store, new WebSocket(url));
   await sync.startSync();
@@ -148,9 +187,7 @@ describe('sync server round-trip', () => {
       b.setCell('projects', 'p1', 'name', 'Plan vacation');
       await waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation');
 
-      const { promise: settled, resolve: settle } = Promise.withResolvers<void>();
-      setTimeout(settle, 250);
-      await settled;
+      await waitForPersisted(dbPath, 'projects', 'p1', 'name', 'Plan vacation');
     } finally {
       await syncA.destroy();
       await syncB.destroy();
@@ -160,8 +197,8 @@ describe('sync server round-trip', () => {
     const freshSync = await connectClient(fresh);
     try {
       await waitForCell(fresh, 'areas', 'd1', 'name', 'Family');
-      expect(fresh.getCell('areas', 'd2', 'parentId')).toBe('d1');
-      expect(fresh.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
+      await waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1');
+      await waitForCell(fresh, 'projects', 'p1', 'name', 'Plan vacation');
     } finally {
       await freshSync.destroy();
     }
@@ -177,7 +214,7 @@ describe('sync server round-trip', () => {
     expect(reload.getCell('areas', 'd1', 'name')).toBe('Family');
     expect(reload.getCell('areas', 'd2', 'parentId')).toBe('d1');
     expect(reload.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
-  });
+  }, 30000);
 
   it('a row deleted on one client disappears on the other and on a fresh client', async () => {
     const a = createMergeableStore();
@@ -197,14 +234,12 @@ describe('sync server round-trip', () => {
       a.delRow('areas', 'd-del');
       await waitForRowAbsent(b, 'areas', 'd-del');
       expect(b.hasRow('areas', 'd-keep')).toBe(true);
+      await waitForPersisted(dbPath, 'areas', 'd-keep', 'name', 'Kept');
+      await waitForPersisted(dbPath, 'areas', 'd-del', 'name', undefined);
     } finally {
       await syncA.destroy();
       await syncB.destroy();
     }
-
-    const { promise: settled, resolve: settle } = Promise.withResolvers<void>();
-    setTimeout(settle, 250);
-    await settled;
 
     const fresh = createMergeableStore();
     const freshSync = await connectClient(fresh);
@@ -214,5 +249,5 @@ describe('sync server round-trip', () => {
     } finally {
       await freshSync.destroy();
     }
-  });
+  }, 30000);
 });

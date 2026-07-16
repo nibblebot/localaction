@@ -18,6 +18,8 @@
  * expects — no adapter layer is needed.
  */
 import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
 import type { Database as Sqlite3Database } from 'sqlite3';
 
 const require = createRequire(import.meta.url);
@@ -41,10 +43,20 @@ export function openDatabase(
   const mode = opts.readonly
     ? sqlite3.OPEN_READONLY
     : sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE;
+  if (!opts.readonly) {
+    mkdirSync(dirname(file), { recursive: true });
+  }
   const { promise, resolve, reject } = Promise.withResolvers<ServerDatabase>();
   const db = new sqlite3.Database(file, mode, (err: Error | null) => {
     if (err) reject(err);
-    else resolve(db);
+    else {
+      // Retry on SQLITE_BUSY for up to 5s instead of failing fast. Without
+      // this, a concurrent reader (another connection, a backup, a probe)
+      // holding a shared lock makes a writer's COMMIT return BUSY at once —
+      // silently dropping the write (e.g. TinyBase autoSave losing rows).
+      db.configure('busyTimeout', 5_000);
+      resolve(db);
+    }
   });
   return promise;
 }

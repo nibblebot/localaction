@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
+
 import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
 import { openDatabase, type ServerDatabase } from './db.ts';
 
@@ -87,7 +88,6 @@ export async function attachSyncServer(
       log(connId, `error: ${err.message}`);
     });
   });
-
   // One shared sqlite3 connection for the whole process. `createSqlite3Persister`
   // only needs a `Database`; opening it per WebSocket connection leaked
   // FDs (no `db.close()`) and forced the per-connection persister factory
@@ -99,7 +99,7 @@ export async function attachSyncServer(
       throw new Error(`invalid sync path: ${pathId}`);
     }
     const store = createMergeableStore();
-    const persister = createSqlite3Persister(store, db);
+    const sqlitePersister = createSqlite3Persister(store, db);
     process.stderr.write(
       `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
     );
@@ -123,7 +123,16 @@ export async function attachSyncServer(
         touched.clear();
       });
     }
-    return persister;
+    // The SQLite persister's autoload listens for `CHANGE` events on the
+    // underlying `sqlite3` Database. That fires for our own writes too — and
+    // the WS server's autoload callback (`load()` → `getChangesFromOtherStore()`)
+    // would then query other clients and overwrite the just-saved state with
+    // whatever stale view a client happens to have. The server is the sole
+    // writer to this database; client updates arrive as WS `ContentDiff`
+    // messages handled by the WS server's own autoLoad path. So we disable
+    // the SQLite persister's autoload and keep its autoSave (which writes
+    // to disk) — the WS server's synchronizer handles broadcasts.
+    return wrapSqlitePersisterForWsServer(sqlitePersister);
   });
 
   httpServer.on('upgrade', (req, socket, head) => {
@@ -170,6 +179,39 @@ function checkSecret(url: URL, expected: string): boolean {
 
 function sanitizePathId(pathId: string): string {
   return pathId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
+}
+/**
+ * Adapts a SQLite persister for `createWsServer`'s `createPersisterForPath`.
+ *
+ * `createWsServer` calls `startAutoLoad()` on the persister it receives. The
+ * SQLite persister's autoload subscribes to the underlying database's
+ * `CHANGE` event, which fires for our own writes too. That callback chain
+ * ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
+ * would overwrite the just-saved state with whatever stale view a client
+ * happens to have. The server is the sole writer; client updates arrive as
+ * WS `ContentDiff` messages handled by the WS server's own autoLoad path.
+ * So the wrapper exposes `startAutoLoad` as a no-op and forwards every
+ * other call (notably `startAutoSave`, which writes to disk).
+ */
+type Sqlite3Persister = ReturnType<typeof createSqlite3Persister>;
+function wrapSqlitePersisterForWsServer(p: Sqlite3Persister): Sqlite3Persister {
+  return {
+    ...p,
+    // `createWsServer` calls `startAutoLoad()` on the persister it receives.
+    // The SQLite persister's autoload subscribes to the underlying database's
+    // `CHANGE` event, which fires for our own writes too. That callback chain
+    // ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
+    // would overwrite just-saved state with whatever stale view a client has.
+    // We still want the initial `load(initialContent)` so a freshly-spawned
+    // serverClient restores persisted state from SQLite, but we must skip
+    // the CHANGE-event autoload registration that would otherwise fire on
+    // every one of our own writes. Client updates arrive as WS `ContentDiff`
+    // messages handled by the WS server's own autoLoad path.
+    startAutoLoad: async (initialContent?: unknown): Promise<Sqlite3Persister> => {
+      await p.load(initialContent as Parameters<Sqlite3Persister['load']>[0]);
+      return p;
+    },
+  };
 }
 
 
@@ -278,6 +320,12 @@ export async function startServer(options: ServerOptions = {}): Promise<RunningS
     tinyServer,
     async close() {
       await closeSync();
+      // With `noServer:true`, destroying the sync server does not close
+      // already-connected WebSockets; terminate them so httpServer.close()
+      // resolves instead of hanging on open sockets.
+      for (const client of wsServer.clients) {
+        client.terminate();
+      }
       await new Promise<void>((resolve, reject) =>
         httpServer.close((err) => (err ? reject(err) : resolve())),
       );
@@ -294,13 +342,10 @@ interface CliArgs {
 }
 
 // CLI flag parsing for the prod-server entrypoint (`pnpm start`).
-// `ServerOptions` already accepts a literal `dbPath`; these flags exist
-// so a compiled server binary (e.g. `bun build --compile` or any Node
-// entry) can pick the DB at runtime without env tweaks. CLI values win
-// over `LOCALACTION_DB_PATH` / `LOCALACTION_PORT` because `startServer`
-// checks explicit options first, falling back to the env var, then the
-// default. Unknown flags are ignored so the binary is robust to stray
-// args.
+// `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
+// the entry (`tsx server/index.ts`) pick them at runtime. `startServer` uses
+// the explicit option or falls back to its built-in default. Unknown flags
+// are ignored so the entry is robust to stray args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { help: false };
   for (let i = 0; i < argv.length; i++) {

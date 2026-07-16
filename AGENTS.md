@@ -11,12 +11,12 @@
 - Stack versions are bleeding-edge; generic tutorials may target older majors.
 
 ## Commands
-- `pnpm dev` — Vite dev server with HMR (also attaches the TinyBase sync WS via `attachSyncServer`).
+- `pnpm dev` — Vite dev server with HMR (also attaches the TinyBase sync WS via `attachSyncServer`). Launched through `scripts/dev.ts`, which adds `--db <path>` (Vite's own `--port` is passed through).
 - `pnpm build` — runs `tsc -b` (both tsconfig projects via references) then `vite build`. TS errors fail the build.
 - `pnpm lint` — `oxlint` over the workspace.
 - `pnpm preview` — serve the built `dist/` (same WS handler as dev).
-- `pnpm start` — boot the unified prod server (`server/index.ts`). Port: `--port` flag > `LOCALACTION_PORT` env > `5173`. DB path: `--db` flag > `LOCALACTION_DB_PATH` env > `./data/data.db`. `tsx` runs the TS entry.
-- `pnpm smoke` — boots the prod server on a random port and asserts (a) WS sync between two TinyBase clients, (b) the SQLite persister round-trips area/sub-area/project rows. Run with `pnpm smoke`; **`LOCALACTION_*` env vars are ignored** because the script passes an explicit `port`/`dbPath`.
+- `pnpm start` — boot the unified prod server (`server/index.ts`). Port: `--port` flag (default `5173`). DB path: `--db` flag (default `./data/data.db`). `tsx` runs the TS entry.
+- `pnpm smoke` — boots the prod server on a random port and asserts (a) WS sync between two TinyBase clients, (b) the SQLite persister round-trips area/sub-area/project rows. Run with `pnpm smoke`; it passes an explicit `port`/`dbPath`.
 - `pnpm test` — `vitest run` (full suite: jsdom unit/component + node integration).
 - `pnpm test:unit` — vitest run-once (jsdom suites only; integration runs in `pnpm test` too).
 - `pnpm test:integration` — vitest run focused on `tests/integration/`.
@@ -30,11 +30,11 @@
 - `tsconfig.app.json` declares `"types": ["vite/client", "node"]`. `@types/node` is intentionally scoped to `tsconfig.node.json` — `src/` and `tests/` keep Node types out of their app build.
 - `public/` holds static assets served at root: `favicon.svg`, `icons.svg`, `fonts/`. The `icons.svg` sprite is consumed via `<use href="/icons.svg#NAME-icon" />` from `src/components/*.tsx` and `src/components/appearance/*.tsx` (never from `App.tsx` itself).
 - `src/assets/` holds images imported by TS (e.g. `hero.png`, `react.svg`).
-- `data/` (repo root, gitignored) — runtime SQLite drop location for the prod server. Default `./data/data.db`. The `LOCALACTION_DB_PATH` env var and `--db` CLI flag both override it.
+- `data/` (repo root, gitignored) — runtime SQLite drop location for the prod server. Default `./data/data.db`; override it with the `--db` CLI flag (`pnpm dev` / `pnpm start`).
 - `dist/` is build output (gitignored). Do not hand-edit.
 - `src/data/` — the data-layer seam (TinyBase MergeableStore, OPFS-backed persister, WS sync, `DataLayerProvider`). Data APIs go through `src/data/index.ts`; UI bindings like `Provider`/`useRowIds` from `tinybase/ui-react*` and `Inspector` from `tinybase/ui-react-inspector` are allowed at consumer sites.
 - `server/` — prod-server entry (`server/index.ts`) and SQLite handle (`server/db.ts`). Serves `dist/` and upgrades `/ws`. Re-exports `attachSyncServer` so Vite's `configureServer` / `configurePreviewServer` reuse the same handler in dev/preview.
-- `scripts/` — one file: `scripts/smoke.ts`. Run via `tsx` (`pnpm smoke`).
+- `scripts/` — `scripts/dev.ts` (the `pnpm dev` launcher) and `scripts/smoke.ts`. Run via `tsx`.
 - `tests/` — single vitest tree (one config, per-file environment via pragma):
   - `tests/data/` — data-layer unit tests (mirror `src/data/`'s surface).
   - `tests/markdown/` — markdown rendering unit tests.

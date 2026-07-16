@@ -50,7 +50,7 @@ export async function attachSyncServer(
   options: ServerOptions = {},
 ): Promise<AttachedSyncServer> {
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
-  const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data.db';
+  const dbPath = options.dbPath ?? './data/data.db';
 
   // Monotonic connection counter so log lines can be correlated without
   // touching the WebSocket (whose `id` is library-defined and may collide).
@@ -248,9 +248,9 @@ function mimeFor(path: string): string {
 }
 
 export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
-  const port = options.port ?? portFromEnv() ?? DEFAULT_PORT;
+  const port = options.port ?? DEFAULT_PORT;
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
-  const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data/data.db';
+  const dbPath = options.dbPath ?? './data/data.db';
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
@@ -329,9 +329,8 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
     'Usage: localaction [options]\n' +
       '\n' +
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
-      '                   Overrides LOCALACTION_DB_PATH. Default: ./data/data.db\n' +
-      '  --port <n>       TCP port to listen on. Overrides LOCALACTION_PORT.\n' +
-      '                   Default: 5173\n' +
+      '                   Default: ./data/data.db\n' +
+      '  --port <n>       TCP port to listen on. Default: 5173\n' +
       '  -h, --help       Show this help and exit.\n',
   );
 }
@@ -344,11 +343,4 @@ if (isMain) {
   }
   const server = await startServer({ dbPath: cli.dbPath, port: cli.port });
   console.log(`[localaction] listening on http://localhost:${server.port}`);
-}
-
-function portFromEnv(): number | undefined {
-  const raw = process.env.LOCALACTION_PORT;
-  if (!raw) return undefined;
-  const parsed = Number(raw);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }

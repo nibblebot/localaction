@@ -9,8 +9,8 @@ see [`glossary.md`](./glossary.md).
 LocalAction is a single-page React app whose state lives in an in-browser
 [TinyBase](https://tinybase.org/) **MergeableStore**. The same store is
 persisted locally (OPFS) **and** kept in sync over a WebSocket with a small
-Node/Bun server that holds the authoritative SQLite copy. Three runtime modes —
-Vite dev, Vite preview, and a compiled prod server — all share one sync handler
+Node server that holds the authoritative SQLite copy. Three runtime modes —
+Vite dev, Vite preview, and the prod server (`tsx server/index.ts`) — all share one sync handler
 so behaviour never drifts between them.
 
 ```mermaid
@@ -203,12 +203,14 @@ One unified server serves both static assets and the sync socket:
 
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
-| dev | `pnpm dev` (`vite`) | `vite.config.ts` plugin → `configureServer` |
+| dev | `pnpm dev` (`scripts/dev.ts` → `vite`) | `vite.config.ts` plugin → `configureServer` |
 | preview | `pnpm preview` | same plugin → `configurePreviewServer` |
 | prod | `pnpm start` (`tsx server/index.ts`) | `startServer` directly (module `isMain`) |
 
-Prod CLI/env precedence: `--port` > `LOCALACTION_PORT` > `5173`;
-`--db` > `LOCALACTION_DB_PATH` > `./data/data.db`.
+Flag precedence by mode:
+- prod (`pnpm start`): `--port` > `5173`; `--db` > `./data/data.db`.
+- dev (`pnpm dev`): `--db <path>` is moved past Vite's `--` separator by `scripts/dev.ts` and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
+- preview (`pnpm preview`): `--db <path>` works via the `--` escape (e.g. `pnpm preview -- --db X`); `--port` is Vite-native.
 
 ## Build & toolchain
 

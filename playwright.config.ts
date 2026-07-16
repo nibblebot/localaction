@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'bun run dev',
+    command: 'pnpm dev',
     url: 'http://localhost:5173',
     reuseExistingServer: true,
     timeout: 60_000,

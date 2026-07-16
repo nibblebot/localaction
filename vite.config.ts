@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
+import type { Server } from 'node:http'
 
 const DEBUG = !!process.env['LOCALACTION_DEBUG']
 const dbg = (msg: string): void => {
@@ -14,31 +15,30 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     {
       // Wires the TinyBase WS sync handler into Vite's HTTP server upgrade
-      // events. Used in both `bun run dev` (configureServer) and
-      // `bun run preview` (configurePreviewServer); the prod server
-      // (`bun run start`) calls the same `attachSyncServer` directly.
+      // events. Used in both `pnpm dev` (configureServer) and
+      // `pnpm preview` (configurePreviewServer); the prod server
+      // (`pnpm start`) calls the same `attachSyncServer` directly.
       // Keeps the WS code in one place and avoids drift between modes.
-      //
-      // Runs under `bunx --bun vite` (see package.json scripts), which
-      // makes Bun's loader available for the `bun:sqlite` import that
-      // the server module pulls in transitively.
+      // The server module imports the `sqlite3` npm package (a native
+      // binding resolved by `tsx`/`vite`/`node` directly).
       name: 'localaction-sync',
       async configureServer(server) {
-        if (!server.httpServer) return
-        // Vite's typed `HttpServer` is `http.Server | Http2SecureServer`; we
-        // only support plain HTTP.
-        if ('maxHeadersCount' in server.httpServer) {
-          dbg('attaching WS sync handler to Vite dev server (no proxy: WS shares Vite\'s HTTP server via the upgrade event)')
-          await attachSyncServer(server.httpServer)
-        }
+        await attachSyncToVite(server, 'dev')
       },
       async configurePreviewServer(server) {
-        if (!server.httpServer) return
-        if ('maxHeadersCount' in server.httpServer) {
-          dbg('attaching WS sync handler to Vite preview server')
-          await attachSyncServer(server.httpServer)
-        }
+        await attachSyncToVite(server, 'preview')
       },
     },
   ],
 })
+// Attach the TinyBase WS sync handler to a Vite dev/preview HTTP server.
+// `attachSyncServer` only needs an EventEmitter to register the `upgrade`
+// listener, so gate on the `.on` capability rather than checking for
+// any `http.Server`-specific property. Works under both Node and Bun.
+async function attachSyncToVite(server: { httpServer: unknown }, label: string): Promise<void> {
+  const httpServer = server.httpServer
+  if (httpServer == null || typeof httpServer !== 'object') return
+  if (!('on' in httpServer) || typeof httpServer.on !== 'function') return
+  dbg(`attaching WS sync handler to Vite ${label} server`)
+  await attachSyncServer(httpServer as Server)
+}

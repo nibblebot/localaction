@@ -1,7 +1,0 @@
-[test]
-# Scope `bun test` to the integration suite (which needs `bun:sqlite`,
-# which bun's runner resolves directly). The jsdom test files under
-# `tests/` and `src/` use vitest APIs (`describe`, `expect`, `it`,
-# jsdom environment, vitest's transformer pipeline) and are picked up by
-# `vitest run` in `test:unit` and the combined `test` script.
-root = "tests/integration"

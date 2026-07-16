@@ -51,7 +51,6 @@ export async function attachSyncServer(
 ): Promise<AttachedSyncServer> {
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath ?? process.env.LOCALACTION_DB_PATH ?? './data.db';
-  const debug = !!process.env['LOCALACTION_DEBUG'];
 
   // Monotonic connection counter so log lines can be correlated without
   // touching the WebSocket (whose `id` is library-defined and may collide).
@@ -63,33 +62,31 @@ export async function attachSyncServer(
 
   const wsServer = new WebSocketServer({ noServer: true });
 
-  if (debug) {
-    wsServer.on('connection', (ws, req) => {
-      const connId = ++nextConnId;
-      const remote = `${req.socket.remoteAddress ?? '?'}:${req.socket.remotePort ?? '?'}`;
-      log(connId, `connected from ${remote}`);
-      ws.on('message', (data, isBinary) => {
-        let size: number;
-        if (Array.isArray(data)) {
-          size = Buffer.concat(data).byteLength;
-        } else if (Buffer.isBuffer(data)) {
-          size = data.byteLength;
-        } else if (data instanceof ArrayBuffer) {
-          size = data.byteLength;
-        } else {
-          size = Buffer.byteLength(data);
-        }
-        const kind = isBinary ? 'binary' : 'text';
-        log(connId, `recv ${kind} ${size}B`);
-      });
-      ws.on('close', (code, reason) => {
-        log(connId, `closed code=${code} reason=${reason.toString('utf8') || '(empty)'}`);
-      });
-      ws.on('error', (err) => {
-        log(connId, `error: ${err.message}`);
-      });
+  wsServer.on('connection', (ws, req) => {
+    const connId = ++nextConnId;
+    const remote = `${req.socket.remoteAddress ?? '?'}:${req.socket.remotePort ?? '?'}`;
+    log(connId, `connected from ${remote}`);
+    ws.on('message', (data, isBinary) => {
+      let size: number;
+      if (Array.isArray(data)) {
+        size = Buffer.concat(data).byteLength;
+      } else if (Buffer.isBuffer(data)) {
+        size = data.byteLength;
+      } else if (data instanceof ArrayBuffer) {
+        size = data.byteLength;
+      } else {
+        size = Buffer.byteLength(data);
+      }
+      const kind = isBinary ? 'binary' : 'text';
+      log(connId, `recv ${kind} ${size}B`);
     });
-  }
+    ws.on('close', (code, reason) => {
+      log(connId, `closed code=${code} reason=${reason.toString('utf8') || '(empty)'}`);
+    });
+    ws.on('error', (err) => {
+      log(connId, `error: ${err.message}`);
+    });
+  });
 
   // One shared sqlite3 connection for the whole process. `createSqlite3Persister`
   // only needs a `Database`; opening it per WebSocket connection leaked
@@ -142,10 +139,12 @@ export async function attachSyncServer(
       return;
     }
     if (!checkSecret(url, secret)) {
+      process.stderr.write(`[srv upgrade] 401 secret mismatch on ${url.pathname}\n`);
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;
     }
+    process.stderr.write(`[srv upgrade] upgrading ${url.pathname}\n`);
     wsServer.handleUpgrade(req, socket, head, (ws: WebSocket) => {
       wsServer.emit('connection', ws, req);
     });
@@ -294,13 +293,14 @@ interface CliArgs {
   help: boolean;
 }
 
-// CLI flag parsing for the prod-server entrypoint (`bun run start`).
-// `ServerOptions` already accepts a literal `dbPath`; these flags exist so
-// a `bun build`-compiled binary can pick the DB at runtime without env
-// tweaks. CLI values win over `LOCALACTION_DB_PATH` / `LOCALACTION_PORT`
-// because `startServer` checks explicit options first, falling back to
-// the env var, then the default. Unknown flags are ignored so the
-// compiled binary is robust to stray args.
+// CLI flag parsing for the prod-server entrypoint (`pnpm start`).
+// `ServerOptions` already accepts a literal `dbPath`; these flags exist
+// so a compiled server binary (e.g. `bun build --compile` or any Node
+// entry) can pick the DB at runtime without env tweaks. CLI values win
+// over `LOCALACTION_DB_PATH` / `LOCALACTION_PORT` because `startServer`
+// checks explicit options first, falling back to the env var, then the
+// default. Unknown flags are ignored so the binary is robust to stray
+// args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { help: false };
   for (let i = 0; i < argv.length; i++) {

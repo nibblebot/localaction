@@ -24,10 +24,10 @@ flowchart LR
     Store <--> OPFS
     Store <--> SyncC
   end
-  subgraph Server["Server (Bun / Node)"]
+  subgraph Server["Server (Node)"]
     WS["WebSocketServer\n/ws"]
     Tiny["createWsServer\n(per-pathId store)"]
-    SQLite[("SQLite\nbun:sqlite")]
+    SQLite[("SQLite\nsqlite3 (npm)")]
     Static["Static file server\n(dist/, SPA fallback)"]
     WS --> Tiny
     Tiny <--> SQLite
@@ -141,12 +141,13 @@ Two independent persisters bracket the same in-memory store:
   `localaction.json` in the origin's OPFS directory. On boot it `load()`s the
   snapshot, runs `backfillOrder()`, then `startAutoSave()`s. If OPFS / the File
   System Access API is unavailable, persistence is disabled (warned, non-fatal).
-- **Server (SQLite)** — `server/db.ts` wraps Bun's built-in `bun:sqlite` in a
-  `sqlite3#Database`-shaped adapter so TinyBase's `createSqlite3Persister`
-  accepts it. The `sqlite3` npm package is a NAPI addon that aborts under a
-  `bun build --compile` binary (Bun doesn't polyfill libuv on POSIX), so
-  `bun:sqlite` is the only server-side sqlite path. One DB connection is shared
-  process-wide.
+- **Server (SQLite)** — `server/db.ts` opens a connection via the `sqlite3` npm
+  package and hands it straight to TinyBase's `createSqlite3Persister` — the
+  package already exposes the `sqlite3#Database`-shaped API
+  (`all`/`get`/`run`/`exec`/`close` plus the `EventEmitter` listener surface)
+  the persister expects. One DB connection is shared process-wide (see
+  `server/index.ts`). Loaded via `createRequire` in `db.ts` because `sqlite3`
+  is CommonJS-only under our `verbatimModuleSyntax` config.
 
 ## Sync
 
@@ -202,34 +203,38 @@ One unified server serves both static assets and the sync socket:
 
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
-| dev | `bun run dev` (`bunx --bun vite`) | `vite.config.ts` plugin → `configureServer` |
-| preview | `bun run preview` | same plugin → `configurePreviewServer` |
-| prod | `bun run start` (`server/index.ts`) | `startServer` directly (module `isMain`) |
+| dev | `pnpm dev` (`vite`) | `vite.config.ts` plugin → `configureServer` |
+| preview | `pnpm preview` | same plugin → `configurePreviewServer` |
+| prod | `pnpm start` (`tsx server/index.ts`) | `startServer` directly (module `isMain`) |
 
 Prod CLI/env precedence: `--port` > `LOCALACTION_PORT` > `5173`;
 `--db` > `LOCALACTION_DB_PATH` > `./data/data.db`.
 
 ## Build & toolchain
 
-- `bun run build` = `tsc -b` (project references: `tsconfig.app.json` for
+- `pnpm build` = `tsc -b` (project references: `tsconfig.app.json` for
   `src/` + `tests/`, `tsconfig.node.json` for config files) then `vite build`.
   TS errors anywhere — including config files — fail the build.
 - **React Compiler** is on (`babel-plugin-react-compiler` via
   `@rolldown/plugin-babel`); code must stay compiler-clean.
 - TS quirks: `verbatimModuleSyntax` (use `import type`, no default React
-  import), `erasableSyntaxOnly` (no enums/namespaces), `allowImportingTsExtensions`
-  (keep `.tsx` in TS import paths), `moduleResolution: bundler`.
-- Everything runs under Bun; `.ts` in `scripts/` and `server/` needs no loader.
+- `moduleResolution: bundler`. For CJS-only packages (e.g. `sqlite3`) loaded
+  from Node TS, use `node:module`'s `createRequire(import.meta.url)` — preserves
+  `verbatimModuleSyntax` and avoids default-import surprise.
+- Everything runs under Node; `.ts` in `scripts/` and `server/` is run by
+  `tsx` (a devDependency). `vite` is invoked directly.
 
 ## Testing strategy
 
-Runners split by runtime, not by name (see `bunfig.toml`):
+Runners split by environment, not by tool. vitest drives all suites; the
+integration suite opts in to a Node environment via per-file pragma.
 
-- **vitest** (jsdom) — `tests/data/` (the full data-layer unit suite), 
-  `tests/markdown/`, `tests/router.test.ts`, and any `src/**/*.test.{ts,tsx}`.
-- **bun:test** (scoped to `tests/integration/`) — `sync-roundtrip.test.ts`,
-  a real two-client ↔ one-server WebSocket round-trip with memory storage.
-- **Playwright** (`e2e/`) — one spec per user journey; auto-starts `bun run dev`
+- **vitest** — `tests/data/` (data-layer unit suite), `tests/markdown/`,
+  `tests/router.test.ts`, and any `src/**/*.test.{ts,tsx}` run in jsdom.
+- **vitest (`@vitest-environment node`)** — `tests/integration/sync-roundtrip.test.ts`:
+  a real two-client ↔ one-server WebSocket round-trip with the shared SQLite
+  connection.
+- **Playwright** (`e2e/`) — one spec per user journey; auto-starts `pnpm dev`
   on 5173, depends on the `/ws` handshake.
 - **`scripts/smoke.ts`** — boots the prod server on a random port and asserts
   WS sync between two clients plus a SQLite persistence round-trip.

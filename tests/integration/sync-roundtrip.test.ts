@@ -1,9 +1,10 @@
+// @vitest-environment node
 /**
  * Sync-server round-trip integration test.
  *
- * Runs under `bun test` (see `bunfig.toml`): boots the same prod server
- * `bun run start` uses, then connects two TinyBase MergeableStores to it
- * as if they were two browser tabs. Asserts that:
+ * Boots the same prod server that `pnpm start` uses, then connects two
+ * TinyBase MergeableStores to it as if they were two browser tabs.
+ * Asserts that:
  *
  *   1. Two clients can each start sync against the server.
  *   2. A write on one client's store replicates to the other.
@@ -11,11 +12,8 @@
  *      full persisted state (Domain, Sub-Domain, Project).
  *   4. The SQLite file round-trips through `createSqlite3Persister.load()`.
  *
- * Why bun:test: `@localaction/server` opens its database through
- * `bun:sqlite` (the `sqlite3` NAPI addon doesn't run under Bun — see
- * https://github.com/oven-sh/bun/issues/18546). Vitest's module pipeline
- * can't resolve `bun:sqlite`, so the integration suite must run inside
- * Bun. The jsdom unit suites (React-side) stay on vitest.
+ * Runs under vitest with `@vitest-environment node` (no DOM, real
+ * `ws`/`sqlite3` Node modules).
  */
 import {
   afterAll,
@@ -23,7 +21,7 @@ import {
   describe,
   expect,
   it,
-} from 'bun:test';
+} from 'vitest';
 import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -51,7 +49,7 @@ beforeAll(async () => {
   port = 5190 + Math.floor(Math.random() * 100);
   dbPath = join(
     tmpdir(),
-    `localaction-buntest-${Date.now()}-${process.pid}.db`,
+    `localaction-integration-${Date.now()}-${process.pid}.db`,
   );
   url = `ws://localhost:${port}/ws`;
   server = await startServer({ port, dbPath });

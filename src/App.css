@@ -108,7 +108,7 @@
   line-height: 1.4;
 }
 
-/* Sidebar list rows (DomainTreeItem) */
+/* Sidebar list rows (AreaTreeItem) */
 
 .sidebar-item {
   display: flex;
@@ -178,7 +178,7 @@
   color: var(--accent);
 }
 
-.sidebar-domain-children {
+.sidebar-area-children {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -223,24 +223,24 @@
 }
 
 /* ============================================================
-   Domain header (`/ <domainName>`)
+   Area header (`/ <areaName>`)
    ============================================================ */
 
-.domain-header {
+.area-header {
   display: flex;
   align-items: center;
   gap: 4px;
   margin-bottom: var(--space-5);
 }
 
-.domain-header-slash {
+.area-header-slash {
   font-size: 2rem;
   font-weight: 600;
   font-family: var(--font-sans);
   line-height: 1;
 }
 
-.domain-header-name {
+.area-header-name {
   font-size: 2rem;
   font-weight: 600;
   color: var(--text-h);
@@ -248,7 +248,7 @@
   letter-spacing: -0.01em;
 }
 
-.domain-header-crumb {
+.area-header-crumb {
   font-size: 2rem;
   font-weight: 500;
   color: var(--text-muted);
@@ -260,12 +260,12 @@
   line-height: 1;
 }
 
-.domain-header-crumb:hover {
+.area-header-crumb:hover {
   color: var(--text-h);
   text-decoration: underline;
 }
 
-.domain-header-add {
+.area-header-add {
   width: 36px;
   height: 36px;
   display: inline-flex;
@@ -282,19 +282,19 @@
   transition: background 0.1s, color 0.1s, border-color 0.1s;
 }
 
-.domain-header-add:hover {
+.area-header-add:hover {
   color: var(--text-h);
   background: var(--surface-hover);
   border-color: var(--text-muted);
   border-style: solid;
 }
 
-.domain-header-add svg {
+.area-header-add svg {
   width: 18px;
   height: 18px;
 }
 
-.domain-header-add-input {
+.area-header-add-input {
   font: inherit;
   font-size: 1.4rem;
   font-weight: 500;
@@ -308,11 +308,11 @@
   font-family: inherit;
 }
 
-.domain-header-add-input::placeholder {
+.area-header-add-input::placeholder {
   color: var(--text-muted);
 }
 
-.domain-header .domain-header-project-icon {
+.area-header .area-header-project-icon {
   width: 24px;
   height: 24px;
   color: var(--text-h);
@@ -323,7 +323,7 @@
    Tabs (Projects / Tasks / Notes)
    ============================================================ */
 
-.domain-tabs {
+.area-tabs {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -332,7 +332,7 @@
   margin-bottom: var(--space-4);
 }
 
-.domain-tab {
+.area-tab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -348,16 +348,16 @@
   margin-bottom: -1px;
 }
 
-.domain-tab:hover {
+.area-tab:hover {
   color: var(--text-h);
 }
 
-.domain-tab-active {
+.area-tab-active {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
 
-.domain-tab-count {
+.area-tab-count {
   font-size: 0.79rem;
   color: var(--text-muted);
   background: var(--surface);
@@ -368,12 +368,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-.domain-tab-active .domain-tab-count {
+.area-tab-active .area-tab-count {
   background: var(--accent-tint);
   color: var(--accent);
 }
 
-.domain-tabs-spacer {
+.area-tabs-spacer {
   flex: 1 1 auto;
 }
 
@@ -381,7 +381,7 @@
    Inline tab actions (search / sort / add)
    ============================================================ */
 
-.domain-tab-action {
+.area-tab-action {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -396,22 +396,22 @@
   flex-shrink: 0;
 }
 
-.domain-tab-action:hover {
+.area-tab-action:hover {
   background: var(--surface-hover);
   color: var(--text-h);
 }
 
-.domain-tab-action svg {
+.area-tab-action svg {
   width: 15px;
   height: 15px;
 }
 
-.domain-tab-add {
+.area-tab-add {
   background: var(--accent);
   color: var(--text-on-accent);
 }
 
-.domain-tab-add:hover {
+.area-tab-add:hover {
   background: var(--accent-hover);
   color: var(--text-on-accent);
 }
@@ -474,7 +474,7 @@
    Breadcrumb separator (a "/" between every pair of segments)
    ============================================================ */
 
-.domain-header-crumb-sep {
+.area-header-crumb-sep {
   color: var(--text-muted);
   font-size: 2rem;
   line-height: 1;
@@ -1444,7 +1444,7 @@
    keep their existing role as the click target.
    ------------------------------------------------------------ */
 
-.sidebar-domain-row {
+.sidebar-area-row {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1458,7 +1458,7 @@
   cursor: grabbing;
 }
 
-.sidebar-domain-siblings {
+.sidebar-area-siblings {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1466,9 +1466,9 @@
   flex-direction: column;
 }
 
-.sidebar-domain-siblings > .sortable-item-slot {
-  /* Sub-domains indent one level further. The padding matches
-     the existing `.sidebar-domain-children` rule so the visual
+.sidebar-area-siblings > .sortable-item-slot {
+  /* Sub-areas indent one level further. The padding matches
+     the existing `.sidebar-area-children` rule so the visual
      hierarchy is unchanged when DnD is inactive. */
   padding-left: 10px;
 }

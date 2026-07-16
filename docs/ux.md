@@ -13,8 +13,8 @@ The app is a two-pane workspace:
 flowchart TB
   subgraph Shell["app-shell"]
     direction LR
-    Side["Sidebar\n(domain tree, counts,\ndrag-to-reorder, sync badge)"]
-    Main["MainPane\n(domain / project views)"]
+    Side["Sidebar\n(area tree, counts,\ndrag-to-reorder, sync badge)"]
+    Main["MainPane\n(area / project views)"]
   end
   Insp["TinyBase Inspector\n(dev-only overlay)"]
   Menu["AppearanceMenu\n(floating)"]
@@ -22,11 +22,11 @@ flowchart TB
   Shell --- Menu
 ```
 
-- **Sidebar** (`Sidebar.tsx`) — the domain tree, the primary way to navigate.
-  Each row shows a coloured dot, the domain name, and live counts (sub-domains,
+- **Sidebar** (`Sidebar.tsx`) — the area tree, the primary way to navigate.
+  Each row shows a coloured dot, the area name, and live counts (sub-areas,
   projects, tasks, notes). A `SyncStatusBadge` at the foot reports connection
   state: *Local only* → *Syncing…* → *Synced* (or *Retry #n…* / *Sync error*).
-- **MainPane** (`MainPane.tsx`) — the working area. Renders a domain view, a
+- **MainPane** (`MainPane.tsx`) — the working area. Renders an area view, a
   project view, or the welcome screen depending on the current selection.
 - **Inspector** — TinyBase's `ui-react-inspector`, a dev-only overlay for
   inspecting store tables/cells.
@@ -36,7 +36,7 @@ flowchart TB
 
 There is no router library — `src/router.ts` is a tiny hash router.
 
-- Routes: `#/` (home), `#/d/<id>` (domain), `#/p/<id>` (project).
+- Routes: `#/` (home), `#/a/<id>` (area), `#/p/<id>` (project).
 - `SelectionProvider` holds the current `Selection` and a `navigate()` helper.
   It seeds from `window.location.hash` and listens for `hashchange`, so the
   back/forward buttons and deep links both work. `navigate()` writes the hash;
@@ -44,9 +44,9 @@ There is no router library — `src/router.ts` is a tiny hash router.
 - Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) collapse to
   **home** so stale links fall back to the welcome screen gracefully.
 
-## The domain tree (sidebar)
+## The area tree (sidebar)
 
-Domains are top-level containers; each may hold one level of **sub-domains**
+Areas are top-level containers; each may hold one level of **sub-areas**
 (same semantics, nested under a parent).
 
 - Each row: colour dot, name, counts.
@@ -54,41 +54,41 @@ Domains are top-level containers; each may hold one level of **sub-domains**
   parent's children live in their own sortable list, so reordering is scoped to
   siblings — dragging across parents is not supported by drag (use an explicit
   move / reparent instead).
-- Add a top-level domain or, from a top-level domain view, add a sub-domain.
-- Selecting a domain drives the MainPane's domain view.
+- Add a top-level area or, from a top-level area view, add a sub-area.
+- Selecting an area drives the MainPane's area view.
 
 ## MainPane views
 
 ### Welcome (home)
 
-When nothing is selected: a centred empty state — *"Pick a domain from the
+When nothing is selected: a centred empty state — *"Pick an area from the
 sidebar to get started, or create a new one."*
 
-### Domain view
+### Area view
 
-A `DomainHeader` (name, colour, and a breadcrumb of the parent chain) sits above
+A `AreaHeader` (name, colour, and a breadcrumb of the parent chain) sits above
 three **tabs**, each carrying a live count and an add action:
 
 - **Projects** — project rows with a done/total rollup; drag-to-reorder within
-  the domain.
+  the area.
 - **Tasks** — tasks grouped by their project, with nested sub-tasks, an
   open/done toggle, and drag-to-reorder.
-- **Notes** — notes attached to this domain (or its projects/tasks), each shown
+- **Notes** — notes attached to this area (or its projects/tasks), each shown
   as a line with a markdown body preview.
 
-Tabs remember their last selection per domain.
+Tabs remember their last selection per area.
 
 ### Project view
 
 Selecting a project (`#/p/<id>`) opens `ProjectPane`: a project header with a
-breadcrumb back to its domain, and two tabs:
+breadcrumb back to its area, and two tabs:
 
 - **Tasks** — the project's task tree (nested tasks, status toggle, reorder).
 - **Notes** — notes attached to this project.
 
 ## Notes & markdown
 
-A **Note** is a markdown body attached to exactly one entity (domain, project,
+A **Note** is a markdown body attached to exactly one entity (area, project,
 or task). Rendering goes through `src/markdown/render.ts` (`markdown-it`), a
 CommonMark subset. Notably, `[[double-brackets]]` are **not** turned into links
 — they render as literal text — and code spans are left alone. Each note is
@@ -118,7 +118,7 @@ attribute on the document root and persisted to `localStorage`
 
 - **`SortableList`** — the shared drag-to-reorder surface (dnd-kit) with a drag
   handle; used by the sidebar tree, project rows, and task rows.
-- **`PromptModal`** — modal used for create flows (new domain / project / task /
+- **`PromptModal`** — modal used for create flows (new area / project / task /
   note).
 - **`ConfirmModal` / `ConfirmButton`** — confirmation for destructive actions
   (delete).
@@ -126,6 +126,6 @@ attribute on the document root and persisted to `localStorage`
 
 ## Colour system
 
-Domains carry a palette colour (`src/data/colors.ts`, `DOMAIN_COLORS`): purple,
-blue, green, pink, amber, gray. The chosen id is stored on the domain and
+Areas carry a palette colour (`src/data/colors.ts`, `AREA_COLORS`): purple,
+blue, green, pink, amber, gray. The chosen id is stored on the area and
 rendered as its sidebar dot / header marker; an unknown id falls back to gray.

@@ -31,24 +31,24 @@ async function cleanOpfs(page: Page): Promise<void> {
   });
 }
 
-async function createDomain(page: Page, name: string): Promise<void> {
-  await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+async function createArea(page: Page, name: string): Promise<void> {
+  await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
   await page.locator('.modal-input').fill(name);
   await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
-  await expect(page.locator('.domain-header-name')).toContainText(name);
+  await expect(page.locator('.area-header-name')).toContainText(name);
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.domain-tab', { hasText: 'Projects' }).click();
-  await page.locator('.domain-tab-add', { hasTitle: 'New project' }).click();
+  await page.locator('.area-tab', { hasText: 'Projects' }).click();
+  await page.locator('.area-tab-add', { hasTitle: 'New project' }).click();
   await page.locator('.modal-input').fill(name);
   await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
   await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  await page.locator('.domain-tab', { hasText: 'Tasks' }).click();
-  await page.locator('.domain-tab-add', { hasTitle: 'New task' }).click();
+  await page.locator('.area-tab', { hasText: 'Tasks' }).click();
+  await page.locator('.area-tab-add', { hasTitle: 'New task' }).click();
   await page.locator('.modal-input').fill(title);
   await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
 }
@@ -82,11 +82,11 @@ test.describe('Reorder rendering', () => {
     await page.goto('/#/');
   });
 
-  test('top-level domains render in created order', async ({ page }) => {
+  test('top-level areas render in created order', async ({ page }) => {
     const tok = uniq();
-    await createDomain(page, `Alpha ${tok}`);
-    await createDomain(page, `Bravo ${tok}`);
-    await createDomain(page, `Charlie ${tok}`);
+    await createArea(page, `Alpha ${tok}`);
+    await createArea(page, `Bravo ${tok}`);
+    await createArea(page, `Charlie ${tok}`);
     const order = await sidebarOrder(page, tok);
     expect(order).toEqual([
       `Alpha ${tok}`,
@@ -97,7 +97,7 @@ test.describe('Reorder rendering', () => {
 
   test('projects render in created order', async ({ page }) => {
     const tok = uniq();
-    await createDomain(page, `Reorder-Dom ${tok}`);
+    await createArea(page, `Reorder-Area ${tok}`);
     await createProject(page, `Project Alpha ${tok}`);
     await createProject(page, `Project Bravo ${tok}`);
     await createProject(page, `Project Charlie ${tok}`);
@@ -111,7 +111,7 @@ test.describe('Reorder rendering', () => {
 
   test('tasks render under their project after creation', async ({ page }) => {
     const tok = uniq();
-    await createDomain(page, `Task-Dom ${tok}`);
+    await createArea(page, `Task-Area ${tok}`);
     await createProject(page, `My Project ${tok}`);
     await createTask(page, `Task one ${tok}`);
     await createTask(page, `Task two ${tok}`);

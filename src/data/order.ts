@@ -31,7 +31,7 @@ interface SiblingRow {
 }
 
 type OrderedTable =
-  | typeof TABLES.domains
+  | typeof TABLES.areas
   | typeof TABLES.projects
   | typeof TABLES.tasks;
 
@@ -43,15 +43,15 @@ interface OrderColumns {
 }
 
 const ORDER_COLUMNS: Record<OrderedTable, OrderColumns> = {
-  [TABLES.domains]: {
-    table: TABLES.domains,
-    parent: COLUMNS.domains.parentId,
-    order: COLUMNS.domains.order,
-    updatedAt: COLUMNS.domains.updatedAt,
+  [TABLES.areas]: {
+    table: TABLES.areas,
+    parent: COLUMNS.areas.parentId,
+    order: COLUMNS.areas.order,
+    updatedAt: COLUMNS.areas.updatedAt,
   },
   [TABLES.projects]: {
     table: TABLES.projects,
-    parent: COLUMNS.projects.domainId,
+    parent: COLUMNS.projects.areaId,
     order: COLUMNS.projects.order,
     updatedAt: COLUMNS.projects.updatedAt,
   },
@@ -213,32 +213,32 @@ function moveWithinSiblings(
 }
 
 /**
- * Move a domain to a new sibling position. Keeps the row's `parentId`
+ * Move an area to a new sibling position. Keeps the row's `parentId`
  * unchanged; this is a sibling reorder, not a reparent. Reparenting
- * is handled by `updateDomain({ parentId })` (slice 10).
+ * is handled by `updateArea({ parentId })` (slice 10).
  */
-export function reorderDomain(
+export function reorderArea(
   store: MergeableStore,
-  domainId: string,
+  areaId: string,
   beforeId: string | undefined,
 ): void {
-  if (!store.hasRow(TABLES.domains, domainId)) return;
+  if (!store.hasRow(TABLES.areas, areaId)) return;
   const parentId = normalizeRelation(
-    store.getCell(TABLES.domains, domainId, COLUMNS.domains.parentId),
+    store.getCell(TABLES.areas, areaId, COLUMNS.areas.parentId),
   );
   moveWithinSiblings(
     store,
-    ORDER_COLUMNS[TABLES.domains],
+    ORDER_COLUMNS[TABLES.areas],
     parentId,
-    domainId,
+    areaId,
     beforeId,
   );
 }
 
 /**
- * Move a project to a new sibling position within its current domain.
- * Reordering across domains is not supported by this helper — move
- * the project with `updateProject({ domainId })` first.
+ * Move a project to a new sibling position within its current area.
+ * Reordering across areas is not supported by this helper — move
+ * the project with `updateProject({ areaId })` first.
  */
 export function reorderProject(
   store: MergeableStore,
@@ -246,13 +246,13 @@ export function reorderProject(
   beforeId: string | undefined,
 ): void {
   if (!store.hasRow(TABLES.projects, projectId)) return;
-  const domainId = normalizeRelation(
-    store.getCell(TABLES.projects, projectId, COLUMNS.projects.domainId),
+  const areaId = normalizeRelation(
+    store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId),
   );
   moveWithinSiblings(
     store,
     ORDER_COLUMNS[TABLES.projects],
-    domainId,
+    areaId,
     projectId,
     beforeId,
   );
@@ -291,9 +291,9 @@ export function reorderTask(
  */
 export function backfillOrder(store: MergeableStore): void {
   // Tasks already had `order` per the original schema; skip if all set.
-  // Domains and projects are the new ones.
+  // Areas and projects are the new ones.
   store.transaction(() => {
-    for (const table of [TABLES.domains, TABLES.projects] as const) {
+    for (const table of [TABLES.areas, TABLES.projects] as const) {
       const columns = ORDER_COLUMNS[table];
       // Group row ids by their parent scope.
       const groups = new Map<string, string[]>();

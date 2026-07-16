@@ -1,5 +1,5 @@
 export const TABLES = {
-  domains: 'domains',
+  areas: 'areas',
   projects: 'projects',
   tasks: 'tasks',
   notes: 'notes',
@@ -8,7 +8,7 @@ export const TABLES = {
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
 
 export const COLUMNS = {
-  domains: {
+  areas: {
     id: 'id',
     name: 'name',
     parentId: 'parentId',
@@ -20,7 +20,7 @@ export const COLUMNS = {
   projects: {
     id: 'id',
     name: 'name',
-    domainId: 'domainId',
+    areaId: 'areaId',
     order: 'order',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
@@ -47,7 +47,7 @@ export const COLUMNS = {
   },
 } as const;
 
-export type DomainColumn = (typeof COLUMNS.domains)[keyof typeof COLUMNS.domains];
+export type AreaColumn = (typeof COLUMNS.areas)[keyof typeof COLUMNS.areas];
 export type ProjectColumn = (typeof COLUMNS.projects)[keyof typeof COLUMNS.projects];
 export type TaskColumn = (typeof COLUMNS.tasks)[keyof typeof COLUMNS.tasks];
 export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
@@ -60,7 +60,7 @@ export const TASK_STATUS = {
 export type TaskStatus = (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
 
 export const NOTE_ENTITY_TYPE = {
-  domain: 'domain',
+  area: 'area',
   project: 'project',
   task: 'task',
 } as const;

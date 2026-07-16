@@ -1,11 +1,11 @@
 import type { TaskStatus, NoteEntityType } from './schema.ts';
-import type { DomainColorId } from './colors.ts';
+import type { AreaColorId } from './colors.ts';
 
-export interface Domain {
+export interface Area {
   id: string;
   name: string;
   parentId: string | null;
-  color: DomainColorId;
+  color: AreaColorId;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -14,7 +14,7 @@ export interface Domain {
 export interface Project {
   id: string;
   name: string;
-  domainId: string | null;
+  areaId: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -42,26 +42,26 @@ export interface Note {
   updatedAt: string;
 }
 
-export interface DomainInput {
+export interface AreaInput {
   name: string;
   parentId?: string | null;
-  color?: DomainColorId;
+  color?: AreaColorId;
 }
 
-export interface DomainPatch {
+export interface AreaPatch {
   name?: string;
   parentId?: string | null;
-  color?: DomainColorId;
+  color?: AreaColorId;
 }
 
 export interface ProjectInput {
   name: string;
-  domainId: string;
+  areaId: string;
 }
 
 export interface ProjectPatch {
   name?: string;
-  domainId?: string | null;
+  areaId?: string | null;
 }
 
 export interface TaskInput {

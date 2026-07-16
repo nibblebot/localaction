@@ -11,7 +11,7 @@ import {
   getTasksForProjectDeep,
 } from '../../src/data/tasks.ts';
 import { createProject } from '../../src/data/projects.ts';
-import { createDomain } from '../../src/data/domains.ts';
+import { createArea } from '../../src/data/areas.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -24,8 +24,8 @@ describe('tasks', () => {
   });
 
   it('createTask writes a task with default open status and stores title/projectId', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P1', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p = createProject(store, { name: 'P1', areaId: d });
     const t = createTask(store, { title: 'Ship it', projectId: p });
     const row = getTask(store, t);
     expect(row).toBeDefined();
@@ -35,8 +35,8 @@ describe('tasks', () => {
   });
 
   it('setTaskStatus toggles open <-> done', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P1', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p = createProject(store, { name: 'P1', areaId: d });
     const t = createTask(store, { title: 'Ship it', projectId: p });
     setTaskStatus(store, t, TASK_STATUS.done);
     expect(getTask(store, t)?.status).toBe(TASK_STATUS.done);
@@ -45,9 +45,9 @@ describe('tasks', () => {
   });
 
   it('updateTask patches title and projectId', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p1 = createProject(store, { name: 'P1', domainId: d });
-    const p2 = createProject(store, { name: 'P2', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p1 = createProject(store, { name: 'P1', areaId: d });
+    const p2 = createProject(store, { name: 'P2', areaId: d });
     const t = createTask(store, { title: 'old', projectId: p1 });
     updateTask(store, t, { title: 'new', projectId: p2 });
     const row = getTask(store, t);
@@ -56,8 +56,8 @@ describe('tasks', () => {
   });
 
   it('getTasksForProjectDeep returns top-level and nested tasks for a project', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P1', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p = createProject(store, { name: 'P1', areaId: d });
     const t1 = createTask(store, { title: 'parent', projectId: p });
     const t2 = createTask(store, { title: 'child', projectId: p, parentTaskId: t1 });
     const t3 = createTask(store, { title: 'sibling', projectId: p });
@@ -66,17 +66,17 @@ describe('tasks', () => {
   });
 
   it('getTasksForProjectDeep ignores tasks in other projects', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p1 = createProject(store, { name: 'P1', domainId: d });
-    const p2 = createProject(store, { name: 'P2', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p1 = createProject(store, { name: 'P1', areaId: d });
+    const p2 = createProject(store, { name: 'P2', areaId: d });
     const t1 = createTask(store, { title: 'p1', projectId: p1 });
     createTask(store, { title: 'p2', projectId: p2 });
     expect(getTasksForProjectDeep(store, p1)).toEqual([t1]);
   });
 
   it('deleteTask removes the row', () => {
-    const d = createDomain(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P1', domainId: d });
+    const d = createArea(store, { name: 'Work' });
+    const p = createProject(store, { name: 'P1', areaId: d });
     const t = createTask(store, { title: 'X', projectId: p });
     deleteTask(store, t);
     expect(getTask(store, t)).toBeUndefined();

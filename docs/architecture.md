@@ -55,7 +55,7 @@ and `AppearanceMenu`.
 ## Data layer (`src/data/`)
 
 The seam between React and TinyBase. Everything is re-exported from
-`src/data/index.ts`; consumers never import TinyBase primitives for domain data
+`src/data/index.ts`; consumers never import TinyBase primitives for entity data
 (except the allowed `tinybase/ui-react*` hooks and `Inspector`).
 
 - **Store** — `store.ts` holds a process-wide `createMergeableStore()` singleton
@@ -63,37 +63,37 @@ The seam between React and TinyBase. Everything is re-exported from
   makes conflict-free sync possible.
 - **Schema** — `schema.ts` defines four tables and their column keys as `const`
   maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`) and
-  `NOTE_ENTITY_TYPE` (`domain` / `project` / `task`) enums-as-objects.
-- **CRUD + hooks** — one module per entity (`domains.ts`, `projects.ts`,
+  `NOTE_ENTITY_TYPE` (`area` / `project` / `task`) enums-as-objects.
+- **CRUD + hooks** — one module per entity (`areas.ts`, `projects.ts`,
   `tasks.ts`, `notes.ts`). Each exposes imperative mutators/readers
   (`createX` / `updateX` / `deleteX` / `getX`) **and** a React hook
   (`useX`) built on `tinybase/ui-react`'s `useRow` / `useRowIds`. IDs are
   `crypto.randomUUID()`; timestamps are ISO 8601.
-- **Selectors** — `selectors.ts` derives rollups (`useDomainCounts`,
-  `useProjectRollups`, `useNotesForDomainTree`). Each `get*` takes an optional
+- **Selectors** — `selectors.ts` derives rollups (`useAreaCounts`,
+  `useProjectRollups`, `useNotesForAreaTree`). Each `get*` takes an optional
   `_version` dependency token so React Compiler can memoise the derived output.
 - **Ordering** — `order.ts` (see [Ordering](#ordering) below).
-- **Helpers** — `colors.ts` (the domain palette), `slug.ts` (note slugs),
+- **Helpers** — `colors.ts` (the area palette), `slug.ts` (note slugs),
   `internal.ts` (`newId`, `nowIso`, `row`, `useStoreVersion`).
 
 ### Data model
 
 ```mermaid
 erDiagram
-  domains ||--o{ domains : "parentId (self-ref tree)"
-  domains ||--o{ projects : "domainId"
-  domains ||--o{ notes : "entityType=domain"
+  areas ||--o{ areas : "parentId (self-ref tree)"
+  areas ||--o{ projects : "areaId"
+  areas ||--o{ notes : "entityType=area"
   projects ||--o{ tasks : "projectId"
   projects ||--o{ notes : "entityType=project"
   tasks ||--o{ tasks : "parentTaskId (self-ref)"
   tasks ||--o{ notes : "entityType=task"
-  domains { string id PK }
-  domains { string name }
-  domains { string parentId FK "nullable; null = top-level" }
-  domains { string color "DomainColorId" }
-  domains { float order }
+  areas { string id PK }
+  areas { string name }
+  areas { string parentId FK "nullable; null = top-level" }
+  areas { string color "AreaColorId" }
+  areas { float order }
   projects { string id PK }
-  projects { string domainId FK "nullable" }
+  projects { string areaId FK "nullable" }
   projects { float order }
   tasks { string id PK }
   tasks { string title }
@@ -105,13 +105,13 @@ erDiagram
   notes { string slug }
   notes { string title }
   notes { string body "markdown" }
-  notes { string entityType "domain|project|task" }
+  notes { string entityType "area|project|task" }
   notes { string entityId FK "polymorphic" }
 ```
 
-- **Domain** — ongoing area; self-referential (`parentId`) for one level of
-  nesting (sub-domains). Carries a palette `color` and `order`.
-- **Project** — bounded effort belonging to a domain; has `order`.
+- **Area** — ongoing area; self-referential (`parentId`) for one level of
+  nesting (sub-areas). Carries a palette `color` and `order`.
+- **Project** — bounded effort belonging to an area; has `order`.
 - **Task** — unit of action belonging to a project; self-referential
   (`parentTaskId`) for nesting; `open` / `done` status; has `order`.
 - **Note** — markdown body attached to exactly one entity via the
@@ -119,7 +119,7 @@ erDiagram
 
 ### Ordering
 
-Drag-to-reorder is sibling-scoped. Each ordered table (`domains`, `projects`,
+Drag-to-reorder is sibling-scoped. Each ordered table (`areas`, `projects`,
 `tasks`) has an `order` key. `order.ts`:
 
 - Appends new rows at `lastSiblingOrder + 1000`.
@@ -128,9 +128,9 @@ Drag-to-reorder is sibling-scoped. Each ordered table (`domains`, `projects`,
   evenly-spaced integers from `RENORMALIZE_SPACING` (1000), in one transaction.
 - `backfillOrder()` seeds missing `order` cells (from `idHash(id)` + timestamps)
   on boot — idempotent, run after OPFS loads.
-- Reorder helpers (`reorderDomain` / `reorderProject` / `reorderTask`) move a
+- Reorder helpers (`reorderArea` / `reorderProject` / `reorderTask`) move a
   row within its **current** sibling group only. Reparenting (changing
-  `parentId` / `domainId` / `projectId`) is a separate `update*` mutation.
+  `parentId` / `areaId` / `projectId`) is a separate `update*` mutation.
 
 ## Persistence
 

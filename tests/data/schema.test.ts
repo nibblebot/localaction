@@ -9,12 +9,12 @@ import {
 describe('schema constants', () => {
   it('exposes the four top-level tables the PRD defines', () => {
     expect(Object.values(TABLES).sort()).toEqual(
-      ['domains', 'notes', 'projects', 'tasks'].sort(),
+      ['areas', 'notes', 'projects', 'tasks'].sort(),
     );
   });
 
   it('uses snake_case column names that match the PRD schema', () => {
-    expect(COLUMNS.domains).toMatchObject({
+    expect(COLUMNS.areas).toMatchObject({
       id: 'id',
       name: 'name',
       parentId: 'parentId',
@@ -30,7 +30,7 @@ describe('schema constants', () => {
 
   it('keeps the note entity-type enum aligned with the glossary', () => {
     expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(
-      ['domain', 'project', 'task'],
+      ['area', 'project', 'task'],
     );
   });
 });

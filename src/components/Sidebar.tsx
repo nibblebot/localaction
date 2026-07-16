@@ -2,28 +2,28 @@ import { useMemo, useState } from 'react';
 import {
   useDataLayer,
   useStoreVersion,
-  useDomainCounts,
-  createDomain,
-  reorderDomain,
-  type DomainCount,
+  useAreaCounts,
+  createArea,
+  reorderArea,
+  type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import PromptModal from './PromptModal.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
-import { domainColorHex, isDomainColorId } from '../data/colors.ts';
-import type { DomainColorId } from '../data/colors.ts';
+import { areaColorHex, isAreaColorId } from '../data/colors.ts';
+import type { AreaColorId } from '../data/colors.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 
-interface DomainNode {
-  count: DomainCount;
-  children: DomainNode[];
+interface AreaNode {
+  count: AreaCount;
+  children: AreaNode[];
 }
 
-function buildTree(counts: DomainCount[]): DomainNode[] {
-  const byId = new Map<string, DomainNode>();
+function buildTree(counts: AreaCount[]): AreaNode[] {
+  const byId = new Map<string, AreaNode>();
   for (const c of counts) byId.set(c.id, { count: c, children: [] });
-  const roots: DomainNode[] = [];
+  const roots: AreaNode[] = [];
   for (const node of byId.values()) {
     const parentId = node.count.parentId;
     if (parentId && byId.has(parentId)) {
@@ -32,7 +32,7 @@ function buildTree(counts: DomainCount[]): DomainNode[] {
       roots.push(node);
     }
   }
-  const sortRec = (nodes: DomainNode[]): void => {
+  const sortRec = (nodes: AreaNode[]): void => {
     nodes.sort((a, b) => {
       if (a.count.order !== b.count.order) return a.count.order - b.count.order;
       const an = a.count.name || '';
@@ -47,24 +47,24 @@ function buildTree(counts: DomainCount[]): DomainNode[] {
 }
 
 function getColorHex(raw: string | null | undefined): string {
-  return isDomainColorId(raw) ? domainColorHex(raw) : domainColorHex('gray');
+  return isAreaColorId(raw) ? areaColorHex(raw) : areaColorHex('gray');
 }
 
-interface SortableDomainRowProps {
+interface SortableAreaRowProps {
   handle: SortableHandleProps;
-  node: DomainNode;
+  node: AreaNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
   isTopLevel: boolean;
 }
 
-function SortableDomainRow({
+function SortableAreaRow({
   handle,
   node,
   selectedId,
   onSelect,
   isTopLevel,
-}: SortableDomainRowProps): React.JSX.Element {
+}: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const dot = getColorHex(node.count.color);
   const displayName = node.count.name || 'Untitled';
@@ -72,7 +72,7 @@ function SortableDomainRow({
     <li
       ref={handle.ref}
       style={handle.style}
-      className={`sidebar-domain-row sortable-row${handle.isDragging ? ' sortable-row-active' : ''}${handle.isOver ? ' sortable-row-over' : ''}`}
+      className={`sidebar-area-row sortable-row${handle.isDragging ? ' sortable-row-active' : ''}${handle.isOver ? ' sortable-row-over' : ''}`}
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
       <div className="sidebar-item-row">
@@ -103,37 +103,37 @@ function SortableDomainRow({
   );
 }
 
-interface SubDomainListProps {
-  parent: DomainNode;
+interface SubAreaListProps {
+  parent: AreaNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onReorder: (activeId: string, beforeId: string | undefined) => void;
 }
 
 /**
- * Sub-domains under a single parent, in their own SortableList so
+ * Sub-areas under a single parent, in their own SortableList so
  * reordering is scoped to siblings. Dragging across parents is not
  * supported by drag (slice 10 owns that explicit Move action).
  */
-function SubDomainList({
+function SubAreaList({
   parent,
   selectedId,
   onSelect,
   onReorder,
-}: SubDomainListProps): React.JSX.Element | null {
+}: SubAreaListProps): React.JSX.Element | null {
   if (parent.children.length === 0) return null;
   return (
     <SortableList
       itemIds={parent.children.map((c) => c.count.id)}
       onReorder={onReorder}
-      ariaLabel={`Sub-domains of ${parent.count.name || 'Untitled'}`}
-      className="sidebar-domain-siblings"
+      ariaLabel={`Sub-areas of ${parent.count.name || 'Untitled'}`}
+      className="sidebar-area-siblings"
     >
       {(id, handle) => {
         const child = parent.children.find((c) => c.count.id === id);
         if (!child) return <></>;
         return (
-          <SortableDomainRow
+          <SortableAreaRow
             handle={handle}
             node={child}
             selectedId={selectedId}
@@ -149,27 +149,27 @@ function SubDomainList({
 export default function Sidebar(): React.JSX.Element {
   const { store } = useDataLayer();
   useStoreVersion(store);
-  const counts = useDomainCounts(store);
+  const counts = useAreaCounts(store);
   const { selection, navigate } = useSelection();
   const [promptOpen, setPromptOpen] = useState(false);
   const tree = useMemo(() => buildTree(counts), [counts]);
-  const activeColor: DomainColorId = useMemo(() => {
-    if (selection.kind !== 'domain') return 'gray';
+  const activeColor: AreaColorId = useMemo(() => {
+    if (selection.kind !== 'area') return 'gray';
     const c = counts.find((x) => x.id === selection.id);
     return c ? c.color : 'gray';
   }, [selection, counts]);
 
   function createNew(name: string): void {
-    const id = createDomain(store, { name, color: activeColor });
+    const id = createArea(store, { name, color: activeColor });
     setPromptOpen(false);
-    navigate({ kind: 'domain', id });
+    navigate({ kind: 'area', id });
   }
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderDomain(store, activeId, beforeId);
+    reorderArea(store, activeId, beforeId);
   }
 
-  const selectedId = selection.kind === 'domain' ? selection.id : null;
+  const selectedId = selection.kind === 'area' ? selection.id : null;
   const rootIds = tree.map((n) => n.count.id);
 
   return (
@@ -184,13 +184,13 @@ export default function Sidebar(): React.JSX.Element {
         style={{ flex: '1 1 auto', overflow: 'auto' }}
       >
         <h2 className="sidebar-section-title">
-          <span>Domains</span>
+          <span>Areas</span>
           <button
             type="button"
             className="sidebar-section-title-action"
             onClick={() => setPromptOpen(true)}
-            aria-label="New domain"
-            title="New domain"
+            aria-label="New area"
+            title="New area"
           >
             <svg className="svg-icon" aria-hidden="true">
               <use href="/icons.svg#add-icon" />
@@ -199,31 +199,31 @@ export default function Sidebar(): React.JSX.Element {
         </h2>
         {tree.length === 0 ? (
           <p className="sidebar-empty">
-            No domains yet. Create one to get started.
+            No areas yet. Create one to get started.
           </p>
         ) : (
           <SortableList
             itemIds={rootIds}
             onReorder={onReorder}
-            ariaLabel="Top-level domains"
+            ariaLabel="Top-level areas"
             className="sidebar-section-body"
           >
             {(id, handle) => {
               const node = tree.find((n) => n.count.id === id);
               if (!node) return <></>;
               return (
-                <div className="sidebar-domain-li-root">
-                  <SortableDomainRow
+                <div className="sidebar-area-li-root">
+                  <SortableAreaRow
                     handle={handle}
                     node={node}
                     selectedId={selectedId}
-                    onSelect={(sid) => navigate({ kind: 'domain', id: sid })}
+                    onSelect={(sid) => navigate({ kind: 'area', id: sid })}
                     isTopLevel
                   />
-                  <SubDomainList
+                  <SubAreaList
                     parent={node}
                     selectedId={selectedId}
-                    onSelect={(sid) => navigate({ kind: 'domain', id: sid })}
+                    onSelect={(sid) => navigate({ kind: 'area', id: sid })}
                     onReorder={onReorder}
                   />
                 </div>
@@ -235,7 +235,7 @@ export default function Sidebar(): React.JSX.Element {
 
       <PromptModal
         open={promptOpen}
-        title="New domain"
+        title="New area"
         label="Name"
         placeholder="e.g. Work, Personal, Side project"
         submitLabel="Create"

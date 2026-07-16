@@ -1,14 +1,14 @@
 import type { MergeableStore } from 'tinybase';
 import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
-import { getDomain, getAllDomainIdsFlat } from './domains.ts';
-import type { Domain } from './types.ts';
+import { getArea, getAllAreaIdsFlat } from './areas.ts';
+import type { Area } from './types.ts';
 
-export interface DomainCount {
+export interface AreaCount {
   id: string;
   name: string;
   parentId: string | null;
-  color: Domain['color'];
+  color: Area['color'];
   order: number;
   childCount: number;
   projectCount: number;
@@ -19,21 +19,21 @@ export interface DomainCount {
 /**
  * `version` is a dependency token that React Compiler's optimizer
  * recognises as "used" by the body. Without it, the compiler inlines
- * `getDomainCounts` and elides the actual function call (returning only
+ * `getAreaCounts` and elides the actual function call (returning only
  * the cached `useRowIds` results). The token has no semantic value —
  * its sole purpose is to keep the subscription hooks alive.
  */
-export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: unknown): DomainCount[] {
+export function getAreaCounts(store: MergeableStore, _version = 0, _tables?: unknown): AreaCount[] {
   const projectIds = store.getRowIds(TABLES.projects);
   const taskIds = store.getRowIds(TABLES.tasks);
   const noteIds = store.getRowIds(TABLES.notes);
 
-  const projectDomain = new Map<string, string | null>();
+  const projectArea = new Map<string, string | null>();
   for (const pid of projectIds) {
-    projectDomain.set(
+    projectArea.set(
       pid,
-      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId) === 'string'
-        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId))
+      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId) === 'string'
+        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId))
         : null,
     );
   }
@@ -47,13 +47,13 @@ export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: u
     );
   }
 
-  const allDomainIds = getAllDomainIdsFlat(store);
+  const allAreaIds = getAllAreaIdsFlat(store);
   const descendantsOf = new Map<string, Set<string>>();
-  for (const did of allDomainIds) {
+  for (const did of allAreaIds) {
     const set = new Set<string>([did]);
     let cur: string | null = did;
     while (cur) {
-      const d = getDomain(store, cur);
+      const d = getArea(store, cur);
       if (!d || d.parentId == null) break;
       set.add(d.parentId);
       cur = d.parentId;
@@ -61,52 +61,52 @@ export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: u
     descendantsOf.set(did, set);
   }
 
-  const directSubDomainCount = new Map<string, number>();
+  const directSubAreaCount = new Map<string, number>();
   const directProjectCount = new Map<string, number>();
-  for (const did of allDomainIds) {
-    directSubDomainCount.set(did, 0);
+  for (const did of allAreaIds) {
+    directSubAreaCount.set(did, 0);
     directProjectCount.set(did, 0);
   }
-  for (const id of allDomainIds) {
-    const parent = store.getCell(TABLES.domains, id, COLUMNS.domains.parentId);
+  for (const id of allAreaIds) {
+    const parent = store.getCell(TABLES.areas, id, COLUMNS.areas.parentId);
     if (typeof parent === 'string') {
-      directSubDomainCount.set(parent, (directSubDomainCount.get(parent) ?? 0) + 1);
+      directSubAreaCount.set(parent, (directSubAreaCount.get(parent) ?? 0) + 1);
     }
   }
   for (const pid of projectIds) {
-    const dId = projectDomain.get(pid) ?? null;
-    if (!dId) continue;
-    directProjectCount.set(dId, (directProjectCount.get(dId) ?? 0) + 1);
+    const aId = projectArea.get(pid) ?? null;
+    if (!aId) continue;
+    directProjectCount.set(aId, (directProjectCount.get(aId) ?? 0) + 1);
   }
 
   const projectCount = new Map<string, number>();
   const taskCount = new Map<string, number>();
   const noteCount = new Map<string, number>();
-  for (const did of allDomainIds) {
+  for (const did of allAreaIds) {
     projectCount.set(did, 0);
     taskCount.set(did, 0);
     noteCount.set(did, 0);
   }
 
   for (const pid of projectIds) {
-    const dId = projectDomain.get(pid) ?? null;
-    if (!dId) continue;
-    for (const owner of descendantsOf.get(dId) ?? []) {
+    const aId = projectArea.get(pid) ?? null;
+    if (!aId) continue;
+    for (const owner of descendantsOf.get(aId) ?? []) {
       projectCount.set(owner, (projectCount.get(owner) ?? 0) + 1);
     }
   }
   for (const tid of taskIds) {
     const pId = taskProject.get(tid) ?? null;
     if (!pId) continue;
-    const dId = projectDomain.get(pId) ?? null;
-    if (!dId) continue;
-    for (const owner of descendantsOf.get(dId) ?? []) {
+    const aId = projectArea.get(pId) ?? null;
+    if (!aId) continue;
+    for (const owner of descendantsOf.get(aId) ?? []) {
       taskCount.set(owner, (taskCount.get(owner) ?? 0) + 1);
     }
   }
   for (const nid of noteIds) {
     const type = String(store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType) ?? '');
-    if (type !== 'domain') continue;
+    if (type !== 'area') continue;
     const eId =
       typeof store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId) === 'string'
         ? String(store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId))
@@ -118,8 +118,8 @@ export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: u
     }
   }
 
-  return allDomainIds.map((did) => {
-    const d = getDomain(store, did);
+  return allAreaIds.map((did) => {
+    const d = getArea(store, did);
     return {
       id: did,
       name: d?.name ?? '',
@@ -127,7 +127,7 @@ export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: u
       color: d?.color ?? 'gray',
       order: d?.order ?? 0,
       childCount:
-        (directSubDomainCount.get(did) ?? 0) + (directProjectCount.get(did) ?? 0),
+        (directSubAreaCount.get(did) ?? 0) + (directProjectCount.get(did) ?? 0),
       projectCount: projectCount.get(did) ?? 0,
       taskCount: taskCount.get(did) ?? 0,
       noteCount: noteCount.get(did) ?? 0,
@@ -135,32 +135,32 @@ export function getDomainCounts(store: MergeableStore, _version = 0, _tables?: u
   });
 }
 
-export function useDomainCounts(store: MergeableStore): DomainCount[] {
+export function useAreaCounts(store: MergeableStore): AreaCount[] {
   // Subscribe via useRowIds (length changes) and useTables (cell changes).
   // Both feed the cache key the React Compiler uses to decide whether
   // to re-run the body; without useTables, a row whose `order` cell
-  // changes (e.g. via `reorderDomain`) does not invalidate the memoised
+  // changes (e.g. via `reorderArea`) does not invalidate the memoised
   // result, so the sidebar tree keeps showing the stale order.
-  const d = useRowIds(TABLES.domains, store);
+  const d = useRowIds(TABLES.areas, store);
   const p = useRowIds(TABLES.projects, store);
   const t = useRowIds(TABLES.tasks, store);
   const n = useRowIds(TABLES.notes, store);
   const tables = useTables(store);
-  return getDomainCounts(store, d.length + p.length + t.length + n.length, tables);
+  return getAreaCounts(store, d.length + p.length + t.length + n.length, tables);
 }
 
-export function getNotesForDomainTree(
+export function getNotesForAreaTree(
   store: MergeableStore,
-  domainId: string,
+  areaId: string,
   _version = 0,
   _tables?: unknown,
-): { domainNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
-  const descendants = new Set<string>([domainId]);
+): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
+  const descendants = new Set<string>([areaId]);
   let added = true;
   while (added) {
     added = false;
-    for (const id of store.getRowIds(TABLES.domains)) {
-      const parent = store.getCell(TABLES.domains, id, COLUMNS.domains.parentId);
+    for (const id of store.getRowIds(TABLES.areas)) {
+      const parent = store.getCell(TABLES.areas, id, COLUMNS.areas.parentId);
       if (typeof parent === 'string' && descendants.has(parent) && !descendants.has(id)) {
         descendants.add(id);
         added = true;
@@ -168,47 +168,47 @@ export function getNotesForDomainTree(
     }
   }
 
-  const domainNotes: string[] = [];
+  const areaNotes: string[] = [];
   const projectNotes: string[] = [];
   const taskNotes: string[] = [];
   for (const nid of store.getRowIds(TABLES.notes)) {
     const type = String(store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType) ?? '');
     const eId = store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId);
     if (typeof eId !== 'string') continue;
-    if (type === 'domain' && descendants.has(eId)) {
-      domainNotes.push(nid);
+    if (type === 'area' && descendants.has(eId)) {
+      areaNotes.push(nid);
     } else if (type === 'project') {
-      const pDomain = store.getCell(TABLES.projects, eId, COLUMNS.projects.domainId);
-      if (typeof pDomain === 'string' && descendants.has(pDomain)) {
+      const pArea = store.getCell(TABLES.projects, eId, COLUMNS.projects.areaId);
+      if (typeof pArea === 'string' && descendants.has(pArea)) {
         projectNotes.push(nid);
       }
     } else if (type === 'task') {
       const pId = store.getCell(TABLES.tasks, eId, COLUMNS.tasks.projectId);
       if (typeof pId !== 'string') continue;
-      const pDomain = store.getCell(TABLES.projects, pId, COLUMNS.projects.domainId);
-      if (typeof pDomain === 'string' && descendants.has(pDomain)) {
+      const pArea = store.getCell(TABLES.projects, pId, COLUMNS.projects.areaId);
+      if (typeof pArea === 'string' && descendants.has(pArea)) {
         taskNotes.push(nid);
       }
     }
   }
-  return { domainNotes, projectNotes, taskNotes };
+  return { areaNotes, projectNotes, taskNotes };
 }
 
-export function useNotesForDomainTree(
+export function useNotesForAreaTree(
   store: MergeableStore,
-  domainId: string,
-): { domainNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
-  const d = useRowIds(TABLES.domains, store);
+  areaId: string,
+): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
+  const d = useRowIds(TABLES.areas, store);
   const p = useRowIds(TABLES.projects, store);
   const t = useRowIds(TABLES.tasks, store);
   const n = useRowIds(TABLES.notes, store);
   const tables = useTables(store);
-  return getNotesForDomainTree(store, domainId, d.length + p.length + t.length + n.length, tables);
+  return getNotesForAreaTree(store, areaId, d.length + p.length + t.length + n.length, tables);
 }
 
 export interface ProjectRollup {
   projectId: string;
-  domainId: string | null;
+  areaId: string | null;
   projectName: string;
   order: number;
   done: number;
@@ -228,19 +228,19 @@ export function getProjectRollups(
   _tables?: unknown,
 ): ProjectRollup[] {
   const projectIds = store.getRowIds(TABLES.projects);
-  const projectDomain = new Map<string, string | null>();
+  const projectArea = new Map<string, string | null>();
   for (const pid of projectIds) {
-    projectDomain.set(
+    projectArea.set(
       pid,
-      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId) === 'string'
-        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId))
+      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId) === 'string'
+        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId))
         : null,
     );
   }
   const projectRollups: ProjectRollup[] = [];
   for (const pid of projectIds) {
-    const domainIdRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.domainId);
-    const domainId = typeof domainIdRaw === 'string' ? domainIdRaw : null;
+    const areaIdRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId);
+    const areaId = typeof areaIdRaw === 'string' ? areaIdRaw : null;
     const name = String(store.getCell(TABLES.projects, pid, COLUMNS.projects.name) ?? '');
     const order = Number(store.getCell(TABLES.projects, pid, COLUMNS.projects.order) ?? 0);
     let done = 0;
@@ -252,7 +252,7 @@ export function getProjectRollups(
         done += 1;
       }
     }
-    projectRollups.push({ projectId: pid, domainId, projectName: name, order, done, total });
+    projectRollups.push({ projectId: pid, areaId, projectName: name, order, done, total });
   }
   return projectRollups;
 }

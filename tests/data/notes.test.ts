@@ -23,7 +23,7 @@ describe('notes', () => {
     const id = createNote(store, {
       title: 'My First Note',
       body: 'hello',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     const slug = String(store.getCell(TABLES.notes, id, COLUMNS.notes.slug));
@@ -34,13 +34,13 @@ describe('notes', () => {
     const a = createNote(store, {
       title: 'Same',
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     const b = createNote(store, {
       title: 'Same',
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     const aSlug = String(store.getCell(TABLES.notes, a, COLUMNS.notes.slug));
@@ -53,7 +53,7 @@ describe('notes', () => {
     const id = createNote(store, {
       title: '',
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     const slug = String(store.getCell(TABLES.notes, id, COLUMNS.notes.slug));
@@ -64,7 +64,7 @@ describe('notes', () => {
     const id = createNote(store, {
       title: 'T',
       body: 'old',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     store.setCell(TABLES.notes, id, COLUMNS.notes.updatedAt, '2000-01-01T00:00:00Z');
@@ -78,7 +78,7 @@ describe('notes', () => {
     const id = createNote(store, {
       title: 'Old',
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     updateNote(store, id, { title: 'Brand New' });
@@ -90,7 +90,7 @@ describe('notes', () => {
     const id = createNote(store, {
       title: 'T',
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
+      entityType: NOTE_ENTITY_TYPE.area,
       entityId: 'd1',
     });
     deleteNote(store, id);

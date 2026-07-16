@@ -1,7 +1,7 @@
 export { TABLES, COLUMNS, TASK_STATUS, NOTE_ENTITY_TYPE } from './schema.ts';
 export type {
   TableName,
-  DomainColumn,
+  AreaColumn,
   ProjectColumn,
   TaskColumn,
   NoteColumn,
@@ -30,12 +30,12 @@ export { DataLayerProvider } from './DataLayerProvider.tsx';
 export type { DataLayerProviderProps } from './DataLayerProvider.tsx';
 
 export type {
-  Domain,
+  Area,
   Project,
   Task,
   Note,
-  DomainInput,
-  DomainPatch,
+  AreaInput,
+  AreaPatch,
   ProjectInput,
   ProjectPatch,
   TaskInput,
@@ -45,12 +45,12 @@ export type {
 } from './types.ts';
 
 export {
-  createDomain,
-  updateDomain,
-  deleteDomain,
-  getDomain,
-  useDomain,
-} from './domains.ts';
+  createArea,
+  updateArea,
+  deleteArea,
+  getArea,
+  useArea,
+} from './areas.ts';
 export {
   createProject,
   updateProject,
@@ -68,7 +68,7 @@ export {
 } from './tasks.ts';
 
 export {
-  reorderDomain,
+  reorderArea,
   reorderProject,
   reorderTask,
   backfillOrder,
@@ -86,15 +86,15 @@ export {
 
 export { slugify } from './slug.ts';
 
-export { DOMAIN_COLORS, isDomainColorId, domainColorHex } from './colors.ts';
-export type { DomainColorId } from './colors.ts';
+export { AREA_COLORS, isAreaColorId, areaColorHex } from './colors.ts';
+export type { AreaColorId } from './colors.ts';
 
 export {
-  getDomainCounts,
-  getNotesForDomainTree,
-  useNotesForDomainTree,
+  getAreaCounts,
+  getNotesForAreaTree,
+  useNotesForAreaTree,
   getProjectRollups,
-  useDomainCounts,
+  useAreaCounts,
   useProjectRollups,
 } from './selectors.ts';
-export type { DomainCount, ProjectRollup } from './selectors.ts';
+export type { AreaCount, ProjectRollup } from './selectors.ts';

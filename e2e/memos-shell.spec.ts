@@ -15,23 +15,23 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.main-empty')).toContainText('Welcome to LocalAction');
   });
 
-  test('creating a domain navigates to its main pane with the tab strip', async ({ page }) => {
+  test('creating an area navigates to its main pane with the tab strip', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
     await page.locator('.modal-input').fill('Work');
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
-    await expect(page).toHaveURL(/#\/d\//);
-    await expect(page.locator('.domain-header-name')).toContainText('Work');
-    await expect(page.locator('.domain-tabs')).toBeVisible();
-    await expect(page.locator('.domain-tab', { hasText: 'Projects' })).toBeVisible();
-    await expect(page.locator('.domain-tab', { hasText: 'Tasks' })).toBeVisible();
-    await expect(page.locator('.domain-tab', { hasText: 'Notes' })).toBeVisible();
+    await expect(page).toHaveURL(/#\/a\//);
+    await expect(page.locator('.area-header-name')).toContainText('Work');
+    await expect(page.locator('.area-tabs')).toBeVisible();
+    await expect(page.locator('.area-tab', { hasText: 'Projects' })).toBeVisible();
+    await expect(page.locator('.area-tab', { hasText: 'Tasks' })).toBeVisible();
+    await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
   });
 
   test('projects tab shows an empty state and an add prompt', async ({ page }) => {
     await page.goto('/#/');
-    // Create a domain so we have something to render.
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    // Create an area so we have something to render.
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
     await page.locator('.modal-input').fill('Health');
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
     await expect(page.locator('.projects-tab')).toBeVisible();
@@ -40,7 +40,7 @@ test.describe('LocalAction shell', () => {
 
   test('clicking a project opens its pane with Tasks and Notes tabs', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
     await page.locator('.modal-input').fill('Family');
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
     // Projects tab: add a project.
@@ -51,42 +51,42 @@ test.describe('LocalAction shell', () => {
     // Clicking the project navigates to the project pane (no inline expand).
     await page.locator('.project-row-name', { hasText: 'Plan trip' }).click();
     await expect(page).toHaveURL(/#\/p\//);
-    await expect(page.locator('.domain-header-name')).toContainText('Plan trip');
+    await expect(page.locator('.area-header-name')).toContainText('Plan trip');
     // Project pane has Tasks + Notes tabs but no Projects tab.
-    await expect(page.locator('.domain-tab', { hasText: 'Projects' })).toHaveCount(0);
-    await expect(page.locator('.domain-tab', { hasText: 'Tasks' })).toBeVisible();
-    await expect(page.locator('.domain-tab', { hasText: 'Notes' })).toBeVisible();
+    await expect(page.locator('.area-tab', { hasText: 'Projects' })).toHaveCount(0);
+    await expect(page.locator('.area-tab', { hasText: 'Tasks' })).toBeVisible();
+    await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
     // Default tab is Tasks; add a task scoped to this project.
-    await page.locator('.domain-tab-add').click();
+    await page.locator('.area-tab-add').click();
     await page.locator('.modal-input').fill('Book flights');
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
     await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
   });
 
-  test('a project under a sub-domain shows the full domain hierarchy in its pane', async ({ page }) => {
+  test('a project under a sub-area shows the full area hierarchy in its pane', async ({ page }) => {
     const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const root = `Root ${uniq()}`;
     const sub = `Sub ${uniq()}`;
     const projectName = `Honeymoon ${uniq()}`;
     // Wait for the app shell + sidebar to be ready before interacting.
     await page.goto('/#/');
-    await expect(page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' })).toBeVisible();
-    // Root domain
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await expect(page.locator('.sidebar-section-title-action', { hasTitle: 'New area' })).toBeVisible();
+    // Root area
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
     await page.locator('.modal-input').fill(root);
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
-    // Sub-domain via the inline + on the root pane
-    await page.locator('.domain-header-add', { hasTitle: 'Add sub-domain' }).click();
-    await page.locator('.domain-header-add-input').fill(sub);
-    await page.locator('.domain-header-add-input').press('Enter');
-    await expect(page.locator('.domain-header-name')).toContainText(sub);
-    // Now we're on the sub-domain pane. Add a project.
+    // Sub-area via the inline + on the root pane
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(sub);
+    await page.locator('.area-header-add-input').press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(sub);
+    // Now we're on the sub-area pane. Add a project.
     await page.locator('.empty-tab .btn-primary', { hasText: '+ Project' }).click();
     await page.locator('.modal-input').fill(projectName);
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
     await page.locator('.project-row-name', { hasText: projectName }).click();
     // The project pane header shows a list-based document icon next to the name.
-    const projectIcon = page.locator('.domain-header-project-icon');
+    const projectIcon = page.locator('.area-header-project-icon');
     await expect(projectIcon).toBeVisible();
     await expect(projectIcon).toHaveAttribute('aria-hidden', 'true');
     await expect(projectIcon.locator('use')).toHaveAttribute('href', /#project-list-icon$/);
@@ -99,7 +99,7 @@ test.describe('LocalAction shell', () => {
     expect(iconSize.h).toBe(24);
     const iconColor = await projectIcon.evaluate((el) => getComputedStyle(el).color);
     const headingColor = await page
-      .locator('.domain-header-name')
+      .locator('.area-header-name')
       .evaluate((el) => getComputedStyle(el).color);
     expect(iconColor).toBe(headingColor);
     // The icon precedes the project name in DOM order, and the visible gap
@@ -109,7 +109,7 @@ test.describe('LocalAction shell', () => {
         el.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING
           ? 'icon-before'
           : 'icon-after',
-      await page.locator('.domain-header-name').elementHandle(),
+      await page.locator('.area-header-name').elementHandle(),
     );
     expect(order).toBe('icon-before');
     const gap = await projectIcon.evaluate(
@@ -118,18 +118,18 @@ test.describe('LocalAction shell', () => {
         const b = heading.getBoundingClientRect();
         return b.left - a.right;
       },
-      await page.locator('.domain-header-name').elementHandle(),
+      await page.locator('.area-header-name').elementHandle(),
     );
     expect(gap).toBeGreaterThanOrEqual(0);
     expect(gap).toBeLessThanOrEqual(8);
-    const rootCrumb = page.locator('.domain-header-crumb', { hasText: root });
-    const subCrumb = page.locator('.domain-header-crumb', { hasText: sub });
+    const rootCrumb = page.locator('.area-header-crumb', { hasText: root });
+    const subCrumb = page.locator('.area-header-crumb', { hasText: sub });
     await expect(rootCrumb).toBeVisible();
     await expect(subCrumb).toBeVisible();
-    await expect(page.locator('.domain-header-name')).toContainText(projectName);
-    // Two separators: between the two domain crumbs, and between the
+    await expect(page.locator('.area-header-name')).toContainText(projectName);
+    // Two separators: between the two area crumbs, and between the
     // last crumb and the project name. Each renders as "/".
-    const seps = page.locator('.domain-header-crumb-sep');
+    const seps = page.locator('.area-header-crumb-sep');
     await expect(seps).toHaveCount(2);
     await expect(seps).toHaveText(['/', '/']);
     // Inter-segment flex gap is tight and uniform: assert the gap
@@ -144,19 +144,19 @@ test.describe('LocalAction shell', () => {
     }, await seps.nth(1).elementHandle());
     expect(gapRightOfRoot).toBeLessThanOrEqual(8);
     expect(gapLeftOfIcon).toBeLessThanOrEqual(8);
-    // dedicated .domain-header-slash class).
-    await expect(page.locator('.domain-header-slash')).toHaveCount(0);
-    // Clicking the root crumb navigates back to the root domain.
+    // dedicated .area-header-slash class).
+    await expect(page.locator('.area-header-slash')).toHaveCount(0);
+    // Clicking the root crumb navigates back to the root area.
     await rootCrumb.click();
-    await expect(page.locator('.domain-header-name')).toContainText(root);
+    await expect(page.locator('.area-header-name')).toContainText(root);
   });
 
   test('notes tab shows an empty state then allows adding a note', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New domain' }).click();
+    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
     await page.locator('.modal-input').fill('Personal');
     await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
-    await page.locator('.domain-tab', { hasText: 'Notes' }).click();
+    await page.locator('.area-tab', { hasText: 'Notes' }).click();
     await expect(page.locator('.empty-tab')).toContainText('No notes yet.');
     await page.locator('.empty-tab .btn-primary', { hasText: '+ Note' }).click();
     await page.locator('.modal-input').fill('Quick thought');

@@ -3,15 +3,15 @@ import { parseRoute, formatRoute, routeEquals } from '../src/router.ts';
 import type { Selection } from '../src/router.ts';
 
 describe('parseRoute', () => {
-  it('parses a domain route', () => {
-    expect(parseRoute('#/d/dom1')).toEqual<Selection>({
-      kind: 'domain',
-      id: 'dom1',
+  it('parses an area route', () => {
+    expect(parseRoute('#/a/are1')).toEqual<Selection>({
+      kind: 'area',
+      id: 'are1',
     });
   });
 
   it('parses a bare path without the leading hash', () => {
-    expect(parseRoute('/d/dom1')).toEqual<Selection>({ kind: 'domain', id: 'dom1' });
+    expect(parseRoute('/a/are1')).toEqual<Selection>({ kind: 'area', id: 'are1' });
   });
 
   it('parses a project route', () => {
@@ -25,7 +25,7 @@ describe('parseRoute', () => {
     expect(parseRoute('')).toEqual<Selection>({ kind: 'home' });
     expect(parseRoute('#/')).toEqual<Selection>({ kind: 'home' });
     expect(parseRoute('#/unknown/x')).toEqual<Selection>({ kind: 'home' });
-    expect(parseRoute('#/d/')).toEqual<Selection>({ kind: 'home' });
+    expect(parseRoute('#/a/')).toEqual<Selection>({ kind: 'home' });
   });
 
   it('collapses legacy task / note / tag deep links to home', () => {
@@ -38,16 +38,16 @@ describe('parseRoute', () => {
 describe('formatRoute', () => {
   it('formats each selection kind', () => {
     expect(formatRoute({ kind: 'home' })).toBe('#/');
-    expect(formatRoute({ kind: 'domain', id: 'd1' })).toBe('#/d/d1');
+    expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
     expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
   });
 });
 
 describe('routeEquals', () => {
   it('compares selections structurally', () => {
-    const a: Selection = { kind: 'domain', id: 'd1' };
-    expect(routeEquals(a, { kind: 'domain', id: 'd1' })).toBe(true);
-    expect(routeEquals(a, { kind: 'domain', id: 'd2' })).toBe(false);
+    const a: Selection = { kind: 'area', id: 'a1' };
+    expect(routeEquals(a, { kind: 'area', id: 'a1' })).toBe(true);
+    expect(routeEquals(a, { kind: 'area', id: 'a2' })).toBe(false);
     expect(routeEquals(a, { kind: 'home' })).toBe(false);
   });
 
@@ -55,6 +55,6 @@ describe('routeEquals', () => {
     const a: Selection = { kind: 'project', id: 'p1' };
     expect(routeEquals(a, { kind: 'project', id: 'p1' })).toBe(true);
     expect(routeEquals(a, { kind: 'project', id: 'p2' })).toBe(false);
-    expect(routeEquals(a, { kind: 'domain', id: 'p1' })).toBe(false);
+    expect(routeEquals(a, { kind: 'area', id: 'p1' })).toBe(false);
   });
 });

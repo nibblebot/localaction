@@ -16,7 +16,7 @@
 - `pnpm lint` — `oxlint` over the workspace.
 - `pnpm preview` — serve the built `dist/` (same WS handler as dev).
 - `pnpm start` — boot the unified prod server (`server/index.ts`). Port: `--port` flag > `LOCALACTION_PORT` env > `5173`. DB path: `--db` flag > `LOCALACTION_DB_PATH` env > `./data/data.db`. `tsx` runs the TS entry.
-- `pnpm smoke` — boots the prod server on a random port and asserts (a) WS sync between two TinyBase clients, (b) the SQLite persister round-trips domain/sub-domain/project rows. Run with `pnpm smoke`; **`LOCALACTION_*` env vars are ignored** because the script passes an explicit `port`/`dbPath`.
+- `pnpm smoke` — boots the prod server on a random port and asserts (a) WS sync between two TinyBase clients, (b) the SQLite persister round-trips area/sub-area/project rows. Run with `pnpm smoke`; **`LOCALACTION_*` env vars are ignored** because the script passes an explicit `port`/`dbPath`.
 - `pnpm test` — `vitest run` (full suite: jsdom unit/component + node integration).
 - `pnpm test:unit` — vitest run-once (jsdom suites only; integration runs in `pnpm test` too).
 - `pnpm test:integration` — vitest run focused on `tests/integration/`.

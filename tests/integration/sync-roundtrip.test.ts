@@ -9,7 +9,7 @@
  *   1. Two clients can each start sync against the server.
  *   2. A write on one client's store replicates to the other.
  *   3. After both clients disconnect, a third "fresh" client sees the
- *      full persisted state (Domain, Sub-Domain, Project).
+ *      full persisted state (Area, Sub-Area, Project).
  *   4. The SQLite file round-trips through `createSqlite3Persister.load()`.
  *
  * Runs under vitest with `@vitest-environment node` (no DOM, real
@@ -136,15 +136,15 @@ describe('sync server round-trip', () => {
     const syncB = await connectClient(b);
 
     try {
-      a.setCell('domains', 'd1', 'name', 'Family');
-      a.setCell('domains', 'd1', 'createdAt', '2026-01-01T00:00:00Z');
-      a.setCell('domains', 'd2', 'name', 'Health');
-      a.setCell('domains', 'd2', 'parentId', 'd1');
+      a.setCell('areas', 'd1', 'name', 'Family');
+      a.setCell('areas', 'd1', 'createdAt', '2026-01-01T00:00:00Z');
+      a.setCell('areas', 'd2', 'name', 'Health');
+      a.setCell('areas', 'd2', 'parentId', 'd1');
 
-      await waitForCell(b, 'domains', 'd1', 'name', 'Family');
-      expect(b.getCell('domains', 'd2', 'parentId')).toBe('d1');
+      await waitForCell(b, 'areas', 'd1', 'name', 'Family');
+      expect(b.getCell('areas', 'd2', 'parentId')).toBe('d1');
 
-      b.setCell('projects', 'p1', 'domainId', 'd1');
+      b.setCell('projects', 'p1', 'areaId', 'd1');
       b.setCell('projects', 'p1', 'name', 'Plan vacation');
       await waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation');
 
@@ -159,8 +159,8 @@ describe('sync server round-trip', () => {
     const fresh = createMergeableStore();
     const freshSync = await connectClient(fresh);
     try {
-      await waitForCell(fresh, 'domains', 'd1', 'name', 'Family');
-      expect(fresh.getCell('domains', 'd2', 'parentId')).toBe('d1');
+      await waitForCell(fresh, 'areas', 'd1', 'name', 'Family');
+      expect(fresh.getCell('areas', 'd2', 'parentId')).toBe('d1');
       expect(fresh.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
     } finally {
       await freshSync.destroy();
@@ -174,8 +174,8 @@ describe('sync server round-trip', () => {
       Promise.withResolvers<void>();
     reloadDb.close(() => closeResolved());
     await closed;
-    expect(reload.getCell('domains', 'd1', 'name')).toBe('Family');
-    expect(reload.getCell('domains', 'd2', 'parentId')).toBe('d1');
+    expect(reload.getCell('areas', 'd1', 'name')).toBe('Family');
+    expect(reload.getCell('areas', 'd2', 'parentId')).toBe('d1');
     expect(reload.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
   });
 
@@ -187,16 +187,16 @@ describe('sync server round-trip', () => {
     const syncB = await connectClient(b);
 
     try {
-      a.setCell('domains', 'd-del', 'name', 'Doomed');
-      a.setCell('domains', 'd-del', 'createdAt', '2026-01-01T00:00:00Z');
-      a.setCell('domains', 'd-keep', 'name', 'Kept');
-      a.setCell('domains', 'd-keep', 'createdAt', '2026-01-01T00:00:00Z');
-      await waitForCell(b, 'domains', 'd-del', 'name', 'Doomed');
-      await waitForCell(b, 'domains', 'd-keep', 'name', 'Kept');
+      a.setCell('areas', 'd-del', 'name', 'Doomed');
+      a.setCell('areas', 'd-del', 'createdAt', '2026-01-01T00:00:00Z');
+      a.setCell('areas', 'd-keep', 'name', 'Kept');
+      a.setCell('areas', 'd-keep', 'createdAt', '2026-01-01T00:00:00Z');
+      await waitForCell(b, 'areas', 'd-del', 'name', 'Doomed');
+      await waitForCell(b, 'areas', 'd-keep', 'name', 'Kept');
 
-      a.delRow('domains', 'd-del');
-      await waitForRowAbsent(b, 'domains', 'd-del');
-      expect(b.hasRow('domains', 'd-keep')).toBe(true);
+      a.delRow('areas', 'd-del');
+      await waitForRowAbsent(b, 'areas', 'd-del');
+      expect(b.hasRow('areas', 'd-keep')).toBe(true);
     } finally {
       await syncA.destroy();
       await syncB.destroy();
@@ -209,8 +209,8 @@ describe('sync server round-trip', () => {
     const fresh = createMergeableStore();
     const freshSync = await connectClient(fresh);
     try {
-      await waitForCell(fresh, 'domains', 'd-keep', 'name', 'Kept');
-      expect(fresh.hasRow('domains', 'd-del')).toBe(false);
+      await waitForCell(fresh, 'areas', 'd-keep', 'name', 'Kept');
+      expect(fresh.hasRow('areas', 'd-del')).toBe(false);
     } finally {
       await freshSync.destroy();
     }

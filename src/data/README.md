@@ -32,7 +32,7 @@ discipline this seam enforces.
 1. App boots → `main.tsx` mounts `<DataLayerProvider>`.
 2. Provider's effect starts the IndexedDB persister and the WebSocket synchroniser.
 3. Children call `useDataLayer()` to read the store / status.
-4. CRUD hooks (added in later issues, e.g. `useDomains`, `createDomain`) live in
+4. CRUD hooks (added in later issues, e.g. `useAreas`, `createArea`) live in
    sibling files and re-export from `index.ts`.
 
 ## Server counterpart

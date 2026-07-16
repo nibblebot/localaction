@@ -55,19 +55,19 @@ async function main() {
     await syncB.startSync();
     console.log('smoke: both clients connected');
 
-    a.setCell('domains', 'd1', 'name', 'Family');
-    a.setCell('domains', 'd1', 'createdAt', '2026-01-01T00:00:00Z');
-    a.setCell('domains', 'd2', 'name', 'Health');
-    a.setCell('domains', 'd2', 'parentId', 'd1');
+    a.setCell('areas', 'd1', 'name', 'Family');
+    a.setCell('areas', 'd1', 'createdAt', '2026-01-01T00:00:00Z');
+    a.setCell('areas', 'd2', 'name', 'Health');
+    a.setCell('areas', 'd2', 'parentId', 'd1');
 
     await withTimeout(
-      waitForCell(b, 'domains', 'd1', 'name', 'Family'),
+      waitForCell(b, 'areas', 'd1', 'name', 'Family'),
       5000,
       'sync A→B',
     );
     console.log('smoke: write A replicated to B');
 
-    b.setCell('projects', 'p1', 'domainId', 'd1');
+    b.setCell('projects', 'p1', 'areaId', 'd1');
     b.setCell('projects', 'p1', 'name', 'Plan vacation');
     await withTimeout(
       waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation'),
@@ -88,18 +88,18 @@ async function main() {
     await freshSync.startSync();
     console.log('smoke: fresh sync started');
     await withTimeout(
-      waitForCell(fresh, 'domains', 'd1', 'name', 'Family'),
+      waitForCell(fresh, 'areas', 'd1', 'name', 'Family'),
       5000,
       'fresh persist load',
     );
-    console.log('smoke: fresh observed initial domain');
+    console.log('smoke: fresh observed initial area');
     assert(
       fresh.getCell('projects', 'p1', 'name') === 'Plan vacation',
       'fresh client did not see persisted project',
     );
     assert(
-      fresh.getCell('domains', 'd2', 'parentId') === 'd1',
-      'fresh client did not see persisted sub-domain relation',
+      fresh.getCell('areas', 'd2', 'parentId') === 'd1',
+      'fresh client did not see persisted sub-area relation',
     );
     console.log('smoke: fresh client loaded persisted state');
     await freshSync.destroy();
@@ -109,19 +109,19 @@ async function main() {
     const reloadPersister = createSqlite3Persister(reload, reloadDb);
     await reloadPersister.load();
     assert(
-      reload.getCell('domains', 'd1', 'name') === 'Family',
-      'persister.load() did not return domains/d1/name',
+      reload.getCell('areas', 'd1', 'name') === 'Family',
+      'persister.load() did not return areas/d1/name',
     );
     assert(
-      reload.getCell('domains', 'd2', 'parentId') === 'd1',
-      'persister.load() did not return domains/d2/parentId (sub-domain)',
+      reload.getCell('areas', 'd2', 'parentId') === 'd1',
+      'persister.load() did not return areas/d2/parentId (sub-area)',
     );
     assert(
       reload.getCell('projects', 'p1', 'name') === 'Plan vacation',
       'persister.load() did not return projects/p1/name',
     );
     console.log(
-      'smoke: persister.load() round-trips Domain, Sub-Domain, and Project rows',
+      'smoke: persister.load() round-trips Area, Sub-Area, and Project rows',
     );
   } finally {
     await server.close();

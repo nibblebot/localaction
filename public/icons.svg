@@ -8,7 +8,7 @@
   <symbol id="leaf-icon" viewBox="0 0 16 16">
     <circle cx="8" cy="8" r="2" fill="currentColor"/>
   </symbol>
-  <symbol id="domain-icon" viewBox="0 0 16 16">
+  <symbol id="area-icon" viewBox="0 0 16 16">
     <path fill="none" stroke="currentColor" stroke-width="1.5" d="M8 2 L14 8 L8 14 L2 8 Z"/>
   </symbol>
   <symbol id="project-icon" viewBox="0 0 16 16">
@@ -43,7 +43,7 @@
   <symbol id="home-icon" viewBox="0 0 20 20">
     <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" d="M3 10 L10 3 L17 10 V17 H12 V12 H8 V17 H3 Z"/>
   </symbol>
-  <symbol id="domains-icon" viewBox="0 0 20 20">
+  <symbol id="areas-icon" viewBox="0 0 20 20">
     <path fill="none" stroke="currentColor" stroke-width="1.5" d="M10 3 L17 7 L10 11 L3 7 Z M3 7 V13 L10 17 L17 13 V7"/>
   </symbol>
   <symbol id="tasks-icon" viewBox="0 0 20 20">

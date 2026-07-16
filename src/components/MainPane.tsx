@@ -3,20 +3,20 @@ import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
   useStoreVersion,
-  useDomain,
-  useDomainCounts,
+  useArea,
+  useAreaCounts,
   useNote,
   useTask,
   useProject,
   useTasksForProjectDeep,
   useProjectRollups,
-  useNotesForDomainTree,
+  useNotesForAreaTree,
   useNoteIdsForEntity,
   createProject,
   createTask,
   createNote,
-  createDomain,
-  getDomain,
+  createArea,
+  getArea,
   updateTask,
   setTaskStatus,
   deleteTask,
@@ -30,12 +30,12 @@ import {
   COLUMNS,
 } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
-import type { Domain } from '../data/index.ts';
+import type { Area } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import PromptModal from './PromptModal.tsx';
-import { domainColorHex } from '../data/colors.ts';
-import type { DomainColorId } from '../data/colors.ts';
+import { areaColorHex } from '../data/colors.ts';
+import type { AreaColorId } from '../data/colors.ts';
 import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
@@ -56,74 +56,74 @@ const PROJECT_TABS: { id: ProjectTab; label: string }[] = [
 export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
-  const counts = useDomainCounts(store);
-  const domainRowIds = useRowIds(TABLES.domains, store);
+  const counts = useAreaCounts(store);
+  const areaRowIds = useRowIds(TABLES.areas, store);
 
-  const domainId = selection.kind === 'domain' ? selection.id : null;
-  const domain = useDomain(store, domainId ?? undefined);
+  const areaId = selection.kind === 'area' ? selection.id : null;
+  const area = useArea(store, areaId ?? undefined);
 
-  const [tabByDomain, setTabByDomain] = useState<Record<string, Tab>>({});
-  const tab: Tab = (domainId ? tabByDomain[domainId] : undefined) ?? 'projects';
+  const [tabByArea, setTabByArea] = useState<Record<string, Tab>>({});
+  const tab: Tab = (areaId ? tabByArea[areaId] : undefined) ?? 'projects';
   const [addPromptOpen, setAddPromptOpen] = useState(false);
   const setTab = (next: Tab): void => {
-    if (!domainId) return;
+    if (!areaId) return;
     setAddPromptOpen(false);
-    setTabByDomain((prev) => ({ ...prev, [domainId]: next }));
+    setTabByArea((prev) => ({ ...prev, [areaId]: next }));
   };
 
-  const parentChain = useMemo<readonly Domain[]>(() => {
-    if (!domainId) return [];
-    void domainRowIds.length;
-    return buildParentChain(store, domainId);
-  }, [store, domainId, domainRowIds]);
+  const parentChain = useMemo<readonly Area[]>(() => {
+    if (!areaId) return [];
+    void areaRowIds.length;
+    return buildParentChain(store, areaId);
+  }, [store, areaId, areaRowIds]);
 
   if (selection.kind === 'project') {
     return <ProjectPane projectId={selection.id} />;
   }
 
-  if (!domainId || !domain) {
+  if (!areaId || !area) {
     return (
       <main className="main" aria-label="Editor">
         <div className="main-body">
           <div className="main-empty">
             <h2>Welcome to LocalAction</h2>
-            <p>Pick a domain from the sidebar to get started, or create a new one.</p>
+            <p>Pick an area from the sidebar to get started, or create a new one.</p>
           </div>
         </div>
       </main>
     );
   }
 
-  const projectCount = counts.find((c) => c.id === domainId)?.projectCount ?? 0;
-  const taskCount = counts.find((c) => c.id === domainId)?.taskCount ?? 0;
-  const noteCount = counts.find((c) => c.id === domainId)?.noteCount ?? 0;
+  const projectCount = counts.find((c) => c.id === areaId)?.projectCount ?? 0;
+  const taskCount = counts.find((c) => c.id === areaId)?.taskCount ?? 0;
+  const noteCount = counts.find((c) => c.id === areaId)?.noteCount ?? 0;
 
   const isTopLevel = parentChain.length === 0;
 
-  const goToDomain = (id: string): void => {
+  const goToArea = (id: string): void => {
     setAddPromptOpen(false);
-    navigate({ kind: 'domain', id });
+    navigate({ kind: 'area', id });
   };
 
-  const addSubDomain = (subName: string): void => {
-    const id = createDomain(store, {
+  const addSubArea = (subName: string): void => {
+    const id = createArea(store, {
       name: subName,
-      parentId: domainId,
-      color: domain.color,
+      parentId: areaId,
+      color: area.color,
     });
-    navigate({ kind: 'domain', id });
+    navigate({ kind: 'area', id });
   };
 
   return (
     <main className="main" aria-label="Editor">
       <div className="main-body">
-        <DomainHeader
-          name={domain.name}
-          color={domain.color}
+        <AreaHeader
+          name={area.name}
+          color={area.color}
           parentChain={parentChain}
-          showAddSubDomain={isTopLevel}
-          onNavigate={goToDomain}
-          onCreateSubDomain={isTopLevel ? addSubDomain : null}
+          showAddSubArea={isTopLevel}
+          onNavigate={goToArea}
+          onCreateSubArea={isTopLevel ? addSubArea : null}
         />
         <PaneTabs
           tabs={TABS}
@@ -134,35 +134,35 @@ export default function MainPane(): React.JSX.Element {
           addLabel={tab === 'projects' ? 'New project' : tab === 'tasks' ? 'New task' : 'New note'}
         />
         {tab === 'projects' && (
-          <ProjectsTab domainId={domainId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <ProjectsTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
         )}
         {tab === 'tasks' && (
-          <TasksTab domainId={domainId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <TasksTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
         )}
         {tab === 'notes' && (
-          <NotesTab domainId={domainId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <NotesTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
         )}
       </div>
     </main>
   );
 }
 
-function DomainHeader({
+function AreaHeader({
   name,
   color,
   parentChain,
-  showAddSubDomain,
+  showAddSubArea,
   onNavigate,
-  onCreateSubDomain,
+  onCreateSubArea,
 }: {
   name: string;
-  color: DomainColorId;
-  parentChain: readonly Domain[];
-  showAddSubDomain: boolean;
+  color: AreaColorId;
+  parentChain: readonly Area[];
+  showAddSubArea: boolean;
   onNavigate: (id: string) => void;
-  onCreateSubDomain: ((name: string) => void) | null;
+  onCreateSubArea: ((name: string) => void) | null;
 }): React.JSX.Element {
-  const hex = domainColorHex(color);
+  const hex = areaColorHex(color);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -173,7 +173,7 @@ function DomainHeader({
       setDraft('');
       return;
     }
-    onCreateSubDomain?.(trimmed);
+    onCreateSubArea?.(trimmed);
     setAdding(false);
     setDraft('');
   }
@@ -184,17 +184,17 @@ function DomainHeader({
   }
 
   return (
-    <div className="domain-header">
+    <div className="area-header">
       {parentChain.map((p, i) => (
         <Fragment key={p.id}>
           {i > 0 && (
-            <span className="domain-header-crumb-sep" aria-hidden="true">
+            <span className="area-header-crumb-sep" aria-hidden="true">
               /
             </span>
           )}
           <button
             type="button"
-            className="domain-header-crumb"
+            className="area-header-crumb"
             onClick={() => onNavigate(p.id)}
           >
             {p.name || 'Untitled'}
@@ -202,17 +202,17 @@ function DomainHeader({
         </Fragment>
       ))}
       {parentChain.length > 0 && (
-        <span className="domain-header-slash" aria-hidden="true" style={{ color: hex }}>
+        <span className="area-header-slash" aria-hidden="true" style={{ color: hex }}>
           /
         </span>
       )}
-      <h1 className="domain-header-name">{name || 'Untitled'}</h1>
-      {showAddSubDomain && onCreateSubDomain && (
+      <h1 className="area-header-name">{name || 'Untitled'}</h1>
+      {showAddSubArea && onCreateSubArea && (
         adding ? (
           <input
             type="text"
-            className="domain-header-add-input"
-            placeholder="Sub-domain name…"
+            className="area-header-add-input"
+            placeholder="Sub-area name…"
             value={draft}
             autoFocus
             onChange={(e) => setDraft(e.target.value)}
@@ -230,10 +230,10 @@ function DomainHeader({
         ) : (
           <button
             type="button"
-            className="domain-header-add"
+            className="area-header-add"
             onClick={() => setAdding(true)}
-            aria-label="Add sub-domain"
-            title="Add sub-domain"
+            aria-label="Add sub-area"
+            title="Add sub-area"
           >
             <svg className="svg-icon" aria-hidden="true">
               <use href="/icons.svg#add-icon" />
@@ -245,12 +245,12 @@ function DomainHeader({
   );
 }
 
-function buildParentChain(store: MergeableStore, domainId: string): Domain[] {
-  const chain: Domain[] = [];
-  const seen = new Set<string>([domainId]);
-  let cur = getDomain(store, domainId);
+function buildParentChain(store: MergeableStore, areaId: string): Area[] {
+  const chain: Area[] = [];
+  const seen = new Set<string>([areaId]);
+  let cur = getArea(store, areaId);
   while (cur && cur.parentId && !seen.has(cur.parentId)) {
-    const parent = getDomain(store, cur.parentId);
+    const parent = getArea(store, cur.parentId);
     if (!parent) break;
     chain.push(parent);
     seen.add(parent.id);
@@ -277,7 +277,7 @@ function PaneTabs<T extends string>({
   addLabel,
 }: PaneTabsProps<T>): React.JSX.Element {
   return (
-    <div className="domain-tabs" role="tablist">
+    <div className="area-tabs" role="tablist">
       {tabs.map((t) => {
         const active = tab === t.id;
         return (
@@ -286,28 +286,28 @@ function PaneTabs<T extends string>({
             type="button"
             role="tab"
             aria-selected={active}
-            className={`domain-tab${active ? ' domain-tab-active' : ''}`}
+            className={`area-tab${active ? ' area-tab-active' : ''}`}
             onClick={() => onChange(t.id)}
           >
-            <span className="domain-tab-label">{t.label}</span>
-            <span className="domain-tab-count">{counts[t.id]}</span>
+            <span className="area-tab-label">{t.label}</span>
+            <span className="area-tab-count">{counts[t.id]}</span>
           </button>
         );
       })}
-      <div className="domain-tabs-spacer" />
-      <button type="button" className="domain-tab-action" aria-label="Search" title="Search">
+      <div className="area-tabs-spacer" />
+      <button type="button" className="area-tab-action" aria-label="Search" title="Search">
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#search-icon" />
         </svg>
       </button>
-      <button type="button" className="domain-tab-action" aria-label="Sort" title="Sort">
+      <button type="button" className="area-tab-action" aria-label="Sort" title="Sort">
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#sort-icon" />
         </svg>
       </button>
       <button
         type="button"
-        className="domain-tab-action domain-tab-add"
+        className="area-tab-action area-tab-add"
         onClick={onAdd}
         aria-label={addLabel}
         title={addLabel}
@@ -321,29 +321,29 @@ function PaneTabs<T extends string>({
 }
 
 function ProjectsTab({
-  domainId,
+  areaId,
   addPromptOpen,
   setAddPromptOpen,
 }: {
-  domainId: string;
+  areaId: string;
   addPromptOpen: boolean;
   setAddPromptOpen: (open: boolean) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
-  const inDomain = useMemo(
+  const inArea = useMemo(
     () =>
       rollups
-        .filter((r) => r.domainId === domainId)
+        .filter((r) => r.areaId === areaId)
         .sort((a, b) => {
           if (a.order !== b.order) return a.order - b.order;
           return a.projectName.localeCompare(b.projectName);
         }),
-    [rollups, domainId],
+    [rollups, areaId],
   );
 
   function addProject(name: string): void {
-    createProject(store, { name, domainId });
+    createProject(store, { name, areaId });
     setAddPromptOpen(false);
   }
 
@@ -351,12 +351,12 @@ function ProjectsTab({
     reorderProject(store, activeId, beforeId);
   }
 
-  const done = inDomain.filter((p) => p.total > 0 && p.done === p.total);
-  const active = inDomain.filter((p) => p.total === 0 || p.done < p.total);
+  const done = inArea.filter((p) => p.total > 0 && p.done === p.total);
+  const active = inArea.filter((p) => p.total === 0 || p.done < p.total);
 
   return (
     <section className="projects-tab" aria-label="Projects">
-      {inDomain.length === 0 ? (
+      {inArea.length === 0 ? (
         <EmptyTab message="No projects yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Project" />
       ) : (
         <>
@@ -679,11 +679,11 @@ interface TasksTabProject {
 }
 
 function TasksTab({
-  domainId,
+  areaId,
   addPromptOpen,
   setAddPromptOpen,
 }: {
-  domainId: string;
+  areaId: string;
   addPromptOpen: boolean;
   setAddPromptOpen: (open: boolean) => void;
 }): React.JSX.Element {
@@ -692,20 +692,20 @@ function TasksTab({
   const projects: TasksTabProject[] = useMemo(
     () =>
       rollups
-        .filter((r) => r.domainId === domainId)
+        .filter((r) => r.areaId === areaId)
         .map((r) => ({ id: r.projectId, name: r.projectName, order: r.order }))
         .sort((a, b) => {
           if (a.order !== b.order) return a.order - b.order;
           return a.name.localeCompare(b.name);
         }),
-    [rollups, domainId],
+    [rollups, areaId],
   );
 
   const [targetProjectId, setTargetProjectId] = useState<string | null>(null);
 
   function addTask(title: string): void {
     if (projects.length === 0) {
-      const newId = createProject(store, { name: 'General', domainId });
+      const newId = createProject(store, { name: 'General', areaId });
       createTask(store, { title, projectId: newId });
     } else {
       const pid = targetProjectId ?? projects[0]!.id;
@@ -979,30 +979,30 @@ function SortableTaskLineRow({
 }
 
 function NotesTab({
-  domainId,
+  areaId,
   addPromptOpen,
   setAddPromptOpen,
 }: {
-  domainId: string;
+  areaId: string;
   addPromptOpen: boolean;
   setAddPromptOpen: (open: boolean) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const { domainNotes, projectNotes, taskNotes } = useNotesForDomainTree(
+  const { areaNotes, projectNotes, taskNotes } = useNotesForAreaTree(
     store,
-    domainId,
+    areaId,
   );
   const allIds = useMemo(
-    () => [...domainNotes, ...projectNotes, ...taskNotes],
-    [domainNotes, projectNotes, taskNotes],
+    () => [...areaNotes, ...projectNotes, ...taskNotes],
+    [areaNotes, projectNotes, taskNotes],
   );
 
   function addNote(title: string): void {
     createNote(store, {
       title,
       body: '',
-      entityType: NOTE_ENTITY_TYPE.domain,
-      entityId: domainId,
+      entityType: NOTE_ENTITY_TYPE.area,
+      entityId: areaId,
     });
     setAddPromptOpen(false);
   }
@@ -1179,7 +1179,7 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
   return (
     <main className="main" aria-label="Editor">
       <div className="main-body">
-        <ProjectPaneHeader domainId={project.domainId} name={projectName} />
+        <ProjectPaneHeader areaId={project.areaId} name={projectName} />
         <PaneTabs
           tabs={PROJECT_TABS}
           tab={tab}
@@ -1209,54 +1209,54 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
 }
 
 function ProjectPaneHeader({
-  domainId,
+  areaId,
   name,
 }: {
-  domainId: string | null;
+  areaId: string | null;
   name: string;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const domainRowIds = useRowIds(TABLES.domains, store);
-  const chain = useMemo<readonly Domain[]>(() => {
-    if (!domainId) return [];
-    void domainRowIds.length;
-    const direct = getDomain(store, domainId);
+  const areaRowIds = useRowIds(TABLES.areas, store);
+  const chain = useMemo<readonly Area[]>(() => {
+    if (!areaId) return [];
+    void areaRowIds.length;
+    const direct = getArea(store, areaId);
     if (!direct) return [];
     const ancestors = buildParentChain(store, direct.id);
     return [...ancestors, direct];
-  }, [store, domainId, domainRowIds]);
+  }, [store, areaId, areaRowIds]);
   const showSlash = chain.length > 0;
   return (
-    <div className="domain-header">
+    <div className="area-header">
       {chain.map((p, i) => (
         <Fragment key={p.id}>
           {i > 0 && (
-            <span className="domain-header-crumb-sep" aria-hidden="true">
+            <span className="area-header-crumb-sep" aria-hidden="true">
               /
             </span>
           )}
           <button
             type="button"
-            className="domain-header-crumb"
-            onClick={() => navigate({ kind: 'domain', id: p.id })}
+            className="area-header-crumb"
+            onClick={() => navigate({ kind: 'area', id: p.id })}
           >
             {p.name || 'Untitled'}
           </button>
         </Fragment>
       ))}
       {showSlash && (
-        <span className="domain-header-crumb-sep" aria-hidden="true">
+        <span className="area-header-crumb-sep" aria-hidden="true">
           /
         </span>
       )}
       <svg
-        className="svg-icon domain-header-project-icon"
+        className="svg-icon area-header-project-icon"
         aria-hidden="true"
       >
         <use href="/icons.svg#project-list-icon" />
       </svg>
-      <h1 className="domain-header-name">{name || 'Untitled'}</h1>
+      <h1 className="area-header-name">{name || 'Untitled'}</h1>
     </div>
   );
 }

@@ -12,7 +12,7 @@ dist
 dist-ssr
 *.local
 
-data/
+/data/
 *.db
 
 # Test artifacts

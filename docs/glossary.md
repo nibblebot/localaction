@@ -8,7 +8,7 @@ An ongoing area of life or practice that has no end state. Top-level container f
 
 ## Sub-Area
 
-A nested Area. Same semantics as Area — ongoing, container — but lives under a parent Area. Examples: "Family" → "Wife", "Family" → "Daughter".
+A nested Area. Same semantics as Area — ongoing, container — but lives under a parent Area. (Historically, the glossary listed person-flavored sub-areas like `Family → Wife`; that pattern is **replaced by [Persons](#person)** — a Person is the orthogonal facet, not a sub-area node.)
 
 ## Project
 
@@ -30,3 +30,20 @@ Supports standard markdown rendering (CommonMark subset).
 ## Slug
 
 A URL-safe identifier for a Note, derived from its title. Stable across renames unless something resolves them differently.
+
+## Person
+
+An individual a LocalAction entity (Area, Project, or Task) is associated with. The app's own user is always represented by a distinguished Person called **Self**. Persons carry a name and a colour; their avatar is derived from their name (see [ux.md](./ux.md)). A Person is **not** a node in the Area trie — it is an orthogonal facet, M:N across every entity type.
+
+## Cast
+
+The set of Persons associated with an Area. The cast is a **declaration**: it is the constraint pool its descendant entities (sub-areas, projects, tasks) draw from (the [D4 cast-as-hard-constraint](#) invariant is enforced at read time by intersection). A cast is edited through the Area's header cast chips. Sub-areas / Projects / Tasks also carry a set, but that set is "this entity's persons" — the term **cast** specifically denotes the role an Area's set plays.
+
+## Effective Person Set
+
+The Persons an entity actually resolves to at read time:
+`{Self} ∪ ( storedSet(e) ∩ effectiveCast(parent(e)) )`, or `{Self}` when that yields empty. Always non-empty. Stored rows are never mutated to enforce it — see [architecture.md](./architecture.md) for the read path.
+
+## Person Link
+
+A row in the `person_links` table expressing that a non-Self Person is associated with a specific `(entityType, entityId)` target. Self is **never** stored as a link — it is force-unioned at read time.

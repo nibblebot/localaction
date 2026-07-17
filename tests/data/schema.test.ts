@@ -2,14 +2,22 @@ import { describe, expect, it } from 'vitest';
 import {
   COLUMNS,
   NOTE_ENTITY_TYPE,
+  SELF_PERSON_ID,
   TABLES,
   TASK_STATUS,
 } from '../../src/data/schema.ts';
 
 describe('schema constants', () => {
-  it('exposes the four top-level tables the PRD defines', () => {
+  it('exposes the six top-level tables the schema defines', () => {
     expect(Object.values(TABLES).sort()).toEqual(
-      ['areas', 'notes', 'projects', 'tasks'].sort(),
+      [
+        'areas',
+        'notes',
+        'person_links',
+        'persons',
+        'projects',
+        'tasks',
+      ].sort(),
     );
   });
 
@@ -32,5 +40,22 @@ describe('schema constants', () => {
     expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(
       ['area', 'project', 'task'],
     );
+  });
+
+  it('declares the person table columns and the self id constant', () => {
+    expect(COLUMNS.persons).toEqual({
+      id: 'id',
+      name: 'name',
+      color: 'color',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    });
+    expect(COLUMNS.person_links).toEqual({
+      id: 'id',
+      personId: 'personId',
+      entityType: 'entityType',
+      entityId: 'entityId',
+    });
+    expect(SELF_PERSON_ID).toBe('self');
   });
 });

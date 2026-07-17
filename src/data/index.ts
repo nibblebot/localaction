@@ -1,10 +1,18 @@
-export { TABLES, COLUMNS, TASK_STATUS, NOTE_ENTITY_TYPE } from './schema.ts';
+export {
+  TABLES,
+  COLUMNS,
+  TASK_STATUS,
+  NOTE_ENTITY_TYPE,
+  SELF_PERSON_ID,
+} from './schema.ts';
 export type {
   TableName,
   AreaColumn,
   ProjectColumn,
   TaskColumn,
   NoteColumn,
+  PersonColumn,
+  PersonLinkColumn,
   TaskStatus,
   NoteEntityType,
 } from './schema.ts';
@@ -34,6 +42,7 @@ export type {
   Project,
   Task,
   Note,
+  Person,
   AreaInput,
   AreaPatch,
   ProjectInput,
@@ -42,6 +51,8 @@ export type {
   TaskPatch,
   NoteInput,
   NotePatch,
+  PersonInput,
+  PersonPatch,
 } from './types.ts';
 
 export {
@@ -84,7 +95,47 @@ export {
   useNoteIdsForEntity,
 } from './notes.ts';
 
-export { slugify } from './slug.ts';
+export {
+  initials,
+  nameDerivedHue,
+  createPerson,
+  updatePerson,
+  deletePerson,
+  getPerson,
+  usePerson,
+  useAllPersonIds,
+  ensureSelfPerson,
+} from './persons.ts';
+
+export {
+  setEntityPersons,
+  addEntityPerson,
+  removeEntityPerson,
+  getEntityPersonIds,
+  getEntityIdsForPerson,
+  useEntityPersonIds,
+} from './personLinks.ts';
+
+export {
+  effectiveCastForArea,
+  effectiveCastForEntity,
+  effectiveSetForEntity,
+  effectiveCastSetForArea,
+  effectiveCastSetForEntity,
+  presentPersonIds,
+  useEffectiveSet,
+  useEffectiveCast,
+  usePresentPersonIds,
+} from './personSelectors.ts';
+
+export {
+  areaHasMatch,
+  getFilteredAreaCounts,
+  useDimmedAreaIds,
+  useFilteredAreaCounts,
+  useHiddenCount,
+} from './personFilter.ts';
+export type { FilteredAreaCount } from './personFilter.ts';
 
 export { AREA_COLORS, isAreaColorId, areaColorHex } from './colors.ts';
 export type { AreaColorId } from './colors.ts';

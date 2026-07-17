@@ -142,6 +142,14 @@
   padding-block: 6px;
 }
 
+.sidebar-item-dim {
+  opacity: 0.4;
+}
+
+.sidebar-item-dim:hover {
+  opacity: 0.8;
+}
+
 .sidebar-item-dot {
   width: 8px;
   height: 8px;
@@ -1552,4 +1560,389 @@
 
 .task-line.sortable-row-active {
   outline: 1px solid var(--accent-border);
+}
+
+/* ============================================================
+   Person facet
+   ============================================================ */
+
+.person-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  user-select: none;
+  flex-shrink: 0;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.person-avatar-sm {
+  width: 18px;
+  height: 18px;
+  font-size: 9px;
+}
+
+.person-avatars {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.person-avatars-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+/* ============================================================
+   Person filter facet (sidebar)
+   ============================================================ */
+
+.person-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.person-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 4px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.person-filter-chip:hover {
+  background: var(--surface-hover);
+}
+
+.person-filter-chip[data-on='true'] {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.person-filter-chip-name {
+  line-height: 1.4;
+}
+
+.person-filter-empty {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+/* Filter banner over MainPane */
+
+.person-filter-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  color: var(--accent);
+  font-size: 0.93rem;
+}
+
+.person-filter-banner-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.person-filter-banner-clear {
+  flex: 0 0 auto;
+  background: transparent;
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.person-filter-banner-clear:hover {
+  background: var(--accent-tint);
+}
+
+/* Sidebar item dim under active filter */
+
+.sidebar-item[data-dim='true'] {
+  opacity: 0.42;
+}
+
+/* Hidden-stub (variant C of filter prototype) */
+
+.hidden-stub {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 0 8px;
+}
+
+/* ============================================================
+   Person cast chips (Area header)
+   ============================================================ */
+
+.area-header-cast {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-inline-start: var(--space-3);
+}
+
+.area-header-cast-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px 2px 2px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 0.86rem;
+  cursor: pointer;
+  color: var(--text);
+  font-family: inherit;
+}
+
+.area-header-cast-chip:hover {
+  background: var(--surface-hover);
+  color: var(--text-h);
+}
+
+.area-header-cast-chip-name {
+  line-height: 1.4;
+}
+
+.area-header-cast-empty {
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-inline-start: var(--space-3);
+}
+
+/* ============================================================
+   Person assignment popover
+   ============================================================ */
+
+.person-picker {
+  position: absolute;
+  z-index: 50;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 14px rgba(43, 34, 24, 0.12);
+  min-width: 200px;
+  max-width: 280px;
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.person-picker-title {
+  font-size: 0.79rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 4px 6px 6px;
+}
+
+.person-picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.93rem;
+}
+
+.person-picker-row:hover {
+  background: var(--surface-hover);
+}
+
+.person-picker-row input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.person-picker-row-locked {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.person-picker-row-locked:hover {
+  background: transparent;
+}
+
+.person-picker-row-note {
+  margin-inline-start: auto;
+  font-size: 0.79rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.person-picker-row-edit {
+  margin-inline-start: auto;
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.person-picker-row-edit:hover {
+  background: var(--surface-hover);
+  color: var(--text-h);
+}
+
+.person-picker-new {
+  margin-top: 4px;
+  padding: 6px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 0.86rem;
+  color: var(--accent);
+  text-align: start;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.person-picker-new:hover {
+  background: var(--surface-hover);
+}
+
+.person-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
+/* ============================================================
+   Person edit (name + color)
+   ============================================================ */
+
+.person-edit {
+  position: absolute;
+  z-index: 60;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(43, 34, 24, 0.16);
+  min-width: 240px;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.person-edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.person-edit-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font: inherit;
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.person-edit-name:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.person-edit-color {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.person-edit-color-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  padding: 0;
+}
+
+.person-edit-color-swatch[data-active='true'] {
+  border-color: var(--accent);
+}
+
+.person-edit-color-picker {
+  width: 36px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  padding: 0;
+}
+
+.person-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: 4px;
+}
+
+.person-edit-spacer {
+  flex: 1 1 auto;
+}
+
+.person-edit-delete {
+  background: transparent;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  font: inherit;
+  font-size: 0.86rem;
+  border-radius: var(--radius-sm);
+}
+
+.person-edit-delete:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.person-edit-delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.person-edit-delete:disabled:hover {
+  color: var(--text-muted);
+  background: transparent;
 }

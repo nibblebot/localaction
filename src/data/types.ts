@@ -42,6 +42,24 @@ export interface Note {
   updatedAt: string;
 }
 
+export interface Person {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PersonInput {
+  name: string;
+  color?: string;
+}
+
+export interface PersonPatch {
+  name?: string;
+  color?: string;
+}
+
 export interface AreaInput {
   name: string;
   parentId?: string | null;

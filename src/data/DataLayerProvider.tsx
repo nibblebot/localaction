@@ -9,6 +9,7 @@ import type { MergeableStore } from 'tinybase';
 import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
 import { backfillOrder } from './order.ts';
+import { ensureSelfPerson } from './persons.ts';
 import {
   getSyncClient,
   destroySyncClient,
@@ -45,8 +46,10 @@ export function DataLayerProvider({
   useEffect(() => {
     if (offline) {
       // Offline mode skips persistence + sync; still normalise the
-      // store once so any seeded rows from dev tests pick up `order`.
+      // store once so any seeded rows from dev tests pick up `order`
+      // and the Self person bootstrap runs.
       backfillOrder(store);
+      ensureSelfPerson(store);
       setPersistenceReady(true);
       return;
     }
@@ -56,8 +59,10 @@ export function DataLayerProvider({
       try {
         await startLocalPersistence();
         // After OPFS has loaded the persisted snapshot, fill in any
-        // missing `order` cells. Idempotent — re-running is a no-op.
+        // missing `order` cells and seed the Self person row.
+        // Both helpers are idempotent — re-running is a no-op.
         backfillOrder(store);
+        ensureSelfPerson(store);
       } catch (err) {
         console.warn('[localaction] persistence disabled', err);
       }

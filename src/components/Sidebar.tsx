@@ -5,6 +5,8 @@ import {
   useAreaCounts,
   createArea,
   reorderArea,
+  useDimmedAreaIds,
+  useFilteredAreaCounts,
   type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
@@ -13,7 +15,10 @@ import SyncStatusBadge from './SyncStatusBadge.tsx';
 import { areaColorHex, isAreaColorId } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
 import { SortableList } from './SortableList.tsx';
+import PersonFilterFacet from './persons/PersonFilterFacet.tsx';
+import { usePersonFilter } from './persons/usePersonFilter.ts';
 import type { SortableHandleProps } from './SortableList.tsx';
+import type { FilteredAreaCount } from '../data/index.ts';
 
 interface AreaNode {
   count: AreaCount;
@@ -56,6 +61,8 @@ interface SortableAreaRowProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   isTopLevel: boolean;
+  dim: boolean;
+  childCountOverride: number | null;
 }
 
 function SortableAreaRow({
@@ -64,10 +71,17 @@ function SortableAreaRow({
   selectedId,
   onSelect,
   isTopLevel,
+  dim,
+  childCountOverride,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const dot = getColorHex(node.count.color);
   const displayName = node.count.name || 'Untitled';
+  const count = childCountOverride ?? node.count.childCount;
+  const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
+  if (isActive) classes.push('sidebar-item-active');
+  if (isTopLevel) classes.push('sidebar-item-top');
+  if (dim) classes.push('sidebar-item-dim');
   return (
     <li
       ref={handle.ref}
@@ -78,9 +92,8 @@ function SortableAreaRow({
       <div className="sidebar-item-row">
         <button
           type="button"
-          className={`sidebar-item sidebar-item-drag-handle${isActive ? ' sidebar-item-active' : ''}${
-            isTopLevel ? ' sidebar-item-top' : ''
-          }`}
+          className={classes.join(' ')}
+          data-dim={dim ? 'true' : 'false'}
           aria-label={`${displayName} (drag to reorder)`}
           title="Drag to reorder"
           onClick={(e) => {
@@ -96,7 +109,7 @@ function SortableAreaRow({
             style={{ background: dot }}
           />
           <span className="sidebar-item-name">{displayName}</span>
-          <span className="sidebar-link-count">{node.count.childCount}</span>
+          <span className="sidebar-link-count">{count}</span>
         </button>
       </div>
     </li>
@@ -108,6 +121,9 @@ interface SubAreaListProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onReorder: (activeId: string, beforeId: string | undefined) => void;
+  dimmed: ReadonlySet<string>;
+  filterActive: boolean;
+  filtered: Map<string, FilteredAreaCount>;
 }
 
 /**
@@ -120,6 +136,9 @@ function SubAreaList({
   selectedId,
   onSelect,
   onReorder,
+  dimmed,
+  filterActive,
+  filtered,
 }: SubAreaListProps): React.JSX.Element | null {
   if (parent.children.length === 0) return null;
   return (
@@ -132,6 +151,12 @@ function SubAreaList({
       {(id, handle) => {
         const child = parent.children.find((c) => c.count.id === id);
         if (!child) return <></>;
+        const fc = filtered.get(id);
+        const override = filterActive
+          ? fc
+            ? fc.projectCount + fc.taskCount + fc.noteCount
+            : 0
+          : null;
         return (
           <SortableAreaRow
             handle={handle}
@@ -139,6 +164,8 @@ function SubAreaList({
             selectedId={selectedId}
             onSelect={onSelect}
             isTopLevel={false}
+            dim={dimmed.has(id)}
+            childCountOverride={override}
           />
         );
       }}
@@ -153,6 +180,17 @@ export default function Sidebar(): React.JSX.Element {
   const { selection, navigate } = useSelection();
   const [promptOpen, setPromptOpen] = useState(false);
   const tree = useMemo(() => buildTree(counts), [counts]);
+  const { active: filterActive, selected: filterSelected } = usePersonFilter();
+  const allAreaIds = useMemo<string[]>(
+    () => tree.flatMap(function walk(n: AreaNode): string[] {
+      return [n.count.id, ...n.children.flatMap(walk)];
+    }),
+    [tree],
+  );
+  const dimmed = useDimmedAreaIds(store, allAreaIds, filterSelected);
+  // Under an active filter, replace the unfiltered childCount with
+  // the matching total — "where does Mom have work?" (spec § 8.2).
+  const filtered = useFilteredAreaCounts(store, allAreaIds, filterSelected);
   const activeColor: AreaColorId = useMemo(() => {
     if (selection.kind !== 'area') return 'gray';
     const c = counts.find((x) => x.id === selection.id);
@@ -178,6 +216,8 @@ export default function Sidebar(): React.JSX.Element {
         <h1 className="sidebar-app-name">LocalAction</h1>
         <SyncStatusBadge />
       </div>
+
+      <PersonFilterFacet />
 
       <div
         className="sidebar-section"
@@ -211,6 +251,12 @@ export default function Sidebar(): React.JSX.Element {
             {(id, handle) => {
               const node = tree.find((n) => n.count.id === id);
               if (!node) return <></>;
+              const fc = filtered.get(node.count.id);
+              const override = filterActive
+                ? fc
+                  ? fc.projectCount + fc.taskCount + fc.noteCount
+                  : 0
+                : null;
               return (
                 <div className="sidebar-area-li-root">
                   <SortableAreaRow
@@ -219,12 +265,17 @@ export default function Sidebar(): React.JSX.Element {
                     selectedId={selectedId}
                     onSelect={(sid) => navigate({ kind: 'area', id: sid })}
                     isTopLevel
+                    dim={dimmed.has(node.count.id)}
+                    childCountOverride={override}
                   />
                   <SubAreaList
                     parent={node}
                     selectedId={selectedId}
                     onSelect={(sid) => navigate({ kind: 'area', id: sid })}
                     onReorder={onReorder}
+                    dimmed={dimmed}
+                    filtered={filtered}
+                    filterActive={filterActive}
                   />
                 </div>
               );

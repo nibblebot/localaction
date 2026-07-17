@@ -3,9 +3,13 @@ export const TABLES = {
   projects: 'projects',
   tasks: 'tasks',
   notes: 'notes',
+  persons: 'persons',
+  person_links: 'person_links',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
+
+export const SELF_PERSON_ID = 'self';
 
 export const COLUMNS = {
   areas: {
@@ -45,12 +49,28 @@ export const COLUMNS = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
   },
+  persons: {
+    id: 'id',
+    name: 'name',
+    color: 'color',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+  },
+  person_links: {
+    id: 'id',
+    personId: 'personId',
+    entityType: 'entityType',
+    entityId: 'entityId',
+  },
 } as const;
 
 export type AreaColumn = (typeof COLUMNS.areas)[keyof typeof COLUMNS.areas];
 export type ProjectColumn = (typeof COLUMNS.projects)[keyof typeof COLUMNS.projects];
 export type TaskColumn = (typeof COLUMNS.tasks)[keyof typeof COLUMNS.tasks];
 export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
+export type PersonColumn = (typeof COLUMNS.persons)[keyof typeof COLUMNS.persons];
+export type PersonLinkColumn =
+  (typeof COLUMNS.person_links)[keyof typeof COLUMNS.person_links];
 
 export const TASK_STATUS = {
   open: 'open',

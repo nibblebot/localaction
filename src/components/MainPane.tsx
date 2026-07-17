@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
@@ -28,9 +28,14 @@ import {
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
   COLUMNS,
+  useEffectiveCast,
+  useHiddenCount,
+  effectiveSetForEntity,
+  getEntityPersonIds,
+  usePerson,
 } from '../data/index.ts';
+import type { Area, NoteEntityType } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
-import type { Area } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import PromptModal from './PromptModal.tsx';
@@ -39,9 +44,14 @@ import type { AreaColorId } from '../data/colors.ts';
 import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
+import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
+import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
+import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
+import PersonAvatar from './persons/PersonAvatar.tsx';
+import { usePersonFilter } from './persons/usePersonFilter.ts';
+
 type Tab = 'projects' | 'tasks' | 'notes';
 type ProjectTab = 'tasks' | 'notes';
-
 const TABS: { id: Tab; label: string }[] = [
   { id: 'projects', label: 'Projects' },
   { id: 'tasks', label: 'Tasks' },
@@ -118,6 +128,7 @@ export default function MainPane(): React.JSX.Element {
     <main className="main" aria-label="Editor">
       <div className="main-body">
         <AreaHeader
+          areaId={areaId}
           name={area.name}
           color={area.color}
           parentChain={parentChain}
@@ -125,6 +136,7 @@ export default function MainPane(): React.JSX.Element {
           onNavigate={goToArea}
           onCreateSubArea={isTopLevel ? addSubArea : null}
         />
+        <PersonFilterBanner />
         <PaneTabs
           tabs={TABS}
           tab={tab}
@@ -148,6 +160,7 @@ export default function MainPane(): React.JSX.Element {
 }
 
 function AreaHeader({
+  areaId,
   name,
   color,
   parentChain,
@@ -155,6 +168,7 @@ function AreaHeader({
   onNavigate,
   onCreateSubArea,
 }: {
+  areaId: string;
   name: string;
   color: AreaColorId;
   parentChain: readonly Area[];
@@ -162,9 +176,12 @@ function AreaHeader({
   onNavigate: (id: string) => void;
   onCreateSubArea: ((name: string) => void) | null;
 }): React.JSX.Element {
+  const { store } = useDataLayer();
+  useStoreVersion(store);
   const hex = areaColorHex(color);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  const cast = useEffectiveCast(store, areaId);
 
   function commit(): void {
     const trimmed = draft.trim();
@@ -207,6 +224,7 @@ function AreaHeader({
         </span>
       )}
       <h1 className="area-header-name">{name || 'Untitled'}</h1>
+      <AreaHeaderCast areaId={areaId} cast={cast} />
       {showAddSubArea && onCreateSubArea && (
         adding ? (
           <input
@@ -245,7 +263,72 @@ function AreaHeader({
   );
 }
 
-function buildParentChain(store: MergeableStore, areaId: string): Area[] {
+function AreaHeaderCast({
+  areaId,
+  cast,
+}: {
+  areaId: string;
+  cast: readonly string[];
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  useStoreVersion(store);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  return (
+    <>
+      <div ref={containerRef} className="area-header-cast" aria-label="Cast">
+        {cast.map((pid) => (
+          <CastChip
+            key={pid}
+            personId={pid}
+            store={store}
+            onEdit={() => {
+              const r = containerRef.current?.getBoundingClientRect();
+              setAnchor({ x: r ? r.left : 0, y: r ? r.bottom + 4 : 0 });
+            }}
+          />
+        ))}
+      </div>
+      <PersonAssignmentPopover
+        anchor={anchor}
+        entityType={NOTE_ENTITY_TYPE.area}
+        entityId={areaId}
+        current={getEntityPersonIds(store, NOTE_ENTITY_TYPE.area, areaId)}
+        cast={[...cast]}
+        title="Cast"
+        onClose={() => setAnchor(null)}
+      />
+    </>
+  );
+}
+
+
+function CastChip({
+  personId,
+  store,
+  onEdit,
+}: {
+  personId: string;
+  store: MergeableStore;
+  onEdit: () => void;
+}): React.JSX.Element | null {
+  // usePerson subscribes to the row's name/color cells so the chip
+  // re-renders on rename/recolor.
+  const person = usePerson(store, personId);
+  if (!person) return null;
+  return (
+    <button
+      type="button"
+      className="area-header-cast-chip"
+      onClick={onEdit}
+      title="Edit cast"
+    >
+      <PersonAvatar name={person.name} color={person.color} small />
+      <span className="area-header-cast-chip-name">{person.name || 'Untitled'}</span>
+    </button>
+  );
+}
+ function buildParentChain(store: MergeableStore, areaId: string): Area[] {
   const chain: Area[] = [];
   const seen = new Set<string>([areaId]);
   let cur = getArea(store, areaId);
@@ -351,8 +434,27 @@ function ProjectsTab({
     reorderProject(store, activeId, beforeId);
   }
 
-  const done = inArea.filter((p) => p.total > 0 && p.done === p.total);
-  const active = inArea.filter((p) => p.total === 0 || p.done < p.total);
+  const { selected: filter } = usePersonFilter();
+  const projectIds = inArea.map((p) => p.projectId);
+  const hiddenCount = useHiddenCount(
+    store,
+    NOTE_ENTITY_TYPE.project,
+    projectIds,
+    filter,
+  );
+  const visible = useMemo(() => {
+    if (filter.length === 0) return inArea;
+    const set = new Set(filter);
+    return inArea.filter((p) => {
+      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
+        if (set.has(id)) return true;
+      }
+      return false;
+    });
+  }, [store, inArea, filter]);
+
+  const done = visible.filter((p) => p.total > 0 && p.done === p.total);
+  const active = visible.filter((p) => p.total === 0 || p.done < p.total);
 
   return (
     <section className="projects-tab" aria-label="Projects">
@@ -397,6 +499,11 @@ function ProjectsTab({
                 />
               ))}
             </Group>
+          )}
+          {hiddenCount > 0 && (
+            <p className="hidden-stub">
+              {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
+            </p>
           )}
         </>
       )}
@@ -501,6 +608,10 @@ function ProjectRow({
             {done} / {total}
           </span>
         </div>
+        <PersonAssignmentButton
+          entityType={NOTE_ENTITY_TYPE.project}
+          entityId={projectId}
+        />
         <button
           type="button"
           className="project-row-action"
@@ -529,7 +640,7 @@ function ProjectRow({
             <use href="/icons.svg#trash-icon" />
           </svg>
         </button>
-      </div>
+        </div>
       <ConfirmModal
         open={confirmDelete}
         title="Delete project?"
@@ -628,6 +739,10 @@ function SortableProjectRow({
             {done} / {total}
           </span>
         </div>
+        <PersonAssignmentButton
+          entityType={NOTE_ENTITY_TYPE.project}
+          entityId={projectId}
+        />
         <button
           type="button"
           className="project-row-action"
@@ -635,7 +750,6 @@ function SortableProjectRow({
           title="Rename"
           onClick={(e) => {
             e.stopPropagation();
-            setEditing(true);
           }}
         >
           <svg className="svg-icon" aria-hidden="true">
@@ -763,22 +877,35 @@ function ProjectTasksGroup({
   const { store } = useDataLayer();
   useStoreVersion(store);
   const taskIds = useTasksForProjectDeep(store, projectId);
-  if (taskIds.length === 0) {
-    return null;
-  }
+  const { selected: filter } = usePersonFilter();
   const orderedIds = [...taskIds].sort((a, b) => {
     const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
     const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
     if (oa !== ob) return oa - ob;
     return a.localeCompare(b);
   });
+  const visibleIds = useMemo(() => {
+    if (filter.length === 0) return orderedIds;
+    const set = new Set(filter);
+    return orderedIds.filter((tid) => {
+      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
+        if (set.has(id)) return true;
+      }
+      return false;
+    });
+  }, [store, orderedIds, filter]);
   const open: string[] = [];
   const done: string[] = [];
-  for (const tid of orderedIds) {
+  for (const tid of visibleIds) {
     if (isTaskDone(store, tid)) done.push(tid);
     else open.push(tid);
   }
-  if (open.length === 0 && done.length === 0) return null;
+  const hiddenCount = useHiddenCount(
+    store,
+    NOTE_ENTITY_TYPE.task,
+    taskIds,
+    filter,
+  );
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderTask(store, activeId, beforeId);
@@ -786,7 +913,7 @@ function ProjectTasksGroup({
 
   return (
     <>
-      <ProjectHeader name={projectName} count={orderedIds.length} />
+      <ProjectHeader name={projectName} count={visibleIds.length} />
       {open.length > 0 && (
         <SortableList
           itemIds={open}
@@ -809,6 +936,11 @@ function ProjectTasksGroup({
             <TaskLineRow key={tid} taskId={tid} projectName={projectName} doneGroup />
           ))}
         </Group>
+      )}
+      {hiddenCount > 0 && (
+        <p className="hidden-stub">
+          {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
+        </p>
       )}
     </>
   );
@@ -867,6 +999,10 @@ function TaskLineRow({
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
         aria-label="Task title"
+      />
+      <PersonAssignmentButton
+        entityType={NOTE_ENTITY_TYPE.task}
+        entityId={taskId}
       />
       <span className="task-line-project">{projectName || 'Untitled'}</span>
       <button
@@ -951,6 +1087,10 @@ function SortableTaskLineRow({
         }}
         aria-label="Task title"
       />
+      <PersonAssignmentButton
+        entityType={NOTE_ENTITY_TYPE.task}
+        entityId={taskId}
+      />
       <span className="task-line-project">{projectName || 'Untitled'}</span>
       <button
         type="button"
@@ -996,6 +1136,30 @@ function NotesTab({
     () => [...areaNotes, ...projectNotes, ...taskNotes],
     [areaNotes, projectNotes, taskNotes],
   );
+  const { selected: filter } = usePersonFilter();
+  const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.area, allIds, filter);
+  const visible = useMemo(() => {
+    if (filter.length === 0) return allIds;
+    const set = new Set(filter);
+    return allIds.filter((nid) => {
+      const noteEntityType = String(
+        store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType) ?? '',
+      );
+      const noteEntityId = String(
+        store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId) ?? '',
+      );
+      if (!noteEntityId || noteEntityType === '') return false;
+      for (const id of effectiveSetForEntity(
+        store,
+        noteEntityType as NoteEntityType,
+        noteEntityId,
+      )) {
+        if (set.has(id)) return true;
+      }
+      return false;
+    });
+  }, [store, allIds, filter]);
+
 
   function addNote(title: string): void {
     createNote(store, {
@@ -1009,14 +1173,19 @@ function NotesTab({
 
   return (
     <section className="notes-tab" aria-label="Notes">
-      {allIds.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyTab message="No notes yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Note" />
       ) : (
         <ul className="notes-tab-list" role="list">
-          {allIds.map((nid) => (
+          {visible.map((nid) => (
             <NoteLine key={nid} noteId={nid} />
           ))}
         </ul>
+      )}
+      {hiddenCount > 0 && (
+        <p className="hidden-stub">
+          {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
+        </p>
       )}
       <PromptModal
         open={addPromptOpen}
@@ -1290,6 +1459,8 @@ function ProjectTasksTab({
       store.delListener(listenerId);
     };
   }, [store, projectId]);
+  const { selected: filter } = usePersonFilter();
+  const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.task, taskIds, filter);
   const orderedIds = useMemo(
     () =>
       [...taskIds].sort((a, b) => {
@@ -1300,9 +1471,19 @@ function ProjectTasksTab({
       }),
     [store, taskIds],
   );
+  const visibleIds = useMemo(() => {
+    if (filter.length === 0) return orderedIds;
+    const set = new Set(filter);
+    return orderedIds.filter((tid) => {
+      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
+        if (set.has(id)) return true;
+      }
+      return false;
+    });
+  }, [store, orderedIds, filter]);
   const open: string[] = [];
   const done: string[] = [];
-  for (const tid of orderedIds) {
+  for (const tid of visibleIds) {
     if (isTaskDone(store, tid)) done.push(tid);
     else open.push(tid);
   }
@@ -1344,6 +1525,11 @@ function ProjectTasksTab({
                 <TaskLineRow key={tid} taskId={tid} projectName={projectName} doneGroup />
               ))}
             </Group>
+          )}
+          {hiddenCount > 0 && (
+            <p className="hidden-stub">
+              {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
+            </p>
           )}
         </>
       )}
@@ -1388,6 +1574,28 @@ function ProjectNotesTab({
     };
   }, [store, projectId]);
 
+  const { selected: filter } = usePersonFilter();
+  const hiddenCount = useHiddenCount(
+    store,
+    NOTE_ENTITY_TYPE.project,
+    noteIds,
+    filter,
+  );
+  const visible = useMemo(() => {
+    if (filter.length === 0) return noteIds;
+    const set = new Set(filter);
+    return noteIds.filter((nid) => {
+      for (const id of effectiveSetForEntity(
+        store,
+        NOTE_ENTITY_TYPE.project,
+        nid,
+      )) {
+        if (set.has(id)) return true;
+      }
+      return false;
+    });
+  }, [store, noteIds, filter]);
+
   function addNote(title: string): void {
     createNote(store, {
       title,
@@ -1400,14 +1608,19 @@ function ProjectNotesTab({
 
   return (
     <section className="notes-tab" aria-label="Notes">
-      {noteIds.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyTab message="No notes yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Note" />
       ) : (
         <ul className="notes-tab-list" role="list">
-          {noteIds.map((nid) => (
+          {visible.map((nid) => (
             <NoteLine key={nid} noteId={nid} />
           ))}
         </ul>
+      )}
+      {hiddenCount > 0 && (
+        <p className="hidden-stub">
+          {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
+        </p>
       )}
       <PromptModal
         open={addPromptOpen}

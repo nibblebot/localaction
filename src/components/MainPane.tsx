@@ -934,10 +934,7 @@ function ProjectTasksGroup({
       )}
       {doneNodes.length > 0 && (
         <Group title="DONE" count={countTree(doneNodes)}>
-          <DoneTaskSubtree
-            nodes={doneNodes}
-            projectName={projectName}
-          />
+          <DoneTaskSubtree nodes={doneNodes} />
         </Group>
       )}
       {hiddenCount > 0 && (
@@ -983,14 +980,9 @@ function OpenTaskSubtree({
       className="sortable-list"
     >
       {(tid, handle) => {
-        const node = nodes.find((n) => n.id === tid);
-        const children = node?.children ?? [];
+        const children = nodes.find((n) => n.id === tid)?.children ?? [];
         return (
-          <SortableTaskLineRow
-            handle={handle}
-            taskId={tid}
-            projectName={projectName}
-          >
+          <SortableTaskLineRow handle={handle} taskId={tid}>
             {children.length > 0 && visibleSet.size > 0 && (
               <OpenTaskSubtree
                 nodes={children}
@@ -1008,18 +1000,16 @@ function OpenTaskSubtree({
 
 function DoneTaskSubtree({
   nodes,
-  projectName,
 }: {
   nodes: readonly TaskTreeNode[];
-  projectName: string;
 }): React.JSX.Element {
   return (
     <ul className="task-tree-done" role="list">
       {nodes.map((node) => (
         <li key={node.id} className="task-tree-done-row">
-          <TaskLineRow taskId={node.id} projectName={projectName} doneGroup>
+          <TaskLineRow taskId={node.id} doneGroup>
             {node.children.length > 0 && (
-              <DoneTaskSubtree nodes={node.children} projectName={projectName} />
+              <DoneTaskSubtree nodes={node.children} />
             )}
           </TaskLineRow>
         </li>
@@ -1050,12 +1040,10 @@ function isTaskDone(store: MergeableStore, taskId: string): boolean {
 
 function TaskLineRow({
   taskId,
-  projectName,
   doneGroup,
   children,
 }: {
   taskId: string;
-  projectName: string;
   doneGroup?: boolean;
   children?: React.ReactNode;
 }): React.JSX.Element {
@@ -1089,7 +1077,6 @@ function TaskLineRow({
         entityType={NOTE_ENTITY_TYPE.task}
         entityId={taskId}
       />
-      <span className="task-line-project">{projectName || 'Untitled'}</span>
       <button
         type="button"
         className="task-line-action"
@@ -1135,12 +1122,10 @@ function TaskLineRow({
 function SortableTaskLineRow({
   handle,
   taskId,
-  projectName,
   children,
 }: {
   handle: SortableHandleProps;
   taskId: string;
-  projectName: string;
   children?: React.ReactNode;
 }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -1195,7 +1180,6 @@ function SortableTaskLineRow({
         entityType={NOTE_ENTITY_TYPE.task}
         entityId={taskId}
       />
-      <span className="task-line-project">{projectName || 'Untitled'}</span>
       <button
         type="button"
         className="task-line-action"
@@ -1643,7 +1627,7 @@ function ProjectTasksTab({
       )}
       {doneNodes.length > 0 && (
         <Group title="DONE" count={countTree(doneNodes)}>
-          <DoneTaskSubtree nodes={doneNodes} projectName={projectName} />
+          <DoneTaskSubtree nodes={doneNodes} />
         </Group>
       )}
       <InlineAddInput

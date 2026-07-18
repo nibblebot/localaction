@@ -12,7 +12,7 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:5180',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -23,8 +23,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev -- --db ${TEST_DB_PATH}`,
-    url: 'http://localhost:5173',
+    command: `pnpm dev --port 5180 -- --db ${TEST_DB_PATH}`,
+    url: 'http://localhost:5180',
     reuseExistingServer: false,
     timeout: 60_000,
   },

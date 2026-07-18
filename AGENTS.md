@@ -44,16 +44,15 @@
 - `docs/architecture.md` — high-level system shape (client/server/sync/data model, runtime modes, testing strategy).
 - `docs/ux.md` — high-level user-experience overview (shell, navigation, views, appearance, interaction patterns).
 - `docs/glossary.md` — domain vocabulary / ubiquitous language. Trust `package.json` and `src/` for behavior; trust this file for the vocabulary; trust inline JSDoc for the rest.
-
 ## Quirks
-- **React Compiler is enabled** via `babel-plugin-react-compiler` (see `vite.config.ts`). The compiler pass slows dev/build. Code must stay compiler-clean — no mutation of props/hooks patterns the compiler cannot reason about.
+- **React Compiler is enabled**
 - TS is configured with `verbatimModuleSyntax`, `erasableSyntaxOnly`, `allowImportingTsExtensions`, `moduleResolution: bundler`. Use `import type` for type-only imports; keep `.tsx` extensions in TS imports (e.g. `src/main.tsx:4`).
 - `verbatimModuleSyntax` also means no `import React from 'react'` — rely on the automatic JSX runtime (`jsx: "react-jsx"`).
 - `erasableSyntaxOnly` forbids enums and namespaces.
 - `tsc -b` uses project references, so TS errors in `vite.config.ts`/`vitest.config.ts`/`playwright.config.ts` block the build even though they're not under `src/`.
 - **Test runners split by environment, not by tool.** vitest (single config) drives all suites; the integration suite uses `// @vitest-environment node` to opt out of jsdom and run against real `ws`/`sqlite3` Node modules. There is no separate runner config — pick the env per file.
 - **Playwright config** auto-starts `pnpm dev` on port 5173 via `webServer.command`; `reuseExistingServer: true` so manual dev servers aren't fought. Tests depend on the `/ws` handshake succeeding.
-
+- **Test databases live in `data/` but never use the default name.** Any dev/preview/smoke run that doesn't need the user's real store must point `--db` at a `test-*.db` path (e.g. `data/test-e2e.db`, `data/test-smoke-1234.db`). The wildcard `*` keeps simultaneous runs from clobbering each other. Clean every `data/test-*.db` up when you're done — Playwright e2e suites are expected to spin up and tear down their own DB; manual `pnpm dev` sessions that needed isolation should `rm data/test-*.db` before yielding.
 ## Conventions
 - Components are default-exported function components returning `React.JSX.Element` (or `React.JSX.Element | null`). See `src/components/Sidebar.tsx` for the canonical shape; `src/App.tsx` follows the same pattern.
 - Library seams (e.g. `src/data/`) export named functions and types. Components are the only default-exports in `src/`.

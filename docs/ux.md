@@ -23,9 +23,10 @@ flowchart TB
 ```
 
 - **Sidebar** (`Sidebar.tsx`) — the area tree, the primary way to navigate.
-  Each row shows a coloured dot, the area name, and live counts (sub-areas,
-  projects, tasks, notes). A `SyncStatusBadge` at the foot reports connection
-  state: *Local only* → *Syncing…* → *Synced* (or *Retry #n…* / *Sync error*).
+  Each row shows a coloured dot, the area name, and the total number of tasks
+  across that area tree, including tasks in descendant areas and recursive sub-tasks.
+  A `SyncStatusBadge` at the foot reports connection state: *Local only* →
+  *Syncing…* → *Synced* (or *Retry #n…* / *Sync error*).
 - **MainPane** (`MainPane.tsx`) — the working area. Renders an area view, a
   project view, or the welcome screen depending on the current selection.
 - **Inspector** — TinyBase's `ui-react-inspector`, a dev-only overlay for

@@ -24,6 +24,8 @@
   --text-muted: #9b96ae;
   --text-h: #1f1b2e;
   --text-on-accent: #ffffff;
+  /* Sidebar count pill — derived per-theme below */
+  --sidebar-count-fg: var(--text-muted);
 
   /* Accent — vivid purple */
   --accent: #7c3aed;
@@ -110,6 +112,7 @@
   --text-muted: #555c64;
   --text-h: #ededed;
   --text-on-accent: #ffffff;
+  --sidebar-count-fg: var(--text);
 
   --accent: #a78bfa;
   --accent-hover: #8b5cf6;
@@ -156,6 +159,7 @@
     --text-muted: #555c64;
     --text-h: #ededed;
     --text-on-accent: #ffffff;
+    --sidebar-count-fg: var(--text);
 
     --accent: #a78bfa;
     --accent-hover: #8b5cf6;

@@ -173,7 +173,7 @@
 
 .sidebar-link-count {
   font-size: 0.79rem;
-  color: var(--text-muted);
+  color: var(--sidebar-count-fg);
   background: var(--surface);
   padding: 1px 6px;
   border-radius: var(--radius-pill);

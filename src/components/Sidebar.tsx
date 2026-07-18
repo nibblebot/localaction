@@ -63,7 +63,7 @@ interface SortableAreaRowProps {
   onSelect: (id: string) => void;
   isTopLevel: boolean;
   dim: boolean;
-  childCountOverride: number | null;
+  taskCountOverride: number | null;
 }
 
 function SortableAreaRow({
@@ -73,12 +73,12 @@ function SortableAreaRow({
   onSelect,
   isTopLevel,
   dim,
-  childCountOverride,
+  taskCountOverride,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const dot = getColorHex(node.count.color);
   const displayName = node.count.name || 'Untitled';
-  const count = childCountOverride ?? node.count.childCount;
+  const count = taskCountOverride ?? node.count.taskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
@@ -110,7 +110,7 @@ function SortableAreaRow({
             style={{ background: dot }}
           />
           <span className="sidebar-item-name">{displayName}</span>
-          <span className="sidebar-link-count">{count}</span>
+          {count > 0 ? <span className="sidebar-link-count">{count}</span> : null}
         </button>
       </div>
     </li>
@@ -155,7 +155,7 @@ function SubAreaList({
         const fc = filtered.get(id);
         const override = filterActive
           ? fc
-            ? fc.projectCount + fc.taskCount + fc.noteCount
+            ? fc.taskCount
             : 0
           : null;
         return (
@@ -166,7 +166,7 @@ function SubAreaList({
             onSelect={onSelect}
             isTopLevel={false}
             dim={dimmed.has(id)}
-            childCountOverride={override}
+            taskCountOverride={override}
           />
         );
       }}
@@ -189,8 +189,7 @@ export default function Sidebar(): React.JSX.Element {
     [tree],
   );
   const dimmed = useDimmedAreaIds(store, allAreaIds, filterSelected);
-  // Under an active filter, replace the unfiltered childCount with
-  // the matching total — "where does Mom have work?" (spec § 8.2).
+  // Under an active filter, show only matching tasks in each area subtree.
   const filtered = useFilteredAreaCounts(store, allAreaIds, filterSelected);
   const activeColor: AreaColorId = useMemo(() => {
     if (selection.kind !== 'area') return 'gray';
@@ -262,7 +261,7 @@ export default function Sidebar(): React.JSX.Element {
               const fc = filtered.get(node.count.id);
               const override = filterActive
                 ? fc
-                  ? fc.projectCount + fc.taskCount + fc.noteCount
+                  ? fc.taskCount
                   : 0
                 : null;
               return (
@@ -274,7 +273,7 @@ export default function Sidebar(): React.JSX.Element {
                     onSelect={(sid) => navigate({ kind: 'area', id: sid })}
                     isTopLevel
                     dim={dimmed.has(node.count.id)}
-                    childCountOverride={override}
+                    taskCountOverride={override}
                   />
                   <SubAreaList
                     parent={node}

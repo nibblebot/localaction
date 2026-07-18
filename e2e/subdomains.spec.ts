@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // Each test uses a unique, timestamped area name so OPFS state from
 // prior runs in the same dev server is harmless.
@@ -8,13 +8,17 @@ test.beforeEach(async ({ page }) => {
 
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+async function createArea(page: Page, name: string): Promise<void> {
+  const input = page.locator('.sidebar-section-add .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
+  await expect(page.locator('.area-header-name')).toContainText(name);
+}
+
 test.describe('Sub-areas (inline create)', () => {
   test('a top-level area header has no leading slash', async ({ page }) => {
     const name = `Root ${uniq()}`;
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(name);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
-    await expect(page.locator('.area-header-name')).toContainText(name);
+    await createArea(page, name);
     await expect(page.locator('.area-header-crumb')).toHaveCount(0);
     await expect(page.locator('.area-header-slash')).toHaveCount(0);
     // The add-sub-area button is shown on a top-level area.
@@ -24,9 +28,7 @@ test.describe('Sub-areas (inline create)', () => {
   test('clicking the + reveals an inline input; Enter creates and navigates', async ({ page }) => {
     const parent = `Family ${uniq()}`;
     const child = `Wife ${uniq()}`;
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(parent);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     // The + is replaced by an inline input.
     await expect(page.locator('.area-header-add-input')).toBeVisible();
@@ -41,9 +43,7 @@ test.describe('Sub-areas (inline create)', () => {
 
   test('Escape cancels the inline input without creating', async ({ page }) => {
     const parent = `Family ${uniq()}`;
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(parent);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill('Should not be created');
     await page.locator('.area-header-add-input').press('Escape');
@@ -55,9 +55,7 @@ test.describe('Sub-areas (inline create)', () => {
 
   test('blur with empty input is a no-op (just closes)', async ({ page }) => {
     const parent = `Family ${uniq()}`;
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(parent);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     // Blur without typing.
     await page.locator('body').click({ position: { x: 5, y: 5 } });
@@ -68,9 +66,7 @@ test.describe('Sub-areas (inline create)', () => {
   test('a sub-area pane has no add-sub-area button (one level deep only)', async ({ page }) => {
     const parent = `Family ${uniq()}`;
     const child = `Daughter ${uniq()}`;
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(parent);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill(child);
     await page.locator('.area-header-add-input').press('Enter');

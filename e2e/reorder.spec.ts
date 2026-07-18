@@ -32,25 +32,25 @@ async function cleanOpfs(page: Page): Promise<void> {
 }
 
 async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-  await page.locator('.modal-input').fill(name);
-  await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+  const input = page.locator('.sidebar-section-add .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(name);
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
   await page.locator('.area-tab', { hasText: 'Projects' }).click();
-  await page.locator('.area-tab-add', { hasTitle: 'New project' }).click();
-  await page.locator('.modal-input').fill(name);
-  await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+  const input = page.locator('.projects-tab .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
   await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
   await page.locator('.area-tab', { hasText: 'Tasks' }).click();
-  await page.locator('.area-tab-add', { hasTitle: 'New task' }).click();
-  await page.locator('.modal-input').fill(title);
-  await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+  const input = page.locator('.tasks-tab .inline-add-input');
+  await input.fill(title);
+  await input.press('Enter');
 }
 
 // The SortableList reports its current render order back as a list of

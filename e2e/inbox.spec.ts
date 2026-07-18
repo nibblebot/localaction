@@ -39,9 +39,9 @@ async function openInbox(page: Page): Promise<void> {
 }
 
 async function createInboxTask(page: Page, title: string): Promise<void> {
-  await page.locator('main[aria-label="Inbox"] .main-pane-add').click();
-  await page.locator('.modal-input').fill(title);
-  await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+  const input = page.locator('main[aria-label="Inbox"] .inline-add-input');
+  await input.fill(title);
+  await input.press('Enter');
 }
 
 test.describe('inbox visibility', () => {
@@ -53,7 +53,7 @@ test.describe('inbox visibility', () => {
 
   test('a freshly-added inbox task appears immediately in the sidebar count and the inbox body', async ({ page }) => {
     await openInbox(page);
-    await expect(page.locator('main[aria-label="Inbox"] .empty-tab')).toBeVisible();
+    await expect(page.locator('main[aria-label="Inbox"] .inline-add-input')).toBeVisible();
 
     await createInboxTask(page, 'Fresh inbox task');
 

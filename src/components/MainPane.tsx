@@ -42,7 +42,7 @@ import type { Area, NoteEntityType } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import ConfirmModal from './ConfirmModal.tsx';
-import PromptModal from './PromptModal.tsx';
+import InlineAddInput from './InlineAddInput.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
 import { renderMarkdown } from '../markdown/render.ts';
@@ -78,10 +78,8 @@ export default function MainPane(): React.JSX.Element {
 
   const [tabByArea, setTabByArea] = useState<Record<string, Tab>>({});
   const tab: Tab = (areaId ? tabByArea[areaId] : undefined) ?? 'projects';
-  const [addPromptOpen, setAddPromptOpen] = useState(false);
   const setTab = (next: Tab): void => {
     if (!areaId) return;
-    setAddPromptOpen(false);
     setTabByArea((prev) => ({ ...prev, [areaId]: next }));
   };
 
@@ -119,7 +117,6 @@ export default function MainPane(): React.JSX.Element {
   const isTopLevel = parentChain.length === 0;
 
   const goToArea = (id: string): void => {
-    setAddPromptOpen(false);
     navigate({ kind: 'area', id });
   };
 
@@ -150,17 +147,15 @@ export default function MainPane(): React.JSX.Element {
           tab={tab}
           onChange={setTab}
           counts={{ projects: projectCount, tasks: taskCount, notes: noteCount }}
-          onAdd={() => setAddPromptOpen(true)}
-          addLabel={tab === 'projects' ? 'New project' : tab === 'tasks' ? 'New task' : 'New note'}
         />
         {tab === 'projects' && (
-          <ProjectsTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <ProjectsTab areaId={areaId} isActive />
         )}
         {tab === 'tasks' && (
-          <TasksTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <TasksTab areaId={areaId} isActive />
         )}
         {tab === 'notes' && (
-          <NotesTab areaId={areaId} addPromptOpen={addPromptOpen} setAddPromptOpen={setAddPromptOpen} />
+          <NotesTab areaId={areaId} isActive />
         )}
       </div>
     </main>
@@ -355,8 +350,6 @@ interface PaneTabsProps<T extends string> {
   tab: T;
   onChange: (tab: T) => void;
   counts: Record<T, number>;
-  onAdd: () => void;
-  addLabel: string;
 }
 
 function PaneTabs<T extends string>({
@@ -364,8 +357,6 @@ function PaneTabs<T extends string>({
   tab,
   onChange,
   counts,
-  onAdd,
-  addLabel,
 }: PaneTabsProps<T>): React.JSX.Element {
   return (
     <div className="area-tabs" role="tablist">
@@ -396,29 +387,16 @@ function PaneTabs<T extends string>({
           <use href="/icons.svg#sort-icon" />
         </svg>
       </button>
-      <button
-        type="button"
-        className="area-tab-action area-tab-add"
-        onClick={onAdd}
-        aria-label={addLabel}
-        title={addLabel}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#add-icon" />
-        </svg>
-      </button>
     </div>
   );
 }
 
 function ProjectsTab({
   areaId,
-  addPromptOpen,
-  setAddPromptOpen,
+  isActive,
 }: {
   areaId: string;
-  addPromptOpen: boolean;
-  setAddPromptOpen: (open: boolean) => void;
+  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -435,7 +413,6 @@ function ProjectsTab({
 
   function addProject(name: string): void {
     createProject(store, { name, areaId });
-    setAddPromptOpen(false);
   }
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
@@ -463,67 +440,70 @@ function ProjectsTab({
 
   const done = visible.filter((p) => p.total > 0 && p.done === p.total);
   const active = visible.filter((p) => p.total === 0 || p.done < p.total);
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(inArea.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = inArea.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, inArea.length]);
 
   return (
     <section className="projects-tab" aria-label="Projects">
-      {inArea.length === 0 ? (
-        <EmptyTab message="No projects yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Project" />
-      ) : (
-        <>
-          {active.length > 0 && (
-            <Group title="ACTIVE" count={active.length}>
-              <SortableList
-                itemIds={active.map((p) => p.projectId)}
-                onReorder={onReorder}
-                ariaLabel="Active projects"
-                className="sortable-list"
-              >
-                {(projectId, handle) => {
-                  const p = active.find((x) => x.projectId === projectId);
-                  if (!p) return <></>;
-                  return (
-                    <SortableProjectRow
-                      handle={handle}
-                      projectId={p.projectId}
-                      name={p.projectName}
-                      done={p.done}
-                      total={p.total}
-                    />
-                  );
-                }}
-              </SortableList>
-            </Group>
-          )}
-          {done.length > 0 && (
-            <Group title="DONE" count={done.length}>
-              {done.map((p) => (
-                <ProjectRow
-                  key={p.projectId}
+      {active.length > 0 && (
+        <Group title="ACTIVE" count={active.length}>
+          <SortableList
+            itemIds={active.map((p) => p.projectId)}
+            onReorder={onReorder}
+            ariaLabel="Active projects"
+            className="sortable-list"
+          >
+            {(projectId, handle) => {
+              const p = active.find((x) => x.projectId === projectId);
+              if (!p) return <></>;
+              return (
+                <SortableProjectRow
+                  handle={handle}
                   projectId={p.projectId}
                   name={p.projectName}
                   done={p.done}
                   total={p.total}
-                  doneGroup
                 />
-              ))}
-            </Group>
-          )}
-          {hiddenCount > 0 && (
-            <p className="hidden-stub">
-              {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
-            </p>
-          )}
-        </>
+              );
+            }}
+          </SortableList>
+        </Group>
       )}
-      <PromptModal
-        open={addPromptOpen}
-        title="New project"
-        label="Name"
-        placeholder="e.g. Q3 roadmap"
-        submitLabel="Create"
+      {done.length > 0 && (
+        <Group title="DONE" count={done.length}>
+          {done.map((p) => (
+            <ProjectRow
+              key={p.projectId}
+              projectId={p.projectId}
+              name={p.projectName}
+              done={p.done}
+              total={p.total}
+              doneGroup
+            />
+          ))}
+        </Group>
+      )}
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          inArea.length === 0
+            ? 'No projects yet — name this one to start.'
+            : 'New project…'
+        }
+        ariaLabel="New project"
         onSubmit={addProject}
-        onCancel={() => setAddPromptOpen(false)}
       />
+      {hiddenCount > 0 && (
+        <p className="hidden-stub">
+          {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
+        </p>
+      )}
     </section>
   );
 }
@@ -802,12 +782,10 @@ interface TasksTabProject {
 
 function TasksTab({
   areaId,
-  addPromptOpen,
-  setAddPromptOpen,
+  isActive,
 }: {
   areaId: string;
-  addPromptOpen: boolean;
-  setAddPromptOpen: (open: boolean) => void;
+  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -833,44 +811,47 @@ function TasksTab({
       const pid = targetProjectId ?? projects[0]!.id;
       createTask(store, { title, placement: { kind: 'project', id: pid } });
     }
-    setAddPromptOpen(false);
   }
+
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(projects.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = projects.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, projects.length]);
 
   return (
     <section className="tasks-tab" aria-label="Tasks">
       <AreaTasksSection areaId={areaId} />
-      {projects.length === 0 ? (
-        <EmptyTab message="No tasks yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Task" />
-      ) : (
-        <>
-          {projects.length > 1 && (
-            <div className="tasks-tab-target">
-              <label className="field-label-inline">Add new tasks to</label>
-              <select
-                value={targetProjectId ?? projects[0]!.id}
-                onChange={(e) => setTargetProjectId(e.target.value)}
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name || 'Untitled'}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {projects.map((p) => (
-            <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} />
-          ))}
-        </>
+      {projects.length > 1 && (
+        <div className="tasks-tab-target">
+          <label className="field-label-inline">Add new tasks to</label>
+          <select
+            value={targetProjectId ?? projects[0]!.id}
+            onChange={(e) => setTargetProjectId(e.target.value)}
+          >
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name || 'Untitled'}
+              </option>
+            ))}
+          </select>
+        </div>
       )}
-      <PromptModal
-        open={addPromptOpen}
-        title="New task"
-        label="Title"
-        placeholder="e.g. Set up weekly sync"
-        submitLabel="Create"
+      {projects.map((p) => (
+        <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} />
+      ))}
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          projects.length === 0
+            ? 'No projects yet — name a task to spin one up.'
+            : 'New task…'
+        }
+        ariaLabel="New task"
         onSubmit={addTask}
-        onCancel={() => setAddPromptOpen(false)}
       />
     </section>
   );
@@ -1129,12 +1110,10 @@ function SortableTaskLineRow({
 
 function NotesTab({
   areaId,
-  addPromptOpen,
-  setAddPromptOpen,
+  isActive,
 }: {
   areaId: string;
-  addPromptOpen: boolean;
-  setAddPromptOpen: (open: boolean) => void;
+  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { areaNotes, projectNotes, taskNotes } = useNotesForAreaTree(
@@ -1177,34 +1156,39 @@ function NotesTab({
       entityType: NOTE_ENTITY_TYPE.area,
       entityId: areaId,
     });
-    setAddPromptOpen(false);
   }
+
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(allIds.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = allIds.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, allIds.length]);
 
   return (
     <section className="notes-tab" aria-label="Notes">
-      {visible.length === 0 ? (
-        <EmptyTab message="No notes yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Note" />
-      ) : (
-        <ul className="notes-tab-list" role="list">
-          {visible.map((nid) => (
-            <NoteLine key={nid} noteId={nid} />
-          ))}
-        </ul>
-      )}
+      <ul className="notes-tab-list" role="list">
+        {visible.map((nid) => (
+          <NoteLine key={nid} noteId={nid} />
+        ))}
+      </ul>
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          allIds.length === 0
+            ? 'No notes yet — start one here.'
+            : 'New note…'
+        }
+        ariaLabel="New note"
+        onSubmit={addNote}
+      />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
         </p>
       )}
-      <PromptModal
-        open={addPromptOpen}
-        title="New note"
-        label="Title"
-        placeholder="e.g. Weekly retrospective"
-        submitLabel="Create"
-        onSubmit={addNote}
-        onCancel={() => setAddPromptOpen(false)}
-      />
     </section>
   );
 }
@@ -1332,10 +1316,8 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
   const taskIds = useTasksForProjectDeep(store, projectId);
   const noteIds = useNoteIdsForEntity(store, NOTE_ENTITY_TYPE.project, projectId);
   const [tabByProject, setTabByProject] = useState<Record<string, ProjectTab>>({});
-  const [addPromptOpen, setAddPromptOpen] = useState(false);
   const tab: ProjectTab = tabByProject[projectId] ?? 'tasks';
   const setTab = (next: ProjectTab): void => {
-    setAddPromptOpen(false);
     setTabByProject((prev) => ({ ...prev, [projectId]: next }));
   };
 
@@ -1363,22 +1345,18 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
           tab={tab}
           onChange={setTab}
           counts={{ tasks: taskIds.length, notes: noteIds.length }}
-          onAdd={() => setAddPromptOpen(true)}
-          addLabel={tab === 'tasks' ? 'New task' : 'New note'}
         />
         {tab === 'tasks' && (
           <ProjectTasksTab
             projectId={projectId}
             projectName={projectName}
-            addPromptOpen={addPromptOpen}
-            setAddPromptOpen={setAddPromptOpen}
+            isActive
           />
         )}
         {tab === 'notes' && (
           <ProjectNotesTab
             projectId={projectId}
-            addPromptOpen={addPromptOpen}
-            setAddPromptOpen={setAddPromptOpen}
+            isActive
           />
         )}
       </div>
@@ -1442,13 +1420,11 @@ function ProjectPaneHeader({
 function ProjectTasksTab({
   projectId,
   projectName,
-  addPromptOpen,
-  setAddPromptOpen,
+  isActive,
 }: {
   projectId: string;
   projectName: string;
-  addPromptOpen: boolean;
-  setAddPromptOpen: (open: boolean) => void;
+  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const [taskIds, setTaskIds] = useState<string[]>(() => {
@@ -1499,70 +1475,71 @@ function ProjectTasksTab({
 
   function addTask(title: string): void {
     createTask(store, { title, placement: { kind: 'project', id: projectId } });
-    setAddPromptOpen(false);
   }
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderTask(store, activeId, beforeId);
   }
 
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(taskIds.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = taskIds.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, taskIds.length]);
+
   return (
     <section className="tasks-tab" aria-label="Tasks">
-      {taskIds.length === 0 ? (
-        <EmptyTab message="No tasks yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Task" />
-      ) : (
-        <>
-          {open.length > 0 && (
-            <SortableList
-              itemIds={open}
-              onReorder={onReorder}
-              ariaLabel="Open tasks"
-              className="sortable-list"
-            >
-              {(tid, handle) => (
-                <SortableTaskLineRow
-                  handle={handle}
-                  taskId={tid}
-                  projectName={projectName}
-                />
-              )}
-            </SortableList>
+      {open.length > 0 && (
+        <SortableList
+          itemIds={open}
+          onReorder={onReorder}
+          ariaLabel="Open tasks"
+          className="sortable-list"
+        >
+          {(tid, handle) => (
+            <SortableTaskLineRow
+              handle={handle}
+              taskId={tid}
+              projectName={projectName}
+            />
           )}
-          {done.length > 0 && (
-            <Group title="DONE" count={done.length}>
-              {done.map((tid) => (
-                <TaskLineRow key={tid} taskId={tid} projectName={projectName} doneGroup />
-              ))}
-            </Group>
-          )}
-          {hiddenCount > 0 && (
-            <p className="hidden-stub">
-              {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
-            </p>
-          )}
-        </>
+        </SortableList>
       )}
-      <PromptModal
-        open={addPromptOpen}
-        title="New task"
-        label="Title"
-        placeholder="e.g. Set up weekly sync"
-        submitLabel="Create"
+      {done.length > 0 && (
+        <Group title="DONE" count={done.length}>
+          {done.map((tid) => (
+            <TaskLineRow key={tid} taskId={tid} projectName={projectName} doneGroup />
+          ))}
+        </Group>
+      )}
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          taskIds.length === 0
+            ? 'No tasks yet — add the first one.'
+            : 'New task…'
+        }
+        ariaLabel="New task"
         onSubmit={addTask}
-        onCancel={() => setAddPromptOpen(false)}
       />
+      {hiddenCount > 0 && (
+        <p className="hidden-stub">
+          {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
+        </p>
+      )}
     </section>
   );
 }
 
 function ProjectNotesTab({
   projectId,
-  addPromptOpen,
-  setAddPromptOpen,
+  isActive,
 }: {
   projectId: string;
-  addPromptOpen: boolean;
-  setAddPromptOpen: (open: boolean) => void;
+  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const [noteIds, setNoteIds] = useState<string[]>(() => {
@@ -1612,34 +1589,39 @@ function ProjectNotesTab({
       entityType: NOTE_ENTITY_TYPE.project,
       entityId: projectId,
     });
-    setAddPromptOpen(false);
   }
+
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(noteIds.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = noteIds.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, noteIds.length]);
 
   return (
     <section className="notes-tab" aria-label="Notes">
-      {visible.length === 0 ? (
-        <EmptyTab message="No notes yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Note" />
-      ) : (
-        <ul className="notes-tab-list" role="list">
-          {visible.map((nid) => (
-            <NoteLine key={nid} noteId={nid} />
-          ))}
-        </ul>
-      )}
+      <ul className="notes-tab-list" role="list">
+        {visible.map((nid) => (
+          <NoteLine key={nid} noteId={nid} />
+        ))}
+      </ul>
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          noteIds.length === 0
+            ? 'No notes yet — start one here.'
+            : 'New note…'
+        }
+        ariaLabel="New note"
+        onSubmit={addNote}
+      />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
         </p>
       )}
-      <PromptModal
-        open={addPromptOpen}
-        title="New note"
-        label="Title"
-        placeholder="e.g. Weekly retrospective"
-        submitLabel="Create"
-        onSubmit={addNote}
-        onCancel={() => setAddPromptOpen(false)}
-      />
     </section>
   );
 }
@@ -1658,36 +1640,35 @@ function InboxPane(): React.JSX.Element {
     }
     return out;
   }, [topLevelIds, store]);
-  const [addPromptOpen, setAddPromptOpen] = useState(false);
   function addTask(title: string): void {
     createTask(store, { title });
-    setAddPromptOpen(false);
   }
   const orderedIds = sortTaskIds(store, allIds);
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(orderedIds.length === 0);
+  useEffect(() => {
+    const empty = orderedIds.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [orderedIds.length]);
   return (
     <main className="main" aria-label="Inbox">
       <div className="main-body">
         <header className="main-pane-header">
           <h2 className="main-pane-title">Inbox</h2>
-          <button type="button" className="main-pane-add" onClick={() => setAddPromptOpen(true)}>
-            + Task
-          </button>
         </header>
-        {orderedIds.length === 0 ? (
-          <EmptyTab message="No inbox tasks." onAdd={() => setAddPromptOpen(true)} addLabel="+ Task" />
-        ) : (
-          <TaskList filteredIds={orderedIds} />
-        )}
+        <TaskList filteredIds={orderedIds} />
+        <InlineAddInput
+          ref={addInputRef}
+          placeholder={
+            orderedIds.length === 0
+              ? 'No inbox tasks — capture one here.'
+              : 'New inbox task…'
+          }
+          ariaLabel="New inbox task"
+          onSubmit={addTask}
+        />
       </div>
-      <PromptModal
-        open={addPromptOpen}
-        title="New inbox task"
-        label="Title"
-        placeholder="e.g. Pick up dry cleaning"
-        submitLabel="Create"
-        onSubmit={addTask}
-        onCancel={() => setAddPromptOpen(false)}
-      />
     </main>
   );
 }
@@ -1754,24 +1735,6 @@ function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
   });
 }
 
-function EmptyTab({
-  message,
-  onAdd,
-  addLabel,
-}: {
-  message: string;
-  onAdd: () => void;
-  addLabel: string;
-}): React.JSX.Element {
-  return (
-    <div className="empty-tab">
-      <p>{message}</p>
-      <button type="button" className="btn btn-primary" onClick={onAdd}>
-        {addLabel}
-      </button>
-    </div>
-  );
-}
 
 function stripPreview(body: string): string {
   const trimmed = body.trim();

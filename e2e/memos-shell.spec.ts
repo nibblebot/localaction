@@ -1,4 +1,28 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+async function createArea(page: Page, name: string): Promise<void> {
+  const input = page.locator('.sidebar-section-add .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
+}
+
+async function createProject(page: Page, name: string): Promise<void> {
+  const input = page.locator('.projects-tab .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
+}
+
+async function createTask(page: Page, title: string): Promise<void> {
+  const input = page.locator('.tasks-tab .inline-add-input');
+  await input.fill(title);
+  await input.press('Enter');
+}
+
+async function createNote(page: Page, title: string): Promise<void> {
+  const input = page.locator('.notes-tab .inline-add-input');
+  await input.fill(title);
+  await input.press('Enter');
+}
 
 test.describe('LocalAction shell', () => {
   test('renders the two-zone layout with sidebar and main pane', async ({ page }) => {
@@ -17,9 +41,7 @@ test.describe('LocalAction shell', () => {
 
   test('creating an area navigates to its main pane with the tab strip', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill('Work');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, 'Work');
     await expect(page).toHaveURL(/#\/a\//);
     await expect(page.locator('.area-header-name')).toContainText('Work');
     await expect(page.locator('.area-tabs')).toBeVisible();
@@ -28,25 +50,19 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
   });
 
-  test('projects tab shows an empty state and an add prompt', async ({ page }) => {
+  test('projects tab renders an inline add input', async ({ page }) => {
     await page.goto('/#/');
     // Create an area so we have something to render.
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill('Health');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, 'Health');
     await expect(page.locator('.projects-tab')).toBeVisible();
-    await expect(page.locator('.empty-tab')).toContainText('No projects yet.');
+    await expect(page.locator('.projects-tab .inline-add-input')).toBeVisible();
   });
 
   test('clicking a project opens its pane with Tasks and Notes tabs', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill('Family');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, 'Family');
     // Projects tab: add a project.
-    await page.locator('.empty-tab .btn-primary', { hasText: '+ Project' }).click();
-    await page.locator('.modal-input').fill('Plan trip');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createProject(page, 'Plan trip');
     await expect(page.locator('.project-row-name', { hasText: 'Plan trip' })).toBeVisible();
     // Clicking the project navigates to the project pane (no inline expand).
     await page.locator('.project-row-name', { hasText: 'Plan trip' }).click();
@@ -57,9 +73,7 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-tab', { hasText: 'Tasks' })).toBeVisible();
     await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
     // Default tab is Tasks; add a task scoped to this project.
-    await page.locator('.area-tab-add').click();
-    await page.locator('.modal-input').fill('Book flights');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createTask(page, 'Book flights');
     await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
   });
 
@@ -72,18 +86,14 @@ test.describe('LocalAction shell', () => {
     await page.goto('/#/');
     await expect(page.locator('.sidebar-section-title-action', { hasTitle: 'New area' })).toBeVisible();
     // Root area
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill(root);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, root);
     // Sub-area via the inline + on the root pane
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill(sub);
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(sub);
     // Now we're on the sub-area pane. Add a project.
-    await page.locator('.empty-tab .btn-primary', { hasText: '+ Project' }).click();
-    await page.locator('.modal-input').fill(projectName);
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createProject(page, projectName);
     await page.locator('.project-row-name', { hasText: projectName }).click();
     // The project pane header shows a list-based document icon next to the name.
     const projectIcon = page.locator('.area-header-project-icon');
@@ -151,16 +161,12 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-header-name')).toContainText(root);
   });
 
-  test('notes tab shows an empty state then allows adding a note', async ({ page }) => {
+  test('notes tab renders an inline add input', async ({ page }) => {
     await page.goto('/#/');
-    await page.locator('.sidebar-section-title-action', { hasTitle: 'New area' }).click();
-    await page.locator('.modal-input').fill('Personal');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await createArea(page, 'Personal');
     await page.locator('.area-tab', { hasText: 'Notes' }).click();
-    await expect(page.locator('.empty-tab')).toContainText('No notes yet.');
-    await page.locator('.empty-tab .btn-primary', { hasText: '+ Note' }).click();
-    await page.locator('.modal-input').fill('Quick thought');
-    await page.locator('.modal .btn-primary', { hasText: 'Create' }).click();
+    await expect(page.locator('.notes-tab .inline-add-input')).toBeVisible();
+    await createNote(page, 'Quick thought');
     await expect(page.locator('.note-line-title', { hasText: 'Quick thought' })).toBeVisible();
   });
 

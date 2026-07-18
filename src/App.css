@@ -320,6 +320,55 @@
   color: var(--text-muted);
 }
 
+/* ============================================================
+   Inline add input — always-visible single-line text field
+   appended to a list. Enter commits and clears; Esc clears.
+   Used in place of the old "+ New" modals across area/project/
+   task/note lists (sidebar + main pane).
+   ============================================================ */
+
+.inline-add-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.93rem;
+  color: var(--text-h);
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  margin: 6px 0 0;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.1s, background 0.1s;
+}
+
+.inline-add-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.inline-add-input:hover {
+  border-color: var(--text-muted);
+}
+
+.inline-add-input:focus {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--surface);
+}
+
+.inline-add-input-sm {
+  font-size: 0.86rem;
+  padding: 4px 8px;
+  margin: 4px 0 0;
+}
+
+.sidebar-section-add {
+  margin-top: var(--space-2);
+}
+
 .area-header .area-header-project-icon {
   width: 24px;
   height: 24px;
@@ -412,32 +461,6 @@
 .area-tab-action svg {
   width: 15px;
   height: 15px;
-}
-
-.area-tab-add {
-  background: var(--accent);
-  color: var(--text-on-accent);
-}
-
-.area-tab-add:hover {
-  background: var(--accent-hover);
-  color: var(--text-on-accent);
-}
-
-.empty-tab {
-  max-width: 360px;
-  margin: 40px auto;
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.96rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.empty-tab p {
-  margin: 0;
 }
 
 /* ============================================================
@@ -1102,32 +1125,6 @@
   color: var(--text-secondary);
 }
 
-.modal-label {
-  display: block;
-  font-size: 0.86rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin: 0 0 6px;
-}
-
-.modal-input {
-  display: block;
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-  font-size: 1rem;
-  color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 8px 10px;
-  margin: 0 0 var(--space-4);
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
 
 .modal-actions {
   display: flex;

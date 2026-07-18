@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   useDataLayer,
   useStoreVersion,
@@ -11,7 +11,7 @@ import {
   type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import PromptModal from './PromptModal.tsx';
+import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
 import { areaColorHex, isAreaColorId } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
@@ -179,7 +179,7 @@ export default function Sidebar(): React.JSX.Element {
   useStoreVersion(store);
   const counts = useAreaCounts(store);
   const { selection, navigate } = useSelection();
-  const [promptOpen, setPromptOpen] = useState(false);
+  const newAreaInputRef = useRef<HTMLInputElement>(null);
   const tree = useMemo(() => buildTree(counts), [counts]);
   const { active: filterActive, selected: filterSelected } = usePersonFilter();
   const allAreaIds = useMemo<string[]>(
@@ -202,13 +202,11 @@ export default function Sidebar(): React.JSX.Element {
 
   function createNew(name: string): void {
     const id = createArea(store, { name, color: activeColor });
-    setPromptOpen(false);
     navigate({ kind: 'area', id });
   }
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderArea(store, activeId, beforeId);
   }
-
   const selectedId = selection.kind === 'area' ? selection.id : null;
   const rootIds = tree.map((n) => n.count.id);
 
@@ -242,7 +240,7 @@ export default function Sidebar(): React.JSX.Element {
           <button
             type="button"
             className="sidebar-section-title-action"
-            onClick={() => setPromptOpen(true)}
+            onClick={() => newAreaInputRef.current?.focus()}
             aria-label="New area"
             title="New area"
           >
@@ -251,11 +249,7 @@ export default function Sidebar(): React.JSX.Element {
             </svg>
           </button>
         </h2>
-        {tree.length === 0 ? (
-          <p className="sidebar-empty">
-            No areas yet. Create one to get started.
-          </p>
-        ) : (
+        {tree.length > 0 && (
           <SortableList
             itemIds={rootIds}
             onReorder={onReorder}
@@ -296,17 +290,16 @@ export default function Sidebar(): React.JSX.Element {
             }}
           </SortableList>
         )}
+        <div className="sidebar-section-add">
+          <InlineAddInput
+            ref={newAreaInputRef}
+            size="sm"
+            placeholder="New area…"
+            ariaLabel="New area"
+            onSubmit={createNew}
+          />
+        </div>
       </div>
-
-      <PromptModal
-        open={promptOpen}
-        title="New area"
-        label="Name"
-        placeholder="e.g. Work, Personal, Side project"
-        submitLabel="Create"
-        onSubmit={createNew}
-        onCancel={() => setPromptOpen(false)}
-      />
     </aside>
   );
 }

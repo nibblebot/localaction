@@ -104,15 +104,26 @@ export function useAllNoteIds(store: MergeableStore): string[] {
  */
 export function useNoteIdsForEntity(
   store: MergeableStore,
- entityType: NoteEntityType,
+  entityType: NoteEntityType,
   entityId: string,
 ): string[] {
-  useRowIds(TABLES.notes, store);
+  // ids feeds the React Compiler memo cache key so the result
+  // re-derives on every change to the notes table.
+  const ids = useRowIds(TABLES.notes, store);
+  return getNoteIdsForEntity(store, entityType, entityId, ids.length, ids);
+}
+
+function getNoteIdsForEntity(
+  store: MergeableStore,
+  entityType: NoteEntityType,
+  entityId: string,
+  _version = 0,
+  ids?: readonly string[],
+): string[] {
+  const all = ids ?? store.getRowIds(TABLES.notes);
   const out: string[] = [];
-  for (const id of store.getRowIds(TABLES.notes)) {
-    if (
-      store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) !== entityType
-    )
+  for (const id of all) {
+    if (store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) !== entityType)
       continue;
     if (store.getCell(TABLES.notes, id, COLUMNS.notes.entityId) !== entityId) continue;
     out.push(id);

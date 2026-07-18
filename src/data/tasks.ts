@@ -204,7 +204,12 @@ export function topLevelTaskIdsForPlacement(
  * Non-reactive: walk all tasks under a project (top-level + nested).
  * Use `useTasksForProjectDeep` from React to subscribe.
  */
-export function getTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
+export function getTasksForProjectDeep(
+  store: MergeableStore,
+  projectId: string,
+  _version = 0,
+  _tables?: unknown,
+): string[] {
   const out: string[] = [];
   for (const top of topLevelTaskIdsForPlacement(store, `project${PLACEMENT_SEP}${projectId}`)) {
     out.push(top);
@@ -214,12 +219,12 @@ export function getTasksForProjectDeep(store: MergeableStore, projectId: string)
 }
 
 /** Non-reactive: top-level Inbox tasks (placement absent). */
-export function getInboxTaskIds(store: MergeableStore): string[] {
+export function getInboxTaskIds(store: MergeableStore, _version = 0, _tables?: unknown): string[] {
   return topLevelTaskIdsForPlacement(store, null);
 }
 
 /** Non-reactive: top-level Area-owned tasks for `areaId`. */
-export function getAreaTaskIds(store: MergeableStore, areaId: string): string[] {
+export function getAreaTaskIds(store: MergeableStore, areaId: string, _version = 0, _tables?: unknown): string[] {
   return topLevelTaskIdsForPlacement(store, `area${PLACEMENT_SEP}${areaId}`);
 }
 
@@ -241,21 +246,26 @@ function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
  * descendant change re-renders callers.
  */
 export function useTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
-  useRowIds(TABLES.tasks, store);
-  useTables(store);
-  return getTasksForProjectDeep(store, projectId);
+  const ids = useRowIds(TABLES.tasks, store);
+  const tables = useTables(store);
+  return getTasksForProjectDeep(store, projectId, ids.length, tables);
 }
 
 export function useInboxTaskIds(store: MergeableStore): string[] {
-  useRowIds(TABLES.tasks, store);
-  useTables(store);
-  return getInboxTaskIds(store);
+  // Subscribe; the array identity also feeds the React Compiler's
+  // memo cache key so the result re-derives when the table changes.
+  // Without the dependency token below, the compiler caches on the
+  // singleton `store` reference alone and returns a stale list across
+  // re-renders (see useAreaCounts for the same pattern).
+  const ids = useRowIds(TABLES.tasks, store);
+  const tables = useTables(store);
+  return getInboxTaskIds(store, ids.length, tables);
 }
 
 export function useAreaTaskIds(store: MergeableStore, areaId: string): string[] {
-  useRowIds(TABLES.tasks, store);
-  useTables(store);
-  return getAreaTaskIds(store, areaId);
+  const ids = useRowIds(TABLES.tasks, store);
+  const tables = useTables(store);
+  return getAreaTaskIds(store, areaId, ids.length, tables);
 }
 
 export function useEffectiveTaskStatus(

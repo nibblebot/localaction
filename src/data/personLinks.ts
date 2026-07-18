@@ -128,10 +128,13 @@ export function getEntityPersonIds(
   store: MergeableStore,
   entityType: NoteEntityType,
   entityId: string,
+  _version = 0,
+  ids?: readonly string[],
 ): string[] {
   assertEntityType(entityType);
+  const all = ids ?? store.getRowIds(TABLES.person_links);
   const out: string[] = [];
-  for (const id of store.getRowIds(TABLES.person_links)) {
+  for (const id of all) {
     if (store.getCell(TABLES.person_links, id, COLUMNS.person_links.entityType) !== entityType) continue;
     if (store.getCell(TABLES.person_links, id, COLUMNS.person_links.entityId) !== entityId) continue;
     const pid = store.getCell(TABLES.person_links, id, COLUMNS.person_links.personId);
@@ -166,6 +169,6 @@ export function useEntityPersonIds(
   entityType: NoteEntityType,
   entityId: string,
 ): string[] {
-  useRowIds(TABLES.person_links, store);
-  return getEntityPersonIds(store, entityType, entityId);
+  const ids = useRowIds(TABLES.person_links, store);
+  return getEntityPersonIds(store, entityType, entityId, ids.length, ids);
 }

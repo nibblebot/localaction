@@ -177,6 +177,59 @@ export function descendantTaskIds(store: MergeableStore, rootId: string): string
   return out;
 }
 
+/**
+ * Tree node built from a flat task id list, keyed by `id`. `children`
+ * holds the ordered ids of direct sub-tasks (placement = `task:<id>`);
+ * an empty array means a leaf.
+ */
+export interface TaskTreeNode {
+  id: string;
+  children: TaskTreeNode[];
+}
+
+/**
+ * Build a depth-first tree from a flat list of task ids. Sibling order
+ * is taken from each task's `order` cell (ties broken by id) so the
+ * caller can render the structure in store order without re-sorting.
+ * The root of the returned tree has `id` `__root__` and its `children`
+ * are the input list — pass any subset of tasks and treat the root's
+ * `children` as the top-level rows. Or pass one id (a project/area
+ * container id) and the matching tasks: sub-tasks of that container
+ * become the root's children.
+ */
+export function buildTaskTree(store: MergeableStore, taskIds: readonly string[]): TaskTreeNode {
+  const orderOf = (id: string): number =>
+    Number(store.getCell(TABLES.tasks, id, COLUMNS.tasks.order) ?? 0);
+  const childMap = new Map<string, string[]>();
+  for (const id of taskIds) {
+    const p = getPlacement(store, id);
+    if (p.kind !== 'task') continue;
+    if (!taskIds.includes(p.id)) continue;
+    const list = childMap.get(p.id);
+    if (list) list.push(id);
+    else childMap.set(p.id, [id]);
+  }
+  for (const list of childMap.values()) {
+    list.sort((a, b) => {
+      const oa = orderOf(a);
+      const ob = orderOf(b);
+      return oa !== ob ? oa - ob : a.localeCompare(b);
+    });
+  }
+  const build = (id: string): TaskTreeNode => {
+    const childIds = childMap.get(id) ?? [];
+    return { id, children: childIds.map(build) };
+  };
+  return { id: '__root__', children: taskIds.filter((id) => {
+    const p = getPlacement(store, id);
+    return p.kind !== 'task' || !taskIds.includes(p.id);
+  }).sort((a, b) => {
+    const oa = orderOf(a);
+    const ob = orderOf(b);
+    return oa !== ob ? oa - ob : a.localeCompare(b);
+  }).map(build) };
+}
+
 function collectDescendants(
   store: MergeableStore,
   parentId: string,

@@ -89,6 +89,7 @@ export {
   useEffectiveTaskStatus,
   childTaskIds,
   descendantTaskIds,
+  buildTaskTree,
   topLevelTaskIdsForPlacement,
   getTasksForProjectDeep,
   useTasksForProjectDeep,
@@ -97,6 +98,7 @@ export {
   getAreaTaskIds,
   useAreaTaskIds,
 } from './tasks.ts';
+export type { TaskTreeNode } from './tasks.ts';
 
 export {
   reorderArea,

@@ -706,7 +706,9 @@
 
 .task-line {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  align-content: flex-start;
   gap: 10px;
   padding: 6px 12px;
   border-radius: var(--radius-sm);
@@ -1553,6 +1555,50 @@
 .task-line-drag-handle svg {
   width: 12px;
   height: 12px;
+}
+
+/* Nested sub-task tree — the children wrapper sits below the row
+   content (flex-basis:100% wraps inside the .task-line flex parent)
+   and indents one level per nesting depth. Sub-tasks are themselves
+   rendered as full .task-line rows, so a single recursive call
+   yields any depth. */
+.task-line-children {
+  flex-basis: 100%;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 4px 0 0;
+  padding-left: 22px;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-line-children:empty {
+  display: none;
+}
+
+.task-line-children > .sortable-item-slot > .task-line,
+.task-line-children > .task-tree-done-row > .task-line {
+  background: var(--bg);
+  border-style: dashed;
+}
+
+/* The DONE tree uses a flat <ul> instead of a SortableList so the
+   children sit inside their parent's `.task-line-children`. Each
+   row's <li> is transparent; the row carries the visual chrome. */
+.task-tree-done {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-tree-done-row {
+  display: block;
 }
 
 .task-line.sortable-row-active {

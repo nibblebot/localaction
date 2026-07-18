@@ -14,6 +14,7 @@ import {
   getEffectiveTaskStatus,
   childTaskIds,
   descendantTaskIds,
+  buildTaskTree,
   encodePlacement,
   decodePlacement,
 } from '../../src/data/tasks.ts';
@@ -202,5 +203,59 @@ describe('deleteTask', () => {
     const child = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
     deleteTask(store, root);
     expect(getTask(store, child)).toBeUndefined();
+  });
+});
+
+describe('buildTaskTree', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('returns an empty tree for an empty input', () => {
+    const tree = buildTaskTree(store, []);
+    expect(tree.id).toBe('__root__');
+    expect(tree.children).toEqual([]);
+  });
+
+  it('treats every task as a root when none have a task placement', () => {
+    const a = createTask(store, { title: 'A' });
+    const b = createTask(store, { title: 'B', order: 500 });
+    const tree = buildTaskTree(store, [a, b]);
+    expect(tree.children.map((n) => n.id)).toEqual([b, a]);
+    expect(tree.children.every((n) => n.children.length === 0)).toBe(true);
+  });
+
+  it('nests sub-tasks under their parent and orders siblings by order cell', () => {
+    const root = createTask(store, { title: 'root' });
+    const c1 = createTask(store, {
+      title: 'c1',
+      placement: { kind: 'task', id: root },
+    });
+    const c2 = createTask(store, {
+      title: 'c2',
+      placement: { kind: 'task', id: root },
+      order: 500,
+    });
+    const g1 = createTask(store, {
+      title: 'g1',
+      placement: { kind: 'task', id: c1 },
+    });
+    const tree = buildTaskTree(store, [root, c1, c2, g1]);
+    expect(tree.children.map((n) => n.id)).toEqual([root]);
+    const rootNode = tree.children[0]!;
+    expect(rootNode.children.map((n) => n.id)).toEqual([c2, c1]);
+    expect(rootNode.children[1]!.children.map((n) => n.id)).toEqual([g1]);
+  });
+
+  it('orphans any sub-task whose parent is not in the input list', () => {
+    const orphan = createTask(store, {
+      title: 'orphan',
+      placement: { kind: 'task', id: 'missing-parent' },
+    });
+    const tree = buildTaskTree(store, [orphan]);
+    // Orphaned sub-task is rendered as a top-level row so it is not
+    // dropped from the visible list.
+    expect(tree.children.map((n) => n.id)).toEqual([orphan]);
   });
 });

@@ -14,6 +14,10 @@ describe('parseRoute', () => {
     expect(parseRoute('/a/are1')).toEqual<Selection>({ kind: 'area', id: 'are1' });
   });
 
+  it('parses an inbox route', () => {
+    expect(parseRoute('#/inbox')).toEqual<Selection>({ kind: 'inbox' });
+  });
+
   it('parses a project route', () => {
     expect(parseRoute('#/p/proj1')).toEqual<Selection>({
       kind: 'project',
@@ -38,6 +42,7 @@ describe('parseRoute', () => {
 describe('formatRoute', () => {
   it('formats each selection kind', () => {
     expect(formatRoute({ kind: 'home' })).toBe('#/');
+    expect(formatRoute({ kind: 'inbox' })).toBe('#/inbox');
     expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
     expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
   });
@@ -56,5 +61,10 @@ describe('routeEquals', () => {
     expect(routeEquals(a, { kind: 'project', id: 'p1' })).toBe(true);
     expect(routeEquals(a, { kind: 'project', id: 'p2' })).toBe(false);
     expect(routeEquals(a, { kind: 'area', id: 'p1' })).toBe(false);
+  });
+
+  it('treats two inbox selections as equal', () => {
+    expect(routeEquals({ kind: 'inbox' }, { kind: 'inbox' })).toBe(true);
+    expect(routeEquals({ kind: 'inbox' }, { kind: 'home' })).toBe(false);
   });
 });

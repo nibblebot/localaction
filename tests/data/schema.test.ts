@@ -8,7 +8,7 @@ import {
 } from '../../src/data/schema.ts';
 
 describe('schema constants', () => {
-  it('exposes the six top-level tables the schema defines', () => {
+  it('exposes the seven top-level tables the schema defines', () => {
     expect(Object.values(TABLES).sort()).toEqual(
       [
         'areas',
@@ -17,6 +17,7 @@ describe('schema constants', () => {
         'persons',
         'projects',
         'tasks',
+        'tombstones',
       ].sort(),
     );
   });

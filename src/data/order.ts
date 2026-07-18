@@ -57,7 +57,7 @@ const ORDER_COLUMNS: Record<OrderedTable, OrderColumns> = {
   },
   [TABLES.tasks]: {
     table: TABLES.tasks,
-    parent: COLUMNS.tasks.parentTaskId,
+    parent: COLUMNS.tasks.placement,
     order: COLUMNS.tasks.order,
     updatedAt: COLUMNS.tasks.updatedAt,
   },
@@ -259,10 +259,10 @@ export function reorderProject(
 }
 
 /**
- * Move a task to a new sibling position within its current parent
- * task (or top-level within the project if `parentTaskId` is null).
- * Reordering across projects/parents is not supported — use
- * `updateTask({ projectId, parentTaskId })` first.
+ * Move a task to a new sibling position within its current placement
+ * group (top-level Inbox/Area/Project tasks, or sub-tasks of one parent).
+ * Reordering across placements is not supported — use
+ * `updateTask({ placement })` to reparent first.
  */
 export function reorderTask(
   store: MergeableStore,
@@ -270,13 +270,13 @@ export function reorderTask(
   beforeId: string | undefined,
 ): void {
   if (!store.hasRow(TABLES.tasks, taskId)) return;
-  const parentTaskId = normalizeRelation(
-    store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.parentTaskId),
+  const placement = normalizeRelation(
+    store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.placement),
   );
   moveWithinSiblings(
     store,
     ORDER_COLUMNS[TABLES.tasks],
-    parentTaskId,
+    placement,
     taskId,
     beforeId,
   );

@@ -3,6 +3,7 @@ import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
 import { effectiveSetForEntity } from './personSelectors.ts';
+import { getRootPlacement } from './tasks.ts';
 
 /**
  * Any-of (OR) match per the spec. An entity matches if any of its
@@ -47,6 +48,25 @@ function descendantAreaIds(store: MergeableStore, rootId: string): Set<string> {
 }
 
 /**
+ * True if a task's owning root (resolved through its placement chain,
+ * ADR-0001) falls inside the area `subtree`. Inbox-rooted or orphaned
+ * tasks never belong to an area subtree.
+ */
+function taskInSubtree(
+  store: MergeableStore,
+  taskId: string,
+  subtree: ReadonlySet<string>,
+): boolean {
+  const root = getRootPlacement(store, taskId);
+  if (root.kind === 'area') return subtree.has(root.id);
+  if (root.kind === 'project') {
+    const a = store.getCell(TABLES.projects, root.id, COLUMNS.projects.areaId);
+    return typeof a === 'string' && subtree.has(a);
+  }
+  return false;
+}
+
+/**
  * True if the given area or any of its descendants has an entity
  * (project, task, note) whose effective person set matches `filter`.
  * Returns `true` when the filter is empty (no filter = everything).
@@ -71,13 +91,9 @@ export function areaHasMatch(
     if (typeof projectArea !== 'string' || !subtree.has(projectArea)) continue;
     if (entityMatches(store, NOTE_ENTITY_TYPE.project, pid, filter)) return true;
   }
-
-  // Tasks under any project in the subtree.
+  // Tasks whose owning root (project or area) is in the subtree.
   for (const tid of store.getRowIds(TABLES.tasks)) {
-    const projectId = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.projectId);
-    if (typeof projectId !== 'string') continue;
-    const projectArea = store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId);
-    if (typeof projectArea !== 'string' || !subtree.has(projectArea)) continue;
+    if (!taskInSubtree(store, tid, subtree)) continue;
     if (entityMatches(store, NOTE_ENTITY_TYPE.task, tid, filter)) return true;
   }
 
@@ -120,10 +136,7 @@ export function getFilteredAreaCounts(
     if (entityMatches(store, NOTE_ENTITY_TYPE.project, pid, filter)) projectCount += 1;
   }
   for (const tid of store.getRowIds(TABLES.tasks)) {
-    const pid = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.projectId);
-    if (typeof pid !== 'string') continue;
-    const a = store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId);
-    if (typeof a !== 'string' || !subtree.has(a)) continue;
+    if (!taskInSubtree(store, tid, subtree)) continue;
     if (entityMatches(store, NOTE_ENTITY_TYPE.task, tid, filter)) taskCount += 1;
   }
   for (const nid of store.getRowIds(TABLES.notes)) {

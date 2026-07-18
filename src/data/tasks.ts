@@ -3,11 +3,42 @@ import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
-import type { Task, TaskInput, TaskPatch } from './types.ts';
+import type { Task, TaskInput, TaskPatch, TaskPlacement } from './types.ts';
 import { readSiblingOrders } from './order.ts';
 
-function nextOrder(store: MergeableStore, parentTaskId: string | null): number {
-  const siblings = readSiblingOrders(store, TABLES.tasks, COLUMNS.tasks.parentTaskId, parentTaskId);
+/**
+ * Placement reference encoding (ADR-0001). A task's single `placement`
+ * cell holds `${kind}:${id}` for project/area/task roots, or is absent
+ * for an Inbox root. Parts are UUIDs (or the literal `self`), so `:` is
+ * a safe separator.
+ */
+export const PLACEMENT_SEP = ':';
+
+export function encodePlacement(p: TaskPlacement): string | null {
+  if (p.kind === 'inbox') return null;
+  return `${p.kind}${PLACEMENT_SEP}${p.id}`;
+}
+
+export function decodePlacement(raw: unknown): TaskPlacement {
+  if (typeof raw !== 'string' || raw === '') return { kind: 'inbox' };
+  const idx = raw.indexOf(PLACEMENT_SEP);
+  if (idx <= 0) return { kind: 'inbox' };
+  const kind = raw.slice(0, idx);
+  const id = raw.slice(idx + 1);
+  if (id === '') return { kind: 'inbox' };
+  if (kind === 'project' || kind === 'area' || kind === 'task') {
+    return { kind, id };
+  }
+  return { kind: 'inbox' };
+}
+
+function nextOrder(store: MergeableStore, placement: string | null): number {
+  const siblings = readSiblingOrders(
+    store,
+    TABLES.tasks,
+    COLUMNS.tasks.placement,
+    placement,
+  );
   const last = siblings[siblings.length - 1];
   if (!last) return 1000;
   return last.order + 1000;
@@ -17,15 +48,15 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
   const id = newId();
   const ts = nowIso();
   const status = input.status ?? TASK_STATUS.open;
-  const parent = input.parentTaskId ?? null;
-  const order = input.order ?? nextOrder(store, parent);
+  const placement = input.placement ?? { kind: 'inbox' };
+  const encoded = encodePlacement(placement);
+  const order = input.order ?? nextOrder(store, encoded);
   store.setRow(
     TABLES.tasks,
     id,
     row({
       [COLUMNS.tasks.title]: input.title,
-      [COLUMNS.tasks.projectId]: input.projectId,
-      [COLUMNS.tasks.parentTaskId]: parent,
+      [COLUMNS.tasks.placement]: encoded,
       [COLUMNS.tasks.status]: status,
       [COLUMNS.tasks.order]: order,
       [COLUMNS.tasks.createdAt]: ts,
@@ -42,20 +73,28 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
   };
   if (patch.title !== undefined) next[COLUMNS.tasks.title] = patch.title;
   if (patch.status !== undefined) next[COLUMNS.tasks.status] = patch.status;
-  if (patch.projectId === null) {
-    store.delCell(TABLES.tasks, id, COLUMNS.tasks.projectId);
-  } else if (patch.projectId !== undefined) {
-    next[COLUMNS.tasks.projectId] = patch.projectId;
-  }
-  if (patch.parentTaskId === null) {
-    store.delCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId);
-  } else if (patch.parentTaskId !== undefined) {
-    next[COLUMNS.tasks.parentTaskId] = patch.parentTaskId;
+  if (patch.placement !== undefined) {
+    const encoded = encodePlacement(patch.placement);
+    if (encoded === null) {
+      store.delCell(TABLES.tasks, id, COLUMNS.tasks.placement);
+    } else {
+      next[COLUMNS.tasks.placement] = encoded;
+    }
   }
   if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
   store.setPartialRow(TABLES.tasks, id, row(next));
 }
 
+/**
+ * Set a task's stored status. The read-time invariant
+ * ("done ⟺ all descendants done") is enforced by `getEffectiveTaskStatus`,
+ * mirroring ADR-0001's read-time-derivation pattern (no write cascade):
+ * completing a leaf flips it to done; completing a parent while a child
+ * is still open leaves the parent stored-done but effective-open until
+ * the last child is completed. Reopening any task writes only that one
+ * cell — ancestors re-derive to open at read time ("reopening a
+ * descendant reopens every ancestor").
+ */
 export function setTaskStatus(store: MergeableStore, id: string, status: TaskStatus): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
   store.setPartialRow(
@@ -68,23 +107,97 @@ export function setTaskStatus(store: MergeableStore, id: string, status: TaskSta
   );
 }
 
-export function deleteTask(store: MergeableStore, id: string): void {
-  store.delRow(TABLES.tasks, id);
+export function getTask(store: MergeableStore, id: string): Task | undefined {
+  const r = store.getRow(TABLES.tasks, id);
+  if (!r || Object.keys(r).length === 0) return undefined;
+  return decodeTaskRow(id, r);
 }
 
-export function getTask(store: MergeableStore, id: string): Task | undefined {
-  const row = store.getRow(TABLES.tasks, id);
-  if (!row || Object.keys(row).length === 0) return undefined;
-  return {
-    id,
-    title: String(row[COLUMNS.tasks.title] ?? ''),
-    projectId: normalizeRelation(row[COLUMNS.tasks.projectId]),
-    parentTaskId: normalizeRelation(row[COLUMNS.tasks.parentTaskId]),
-    status: (String(row[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
-    order: Number(row[COLUMNS.tasks.order] ?? 0),
-    createdAt: String(row[COLUMNS.tasks.createdAt] ?? ''),
-    updatedAt: String(row[COLUMNS.tasks.updatedAt] ?? ''),
-  };
+/**
+ * Effective status at read time. A stored-`done` task is only effectively
+ * done when every descendant is effectively done; otherwise it is `open`.
+ * Leaves (no children) reflect their stored cell directly.
+ */
+export function getEffectiveTaskStatus(store: MergeableStore, id: string): TaskStatus | undefined {
+  if (!store.hasRow(TABLES.tasks, id)) return undefined;
+  return effectiveStatus(store, id);
+}
+
+function effectiveStatus(store: MergeableStore, id: string): TaskStatus {
+  const stored = store.getCell(TABLES.tasks, id, COLUMNS.tasks.status);
+  if (stored !== TASK_STATUS.done) return TASK_STATUS.open;
+  for (const child of childTaskIds(store, id)) {
+    if (effectiveStatus(store, child) !== TASK_STATUS.done) return TASK_STATUS.open;
+  }
+  return TASK_STATUS.done;
+}
+
+// --- placement read helpers -------------------------------------------------
+
+export function getRawPlacement(store: MergeableStore, id: string): string | null {
+  return normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.placement));
+}
+
+export function getPlacement(store: MergeableStore, id: string): TaskPlacement {
+  return decodePlacement(getRawPlacement(store, id));
+}
+
+/**
+ * Walk up the parent chain to the owning root. A Sub-Task resolves
+ * ownership through its ancestry (ADR-0001); an orphaned sub-task
+ * (parent gone) resolves to the Inbox.
+ */
+export function getRootPlacement(store: MergeableStore, id: string): TaskPlacement {
+  let cur = id;
+  const guard = new Set<string>();
+  for (;;) {
+    if (guard.has(cur)) return { kind: 'inbox' };
+    guard.add(cur);
+    const p = getPlacement(store, cur);
+    if (p.kind !== 'task') return p;
+    if (!store.hasRow(TABLES.tasks, p.id)) return { kind: 'inbox' };
+    cur = p.id;
+  }
+}
+
+/** Direct children of a task (placement `task:<parentId>`). */
+export function childTaskIds(store: MergeableStore, parentId: string): string[] {
+  const target = `task${PLACEMENT_SEP}${parentId}`;
+  const out: string[] = [];
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    if (getRawPlacement(store, id) === target) out.push(id);
+  }
+  return out;
+}
+
+/** A task and its full transitive subtree (root first). */
+export function descendantTaskIds(store: MergeableStore, rootId: string): string[] {
+  const out: string[] = [rootId];
+  collectDescendants(store, rootId, out);
+  return out;
+}
+
+function collectDescendants(
+  store: MergeableStore,
+  parentId: string,
+  out: string[],
+): void {
+  for (const child of childTaskIds(store, parentId)) {
+    out.push(child);
+    collectDescendants(store, child, out);
+  }
+}
+
+/** Top-level (non-sub-task) tasks whose placement equals `encoded`. */
+export function topLevelTaskIdsForPlacement(
+  store: MergeableStore,
+  encoded: string | null,
+): string[] {
+  const out: string[] = [];
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    if (getRawPlacement(store, id) === encoded) out.push(id);
+  }
+  return out;
 }
 
 /**
@@ -93,24 +206,33 @@ export function getTask(store: MergeableStore, id: string): Task | undefined {
  */
 export function getTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
   const out: string[] = [];
-  for (const id of store.getRowIds(TABLES.tasks)) {
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
-    out.push(id);
+  for (const top of topLevelTaskIdsForPlacement(store, `project${PLACEMENT_SEP}${projectId}`)) {
+    out.push(top);
+    collectDescendants(store, top, out);
   }
   return out;
 }
 
-function collectChildIds(
-  store: MergeableStore,
-  parentId: string,
-  out: string[],
-): void {
-  for (const id of store.getRowIds(TABLES.tasks)) {
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === parentId) {
-      out.push(id);
-      collectChildIds(store, id, out);
-    }
-  }
+/** Non-reactive: top-level Inbox tasks (placement absent). */
+export function getInboxTaskIds(store: MergeableStore): string[] {
+  return topLevelTaskIdsForPlacement(store, null);
+}
+
+/** Non-reactive: top-level Area-owned tasks for `areaId`. */
+export function getAreaTaskIds(store: MergeableStore, areaId: string): string[] {
+  return topLevelTaskIdsForPlacement(store, `area${PLACEMENT_SEP}${areaId}`);
+}
+
+function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
+  return {
+    id,
+    title: String(r[COLUMNS.tasks.title] ?? ''),
+    placement: decodePlacement(r[COLUMNS.tasks.placement]),
+    status: (String(r[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
+    order: Number(r[COLUMNS.tasks.order] ?? 0),
+    createdAt: String(r[COLUMNS.tasks.createdAt] ?? ''),
+    updatedAt: String(r[COLUMNS.tasks.updatedAt] ?? ''),
+  };
 }
 
 /**
@@ -119,52 +241,34 @@ function collectChildIds(
  * descendant change re-renders callers.
  */
 export function useTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
-  // Subscribe to the tasks table; the row-id array is the subscription
-  // handle. We also fold its length into the cache key the React
-  // Compiler uses to decide whether to re-run the body, so newly-added
-  // tasks invalidate the memoised result. Without this the compiler
-  // happily returns a stale `out` array after new tasks land in the
-  // store, even though `useRowIds` correctly fires the subscription.
-  // useTables() additionally subscribes to cell-only changes (e.g. the
-  // `order` cell after a `reorderTask`) so reorders re-render.
-  const taskRowIds = useRowIds(TABLES.tasks, store);
+  useRowIds(TABLES.tasks, store);
   useTables(store);
-  return collectTasksForProjectDeep(store, projectId, taskRowIds.length);
+  return getTasksForProjectDeep(store, projectId);
 }
 
-function collectTasksForProjectDeep(
+export function useInboxTaskIds(store: MergeableStore): string[] {
+  useRowIds(TABLES.tasks, store);
+  useTables(store);
+  return getInboxTaskIds(store);
+}
+
+export function useAreaTaskIds(store: MergeableStore, areaId: string): string[] {
+  useRowIds(TABLES.tasks, store);
+  useTables(store);
+  return getAreaTaskIds(store, areaId);
+}
+
+export function useEffectiveTaskStatus(
   store: MergeableStore,
-  projectId: string,
-  version: number,
-): string[] {
-  void version;
-  const out: string[] = [];
-  for (const id of store.getRowIds(TABLES.tasks)) {
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
-    // Treat both undefined (cell absent) and null (cell explicitly null) as
-    // "no parent". `createTask` stores the parent as `null` for top-level
-    // tasks; TinyBase strips null cells, so the cell reads back as
-    // undefined. Either way the task is a top-level child of the project.
-    if (normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId)) !== null) continue;
-    out.push(id);
-  }
-  // Recurse to gather nested children; `collectChildIds` walks via parent
-  // pointer which the table now provides.
-  for (const tid of [...out]) collectChildIds(store, tid, out);
-  return out;
+  id: string | undefined,
+): TaskStatus | undefined {
+  useTables(store);
+  if (!id || !store.hasRow(TABLES.tasks, id)) return undefined;
+  return getEffectiveTaskStatus(store, id);
 }
 
 export function useTask(store: MergeableStore, id: string | undefined): Task | undefined {
-  const row = useRow(TABLES.tasks, id ?? '', store);
-  if (!id || !row || Object.keys(row).length === 0) return undefined;
-  return {
-    id,
-    title: String(row[COLUMNS.tasks.title] ?? ''),
-    projectId: normalizeRelation(row[COLUMNS.tasks.projectId]),
-    parentTaskId: normalizeRelation(row[COLUMNS.tasks.parentTaskId]),
-    status: (String(row[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
-    order: Number(row[COLUMNS.tasks.order] ?? 0),
-    createdAt: String(row[COLUMNS.tasks.createdAt] ?? ''),
-    updatedAt: String(row[COLUMNS.tasks.updatedAt] ?? ''),
-  };
+  const r = useRow(TABLES.tasks, id ?? '', store);
+  if (!id || !r || Object.keys(r).length === 0) return undefined;
+  return decodeTaskRow(id, r);
 }

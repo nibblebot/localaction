@@ -1,7 +1,7 @@
 import { createOpfsPersister } from 'tinybase/persisters/persister-browser';
 import type { OpfsPersister } from 'tinybase/persisters/persister-browser';
 import { getStore } from './store.ts';
-
+import { reconcileSchemaVersion } from './schemaVersion.ts';
 export const OPFS_FILE_NAME = 'localaction.json';
 
 const onError = (err: unknown): void => {
@@ -22,6 +22,7 @@ export function startLocalPersistence(): Promise<OpfsPersister> {
     const handle = await root.getFileHandle(OPFS_FILE_NAME, { create: true });
     const persister = createOpfsPersister(getStore(), handle, onError);
     await persister.load();
+    reconcileSchemaVersion(getStore());
     void persister.startAutoSave();
     return persister;
   })();

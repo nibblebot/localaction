@@ -16,11 +16,19 @@ A bounded effort with a clear end state, owned by an Area (or sub-Area). Project
 
 ## Task
 
-A unit of action. A one-off Task lives under a Project, and may itself have sub-Tasks nested under it. Has an `open` / `done` status.
+A unit of action. A top-level Task has exactly one of three ownership states: it belongs to a Project, belongs directly to an Area, or is unassociated and therefore appears in the Inbox. Only the top-level Task carries that ownership; every descendant resolves its owner through its ancestry, and moving the top-level Task moves the whole tree. Has an `open` / `done` status: a Task may be done only when all of its descendants are done, and reopening a descendant reopens every ancestor.
+
+## Area Task
+
+A Task that belongs directly to an Area rather than to one of its Projects.
+
+## Inbox
+
+The view of unassociated Tasks: Tasks that belong to neither a Project nor an Area. Inbox membership is derived from the absence of both associations; the Inbox is not another Task container.
 
 ## Recurring Task (reserved)
 
-A Task that fires on a recurrence rule (e.g. every Monday). Lives directly under an Area (no Project wrapper). Not implemented in phase 0; reserved in schema (`tasks.projectId` is nullable).
+An Area Task that fires on a recurrence rule (e.g. every Monday). It is distinguished from a one-off Area Task by its recurrence rule, not by ownership. Not implemented; reserved for future work.
 
 ## Note
 

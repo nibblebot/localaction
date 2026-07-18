@@ -3,6 +3,7 @@ import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, NOTE_ENTITY_TYPE, SELF_PERSON_ID, TABLES } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
 import { getEntityPersonIds } from './personLinks.ts';
+import { getRootPlacement } from './tasks.ts';
 
 /**
  * Effective-set derivation (ticket 01):
@@ -98,10 +99,11 @@ export function effectiveCastForEntity(
     if (typeof areaId !== 'string') return [SELF_PERSON_ID];
     return effectiveCastForArea(store, areaId);
   }
-  // task
-  const projectId = store.getCell(TABLES.tasks, entityId, COLUMNS.tasks.projectId);
-  if (typeof projectId !== 'string') return [SELF_PERSON_ID];
-  return effectiveCastForProject(store, projectId);
+  // task → resolve owner through the placement chain (ADR-0001)
+  const root = getRootPlacement(store, entityId);
+  if (root.kind === 'project') return effectiveCastForProject(store, root.id);
+  if (root.kind === 'area') return effectiveCastForArea(store, root.id);
+  return [SELF_PERSON_ID];
 }
 
 function effectiveCastForProject(

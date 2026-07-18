@@ -4,8 +4,8 @@ import type { MergeableStore } from 'tinybase';
 import {
   createProject,
   updateProject,
-  deleteProject,
 } from '../../src/data/projects.ts';
+import { deleteProject } from '../../src/data/deletion.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { COLUMNS, TABLES } from '../../src/data/schema.ts';
 

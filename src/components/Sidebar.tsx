@@ -5,6 +5,7 @@ import {
   useAreaCounts,
   createArea,
   reorderArea,
+  useInboxTaskIds,
   useDimmedAreaIds,
   useFilteredAreaCounts,
   type AreaCount,
@@ -197,12 +198,13 @@ export default function Sidebar(): React.JSX.Element {
     return c ? c.color : 'gray';
   }, [selection, counts]);
 
+  const inboxIds = useInboxTaskIds(store);
+
   function createNew(name: string): void {
     const id = createArea(store, { name, color: activeColor });
     setPromptOpen(false);
     navigate({ kind: 'area', id });
   }
-
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderArea(store, activeId, beforeId);
   }
@@ -216,8 +218,20 @@ export default function Sidebar(): React.JSX.Element {
         <h1 className="sidebar-app-name">LocalAction</h1>
         <SyncStatusBadge />
       </div>
-
       <PersonFilterFacet />
+
+      <div className="sidebar-section sidebar-inbox">
+        <button
+          type="button"
+          className={`sidebar-inbox-button${selection.kind === 'inbox' ? ' sidebar-inbox-button-active' : ''}`}
+          onClick={() => navigate({ kind: 'inbox' })}
+          aria-label="Inbox"
+        >
+          <span className="sidebar-inbox-label">Inbox</span>
+          <span className="sidebar-inbox-count" aria-label="Inbox task count">{inboxIds.length}</span>
+        </button>
+      </div>
+
 
       <div
         className="sidebar-section"

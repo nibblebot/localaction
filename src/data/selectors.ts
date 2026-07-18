@@ -2,7 +2,22 @@ import type { MergeableStore } from 'tinybase';
 import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
+import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus } from './tasks.ts';
 import type { Area } from './types.ts';
+
+/**
+ * The area a task ultimately belongs to (resolved through its placement
+ * chain, ADR-0001), or null for Inbox-rooted / orphaned tasks.
+ */
+function taskOwningArea(store: MergeableStore, taskId: string): string | null {
+  const root = getRootPlacement(store, taskId);
+  if (root.kind === 'area') return root.id;
+  if (root.kind === 'project') {
+    const a = store.getCell(TABLES.projects, root.id, COLUMNS.projects.areaId);
+    return typeof a === 'string' ? a : null;
+  }
+  return null;
+}
 
 export interface AreaCount {
   id: string;
@@ -37,14 +52,9 @@ export function getAreaCounts(store: MergeableStore, _version = 0, _tables?: unk
         : null,
     );
   }
-  const taskProject = new Map<string, string | null>();
+  const taskArea = new Map<string, string | null>();
   for (const tid of taskIds) {
-    taskProject.set(
-      tid,
-      typeof store.getCell(TABLES.tasks, tid, COLUMNS.tasks.projectId) === 'string'
-        ? String(store.getCell(TABLES.tasks, tid, COLUMNS.tasks.projectId))
-        : null,
-    );
+    taskArea.set(tid, taskOwningArea(store, tid));
   }
 
   const allAreaIds = getAllAreaIdsFlat(store);
@@ -96,9 +106,7 @@ export function getAreaCounts(store: MergeableStore, _version = 0, _tables?: unk
     }
   }
   for (const tid of taskIds) {
-    const pId = taskProject.get(tid) ?? null;
-    if (!pId) continue;
-    const aId = projectArea.get(pId) ?? null;
+    const aId = taskArea.get(tid) ?? null;
     if (!aId) continue;
     for (const owner of descendantsOf.get(aId) ?? []) {
       taskCount.set(owner, (taskCount.get(owner) ?? 0) + 1);
@@ -183,10 +191,8 @@ export function getNotesForAreaTree(
         projectNotes.push(nid);
       }
     } else if (type === 'task') {
-      const pId = store.getCell(TABLES.tasks, eId, COLUMNS.tasks.projectId);
-      if (typeof pId !== 'string') continue;
-      const pArea = store.getCell(TABLES.projects, pId, COLUMNS.projects.areaId);
-      if (typeof pArea === 'string' && descendants.has(pArea)) {
+      const aId = taskOwningArea(store, eId);
+      if (typeof aId === 'string' && descendants.has(aId)) {
         taskNotes.push(nid);
       }
     }
@@ -245,12 +251,9 @@ export function getProjectRollups(
     const order = Number(store.getCell(TABLES.projects, pid, COLUMNS.projects.order) ?? 0);
     let done = 0;
     let total = 0;
-    for (const tid of store.getRowIds(TABLES.tasks)) {
-      if (store.getCell(TABLES.tasks, tid, COLUMNS.tasks.projectId) !== pid) continue;
+    for (const tid of getTasksForProjectDeep(store, pid)) {
       total += 1;
-      if (store.getCell(TABLES.tasks, tid, COLUMNS.tasks.status) === TASK_STATUS.done) {
-        done += 1;
-      }
+      if (getEffectiveTaskStatus(store, tid) === TASK_STATUS.done) done += 1;
     }
     projectRollups.push({ projectId: pid, areaId, projectName: name, order, done, total });
   }

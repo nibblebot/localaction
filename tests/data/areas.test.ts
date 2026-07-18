@@ -5,9 +5,9 @@ import { COLUMNS, TABLES } from '../../src/data/schema.ts';
 import {
   createArea,
   updateArea,
-  deleteArea,
   getArea,
 } from '../../src/data/areas.ts';
+import { deleteArea } from '../../src/data/deletion.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -97,11 +97,11 @@ describe('deleteArea', () => {
     expect(getArea(store, id)).toBeUndefined();
   });
 
-  it('does NOT cascade-delete children (orphan policy)', () => {
+  it('cascades deletion through the sub-area subtree (ADR-0001)', () => {
     const parent = createArea(store, { name: 'Family' });
     const child = createArea(store, { name: 'Wife', parentId: parent });
     deleteArea(store, parent);
-    expect(getArea(store, child)).toMatchObject({ parentId: parent });
+    expect(getArea(store, child)).toBeUndefined();
   });
 });
 

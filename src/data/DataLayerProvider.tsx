@@ -10,6 +10,7 @@ import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
 import { backfillOrder } from './order.ts';
 import { ensureSelfPerson } from './persons.ts';
+import { installTombstoneReconciler } from './deletion.ts';
 import {
   getSyncClient,
   destroySyncClient,
@@ -44,6 +45,11 @@ export function DataLayerProvider({
   persistenceReadyRef.current = persistenceReady;
 
   useEffect(() => {
+    // Idempotently attach the tombstone reconciler to the store. It
+    // sweeps after every transaction (local or merged) and cascades any
+    // subtree rooted at a tombstoned target. ADR-0001.
+    const uninstallReconciler = installTombstoneReconciler(store);
+
     if (offline) {
       // Offline mode skips persistence + sync; still normalise the
       // store once so any seeded rows from dev tests pick up `order`
@@ -51,7 +57,7 @@ export function DataLayerProvider({
       backfillOrder(store);
       ensureSelfPerson(store);
       setPersistenceReady(true);
-      return;
+      return uninstallReconciler;
     }
 
     let cancelled = false;
@@ -108,9 +114,9 @@ export function DataLayerProvider({
     if (typeof window !== 'undefined') {
       window.addEventListener('beforeunload', onBeforeUnload);
     }
-
     return () => {
       cancelled = true;
+      uninstallReconciler();
       unsubscribe();
       if (exposeDevHook && typeof window !== 'undefined') {
         const w = window as Window & { __LOCALACTION?: unknown };

@@ -62,8 +62,23 @@ export function updateArea(
   store.setPartialRow(TABLES.areas, id, row(next));
 }
 
-export function deleteArea(store: MergeableStore, id: string): void {
-  store.delRow(TABLES.areas, id);
+/**
+ * A area and its full transitive sub-area subtree (root first), via
+ * `parentId`. Read-only walker used by cascade deletion.
+ */
+export function descendantAreaIds(store: MergeableStore, rootId: string): string[] {
+  const out: string[] = [rootId];
+  const walk = (parentId: string): void => {
+    for (const cid of store.getRowIds(TABLES.areas)) {
+      const p = normalizeRelation(store.getCell(TABLES.areas, cid, COLUMNS.areas.parentId));
+      if (p === parentId) {
+        out.push(cid);
+        walk(cid);
+      }
+    }
+  };
+  walk(rootId);
+  return out;
 }
 
 export function getArea(store: MergeableStore, id: string): Area | undefined {

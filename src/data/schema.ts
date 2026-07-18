@@ -5,7 +5,23 @@ export const TABLES = {
   notes: 'notes',
   persons: 'persons',
   person_links: 'person_links',
+  tombstones: 'tombstones',
 } as const;
+
+/**
+ * App-level schema version. Bumping this triggers a clean cutover wipe of
+ * any persisted store (OPFS client snapshot + server SQLite) on load —
+ * see `reconcileSchemaVersion`. There is no row migration (ADR-0001).
+ */
+export const SCHEMA_VERSION = 2;
+
+/**
+ * Keyed-value id recording the schema version last applied to a persisted
+ * store. TinyBase's value map is flat, so this is a single top-level
+ * value (not a cell) that survives persistence and sync alongside the
+ * row data.
+ */
+export const SCHEMA_VERSION_VALUE_ID = 'schemaVersion';
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
 
@@ -32,8 +48,12 @@ export const COLUMNS = {
   tasks: {
     id: 'id',
     title: 'title',
-    projectId: 'projectId',
-    parentTaskId: 'parentTaskId',
+    /**
+     * Discriminated placement reference (ADR-0001): `area:<id>`,
+     * `project:<id>`, `task:<id>` (sub-task), or absent for an Inbox root.
+     * One mergeable cell resolves a single owner under last-writer-wins.
+     */
+    placement: 'placement',
     status: 'status',
     order: 'order',
     createdAt: 'createdAt',
@@ -62,6 +82,12 @@ export const COLUMNS = {
     entityType: 'entityType',
     entityId: 'entityId',
   },
+  tombstones: {
+    id: 'id',
+    entityType: 'entityType',
+    entityId: 'entityId',
+    deletedAt: 'deletedAt',
+  },
 } as const;
 
 export type AreaColumn = (typeof COLUMNS.areas)[keyof typeof COLUMNS.areas];
@@ -71,6 +97,8 @@ export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
 export type PersonColumn = (typeof COLUMNS.persons)[keyof typeof COLUMNS.persons];
 export type PersonLinkColumn =
   (typeof COLUMNS.person_links)[keyof typeof COLUMNS.person_links];
+export type TombstoneColumn =
+  (typeof COLUMNS.tombstones)[keyof typeof COLUMNS.tombstones];
 
 export const TASK_STATUS = {
   open: 'open',

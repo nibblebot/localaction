@@ -28,6 +28,10 @@ import {
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
   COLUMNS,
+  getPlacement,
+  useInboxTaskIds,
+  useAreaTaskIds,
+  useEffectiveTaskStatus,
   useEffectiveCast,
   useHiddenCount,
   effectiveSetForEntity,
@@ -89,6 +93,10 @@ export default function MainPane(): React.JSX.Element {
 
   if (selection.kind === 'project') {
     return <ProjectPane projectId={selection.id} />;
+  }
+
+  if (selection.kind === 'inbox') {
+    return <InboxPane />;
   }
 
   if (!areaId || !area) {
@@ -820,16 +828,17 @@ function TasksTab({
   function addTask(title: string): void {
     if (projects.length === 0) {
       const newId = createProject(store, { name: 'General', areaId });
-      createTask(store, { title, projectId: newId });
+      createTask(store, { title, placement: { kind: 'project', id: newId } });
     } else {
       const pid = targetProjectId ?? projects[0]!.id;
-      createTask(store, { title, projectId: pid });
+      createTask(store, { title, placement: { kind: 'project', id: pid } });
     }
     setAddPromptOpen(false);
   }
 
   return (
     <section className="tasks-tab" aria-label="Tasks">
+      <AreaTasksSection areaId={areaId} />
       {projects.length === 0 ? (
         <EmptyTab message="No tasks yet." onAdd={() => setAddPromptOpen(true)} addLabel="+ Task" />
       ) : (
@@ -1489,7 +1498,7 @@ function ProjectTasksTab({
   }
 
   function addTask(title: string): void {
-    createTask(store, { title, projectId });
+    createTask(store, { title, placement: { kind: 'project', id: projectId } });
     setAddPromptOpen(false);
   }
 
@@ -1635,6 +1644,116 @@ function ProjectNotesTab({
   );
 }
 
+function InboxPane(): React.JSX.Element {
+  const { store } = useDataLayer();
+  // Subscribe so newly-created tasks re-render the list.
+  useRowIds(TABLES.tasks, store);
+  useStoreVersion(store);
+  const topLevelIds = useInboxTaskIds(store);
+  const allIds = useMemo(() => {
+    const out: string[] = [];
+    for (const t of topLevelIds) {
+      out.push(t);
+      collectChildIds(store, t, out);
+    }
+    return out;
+  }, [topLevelIds, store]);
+  const [addPromptOpen, setAddPromptOpen] = useState(false);
+  function addTask(title: string): void {
+    createTask(store, { title });
+    setAddPromptOpen(false);
+  }
+  const orderedIds = sortTaskIds(store, allIds);
+  return (
+    <main className="main" aria-label="Inbox">
+      <div className="main-body">
+        <header className="main-pane-header">
+          <h2 className="main-pane-title">Inbox</h2>
+          <button type="button" className="main-pane-add" onClick={() => setAddPromptOpen(true)}>
+            + Task
+          </button>
+        </header>
+        {orderedIds.length === 0 ? (
+          <EmptyTab message="No inbox tasks." onAdd={() => setAddPromptOpen(true)} addLabel="+ Task" />
+        ) : (
+          <TaskList filteredIds={orderedIds} />
+        )}
+      </div>
+      <PromptModal
+        open={addPromptOpen}
+        title="New inbox task"
+        label="Title"
+        placeholder="e.g. Pick up dry cleaning"
+        submitLabel="Create"
+        onSubmit={addTask}
+        onCancel={() => setAddPromptOpen(false)}
+      />
+    </main>
+  );
+}
+
+function AreaTasksSection({ areaId }: { areaId: string }): React.JSX.Element {
+  const { store } = useDataLayer();
+  const topLevelIds = useAreaTaskIds(store, areaId);
+  const allIds = useMemo(() => {
+    const out: string[] = [];
+    for (const t of topLevelIds) {
+      out.push(t);
+      collectChildIds(store, t, out);
+    }
+    return out;
+  }, [topLevelIds, store]);
+  const orderedIds = sortTaskIds(store, allIds);
+  if (orderedIds.length === 0) return <></>;
+  return (
+    <Group title="Area tasks" count={topLevelIds.length}>
+      <TaskList filteredIds={orderedIds} />
+    </Group>
+  );
+}
+function TaskList({
+  filteredIds,
+}: {
+  filteredIds: readonly string[];
+}): React.JSX.Element {
+  return (
+    <ul className="task-list">
+      {filteredIds.map((tid) => (
+        <TaskListItem key={tid} taskId={tid} />
+      ))}
+    </ul>
+  );
+}
+
+function TaskListItem({ taskId }: { taskId: string }): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const task = useTask(store, taskId);
+  const effective = useEffectiveTaskStatus(store, taskId);
+  if (!task || !effective) return null;
+  return (
+    <li className={`task-line${effective === 'done' ? ' task-line-done' : ''}`}>
+      <input
+        type="checkbox"
+ checked={effective === 'done'}
+        onChange={() =>
+          setTaskStatus(store, taskId, effective === 'done' ? 'open' : 'done')
+        }
+        aria-label={effective === 'done' ? 'Mark not done' : 'Mark done'}
+      />
+      <span className="task-line-title">{task.title}</span>
+    </li>
+  );
+}
+
+function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
+  return [...ids].sort((a, b) => {
+    const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
+    const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
+    if (oa !== ob) return oa - ob;
+    return a.localeCompare(b);
+  });
+}
+
 function EmptyTab({
   message,
   onAdd,
@@ -1667,12 +1786,8 @@ function collectTaskIds(
   out: string[],
 ): void {
   for (const id of store.getRowIds(TABLES.tasks)) {
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.projectId) !== projectId) continue;
-    // `createTask` stores null parents as null cells, but TinyBase drops
-    // null cells, so the cell reads back as undefined. Treat both as
-    // "no parent" so top-level tasks are not skipped.
-    const rawParent = store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId);
-    if (rawParent !== null && rawParent !== undefined) continue;
+    const p = getPlacement(store, id);
+    if (p.kind !== 'project' || p.id !== projectId) continue;
     out.push(id);
   }
   // Walk nested children from every top-level task — not just the first —
@@ -1688,7 +1803,8 @@ function collectChildIds(
 ): void {
   if (!parentId) return;
   for (const id of store.getRowIds(TABLES.tasks)) {
-    if (store.getCell(TABLES.tasks, id, COLUMNS.tasks.parentTaskId) === parentId) {
+    const p = getPlacement(store, id);
+    if (p.kind === 'task' && p.id === parentId) {
       out.push(id);
       collectChildIds(store, id, out);
     }

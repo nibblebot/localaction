@@ -1,14 +1,13 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
-import { readFileSync, statSync, existsSync } from 'node:fs';
-import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer, type WebSocket } from 'ws';
-import { createMergeableStore } from 'tinybase';
-import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-
+import { dirname, extname, join } from 'node:path';
+import { existsSync, statSync, readFileSync } from 'node:fs';
+import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
+import { createMergeableStore, type MergeableStore } from 'tinybase';
 import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
+import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
+import { reconcileSchemaVersion } from '../src/data/schemaVersion.ts';
 import { openDatabase, type ServerDatabase } from './db.ts';
-
 export const DEFAULT_PORT = 5173;
 export const WS_PATH = '/ws';
 export const STATIC_ROOT_NAME = 'dist';
@@ -109,7 +108,7 @@ export async function attachSyncServer(
         null,
         null,
         null,
-        (_store, _tableId, _rowId, _cellId) => {
+        (_store: MergeableStore, _tableId: string, _rowId: string, _cellId: string) => {
           touched.add(_tableId);
           process.stderr.write(
             `[srv ${safePathId}] cell changed: ${_tableId}/${_rowId}/${_cellId}\n`,
@@ -123,16 +122,10 @@ export async function attachSyncServer(
         touched.clear();
       });
     }
-    // The SQLite persister's autoload listens for `CHANGE` events on the
-    // underlying `sqlite3` Database. That fires for our own writes too — and
-    // the WS server's autoload callback (`load()` → `getChangesFromOtherStore()`)
-    // would then query other clients and overwrite the just-saved state with
-    // whatever stale view a client happens to have. The server is the sole
-    // writer to this database; client updates arrive as WS `ContentDiff`
-    // messages handled by the WS server's own autoLoad path. So we disable
-    // the SQLite persister's autoload and keep its autoSave (which writes
-    // to disk) — the WS server's synchronizer handles broadcasts.
-    return wrapSqlitePersisterForWsServer(sqlitePersister);
+    // Clean-cutover wipe happens inside the wrapper's startAutoLoad
+    // AFTER p.load() — the persister reads the old SQLite snapshot on
+    // load, so reconcile must follow. ADR-0001 mandates no row migration.
+    return wrapSqlitePersisterForWsServer(sqlitePersister, store);
   });
 
   httpServer.on('upgrade', (req, socket, head) => {
@@ -154,7 +147,7 @@ export async function attachSyncServer(
       return;
     }
     process.stderr.write(`[srv upgrade] upgrading ${url.pathname}\n`);
-    wsServer.handleUpgrade(req, socket, head, (ws: WebSocket) => {
+    wsServer.handleUpgrade(req, socket, head, (ws: WsWebSocket) => {
       wsServer.emit('connection', ws, req);
     });
   });
@@ -194,7 +187,10 @@ function sanitizePathId(pathId: string): string {
  * other call (notably `startAutoSave`, which writes to disk).
  */
 type Sqlite3Persister = ReturnType<typeof createSqlite3Persister>;
-function wrapSqlitePersisterForWsServer(p: Sqlite3Persister): Sqlite3Persister {
+function wrapSqlitePersisterForWsServer(
+  p: Sqlite3Persister,
+  store: MergeableStore,
+): Sqlite3Persister {
   return {
     ...p,
     // `createWsServer` calls `startAutoLoad()` on the persister it receives.
@@ -209,6 +205,10 @@ function wrapSqlitePersisterForWsServer(p: Sqlite3Persister): Sqlite3Persister {
     // messages handled by the WS server's own autoLoad path.
     startAutoLoad: async (initialContent?: unknown): Promise<Sqlite3Persister> => {
       await p.load(initialContent as Parameters<Sqlite3Persister['load']>[0]);
+      // Clean-cutover wipe AFTER load: the persister just read the old
+      // SQLite snapshot; reconcileSchemaVersion drops every row whose
+      // recorded version differs and stamps the current one. ADR-0001.
+      reconcileSchemaVersion(store);
       return p;
     },
   };

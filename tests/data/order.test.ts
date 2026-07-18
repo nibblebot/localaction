@@ -131,27 +131,30 @@ describe('reorderTask', () => {
   it('moves a top-level task before another in the same project', () => {
     const d = createArea(store, { name: 'D' });
     const p = createProject(store, { name: 'P', areaId: d });
-    const t1 = createTask(store, { title: 't1', projectId: p });
-    const t2 = createTask(store, { title: 't2', projectId: p });
-    const t3 = createTask(store, { title: 't3', projectId: p });
+    const t1 = createTask(store, { title: 't1', placement: { kind: 'project', id: p } });
+    const t2 = createTask(store, { title: 't2', placement: { kind: 'project', id: p } });
+    const t3 = createTask(store, { title: 't3', placement: { kind: 'project', id: p } });
     reorderTask(store, t3, t1);
     const siblings = readSiblingOrders(
       store,
       TABLES.tasks,
-      COLUMNS.tasks.parentTaskId,
-      null,
-    ).filter((s) => store.getCell(TABLES.tasks, s.id, COLUMNS.tasks.projectId) === p);
+      COLUMNS.tasks.placement,
+      `project:${p}`,
+    );
     expect(siblings.map((s) => s.id)).toEqual([t3, t1, t2]);
   });
 
   it('moves a child task within its parent', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
-    const parent = createTask(store, { title: 'parent', projectId: p });
-    const c1 = createTask(store, { title: 'c1', projectId: p, parentTaskId: parent });
-    const c2 = createTask(store, { title: 'c2', projectId: p, parentTaskId: parent });
+    const parent = createTask(store, { title: 'parent' });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: parent } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: parent } });
     reorderTask(store, c2, c1);
-    const siblings = readSiblingOrders(store, TABLES.tasks, COLUMNS.tasks.parentTaskId, parent);
+    const siblings = readSiblingOrders(
+      store,
+      TABLES.tasks,
+      COLUMNS.tasks.placement,
+      `task:${parent}`,
+    );
     expect(siblings.map((s) => s.id)).toEqual([c2, c1]);
   });
 });

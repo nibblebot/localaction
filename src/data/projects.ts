@@ -51,9 +51,6 @@ export function updateProject(
   store.setPartialRow(TABLES.projects, id, row(next));
 }
 
-export function deleteProject(store: MergeableStore, id: string): void {
-  store.delRow(TABLES.projects, id);
-}
 
 export function useProject(store: MergeableStore, id: string | undefined): Project | undefined {
   const row = useRow(TABLES.projects, id ?? '', store);

@@ -4,17 +4,21 @@ export {
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
   SELF_PERSON_ID,
+  SCHEMA_VERSION,
+  SCHEMA_VERSION_VALUE_ID,
 } from './schema.ts';
+
+export { reconcileSchemaVersion } from './schemaVersion.ts';
 export type {
   TableName,
   AreaColumn,
   ProjectColumn,
   TaskColumn,
-  NoteColumn,
-  PersonColumn,
-  PersonLinkColumn,
   TaskStatus,
   NoteEntityType,
+  TombstoneColumn,
+  PersonColumn,
+  PersonLinkColumn,
 } from './schema.ts';
 
 export { getStore } from './store.ts';
@@ -49,33 +53,49 @@ export type {
   ProjectPatch,
   TaskInput,
   TaskPatch,
+  TaskPlacement,
   NoteInput,
   NotePatch,
   PersonInput,
   PersonPatch,
+  Tombstone,
 } from './types.ts';
 
 export {
   createArea,
   updateArea,
-  deleteArea,
   getArea,
   useArea,
+  descendantAreaIds,
 } from './areas.ts';
 export {
   createProject,
   updateProject,
-  deleteProject,
   useProject,
 } from './projects.ts';
 export {
   createTask,
   updateTask,
-  deleteTask,
   setTaskStatus,
+  getTask,
+  useTask,
+  PLACEMENT_SEP,
+  encodePlacement,
+  decodePlacement,
+  getPlacement,
+  getRawPlacement,
+  getRootPlacement,
+  getEffectiveTaskStatus,
+  useEffectiveTaskStatus,
+  childTaskIds,
+  descendantTaskIds,
+  topLevelTaskIdsForPlacement,
   getTasksForProjectDeep,
   useTasksForProjectDeep,
-  useTask,
+  getInboxTaskIds,
+  useInboxTaskIds,
+  getAreaTaskIds,
+  useAreaTaskIds,
 } from './tasks.ts';
 
 export {
@@ -94,6 +114,23 @@ export {
   useAllNoteIds,
   useNoteIdsForEntity,
 } from './notes.ts';
+
+export {
+  deleteArea,
+  deleteProject,
+  deleteTask,
+  cascadeDeleteSubtree,
+  reconcileTombstones,
+  installTombstoneReconciler,
+} from './deletion.ts';
+
+export {
+  tombstoneId,
+  writeTombstone,
+  hasTombstone,
+  getTombstone,
+  useTombstoneIds,
+} from './tombstones.ts';
 
 export {
   initials,

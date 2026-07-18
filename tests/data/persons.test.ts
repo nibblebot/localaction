@@ -345,8 +345,7 @@ function seedTask(store: MergeableStore, id: string, areaId: string): void {
     id,
     row({
       [COLUMNS.tasks.title]: 'T',
-      [COLUMNS.tasks.projectId]: projectId,
-      [COLUMNS.tasks.parentTaskId]: null,
+      [COLUMNS.tasks.placement]: `project:${projectId}`,
       [COLUMNS.tasks.status]: 'open',
       [COLUMNS.tasks.order]: 1000,
       [COLUMNS.tasks.createdAt]: '2026-01-01T00:00:00Z',

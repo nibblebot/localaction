@@ -320,6 +320,35 @@
   color: var(--text-muted);
 }
 
+.area-header-delete {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.area-header-delete:hover {
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.area-header-delete svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* ============================================================
    Inline add input — always-visible single-line text field
    appended to a list. Enter commits and clears; Esc clears.

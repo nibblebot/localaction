@@ -21,6 +21,7 @@ import {
   setTaskStatus,
   deleteTask,
   deleteProject,
+  deleteArea,
   deleteNote,
   reorderProject,
   reorderTask,
@@ -44,6 +45,7 @@ import type { TaskTreeNode } from '../data/index.ts';
 import type { Area, NoteEntityType } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
+import { INBOX } from '../router.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
 import { areaColorHex } from '../data/colors.ts';
@@ -131,6 +133,9 @@ export default function MainPane(): React.JSX.Element {
     });
     navigate({ kind: 'area', id });
   };
+  const goToInbox = (): void => {
+    navigate(INBOX);
+  };
 
   return (
     <main className="main" aria-label="Editor">
@@ -143,6 +148,7 @@ export default function MainPane(): React.JSX.Element {
           showAddSubArea={isTopLevel}
           onNavigate={goToArea}
           onCreateSubArea={isTopLevel ? addSubArea : null}
+          onDeleteArea={goToInbox}
         />
         <PersonFilterBanner />
         <PaneTabs
@@ -173,6 +179,7 @@ function AreaHeader({
   showAddSubArea,
   onNavigate,
   onCreateSubArea,
+  onDeleteArea,
 }: {
   areaId: string;
   name: string;
@@ -181,12 +188,14 @@ function AreaHeader({
   showAddSubArea: boolean;
   onNavigate: (id: string) => void;
   onCreateSubArea: ((name: string) => void) | null;
+  onDeleteArea: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   useStoreVersion(store);
   const hex = areaColorHex(color);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const cast = useEffectiveCast(store, areaId);
 
   function commit(): void {
@@ -265,6 +274,29 @@ function AreaHeader({
           </button>
         )
       )}
+      <button
+        type="button"
+        className="area-header-delete"
+        onClick={() => setConfirmDelete(true)}
+        aria-label="Delete area"
+        title="Delete area"
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#trash-icon" />
+        </svg>
+      </button>
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete area?"
+        message={`"${name || 'Untitled'}" will be deleted along with every sub-area, project, task, and note inside it.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          deleteArea(store, areaId);
+          setConfirmDelete(false);
+          onDeleteArea();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

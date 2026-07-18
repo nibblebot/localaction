@@ -11,6 +11,7 @@
 - Stack versions are bleeding-edge; generic tutorials may target older majors.
 
 ## Commands
+- **Agent server port rule:** Agents MUST NOT use the default port (`5173`) — and MUST NOT use the URL `localhost:5173` / `http://localhost:5173` — for any dev, preview, production, browser-test, or ad hoc test server invocation. Always pass an explicit, non-default, currently unused port; use `--strictPort` or the equivalent fail-on-conflict option where supported so the process never silently falls back to another port. Any URL the agent constructs afterwards (browser navigation, `fetch`, `/ws` endpoints, smoke assertions) MUST use that actual port — never a hardcoded `localhost:5173`. Bare `pnpm dev`, `pnpm preview`, and `pnpm start` server invocations are prohibited for agents. Commands such as `pnpm smoke` and `pnpm test:e2e` satisfy this rule when their scripts/configuration allocate or declare a non-default port.
 - `pnpm dev` — Vite dev server with HMR (also attaches the TinyBase sync WS via `attachSyncServer`). Launched through `scripts/dev.ts`, which adds `--db <path>` (Vite's own `--port` is passed through).
 - `pnpm build` — runs `tsc -b` (both tsconfig projects via references) then `vite build`. TS errors fail the build.
 - `pnpm lint` — `oxlint` over the workspace.

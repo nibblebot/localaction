@@ -266,7 +266,7 @@ integration suite opts in to a Node environment via per-file pragma.
   a real two-client ↔ one-server WebSocket round-trip with the shared SQLite
   connection.
 - **Playwright** (`e2e/`) — one spec per user journey; auto-starts `pnpm dev`
-  on 5173, depends on the `/ws` handshake.
+  on a non-default port (`5180`) so a manual `pnpm dev` session on `5173` can run in parallel; depends on the `/ws` handshake.
 - **`scripts/smoke.ts`** — boots the prod server on a random port and asserts
   WS sync between two clients plus a SQLite persistence round-trip.
 

@@ -51,7 +51,7 @@
 - `erasableSyntaxOnly` forbids enums and namespaces.
 - `tsc -b` uses project references, so TS errors in `vite.config.ts`/`vitest.config.ts`/`playwright.config.ts` block the build even though they're not under `src/`.
 - **Test runners split by environment, not by tool.** vitest (single config) drives all suites; the integration suite uses `// @vitest-environment node` to opt out of jsdom and run against real `ws`/`sqlite3` Node modules. There is no separate runner config — pick the env per file.
-- **Playwright config** auto-starts `pnpm dev` on port 5173 via `webServer.command`; `reuseExistingServer: true` so manual dev servers aren't fought. Tests depend on the `/ws` handshake succeeding.
+- **Playwright config** auto-starts `pnpm dev` on a non-default port (`5180`) via `webServer.command`; `reuseExistingServer: false`. Tests never share the default Vite/prod-server port (`5173`) so a manual `pnpm dev` session can run in parallel without conflict. Tests depend on the `/ws` handshake succeeding.
 - **Test databases live in `data/` but never use the default name.** Any dev/preview/smoke run that doesn't need the user's real store must point `--db` at a `test-*.db` path (e.g. `data/test-e2e.db`, `data/test-smoke-1234.db`). The wildcard `*` keeps simultaneous runs from clobbering each other. Clean every `data/test-*.db` up when you're done — Playwright e2e suites are expected to spin up and tear down their own DB; manual `pnpm dev` sessions that needed isolation should `rm data/test-*.db` before yielding.
 ## Conventions
 - Components are default-exported function components returning `React.JSX.Element` (or `React.JSX.Element | null`). See `src/components/Sidebar.tsx` for the canonical shape; `src/App.tsx` follows the same pattern.

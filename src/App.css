@@ -5,7 +5,7 @@
 
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   height: 100svh;
   width: 100%;
   background: var(--bg);
@@ -229,6 +229,9 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* Let the main column shrink below its content's min-content width
+     so task rows wrap instead of overflowing the viewport. */
+  min-width: 0;
   background: var(--bg);
 }
 
@@ -761,6 +764,18 @@
   color: var(--text-muted);
 }
 
+/* Flat task list (inbox / area tasks) — same vertical rhythm as
+   `.sortable-list`; each <li> is a transparent wrapper, the row
+   inside carries the chrome. */
+.task-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .task-line {
   display: flex;
   flex-wrap: wrap;
@@ -794,12 +809,20 @@
   flex: 1 1 auto;
   font: inherit;
   font-size: 0.96rem;
+  line-height: 1.35;
   color: var(--text-h);
   background: transparent;
   border: 0;
   padding: 2px 4px;
   min-width: 0;
   border-radius: var(--radius-sm);
+  /* Textarea resets (also used as a read-only <span> elsewhere):
+     wrap long titles instead of scrolling; height is set in JS. */
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .task-line-title:focus {

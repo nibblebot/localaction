@@ -6,7 +6,6 @@ import {
   useArea,
   useAreaCounts,
   useNote,
-  useTask,
   useProject,
   useTasksForProjectDeep,
   useProjectRollups,
@@ -17,31 +16,23 @@ import {
   createNote,
   createArea,
   getArea,
-  updateTask,
-  setTaskStatus,
-  deleteTask,
   deleteProject,
   deleteArea,
   deleteNote,
   reorderProject,
   reorderTask,
   TABLES,
-  TASK_STATUS,
   NOTE_ENTITY_TYPE,
   COLUMNS,
   getPlacement,
-  getRootPlacement,
   useInboxTaskIds,
   useAreaTaskIds,
-  useEffectiveTaskStatus,
   useEffectiveCast,
   useHiddenCount,
   effectiveSetForEntity,
   getEntityPersonIds,
   usePerson,
-  buildTaskTree,
 } from '../data/index.ts';
-import type { TaskTreeNode } from '../data/index.ts';
 import type { Area, NoteEntityType } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
@@ -53,6 +44,8 @@ import type { AreaColorId } from '../data/colors.ts';
 import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
+import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
+import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
@@ -543,28 +536,6 @@ function ProjectsTab({
   );
 }
 
-function Group({
-  title,
-  count,
-  children,
-}: {
-  title: string;
-  count: number;
-  children: React.ReactNode;
-}): React.JSX.Element {
-  return (
-    <div className="tab-group">
-      <header className="tab-group-head">
-        <span className="tab-group-title">{title}</span>
-        <span className="tab-group-count">· {count}</span>
-      </header>
-      <ul className="tab-group-list" role="list">
-        {children}
-      </ul>
-    </div>
-  );
-}
-
 function ProjectRow({
   projectId,
   name,
@@ -920,133 +891,32 @@ function ProjectTasksGroup({
     });
   }, [store, orderedIds, filter]);
 
-  const visibleSet = new Set(visibleIds);
   const hiddenCount = useHiddenCount(
     store,
     NOTE_ENTITY_TYPE.task,
     taskIds,
     filter,
   );
-  const tree = buildTaskTree(store, visibleIds);
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderTask(store, activeId, beforeId);
   }
 
-  // Split the tree by stored status. We do this once per render and
-  // pass two paired trees down so children of a done ancestor can
-  // stay nested under the done row (matching the open behaviour)
-  // while still being grouped under the DONE header.
-  const openNodes: TaskTreeNode[] = [];
-  const doneNodes: TaskTreeNode[] = [];
-  function split(node: TaskTreeNode, sinkOpen: TaskTreeNode[], sinkDone: TaskTreeNode[]): void {
-    const openChildren: TaskTreeNode[] = [];
-    const doneChildren: TaskTreeNode[] = [];
-    for (const c of node.children) {
-      if (isTaskDone(store, c.id)) split(c, doneChildren, doneChildren);
-      else split(c, openChildren, doneChildren);
-    }
-    const out: TaskTreeNode[] = isTaskDone(store, node.id) ? sinkDone : sinkOpen;
-    out.push({ id: node.id, children: isTaskDone(store, node.id) ? doneChildren : openChildren });
-  }
-  for (const top of tree.children) split(top, openNodes, doneNodes);
-  // Filter childless placeholders: if a task is done, its whole
-  // subtree lives under doneNodes; same for open.
-
   return (
     <>
       <ProjectHeader name={projectName} count={visibleIds.length} />
-      {openNodes.length > 0 && (
-        <OpenTaskSubtree
-          nodes={openNodes}
-          projectName={projectName}
-          visibleSet={visibleSet}
-          onReorder={onReorder}
-        />
-      )}
-      {doneNodes.length > 0 && (
-        <Group title="DONE" count={countTree(doneNodes)}>
-          <DoneTaskSubtree nodes={doneNodes} />
-        </Group>
-      )}
+      <TaskTreeByStatus
+        ids={visibleIds}
+        sortable
+        onReorder={onReorder}
+        ariaLabel={`Open tasks for ${projectName}`}
+      />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
         </p>
       )}
     </>
-  );
-}
-
-function countTree(nodes: readonly TaskTreeNode[]): number {
-  let n = 0;
-  for (const node of nodes) n += 1 + countTree(node.children);
-  return n;
-}
-
-/**
- * Recursive renderer for the "open" task tree. Each sibling group
- * becomes its own SortableList so drag-and-drop is confined to one
- * sibling group — sub-tasks can't be reordered into a different
- * parent's child list. Indentation comes from `.task-line-children`
- * padding on the row itself.
- */
-function OpenTaskSubtree({
-  nodes,
-  projectName,
-  visibleSet,
-  onReorder,
-}: {
-  nodes: readonly TaskTreeNode[];
-  projectName: string;
-  visibleSet: ReadonlySet<string>;
-  onReorder: (activeId: string, beforeId: string | undefined) => void;
-}): React.JSX.Element | null {
-  if (nodes.length === 0) return null;
-  const ids = nodes.map((n) => n.id);
-  return (
-    <SortableList
-      itemIds={ids}
-      onReorder={onReorder}
-      ariaLabel={`Open tasks for ${projectName}`}
-      className="sortable-list"
-    >
-      {(tid, handle) => {
-        const children = nodes.find((n) => n.id === tid)?.children ?? [];
-        return (
-          <SortableTaskLineRow handle={handle} taskId={tid}>
-            {children.length > 0 && visibleSet.size > 0 && (
-              <OpenTaskSubtree
-                nodes={children}
-                projectName={projectName}
-                visibleSet={visibleSet}
-                onReorder={onReorder}
-              />
-            )}
-          </SortableTaskLineRow>
-        );
-      }}
-    </SortableList>
-  );
-}
-
-function DoneTaskSubtree({
-  nodes,
-}: {
-  nodes: readonly TaskTreeNode[];
-}): React.JSX.Element {
-  return (
-    <ul className="task-tree-done" role="list">
-      {nodes.map((node) => (
-        <li key={node.id} className="task-tree-done-row">
-          <TaskLineRow taskId={node.id} doneGroup>
-            {node.children.length > 0 && (
-              <DoneTaskSubtree nodes={node.children} />
-            )}
-          </TaskLineRow>
-        </li>
-      ))}
-    </ul>
   );
 }
 
@@ -1062,222 +932,6 @@ function ProjectHeader({
       <span className="project-header-name">{name || 'Untitled'}</span>
       <span className="project-header-count">· {count}</span>
     </header>
-  );
-}
-
-function isTaskDone(store: MergeableStore, taskId: string): boolean {
-  if (!store.hasRow(TABLES.tasks, taskId)) return false;
-  return store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.status) === TASK_STATUS.done;
-}
-
-function TaskTitleInput({
-  taskId,
-  title,
-}: {
-  taskId: string;
-  title: string;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const [draft, setDraft] = useState(title);
-  const ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (document.activeElement !== ref.current) setDraft(title);
-  }, [title]);
-
-  function commit(): void {
-    if (draft !== title) updateTask(store, taskId, { title: draft });
-    else setDraft(title);
-  }
-
-  return (
-    <input
-      ref={ref}
-      className="task-line-title"
-      value={draft}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          e.currentTarget.blur();
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          setDraft(title);
-          e.currentTarget.blur();
-        }
-      }}
-      aria-label="Task title"
-    />
-  );
-}
-
-function TaskLineRow({
-  taskId,
-  doneGroup,
-  children,
-}: {
-  taskId: string;
-  doneGroup?: boolean;
-  children?: React.ReactNode;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const task = useTask(store, taskId);
-  const { navigate } = useSelection();
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  if (!task) return <></>;
-  const done = task.status === TASK_STATUS.done;
-  return (
-    <div className={`task-line${doneGroup || done ? ' task-line-done' : ''}`}>
-      <input
-        type="checkbox"
-        className="task-line-check"
-        checked={done}
-        onChange={() =>
-          setTaskStatus(store, taskId, done ? TASK_STATUS.open : TASK_STATUS.done)
-        }
-        aria-label={done ? 'Mark not done' : 'Mark done'}
-      />
-      <TaskTitleInput taskId={taskId} title={task.title} />
-      <PersonAssignmentButton
-        entityType={NOTE_ENTITY_TYPE.task}
-        entityId={taskId}
-      />
-      <button
-        type="button"
-        className="task-line-action"
-        aria-label="Add sub-task"
-        title="Add sub-task"
-        onClick={() => {
-          createTask(store, { title: 'Untitled', placement: { kind: 'task', id: taskId } });
-          const root = getRootPlacement(store, taskId);
-          if (root.kind === 'project') navigate({ kind: 'project', id: root.id });
-          else if (root.kind === 'area') navigate({ kind: 'area', id: root.id });
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#plus-filled-icon" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        className="task-line-action task-line-action-danger"
-        aria-label="Delete task"
-        title="Delete"
-        onClick={() => setConfirmDelete(true)}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#trash-icon" />
-        </svg>
-      </button>
-      <ConfirmModal
-        open={confirmDelete}
-        title="Delete task?"
-        message={`"${task.title || 'Untitled'}" will be deleted.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          deleteTask(store, taskId);
-          setConfirmDelete(false);
-        }}
-        onCancel={() => setConfirmDelete(false)}
-      />
-      {children && <div className="task-line-children">{children}</div>}
-    </div>
-  );
-}
-function SortableTaskLineRow({
-  handle,
-  taskId,
-  children,
-}: {
-  handle: SortableHandleProps;
-  taskId: string;
-  children?: React.ReactNode;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const task = useTask(store, taskId);
-  const { navigate } = useSelection();
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  if (!task) return <></>;
-  const done = task.status === TASK_STATUS.done;
-  const classes = ['task-line', 'sortable-row'];
-  if (done) classes.push('task-line-done');
-  if (handle.isDragging) classes.push('sortable-row-active');
-  if (handle.isOver) classes.push('sortable-row-over');
-
-  return (
-    <div
-      ref={handle.ref}
-      style={handle.style}
-      className={classes.join(' ')}
-      data-drag-over={handle.isOver ? 'true' : undefined}
-    >
-      <button
-        type="button"
-        className="task-line-drag-handle"
-        aria-label="Drag to reorder"
-        title="Drag to reorder"
-        onClick={(e) => e.preventDefault()}
-        {...(handle.listeners ?? {})}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#drag-icon" />
-        </svg>
-      </button>
-      <input
-        type="checkbox"
-        className="task-line-check"
-        checked={done}
-        onChange={() =>
-          setTaskStatus(store, taskId, done ? TASK_STATUS.open : TASK_STATUS.done)
-        }
-        aria-label={done ? 'Mark not done' : 'Mark done'}
-      />
-      <TaskTitleInput taskId={taskId} title={task.title} />
-      <PersonAssignmentButton
-        entityType={NOTE_ENTITY_TYPE.task}
-        entityId={taskId}
-      />
-      <button
-        type="button"
-        className="task-line-action"
-        aria-label="Add sub-task"
-        title="Add sub-task"
-        onClick={() => {
-          createTask(store, { title: 'Untitled', placement: { kind: 'task', id: taskId } });
-          const root = getRootPlacement(store, taskId);
-          if (root.kind === 'project') navigate({ kind: 'project', id: root.id });
-          else if (root.kind === 'area') navigate({ kind: 'area', id: root.id });
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#plus-filled-icon" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        className="task-line-action task-line-action-danger"
-        aria-label="Delete task"
-        title="Delete"
-        onClick={() => setConfirmDelete(true)}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#trash-icon" />
-        </svg>
-      </button>
-      <ConfirmModal
-        open={confirmDelete}
-        title="Delete task?"
-        message={`"${task.title || 'Untitled'}" will be deleted.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          deleteTask(store, taskId);
-          setConfirmDelete(false);
-        }}
-        onCancel={() => setConfirmDelete(false)}
-      />
-      {children && <div className="task-line-children">{children}</div>}
-    </div>
   );
 }
 
@@ -1657,37 +1311,14 @@ function ProjectTasksTab({
     wasEmpty.current = empty;
   }, [isActive, taskIds.length]);
 
-  const visibleSet = new Set(visibleIds);
-  const tree = buildTaskTree(store, visibleIds);
-  const openNodes: TaskTreeNode[] = [];
-  const doneNodes: TaskTreeNode[] = [];
-  function split(node: TaskTreeNode, sinkOpen: TaskTreeNode[], sinkDone: TaskTreeNode[]): void {
-    const openChildren: TaskTreeNode[] = [];
-    const doneChildren: TaskTreeNode[] = [];
-    for (const c of node.children) {
-      if (isTaskDone(store, c.id)) split(c, doneChildren, doneChildren);
-      else split(c, openChildren, doneChildren);
-    }
-    const out: TaskTreeNode[] = isTaskDone(store, node.id) ? sinkDone : sinkOpen;
-    out.push({ id: node.id, children: isTaskDone(store, node.id) ? doneChildren : openChildren });
-  }
-  for (const top of tree.children) split(top, openNodes, doneNodes);
-
   return (
     <section className="tasks-tab" aria-label="Tasks">
-      {openNodes.length > 0 && (
-        <OpenTaskSubtree
-          nodes={openNodes}
-          projectName={projectName}
-          visibleSet={visibleSet}
-          onReorder={onReorder}
-        />
-      )}
-      {doneNodes.length > 0 && (
-        <Group title="DONE" count={countTree(doneNodes)}>
-          <DoneTaskSubtree nodes={doneNodes} />
-        </Group>
-      )}
+      <TaskTreeByStatus
+        ids={visibleIds}
+        sortable
+        onReorder={onReorder}
+        ariaLabel={`Open tasks for ${projectName}`}
+      />
       <InlineAddInput
         ref={addInputRef}
         placeholder={
@@ -1830,7 +1461,7 @@ function InboxPane(): React.JSX.Element {
         <header className="main-pane-header">
           <h2 className="main-pane-title">Inbox</h2>
         </header>
-        <TaskList filteredIds={orderedIds} />
+        <TaskList ids={orderedIds} readOnly effectiveStatus />
         <InlineAddInput
           ref={addInputRef}
           placeholder={
@@ -1861,44 +1492,10 @@ function AreaTasksSection({ areaId }: { areaId: string }): React.JSX.Element {
   if (orderedIds.length === 0) return <></>;
   return (
     <Group title="Area tasks" count={topLevelIds.length}>
-      <TaskList filteredIds={orderedIds} />
+      <TaskList ids={orderedIds} readOnly effectiveStatus />
     </Group>
   );
 }
-function TaskList({
-  filteredIds,
-}: {
-  filteredIds: readonly string[];
-}): React.JSX.Element {
-  return (
-    <ul className="task-list">
-      {filteredIds.map((tid) => (
-        <TaskListItem key={tid} taskId={tid} />
-      ))}
-    </ul>
-  );
-}
-
-function TaskListItem({ taskId }: { taskId: string }): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const task = useTask(store, taskId);
-  const effective = useEffectiveTaskStatus(store, taskId);
-  if (!task || !effective) return null;
-  return (
-    <li className={`task-line${effective === 'done' ? ' task-line-done' : ''}`}>
-      <input
-        type="checkbox"
- checked={effective === 'done'}
-        onChange={() =>
-          setTaskStatus(store, taskId, effective === 'done' ? 'open' : 'done')
-        }
-        aria-label={effective === 'done' ? 'Mark not done' : 'Mark done'}
-      />
-      <span className="task-line-title">{task.title}</span>
-    </li>
-  );
-}
-
 function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
   return [...ids].sort((a, b) => {
     const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);

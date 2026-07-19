@@ -1070,6 +1070,48 @@ function isTaskDone(store: MergeableStore, taskId: string): boolean {
   return store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.status) === TASK_STATUS.done;
 }
 
+function TaskTitleInput({
+  taskId,
+  title,
+}: {
+  taskId: string;
+  title: string;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const [draft, setDraft] = useState(title);
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setDraft(title);
+  }, [title]);
+
+  function commit(): void {
+    if (draft !== title) updateTask(store, taskId, { title: draft });
+    else setDraft(title);
+  }
+
+  return (
+    <input
+      ref={ref}
+      className="task-line-title"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setDraft(title);
+          e.currentTarget.blur();
+        }
+      }}
+      aria-label="Task title"
+    />
+  );
+}
+
 function TaskLineRow({
   taskId,
   doneGroup,
@@ -1096,15 +1138,7 @@ function TaskLineRow({
         }
         aria-label={done ? 'Mark not done' : 'Mark done'}
       />
-      <input
-        className="task-line-title"
-        value={task.title}
-        onChange={(e) => updateTask(store, taskId, { title: e.target.value })}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-        aria-label="Task title"
-      />
+      <TaskTitleInput taskId={taskId} title={task.title} />
       <PersonAssignmentButton
         entityType={NOTE_ENTITY_TYPE.task}
         entityId={taskId}
@@ -1199,15 +1233,7 @@ function SortableTaskLineRow({
         }
         aria-label={done ? 'Mark not done' : 'Mark done'}
       />
-      <input
-        className="task-line-title"
-        value={task.title}
-        onChange={(e) => updateTask(store, taskId, { title: e.target.value })}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-        }}
-        aria-label="Task title"
-      />
+      <TaskTitleInput taskId={taskId} title={task.title} />
       <PersonAssignmentButton
         entityType={NOTE_ENTITY_TYPE.task}
         entityId={taskId}

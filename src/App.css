@@ -752,6 +752,14 @@
    Tasks tab — single-line rows
    ============================================================ */
 
+/* The tasks sheet — one continuous white document behind the whole
+   task list (rows themselves carry no chrome). */
+.tasks-tab {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
 .tasks-tab-target {
   display: flex;
   align-items: center;
@@ -809,16 +817,19 @@
   gap: 0;
 }
 
+/* Rows carry no card chrome — the list reads as one continuous
+   document on the white `.tasks-tab` sheet. Rows are flush with the
+   sheet's content edges on both sides (drag handle on the left,
+   action icons on the right). Only transient states (drag-over
+   outline, drag-active shadow, overlay preview) draw a box. */
 .task-line {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   align-content: flex-start;
   gap: 10px;
-  padding: 6px 12px;
+  padding: 6px 0;
   border-radius: var(--radius-sm);
-  background: var(--surface);
-  border: 1px solid var(--border);
 }
 
 .task-line-done {
@@ -1629,8 +1640,8 @@
    ------------------------------------------------------------ */
 
 .task-line-drag-handle {
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1655,15 +1666,17 @@
 }
 
 .task-line-drag-handle svg {
-  width: 12px;
-  height: 12px;
+  width: 24px;
+  height: 24px;
 }
 
 /* Nested sub-task tree — the children wrapper sits below the row
    content (flex-basis:100% wraps inside the .task-line flex parent)
    and indents one level per nesting depth. Sub-tasks are themselves
    rendered as full .task-line rows, so a single recursive call
-   yields any depth. */
+   yields any depth. Rows have no horizontal padding, so nested rows
+   (and their right-aligned action icons) end at the same right edge
+   as top-level rows. */
 .task-line-children {
   flex-basis: 100%;
   width: 100%;
@@ -1679,11 +1692,6 @@
 
 .task-line-children:empty {
   display: none;
-}
-
-.task-line-children > .sortable-item-slot > .task-line {
-  background: var(--bg);
-  border-style: dashed;
 }
 
 .task-line.sortable-row-active {

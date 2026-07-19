@@ -1518,22 +1518,24 @@ function InboxPane(): React.JSX.Element {
           <h2 className="main-pane-title">Inbox</h2>
           <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
         </header>
-        <TaskTreeByStatus
-          ids={allIds}
-          onReorder={onReorder}
-          ariaLabel="Inbox tasks"
-          showCompleted={showCompleted}
-        />
-        <InlineAddInput
-          ref={addInputRef}
-          placeholder={
-            allIds.length === 0
-              ? 'No inbox tasks — capture one here.'
-              : 'New inbox task…'
-          }
-          ariaLabel="New inbox task"
-          onSubmit={addTask}
-        />
+        <section className="tasks-tab" aria-label="Inbox tasks">
+          <TaskTreeByStatus
+            ids={allIds}
+            onReorder={onReorder}
+            ariaLabel="Inbox tasks"
+            showCompleted={showCompleted}
+          />
+          <InlineAddInput
+            ref={addInputRef}
+            placeholder={
+              allIds.length === 0
+                ? 'No inbox tasks — capture one here.'
+                : 'New inbox task…'
+            }
+            ariaLabel="New inbox task"
+            onSubmit={addTask}
+          />
+        </section>
       </div>
     </main>
   );

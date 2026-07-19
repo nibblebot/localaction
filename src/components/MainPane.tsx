@@ -21,7 +21,9 @@ import {
   deleteNote,
   reorderProject,
   reorderTask,
+  getEffectiveTaskStatus,
   TABLES,
+  TASK_STATUS,
   NOTE_ENTITY_TYPE,
   COLUMNS,
   getPlacement,
@@ -51,6 +53,7 @@ import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
 import PersonAvatar from './persons/PersonAvatar.tsx';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
+import { useShowCompleted } from './useShowCompleted.ts';
 
 type Tab = 'projects' | 'tasks' | 'notes';
 type ProjectTab = 'tasks' | 'notes';
@@ -80,6 +83,7 @@ export default function MainPane(): React.JSX.Element {
     if (!areaId) return;
     setTabByArea((prev) => ({ ...prev, [areaId]: next }));
   };
+  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
 
   const parentChain = useMemo<readonly Area[]>(() => {
     if (!areaId) return [];
@@ -149,12 +153,14 @@ export default function MainPane(): React.JSX.Element {
           tab={tab}
           onChange={setTab}
           counts={{ projects: projectCount, tasks: taskCount, notes: noteCount }}
+          showCompleted={showCompleted}
+          onToggleCompleted={toggleCompleted}
         />
         {tab === 'projects' && (
           <ProjectsTab areaId={areaId} isActive />
         )}
         {tab === 'tasks' && (
-          <TasksTab areaId={areaId} isActive />
+          <TasksTab areaId={areaId} isActive showCompleted={showCompleted} />
         )}
         {tab === 'notes' && (
           <NotesTab areaId={areaId} isActive />
@@ -378,6 +384,9 @@ interface PaneTabsProps<T extends string> {
   tab: T;
   onChange: (tab: T) => void;
   counts: Record<T, number>;
+  /** Completed-task visibility toggle (task tabs only). */
+  showCompleted?: boolean;
+  onToggleCompleted?: () => void;
 }
 
 function PaneTabs<T extends string>({
@@ -385,6 +394,8 @@ function PaneTabs<T extends string>({
   tab,
   onChange,
   counts,
+  showCompleted,
+  onToggleCompleted,
 }: PaneTabsProps<T>): React.JSX.Element {
   return (
     <div className="area-tabs" role="tablist">
@@ -405,6 +416,20 @@ function PaneTabs<T extends string>({
         );
       })}
       <div className="area-tabs-spacer" />
+      {onToggleCompleted && (
+        <button
+          type="button"
+          className={`area-tab-action${showCompleted ? ' area-tab-action-active' : ''}`}
+          aria-label={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+          title={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+          aria-pressed={showCompleted}
+          onClick={onToggleCompleted}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#check-icon" />
+          </svg>
+        </button>
+      )}
       <button type="button" className="area-tab-action" aria-label="Search" title="Search">
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#search-icon" />
@@ -789,9 +814,11 @@ interface TasksTabProject {
 function TasksTab({
   areaId,
   isActive,
+  showCompleted,
 }: {
   areaId: string;
   isActive: boolean;
+  showCompleted: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -830,7 +857,7 @@ function TasksTab({
 
   return (
     <section className="tasks-tab" aria-label="Tasks">
-      <AreaTasksSection areaId={areaId} />
+      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
       {projects.length > 1 && (
         <div className="tasks-tab-target">
           <label className="field-label-inline">Add new tasks to</label>
@@ -847,7 +874,7 @@ function TasksTab({
         </div>
       )}
       {projects.map((p) => (
-        <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} />
+        <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} showCompleted={showCompleted} />
       ))}
       <InlineAddInput
         ref={addInputRef}
@@ -866,9 +893,11 @@ function TasksTab({
 function ProjectTasksGroup({
   projectId,
   projectName,
+  showCompleted,
 }: {
   projectId: string;
   projectName: string;
+  showCompleted: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   useStoreVersion(store);
@@ -907,9 +936,9 @@ function ProjectTasksGroup({
       <ProjectHeader name={projectName} count={visibleIds.length} />
       <TaskTreeByStatus
         ids={visibleIds}
-        sortable
         onReorder={onReorder}
-        ariaLabel={`Open tasks for ${projectName}`}
+        ariaLabel={`Tasks for ${projectName}`}
+        showCompleted={showCompleted}
       />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
@@ -1147,6 +1176,7 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
   const setTab = (next: ProjectTab): void => {
     setTabByProject((prev) => ({ ...prev, [projectId]: next }));
   };
+  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
 
   if (!project) {
     return (
@@ -1172,12 +1202,15 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
           tab={tab}
           onChange={setTab}
           counts={{ tasks: taskIds.length, notes: noteIds.length }}
+          showCompleted={showCompleted}
+          onToggleCompleted={toggleCompleted}
         />
         {tab === 'tasks' && (
           <ProjectTasksTab
             projectId={projectId}
             projectName={projectName}
             isActive
+            showCompleted={showCompleted}
           />
         )}
         {tab === 'notes' && (
@@ -1248,10 +1281,12 @@ function ProjectTasksTab({
   projectId,
   projectName,
   isActive,
+  showCompleted,
 }: {
   projectId: string;
   projectName: string;
   isActive: boolean;
+  showCompleted: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const [taskIds, setTaskIds] = useState<string[]>(() => {
@@ -1315,9 +1350,9 @@ function ProjectTasksTab({
     <section className="tasks-tab" aria-label="Tasks">
       <TaskTreeByStatus
         ids={visibleIds}
-        sortable
         onReorder={onReorder}
-        ariaLabel={`Open tasks for ${projectName}`}
+        ariaLabel={`Tasks for ${projectName}`}
+        showCompleted={showCompleted}
       />
       <InlineAddInput
         ref={addInputRef}
@@ -1477,7 +1512,7 @@ function InboxPane(): React.JSX.Element {
   );
 }
 
-function AreaTasksSection({ areaId }: { areaId: string }): React.JSX.Element {
+function AreaTasksSection({ areaId, showCompleted }: { areaId: string; showCompleted: boolean }): React.JSX.Element {
   const { store } = useDataLayer();
   const topLevelIds = useAreaTaskIds(store, areaId);
   const allIds = useMemo(() => {
@@ -1489,10 +1524,24 @@ function AreaTasksSection({ areaId }: { areaId: string }): React.JSX.Element {
     return out;
   }, [topLevelIds, store]);
   const orderedIds = sortTaskIds(store, allIds);
-  if (orderedIds.length === 0) return <></>;
+  const visibleIds = useMemo(
+    () =>
+      showCompleted
+        ? orderedIds
+        : orderedIds.filter(
+            (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
+          ),
+    [showCompleted, orderedIds, store],
+  );
+  if (visibleIds.length === 0) return <></>;
+  const visibleTopLevel = showCompleted
+    ? topLevelIds.length
+    : topLevelIds.filter(
+        (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
+      ).length;
   return (
-    <Group title="Area tasks" count={topLevelIds.length}>
-      <TaskList ids={orderedIds} readOnly effectiveStatus />
+    <Group title="Area tasks" count={visibleTopLevel}>
+      <TaskList ids={visibleIds} readOnly effectiveStatus />
     </Group>
   );
 }

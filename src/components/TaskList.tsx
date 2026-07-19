@@ -7,9 +7,11 @@
  *                       actions (person, add sub-task, delete).
  * - `effectiveStatus` — flat lists show ancestor-aware effective
  *                       status; trees use the task's own status.
- * - `doneGroup`       — row rendered inside the DONE tree (dimmed).
  * - `handle`          — SortableList handle; presence enables the
  *                       drag handle and sortable chrome.
+ * - `showCompleted`   — TaskTreeByStatus only: render done tasks in
+ *                       place (checked + strikethrough) instead of
+ *                       pruning their subtrees from the tree.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -34,43 +36,27 @@ import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
-import Group from './Group.tsx';
 
 function isTaskDone(store: MergeableStore, taskId: string): boolean {
   if (!store.hasRow(TABLES.tasks, taskId)) return false;
   return store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.status) === TASK_STATUS.done;
 }
 
-function countTree(nodes: readonly TaskTreeNode[]): number {
-  let n = 0;
-  for (const node of nodes) n += 1 + countTree(node.children);
-  return n;
-}
-
 /**
- * Split a task tree by stored status, once, into paired open/done
- * trees so children of a done ancestor stay nested under the done
- * row (matching the open behaviour) while still being grouped under
- * the DONE header. A done task carries its whole subtree along.
+ * Prune done subtrees out of a task tree, once, so hidden-completed
+ * mode drops a done task and everything nested under it. Sibling
+ * order is preserved.
  */
-function splitTaskTreeByStatus(
+function pruneDoneTasks(
   store: MergeableStore,
-  tree: TaskTreeNode,
-): { openNodes: TaskTreeNode[]; doneNodes: TaskTreeNode[] } {
-  const openNodes: TaskTreeNode[] = [];
-  const doneNodes: TaskTreeNode[] = [];
-  function split(node: TaskTreeNode, sinkOpen: TaskTreeNode[], sinkDone: TaskTreeNode[]): void {
-    const openChildren: TaskTreeNode[] = [];
-    const doneChildren: TaskTreeNode[] = [];
-    for (const c of node.children) {
-      if (isTaskDone(store, c.id)) split(c, doneChildren, doneChildren);
-      else split(c, openChildren, doneChildren);
-    }
-    const out: TaskTreeNode[] = isTaskDone(store, node.id) ? sinkDone : sinkOpen;
-    out.push({ id: node.id, children: isTaskDone(store, node.id) ? doneChildren : openChildren });
+  nodes: readonly TaskTreeNode[],
+): TaskTreeNode[] {
+  const out: TaskTreeNode[] = [];
+  for (const node of nodes) {
+    if (isTaskDone(store, node.id)) continue;
+    out.push({ id: node.id, children: pruneDoneTasks(store, node.children) });
   }
-  for (const top of tree.children) split(top, openNodes, doneNodes);
-  return { openNodes, doneNodes };
+  return out;
 }
 
 function TaskTitleInput({
@@ -146,8 +132,6 @@ export interface TaskRowProps {
   readOnly?: boolean;
   /** Use ancestor-aware effective status for the checkbox and dimming. */
   effectiveStatus?: boolean;
-  /** Rendered inside the DONE tree (forces dimmed styling). */
-  doneGroup?: boolean;
   /** SortableList handle — presence enables the drag handle and chrome. */
   handle?: SortableHandleProps;
   /** Nested subtree, rendered indented below the row. */
@@ -158,7 +142,6 @@ export function TaskRow({
   taskId,
   readOnly,
   effectiveStatus,
-  doneGroup,
   handle,
   children,
 }: TaskRowProps): React.JSX.Element | null {
@@ -174,7 +157,7 @@ export function TaskRow({
 
   const classes = ['task-line'];
   if (handle) classes.push('sortable-row');
-  if (doneGroup || done) classes.push('task-line-done');
+  if (done) classes.push('task-line-done');
   if (handle?.isDragging) classes.push('sortable-row-active');
   if (handle?.isOver) classes.push('sortable-row-over');
 
@@ -289,97 +272,73 @@ export function TaskList({
 }
 
 /**
- * Recursive task tree. `sortable` renders each sibling group as its
- * own SortableList so drag-and-drop is confined to one sibling
- * group — sub-tasks can't be reordered into a different parent's
- * child list. Non-sortable renders the flat <ul> used by the DONE
- * tree. Indentation comes from `.task-line-children` padding.
+ * Recursive task tree. Each sibling group renders as its own
+ * SortableList so drag-and-drop is confined to one sibling group —
+ * sub-tasks can't be reordered into a different parent's child list.
+ * Indentation comes from `.task-line-children` padding.
  */
 export function TaskTree({
   nodes,
-  sortable,
   onReorder,
   ariaLabel,
 }: {
   nodes: readonly TaskTreeNode[];
-  sortable?: boolean;
   onReorder?: (activeId: string, beforeId: string | undefined) => void;
   ariaLabel?: string;
 }): React.JSX.Element | null {
   if (nodes.length === 0) return null;
-  if (sortable) {
-    const ids = nodes.map((n) => n.id);
-    return (
-      <SortableList
-        itemIds={ids}
-        onReorder={onReorder ?? (() => {})}
-        ariaLabel={ariaLabel ?? 'Tasks'}
-        className="sortable-list"
-      >
-        {(tid, handle) => {
-          const children = nodes.find((n) => n.id === tid)?.children ?? [];
-          return (
-            <TaskRow handle={handle} taskId={tid}>
-              {children.length > 0 && (
-                <TaskTree
-                  nodes={children}
-                  sortable
-                  onReorder={onReorder}
-                  ariaLabel={ariaLabel}
-                />
-              )}
-            </TaskRow>
-          );
-        }}
-      </SortableList>
-    );
-  }
+  const ids = nodes.map((n) => n.id);
   return (
-    <ul className="task-tree-done" role="list">
-      {nodes.map((node) => (
-        <li key={node.id} className="task-tree-done-row">
-          <TaskRow taskId={node.id} doneGroup>
-            {node.children.length > 0 && <TaskTree nodes={node.children} />}
+    <SortableList
+      itemIds={ids}
+      onReorder={onReorder ?? (() => {})}
+      ariaLabel={ariaLabel ?? 'Tasks'}
+      className="sortable-list"
+    >
+      {(tid, handle) => {
+        const children = nodes.find((n) => n.id === tid)?.children ?? [];
+        return (
+          <TaskRow handle={handle} taskId={tid}>
+            {children.length > 0 && (
+              <TaskTree
+                nodes={children}
+                onReorder={onReorder}
+                ariaLabel={ariaLabel}
+              />
+            )}
           </TaskRow>
-        </li>
-      ))}
-    </ul>
+        );
+      }}
+    </SortableList>
   );
 }
 
 /**
- * Project-style task view: build the tree from `ids`, split it by
- * status, and render the open tree (sortable) above a DONE group.
+ * Project/area task tree: build the tree from `ids` and render it in
+ * stored order. With `showCompleted` off, done tasks (and their
+ * subtrees) are pruned; with it on, done rows stay in place with a
+ * checked checkbox and strikethrough title.
  */
 export function TaskTreeByStatus({
   ids,
-  sortable,
   onReorder,
   ariaLabel,
+  showCompleted = false,
 }: {
   ids: readonly string[];
-  sortable?: boolean;
   onReorder?: (activeId: string, beforeId: string | undefined) => void;
   ariaLabel?: string;
-}): React.JSX.Element {
+  /** Show done tasks in place instead of hiding them. */
+  showCompleted?: boolean;
+}): React.JSX.Element | null {
   const { store } = useDataLayer();
   const tree = buildTaskTree(store, ids);
-  const { openNodes, doneNodes } = splitTaskTreeByStatus(store, tree);
+  const nodes = showCompleted ? tree.children : pruneDoneTasks(store, tree.children);
   return (
-    <>
-      {openNodes.length > 0 && (
-        <TaskTree
-          nodes={openNodes}
-          sortable={sortable}
-          onReorder={onReorder}
-          ariaLabel={ariaLabel}
-        />
-      )}
-      {doneNodes.length > 0 && (
-        <Group title="DONE" count={countTree(doneNodes)}>
-          <TaskTree nodes={doneNodes} />
-        </Group>
-      )}
-    </>
+    <TaskTree
+      nodes={nodes}
+      onReorder={onReorder}
+      ariaLabel={ariaLabel}
+    />
   );
 }

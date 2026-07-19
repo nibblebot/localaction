@@ -518,6 +518,17 @@
   color: var(--text-h);
 }
 
+/* Completed-tasks toggle in the "show in place" mode. */
+.area-tab-action-active {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
+.area-tab-action-active:hover {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+
 .area-tab-action svg {
   width: 15px;
   height: 15px;
@@ -1648,26 +1659,9 @@
   display: none;
 }
 
-.task-line-children > .sortable-item-slot > .task-line,
-.task-line-children > .task-tree-done-row > .task-line {
+.task-line-children > .sortable-item-slot > .task-line {
   background: var(--bg);
   border-style: dashed;
-}
-
-/* The DONE tree uses a flat <ul> instead of a SortableList so the
-   children sit inside their parent's `.task-line-children`. Each
-   row's <li> is transparent; the row carries the visual chrome. */
-.task-tree-done {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.task-tree-done-row {
-  display: block;
 }
 
 .task-line.sortable-row-active {

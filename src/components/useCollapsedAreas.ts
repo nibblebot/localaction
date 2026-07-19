@@ -29,6 +29,8 @@ export interface CollapsedAreas {
   readonly collapsed: ReadonlySet<string>;
   /** Flip one area between collapsed and expanded. */
   readonly toggle: (id: string) => void;
+  /** Expand one area; no-op when it is already expanded. */
+  readonly expand: (id: string) => void;
   /** Replace the whole set (used by collapse-all / expand-all). */
   readonly replace: (ids: Iterable<string>) => void;
 }
@@ -51,11 +53,21 @@ export function useCollapsedAreas(): CollapsedAreas {
     });
   }, []);
 
+  const expand = useCallback((id: string): void => {
+    setCollapsed((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      persist(next);
+      return next;
+    });
+  }, []);
+
   const replace = useCallback((ids: Iterable<string>): void => {
     const next = new Set(ids);
     persist(next);
     setCollapsed(next);
   }, []);
 
-  return { collapsed, toggle, replace };
+  return { collapsed, toggle, expand, replace };
 }

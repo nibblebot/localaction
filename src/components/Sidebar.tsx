@@ -142,7 +142,8 @@ export default function Sidebar(): React.JSX.Element {
   const { selection, navigate } = useSelection();
   const newAreaInputRef = useRef<HTMLInputElement>(null);
   const tree = useMemo(() => buildTree(counts), [counts]);
-  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } = useCollapsedAreas();
+  const { collapsed, toggle: toggleCollapse, expand: expandArea, replace: replaceCollapsed } =
+    useCollapsedAreas();
   // The sortable tree renders the full area tree flattened; collapsed
   // areas contribute their row but not their (hidden) children.
   const sortableNodes = useMemo<readonly SortableTreeNode<string>[]>(() => {
@@ -297,7 +298,12 @@ export default function Sidebar(): React.JSX.Element {
                   handle={handle}
                   node={node}
                   selectedId={selectedId}
-                  onSelect={(sid) => navigate({ kind: 'area', id: sid })}
+                  onSelect={(sid) => {
+                    // Selecting a collapsed area also expands it so the
+                    // sidebar context matches the main pane.
+                    expandArea(sid);
+                    navigate({ kind: 'area', id: sid });
+                  }}
                   isTopLevel={depth === 0}
                   dim={dimmed.has(node.count.id)}
                   taskCountOverride={override}

@@ -118,7 +118,12 @@ export function getTask(store: MergeableStore, id: string): Task | undefined {
  * done when every descendant is effectively done; otherwise it is `open`.
  * Leaves (no children) reflect their stored cell directly.
  */
-export function getEffectiveTaskStatus(store: MergeableStore, id: string): TaskStatus | undefined {
+export function getEffectiveTaskStatus(
+  store: MergeableStore,
+  id: string,
+  _version = 0,
+  _tables?: unknown,
+): TaskStatus | undefined {
   if (!store.hasRow(TABLES.tasks, id)) return undefined;
   return effectiveStatus(store, id);
 }
@@ -325,9 +330,14 @@ export function useEffectiveTaskStatus(
   store: MergeableStore,
   id: string | undefined,
 ): TaskStatus | undefined {
-  useTables(store);
+  // Subscribe + dependency tokens so the React Compiler's memo cache
+  // re-derives when the tasks table changes (same pattern as
+  // useInboxTaskIds — without them the singleton `store` reference
+  // alone leaves a stale status across re-renders).
+  const ids = useRowIds(TABLES.tasks, store);
+  const tables = useTables(store);
   if (!id || !store.hasRow(TABLES.tasks, id)) return undefined;
-  return getEffectiveTaskStatus(store, id);
+  return getEffectiveTaskStatus(store, id, ids.length, tables);
 }
 
 export function useTask(store: MergeableStore, id: string | undefined): Task | undefined {

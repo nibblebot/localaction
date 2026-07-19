@@ -73,6 +73,12 @@
   <symbol id="chevron-right-icon" viewBox="0 0 16 16">
     <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M6 3 L11 8 L6 13"/>
   </symbol>
+  <symbol id="collapse-all-icon" viewBox="0 0 16 16">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 8 L8 3 L13 8 M3 13 L8 8 L13 13"/>
+  </symbol>
+  <symbol id="expand-all-icon" viewBox="0 0 16 16">
+    <path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M3 3 L8 8 L13 3 M3 8 L8 13 L13 8"/>
+  </symbol>
   <symbol id="close-icon" viewBox="0 0 20 20">
     <path stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M5 5 L15 15 M15 5 L5 15"/>
   </symbol>

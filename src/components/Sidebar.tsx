@@ -11,9 +11,9 @@ import {
   type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
+import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
-import { areaColorHex, isAreaColorId } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
 import { SortableList } from './SortableList.tsx';
 import PersonFilterFacet from './persons/PersonFilterFacet.tsx';
@@ -52,10 +52,6 @@ function buildTree(counts: AreaCount[]): AreaNode[] {
   return roots;
 }
 
-function getColorHex(raw: string | null | undefined): string {
-  return isAreaColorId(raw) ? areaColorHex(raw) : areaColorHex('gray');
-}
-
 interface SortableAreaRowProps {
   handle: SortableHandleProps;
   node: AreaNode;
@@ -64,6 +60,9 @@ interface SortableAreaRowProps {
   isTopLevel: boolean;
   dim: boolean;
   taskCountOverride: number | null;
+  /** Present only when this row's children are rendered and collapsible. */
+  collapsed?: boolean | null;
+  onToggleCollapse?: (id: string) => void;
 }
 
 function SortableAreaRow({
@@ -74,12 +73,14 @@ function SortableAreaRow({
   isTopLevel,
   dim,
   taskCountOverride,
+  collapsed,
+  onToggleCollapse,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
-  const dot = getColorHex(node.count.color);
   const displayName = node.count.name || 'Untitled';
   const count = taskCountOverride ?? node.count.taskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
+  const collapsible = collapsed !== null && collapsed !== undefined;
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
   if (dim) classes.push('sidebar-item-dim');
@@ -91,6 +92,28 @@ function SortableAreaRow({
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
       <div className="sidebar-item-row">
+        {isTopLevel &&
+          (collapsible ? (
+            <button
+              type="button"
+              className="sidebar-area-caret"
+              aria-label={collapsed ? `Expand ${displayName}` : `Collapse ${displayName}`}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Expand sub-areas' : 'Collapse sub-areas'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleCollapse?.(node.count.id);
+              }}
+            >
+              <svg className="svg-icon" aria-hidden="true">
+                <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+              </svg>
+            </button>
+          ) : (
+            // Fixed-width gutter so top-level names align whether or not
+            // the area has a caret.
+            <span className="sidebar-area-caret-spacer" aria-hidden="true" />
+          ))}
         <button
           type="button"
           className={classes.join(' ')}
@@ -104,11 +127,6 @@ function SortableAreaRow({
           }}
           {...(handle.listeners ?? {})}
         >
-          <span
-            className={`sidebar-item-dot${isTopLevel ? '' : ' sidebar-item-dot-child'}`}
-            aria-hidden="true"
-            style={{ background: dot }}
-          />
           <span className="sidebar-item-name">{displayName}</span>
           {count > 0 ? <span className="sidebar-link-count">{count}</span> : null}
         </button>
@@ -198,6 +216,32 @@ export default function Sidebar(): React.JSX.Element {
   }, [selection, counts]);
 
   const inboxIds = useInboxTaskIds(store);
+  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } = useCollapsedAreas();
+
+  const selectedId = selection.kind === 'area' ? selection.id : null;
+
+  // Only areas with rendered children are collapsible.
+  const collapsibleIds = useMemo<string[]>(
+    () => tree.filter((n) => n.children.length > 0).map((n) => n.count.id),
+    [tree],
+  );
+  const allCollapsed =
+    collapsibleIds.length > 0 && collapsibleIds.every((id) => collapsed.has(id));
+
+  function toggleAll(): void {
+    if (allCollapsed) {
+      replaceCollapsed([]);
+      return;
+    }
+    // Collapse-all keeps the area shown in the main pane (and its
+    // ancestors) expanded so the current context stays visible.
+    const keep = new Set<string>();
+    for (let cur = selectedId; cur; ) {
+      keep.add(cur);
+      cur = counts.find((c) => c.id === cur)?.parentId ?? null;
+    }
+    replaceCollapsed(collapsibleIds.filter((id) => !keep.has(id)));
+  }
 
   function createNew(name: string): void {
     const id = createArea(store, { name, color: activeColor });
@@ -206,7 +250,6 @@ export default function Sidebar(): React.JSX.Element {
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderArea(store, activeId, beforeId);
   }
-  const selectedId = selection.kind === 'area' ? selection.id : null;
   const rootIds = tree.map((n) => n.count.id);
 
   return (
@@ -236,6 +279,19 @@ export default function Sidebar(): React.JSX.Element {
       >
         <h2 className="sidebar-section-title">
           <span>Areas</span>
+          {collapsibleIds.length > 0 && (
+            <button
+              type="button"
+              className="sidebar-section-title-action"
+              onClick={toggleAll}
+              aria-label={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
+              title={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
+            >
+              <svg className="svg-icon" aria-hidden="true">
+                <use href={`/icons.svg#${allCollapsed ? 'expand-all-icon' : 'collapse-all-icon'}`} />
+              </svg>
+            </button>
+          )}
           <button
             type="button"
             className="sidebar-section-title-action"
@@ -274,16 +330,20 @@ export default function Sidebar(): React.JSX.Element {
                     isTopLevel
                     dim={dimmed.has(node.count.id)}
                     taskCountOverride={override}
+                    collapsed={node.children.length > 0 ? collapsed.has(node.count.id) : null}
+                    onToggleCollapse={toggleCollapse}
                   />
-                  <SubAreaList
-                    parent={node}
-                    selectedId={selectedId}
-                    onSelect={(sid) => navigate({ kind: 'area', id: sid })}
-                    onReorder={onReorder}
-                    dimmed={dimmed}
-                    filtered={filtered}
-                    filterActive={filterActive}
-                  />
+                  {!collapsed.has(node.count.id) && (
+                    <SubAreaList
+                      parent={node}
+                      selectedId={selectedId}
+                      onSelect={(sid) => navigate({ kind: 'area', id: sid })}
+                      onReorder={onReorder}
+                      dimmed={dimmed}
+                      filtered={filtered}
+                      filterActive={filterActive}
+                    />
+                  )}
                 </div>
               );
             }}

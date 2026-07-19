@@ -34,7 +34,7 @@ async function cleanOpfs(page: Page): Promise<void> {
 }
 
 async function openInbox(page: Page): Promise<void> {
-  await page.click('.sidebar-inbox-button');
+  await page.click('.sidebar-inbox-link');
   await expect(page.locator('main[aria-label="Inbox"]')).toBeVisible();
 }
 
@@ -48,7 +48,7 @@ test.describe('inbox visibility', () => {
   test.beforeEach(async ({ page }) => {
     await cleanOpfs(page);
     await page.goto('/#/');
-    await page.waitForSelector('.sidebar-inbox-button');
+    await page.waitForSelector('.sidebar-inbox-link');
   });
 
   test('a freshly-added inbox task appears immediately in the sidebar count and the inbox body', async ({ page }) => {
@@ -58,20 +58,20 @@ test.describe('inbox visibility', () => {
     await createInboxTask(page, 'Fresh inbox task');
 
     // Sidebar count + body must reflect the new task without any extra clicks.
-    await expect(page.locator('.sidebar-inbox-count')).toHaveText('1');
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
     await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveText('Fresh inbox task');
   });
 
   test('inbox tasks survive a page reload', async ({ page }) => {
     await openInbox(page);
     await createInboxTask(page, 'Persisted inbox task');
-    await expect(page.locator('.sidebar-inbox-count')).toHaveText('1');
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
 
     await page.reload();
-    await page.waitForSelector('.sidebar-inbox-button');
+    await page.waitForSelector('.sidebar-inbox-link');
     await openInbox(page);
 
-    await expect(page.locator('.sidebar-inbox-count')).toHaveText('1');
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
     await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveText('Persisted inbox task');
   });
 });

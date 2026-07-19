@@ -11,6 +11,7 @@ import {
   type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
+import { formatRoute, INBOX } from '../router.ts';
 import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
@@ -260,16 +261,19 @@ export default function Sidebar(): React.JSX.Element {
       </div>
       <PersonFilterFacet />
 
-      <div className="sidebar-section sidebar-inbox">
-        <button
-          type="button"
-          className={`sidebar-inbox-button${selection.kind === 'inbox' ? ' sidebar-inbox-button-active' : ''}`}
-          onClick={() => navigate({ kind: 'inbox' })}
+      <div className="sidebar-section">
+        <a
+          href={formatRoute(INBOX)}
+          className={`sidebar-item sidebar-item-top sidebar-inbox-link${selection.kind === 'inbox' ? ' sidebar-item-active' : ''}`}
           aria-label="Inbox"
         >
-          <span className="sidebar-inbox-label">Inbox</span>
-          <span className="sidebar-inbox-count" aria-label="Inbox task count">{inboxIds.length}</span>
-        </button>
+          <span className="sidebar-item-name">Inbox</span>
+          {inboxIds.length > 0 ? (
+            <span className="sidebar-link-count" aria-label="Inbox task count">
+              {inboxIds.length}
+            </span>
+          ) : null}
+        </a>
       </div>
 
 

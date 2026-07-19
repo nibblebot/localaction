@@ -214,6 +214,10 @@
   color: var(--accent);
 }
 
+.sidebar-inbox-link {
+  text-decoration: none;
+}
+
 .sidebar-area-children {
   list-style: none;
   margin: 0;

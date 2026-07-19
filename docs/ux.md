@@ -72,11 +72,15 @@ A `AreaHeader` (name, colour, and a breadcrumb of the parent chain) sits above
 three **tabs**, each carrying a live count and an add action:
 
 - **Projects** — project rows with a done/total rollup; drag-to-reorder within
-  the area.
+  the area. Projects from every sub-area (recursively) roll up into this tab
+  under a clickable sub-area heading.
 - **Tasks** — tasks grouped by their project, with nested sub-tasks, an
-  open/done toggle, and drag-to-reorder.
-- **Notes** — notes attached to this area (or its projects/tasks), each shown
-  as a line with a markdown body preview.
+  open/done toggle, and drag-to-reorder. Sub-area tasks and projects roll up
+  the same way, each under its own sub-area heading.
+- **Notes** — notes attached to this area or any area in its subtree (or their
+  projects/tasks), each shown as a line with a markdown body preview.
+
+All three tab counts include the full sub-area subtree.
 
 Tabs remember their last selection per area.
 

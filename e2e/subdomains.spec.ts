@@ -15,6 +15,62 @@ async function createArea(page: Page, name: string): Promise<void> {
   await expect(page.locator('.area-header-name')).toContainText(name);
 }
 
+test.describe('Sub-area roll-up into the parent area view', () => {
+  test('parent Projects tab lists sub-area projects under a sub-area header', async ({
+    page,
+  }) => {
+    const parent = `Family ${uniq()}`;
+    const child = `Kids ${uniq()}`;
+    const project = `School play ${uniq()}`;
+    await createArea(page, parent);
+    // Create the sub-area (lands on its pane).
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(child);
+    await page.locator('.area-header-add-input').press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(child);
+    // Add a project inside the sub-area.
+    await page.locator('.area-tab', { hasText: 'Projects' }).click();
+    const input = page.locator('.projects-tab .inline-add-input');
+    await input.fill(project);
+    await input.press('Enter');
+    await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
+    // Back on the parent: the sub-area project rolls up under a header.
+    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    await expect(page.locator('.area-header-name')).toContainText(parent);
+    await expect(page.locator('.subarea-header-name', { hasText: child })).toBeVisible();
+    await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
+    // The sub-area header navigates into the sub-area.
+    await page.locator('.subarea-header-name', { hasText: child }).click();
+    await expect(page.locator('.area-header-name')).toContainText(child);
+  });
+
+  test('parent Tasks tab lists sub-area tasks grouped by their project', async ({
+    page,
+  }) => {
+    const parent = `Work ${uniq()}`;
+    const child = `Team ${uniq()}`;
+    const task = `Prep deck ${uniq()}`;
+    await createArea(page, parent);
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(child);
+    await page.locator('.area-header-add-input').press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(child);
+    // Add a task inside the sub-area (spins up a "General" project).
+    await page.locator('.area-tab', { hasText: 'Tasks' }).click();
+    const input = page.locator('.tasks-tab .inline-add-input');
+    await input.fill(task);
+    await input.press('Enter');
+    await expect(page.locator('.tasks-tab .task-line-title').last()).toHaveValue(task);
+    // Back on the parent: the sub-area task rolls up under a header.
+    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    await page.locator('.area-tab', { hasText: 'Tasks' }).click();
+    await expect(page.locator('.subarea-header-name', { hasText: child })).toBeVisible();
+    await expect(
+      page.locator('.subarea-section .task-line-title').last(),
+    ).toHaveValue(task);
+  });
+});
+
 test.describe('Sub-areas (inline create)', () => {
   test('a top-level area header has no leading slash', async ({ page }) => {
     const name = `Root ${uniq()}`;

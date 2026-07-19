@@ -36,7 +36,7 @@ import {
   getEntityPersonIds,
   usePerson,
 } from '../data/index.ts';
-import type { Area, NoteEntityType } from '../data/index.ts';
+import type { Area, NoteEntityType, ProjectRollup } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { INBOX } from '../router.ts';
@@ -91,6 +91,32 @@ export default function MainPane(): React.JSX.Element {
     void areaRowIds.length;
     return buildParentChain(store, areaId);
   }, [store, areaId, areaRowIds]);
+
+  // Depth-first list of every descendant area (sub-areas, recursively),
+  // so the tabs below can roll their content into this view.
+  const subAreas = useMemo<readonly SubAreaRef[]>(() => {
+    if (!areaId) return [];
+    const byParent = new Map<string, typeof counts>();
+    for (const c of counts) {
+      if (!c.parentId) continue;
+      const list = byParent.get(c.parentId) ?? [];
+      list.push(c);
+      byParent.set(c.parentId, list);
+    }
+    const out: SubAreaRef[] = [];
+    const walk = (id: string): void => {
+      const kids = [...(byParent.get(id) ?? [])].sort((a, b) => {
+        if (a.order !== b.order) return a.order - b.order;
+        return a.name.localeCompare(b.name);
+      });
+      for (const k of kids) {
+        out.push({ id: k.id, name: k.name });
+        walk(k.id);
+      }
+    };
+    walk(areaId);
+    return out;
+  }, [counts, areaId]);
 
    if (selection.kind === 'project') {
      return <ProjectPane projectId={selection.id} />;
@@ -158,10 +184,10 @@ export default function MainPane(): React.JSX.Element {
           onToggleCompleted={toggleCompleted}
         />
         {tab === 'projects' && (
-          <ProjectsTab areaId={areaId} isActive />
+          <ProjectsTab areaId={areaId} subAreas={subAreas} isActive />
         )}
         {tab === 'tasks' && (
-          <TasksTab areaId={areaId} isActive showCompleted={showCompleted} />
+          <TasksTab areaId={areaId} subAreas={subAreas} isActive showCompleted={showCompleted} />
         )}
         {tab === 'notes' && (
           <NotesTab areaId={areaId} isActive />
@@ -462,15 +488,78 @@ function PaneTabs<T extends string>({
   );
 }
 
+interface SubAreaRef {
+  id: string;
+  name: string;
+}
+
 function ProjectsTab({
   areaId,
+  subAreas,
   isActive,
 }: {
   areaId: string;
+  subAreas: readonly SubAreaRef[];
   isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
+  const inArea = useMemo(
+    () => rollups.filter((r) => r.areaId === areaId),
+    [rollups, areaId],
+  );
+
+  function addProject(name: string): void {
+    createProject(store, { name, areaId });
+  }
+
+  const addInputRef = useRef<HTMLInputElement>(null);
+  const wasEmpty = useRef(inArea.length === 0);
+  useEffect(() => {
+    if (!isActive) return;
+    const empty = inArea.length === 0;
+    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    wasEmpty.current = empty;
+  }, [isActive, inArea.length]);
+
+  return (
+    <section className="projects-tab" aria-label="Projects">
+      <AreaProjectGroups areaId={areaId} rollups={rollups} />
+      {subAreas.map((sa) => (
+        <SubAreaProjects
+          key={sa.id}
+          areaId={sa.id}
+          name={sa.name}
+          rollups={rollups}
+        />
+      ))}
+      <InlineAddInput
+        ref={addInputRef}
+        placeholder={
+          inArea.length === 0
+            ? 'No projects yet — name this one to start.'
+            : 'New project…'
+        }
+        ariaLabel="New project"
+        onSubmit={addProject}
+      />
+    </section>
+  );
+}
+
+/**
+ * ACTIVE / DONE project groups for a single area, with the person filter
+ * applied. Reused for the area itself and for each sub-area rolled into
+ * the view.
+ */
+function AreaProjectGroups({
+  areaId,
+  rollups,
+}: {
+  areaId: string;
+  rollups: ProjectRollup[];
+}): React.JSX.Element {
+  const { store } = useDataLayer();
   const inArea = useMemo(
     () =>
       rollups
@@ -481,10 +570,6 @@ function ProjectsTab({
         }),
     [rollups, areaId],
   );
-
-  function addProject(name: string): void {
-    createProject(store, { name, areaId });
-  }
 
   function onReorder(activeId: string, beforeId: string | undefined): void {
     reorderProject(store, activeId, beforeId);
@@ -511,17 +596,9 @@ function ProjectsTab({
 
   const done = visible.filter((p) => p.total > 0 && p.done === p.total);
   const active = visible.filter((p) => p.total === 0 || p.done < p.total);
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(inArea.length === 0);
-  useEffect(() => {
-    if (!isActive) return;
-    const empty = inArea.length === 0;
-    if (empty || wasEmpty.current) addInputRef.current?.focus();
-    wasEmpty.current = empty;
-  }, [isActive, inArea.length]);
 
   return (
-    <section className="projects-tab" aria-label="Projects">
+    <>
       {active.length > 0 && (
         <Group title="ACTIVE" count={active.length}>
           <SortableList
@@ -560,22 +637,54 @@ function ProjectsTab({
           ))}
         </Group>
       )}
-      <InlineAddInput
-        ref={addInputRef}
-        placeholder={
-          inArea.length === 0
-            ? 'No projects yet — name this one to start.'
-            : 'New project…'
-        }
-        ariaLabel="New project"
-        onSubmit={addProject}
-      />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
         </p>
       )}
-    </section>
+    </>
+  );
+}
+
+/** A sub-area's projects rolled into the parent area view. */
+function SubAreaProjects({
+  areaId,
+  name,
+  rollups,
+}: {
+  areaId: string;
+  name: string;
+  rollups: ProjectRollup[];
+}): React.JSX.Element | null {
+  if (!rollups.some((r) => r.areaId === areaId)) return null;
+  return (
+    <div className="subarea-section">
+      <SubAreaHeader areaId={areaId} name={name} />
+      <AreaProjectGroups areaId={areaId} rollups={rollups} />
+    </div>
+  );
+}
+
+/** Clickable heading for a rolled-in sub-area section. */
+function SubAreaHeader({
+  areaId,
+  name,
+}: {
+  areaId: string;
+  name: string;
+}): React.JSX.Element {
+  const { navigate } = useSelection();
+  return (
+    <header className="subarea-header">
+      <button
+        type="button"
+        className="subarea-header-name"
+        title="Open sub-area"
+        onClick={() => navigate({ kind: 'area', id: areaId })}
+      >
+        {name || 'Untitled'}
+      </button>
+    </header>
   );
 }
 
@@ -829,26 +938,34 @@ interface TasksTabProject {
   order: number;
 }
 
+function projectsForArea(
+  rollups: ProjectRollup[],
+  areaId: string,
+): TasksTabProject[] {
+  return rollups
+    .filter((r) => r.areaId === areaId)
+    .map((r) => ({ id: r.projectId, name: r.projectName, order: r.order }))
+    .sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.name.localeCompare(b.name);
+    });
+}
+
 function TasksTab({
   areaId,
+  subAreas,
   isActive,
   showCompleted,
 }: {
   areaId: string;
+  subAreas: readonly SubAreaRef[];
   isActive: boolean;
   showCompleted: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
   const projects: TasksTabProject[] = useMemo(
-    () =>
-      rollups
-        .filter((r) => r.areaId === areaId)
-        .map((r) => ({ id: r.projectId, name: r.projectName, order: r.order }))
-        .sort((a, b) => {
-          if (a.order !== b.order) return a.order - b.order;
-          return a.name.localeCompare(b.name);
-        }),
+    () => projectsForArea(rollups, areaId),
     [rollups, areaId],
   );
 
@@ -894,6 +1011,15 @@ function TasksTab({
       {projects.map((p) => (
         <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} showCompleted={showCompleted} />
       ))}
+      {subAreas.map((sa) => (
+        <SubAreaTasks
+          key={sa.id}
+          areaId={sa.id}
+          name={sa.name}
+          rollups={rollups}
+          showCompleted={showCompleted}
+        />
+      ))}
       <InlineAddInput
         ref={addInputRef}
         placeholder={
@@ -905,6 +1031,42 @@ function TasksTab({
         onSubmit={addTask}
       />
     </section>
+  );
+}
+
+/** A sub-area's area-rooted tasks and project groups, rolled into the
+ * parent area's Tasks tab. */
+function SubAreaTasks({
+  areaId,
+  name,
+  rollups,
+  showCompleted,
+}: {
+  areaId: string;
+  name: string;
+  rollups: ProjectRollup[];
+  showCompleted: boolean;
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const areaTaskIds = useAreaTaskIds(store, areaId);
+  const projects = useMemo(
+    () => projectsForArea(rollups, areaId),
+    [rollups, areaId],
+  );
+  if (projects.length === 0 && areaTaskIds.length === 0) return null;
+  return (
+    <div className="subarea-section">
+      <SubAreaHeader areaId={areaId} name={name} />
+      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
+      {projects.map((p) => (
+        <ProjectTasksGroup
+          key={p.id}
+          projectId={p.id}
+          projectName={p.name}
+          showCompleted={showCompleted}
+        />
+      ))}
+    </div>
   );
 }
 

@@ -805,6 +805,30 @@
   color: var(--text-muted);
 }
 
+/* Rolled-in sub-area section header (area view projects/tasks tabs). */
+.subarea-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: var(--space-4) 0 var(--space-2);
+  padding-inline: 4px;
+}
+
+.subarea-header-name {
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-h);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.subarea-header-name:hover {
+  text-decoration: underline;
+}
+
 /* Flat task list (inbox / area tasks) — same vertical rhythm as
    `.sortable-list`; each <li> is a transparent wrapper, the row
    inside carries the chrome. */

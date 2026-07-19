@@ -43,6 +43,15 @@ function isTaskDone(store: MergeableStore, taskId: string): boolean {
 }
 
 /**
+ * Id of a freshly created task whose title input should grab focus once
+ * mounted. Set by the "Add sub-task" action before the store write so
+ * the new row's TaskTitleInput picks it up in its mount effect, then
+ * cleared on consumption. Module-scoped because the input mounts deep
+ * inside the (possibly re-navigated) task tree.
+ */
+let pendingTitleFocus: string | null = null;
+
+/**
  * Prune done subtrees out of a task tree, once, so hidden-completed
  * mode drops a done task and everything nested under it. Sibling
  * order is preserved.
@@ -69,6 +78,13 @@ function TaskTitleInput({
   const { store } = useDataLayer();
   const [draft, setDraft] = useState(title);
   const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (pendingTitleFocus === taskId) {
+      pendingTitleFocus = null;
+      ref.current?.focus();
+    }
+  }, [taskId]);
 
   useEffect(() => {
     if (document.activeElement !== ref.current) setDraft(title);
@@ -109,6 +125,7 @@ function TaskTitleInput({
       className="task-line-title"
       rows={1}
       value={draft}
+      placeholder="New task…"
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {
@@ -208,7 +225,11 @@ export function TaskRow({
             aria-label="Add sub-task"
             title="Add sub-task"
             onClick={() => {
-              createTask(store, { title: 'Untitled', placement: { kind: 'task', id: taskId } });
+              const childId = createTask(store, {
+                title: '',
+                placement: { kind: 'task', id: taskId },
+              });
+              pendingTitleFocus = childId;
               const root = getRootPlacement(store, taskId);
               if (root.kind === 'project') navigate({ kind: 'project', id: root.id });
               else if (root.kind === 'area') navigate({ kind: 'area', id: root.id });

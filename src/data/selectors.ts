@@ -147,7 +147,7 @@ export function useAreaCounts(store: MergeableStore): AreaCount[] {
   // Subscribe via useRowIds (length changes) and useTables (cell changes).
   // Both feed the cache key the React Compiler uses to decide whether
   // to re-run the body; without useTables, a row whose `order` cell
-  // changes (e.g. via `reorderArea`) does not invalidate the memoised
+  // changes (e.g. via `moveArea`) does not invalidate the memoised
   // result, so the sidebar tree keeps showing the stale order.
   const d = useRowIds(TABLES.areas, store);
   const p = useRowIds(TABLES.projects, store);

@@ -51,10 +51,11 @@ Areas are top-level containers; each may hold one level of **sub-areas**
 (same semantics, nested under a parent).
 
 - Each row: colour dot, name, counts.
-- **Drag-to-reorder** within a sibling group via `SortableList` (dnd-kit). Each
-  parent's children live in their own sortable list, so reordering is scoped to
-  siblings — dragging across parents is not supported by drag (use an explicit
-  move / reparent instead).
+- **Drag-to-move** across the whole tree via `SortableTree` (dnd-kit's
+  flattened-tree pattern — one drag context spans every level). Vertical
+  movement picks the insertion row; dragging right nests the row under
+  the row above, dragging left unnests it. Nesting is clamped to one
+  level of sub-areas; a row's subtree always moves with it.
 - Add a top-level area or, from a top-level area view, add a sub-area.
 - Selecting an area drives the MainPane's area view.
 
@@ -118,7 +119,10 @@ attribute on the document root and persisted to `localStorage`
 ## Interaction patterns
 
 - **`SortableList`** — the shared drag-to-reorder surface (dnd-kit) with a drag
-  handle; used by the sidebar tree, project rows, and task rows.
+  handle; used for flat sibling lists (project rows).
+- **`SortableTree`** — the flattened-tree drag surface (dnd-kit) for the
+  sidebar area tree and task trees; vertical position + horizontal
+  nest/unnest intent resolve to a reparenting move.
 - **`PromptModal`** — modal used for create flows (new area / project / task /
   note).
 - **`ConfirmModal` / `ConfirmButton`** — confirmation for destructive actions

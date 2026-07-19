@@ -7,8 +7,8 @@
  *                       actions (person, add sub-task, delete).
  * - `effectiveStatus` — flat lists show ancestor-aware effective
  *                       status; trees use the task's own status.
- * - `handle`          — SortableList handle; presence enables the
- *                       drag handle and sortable chrome.
+ * - `handle`          — SortableList/SortableTree handle; presence
+ *                       enables the drag handle and sortable chrome.
  * - `showCompleted`   — TaskTreeByStatus only: render done tasks in
  *                       place (checked + strikethrough) instead of
  *                       pruning their subtrees from the tree.
@@ -32,7 +32,7 @@ import {
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import { SortableList } from './SortableList.tsx';
+import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
@@ -149,10 +149,8 @@ export interface TaskRowProps {
   readOnly?: boolean;
   /** Use ancestor-aware effective status for the checkbox and dimming. */
   effectiveStatus?: boolean;
-  /** SortableList handle — presence enables the drag handle and chrome. */
+  /** Sortable handle — presence enables the drag handle and chrome. */
   handle?: SortableHandleProps;
-  /** Nested subtree, rendered indented below the row. */
-  children?: React.ReactNode;
 }
 
 export function TaskRow({
@@ -160,7 +158,6 @@ export function TaskRow({
   readOnly,
   effectiveStatus,
   handle,
-  children,
 }: TaskRowProps): React.JSX.Element | null {
   const { store } = useDataLayer();
   const task = useTask(store, taskId);
@@ -263,7 +260,6 @@ export function TaskRow({
           />
         </>
       )}
-      {children && <div className="task-line-children">{children}</div>}
     </div>
   );
 }
@@ -293,44 +289,35 @@ export function TaskList({
 }
 
 /**
- * Recursive task tree. Each sibling group renders as its own
- * SortableList so drag-and-drop is confined to one sibling group —
- * sub-tasks can't be reordered into a different parent's child list.
- * Indentation comes from `.task-line-children` padding.
+ * Task tree rendered through a single flattened SortableTree — one
+ * DndContext spans every depth, so a drag can reorder within a sibling
+ * group or reparent a task under another task / back to the root.
+ * Indentation is the slot's `depth * indentWidth` left padding.
  */
 export function TaskTree({
   nodes,
-  onReorder,
+  onMove,
   ariaLabel,
 }: {
   nodes: readonly TaskTreeNode[];
-  onReorder?: (activeId: string, beforeId: string | undefined) => void;
+  /**
+   * Drop handler. `newParentId` is the new parent task (`null` = root
+   * of this tree — the caller maps that to the view's own placement).
+   */
+  onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
   ariaLabel?: string;
 }): React.JSX.Element | null {
   if (nodes.length === 0) return null;
-  const ids = nodes.map((n) => n.id);
   return (
-    <SortableList
-      itemIds={ids}
-      onReorder={onReorder ?? (() => {})}
+    <SortableTree
+      nodes={nodes}
+      onMove={onMove ?? (() => {})}
       ariaLabel={ariaLabel ?? 'Tasks'}
       className="sortable-list"
+      indentWidth={22}
     >
-      {(tid, handle) => {
-        const children = nodes.find((n) => n.id === tid)?.children ?? [];
-        return (
-          <TaskRow handle={handle} taskId={tid}>
-            {children.length > 0 && (
-              <TaskTree
-                nodes={children}
-                onReorder={onReorder}
-                ariaLabel={ariaLabel}
-              />
-            )}
-          </TaskRow>
-        );
-      }}
-    </SortableList>
+      {(tid, handle) => <TaskRow handle={handle} taskId={tid} />}
+    </SortableTree>
   );
 }
 
@@ -342,12 +329,12 @@ export function TaskTree({
  */
 export function TaskTreeByStatus({
   ids,
-  onReorder,
+  onMove,
   ariaLabel,
   showCompleted = false,
 }: {
   ids: readonly string[];
-  onReorder?: (activeId: string, beforeId: string | undefined) => void;
+  onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
   ariaLabel?: string;
   /** Show done tasks in place instead of hiding them. */
   showCompleted?: boolean;
@@ -358,7 +345,7 @@ export function TaskTreeByStatus({
   return (
     <TaskTree
       nodes={nodes}
-      onReorder={onReorder}
+      onMove={onMove}
       ariaLabel={ariaLabel}
     />
   );

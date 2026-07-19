@@ -20,7 +20,8 @@ import {
   deleteArea,
   deleteNote,
   reorderProject,
-  reorderTask,
+  moveTask,
+  PLACEMENT_SEP,
   getEffectiveTaskStatus,
   TABLES,
   TASK_STATUS,
@@ -944,8 +945,19 @@ function ProjectTasksGroup({
     filter,
   );
 
-  function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderTask(store, activeId, beforeId);
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId
+        ? `task${PLACEMENT_SEP}${parentId}`
+        : `project${PLACEMENT_SEP}${projectId}`,
+      beforeId,
+    );
   }
 
   return (
@@ -953,7 +965,7 @@ function ProjectTasksGroup({
       <ProjectHeader name={projectName} count={visibleIds.length} />
       <TaskTreeByStatus
         ids={visibleIds}
-        onReorder={onReorder}
+        onMove={onMove}
         ariaLabel={`Tasks for ${projectName}`}
         showCompleted={showCompleted}
       />
@@ -1350,8 +1362,19 @@ function ProjectTasksTab({
     createTask(store, { title, placement: { kind: 'project', id: projectId } });
   }
 
-  function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderTask(store, activeId, beforeId);
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId
+        ? `task${PLACEMENT_SEP}${parentId}`
+        : `project${PLACEMENT_SEP}${projectId}`,
+      beforeId,
+    );
   }
 
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -1367,7 +1390,7 @@ function ProjectTasksTab({
     <section className="tasks-tab" aria-label="Tasks">
       <TaskTreeByStatus
         ids={visibleIds}
-        onReorder={onReorder}
+        onMove={onMove}
         ariaLabel={`Tasks for ${projectName}`}
         showCompleted={showCompleted}
       />
@@ -1501,8 +1524,17 @@ function InboxPane(): React.JSX.Element {
   function addTask(title: string): void {
     createTask(store, { title });
   }
-  function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderTask(store, activeId, beforeId);
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId ? `task${PLACEMENT_SEP}${parentId}` : null,
+      beforeId,
+    );
   }
   const addInputRef = useRef<HTMLInputElement>(null);
   const wasEmpty = useRef(allIds.length === 0);
@@ -1521,7 +1553,7 @@ function InboxPane(): React.JSX.Element {
         <section className="tasks-tab" aria-label="Inbox tasks">
           <TaskTreeByStatus
             ids={allIds}
-            onReorder={onReorder}
+            onMove={onMove}
             ariaLabel="Inbox tasks"
             showCompleted={showCompleted}
           />

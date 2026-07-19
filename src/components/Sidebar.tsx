@@ -4,7 +4,7 @@ import {
   useStoreVersion,
   useAreaCounts,
   createArea,
-  reorderArea,
+  moveArea,
   useInboxTaskIds,
   useDimmedAreaIds,
   useFilteredAreaCounts,
@@ -16,11 +16,11 @@ import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
 import type { AreaColorId } from '../data/colors.ts';
-import { SortableList } from './SortableList.tsx';
+import { SortableTree } from './SortableTree.tsx';
+import type { SortableTreeNode } from './SortableTree.tsx';
 import PersonFilterFacet from './persons/PersonFilterFacet.tsx';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
 import type { SortableHandleProps } from './SortableList.tsx';
-import type { FilteredAreaCount } from '../data/index.ts';
 
 interface AreaNode {
   count: AreaCount;
@@ -65,7 +65,6 @@ interface SortableAreaRowProps {
   collapsed?: boolean | null;
   onToggleCollapse?: (id: string) => void;
 }
-
 function SortableAreaRow({
   handle,
   node,
@@ -136,63 +135,6 @@ function SortableAreaRow({
   );
 }
 
-interface SubAreaListProps {
-  parent: AreaNode;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-  onReorder: (activeId: string, beforeId: string | undefined) => void;
-  dimmed: ReadonlySet<string>;
-  filterActive: boolean;
-  filtered: Map<string, FilteredAreaCount>;
-}
-
-/**
- * Sub-areas under a single parent, in their own SortableList so
- * reordering is scoped to siblings. Dragging across parents is not
- * supported by drag (slice 10 owns that explicit Move action).
- */
-function SubAreaList({
-  parent,
-  selectedId,
-  onSelect,
-  onReorder,
-  dimmed,
-  filterActive,
-  filtered,
-}: SubAreaListProps): React.JSX.Element | null {
-  if (parent.children.length === 0) return null;
-  return (
-    <SortableList
-      itemIds={parent.children.map((c) => c.count.id)}
-      onReorder={onReorder}
-      ariaLabel={`Sub-areas of ${parent.count.name || 'Untitled'}`}
-      className="sidebar-area-siblings"
-    >
-      {(id, handle) => {
-        const child = parent.children.find((c) => c.count.id === id);
-        if (!child) return <></>;
-        const fc = filtered.get(id);
-        const override = filterActive
-          ? fc
-            ? fc.taskCount
-            : 0
-          : null;
-        return (
-          <SortableAreaRow
-            handle={handle}
-            node={child}
-            selectedId={selectedId}
-            onSelect={onSelect}
-            isTopLevel={false}
-            dim={dimmed.has(id)}
-            taskCountOverride={override}
-          />
-        );
-      }}
-    </SortableList>
-  );
-}
-
 export default function Sidebar(): React.JSX.Element {
   const { store } = useDataLayer();
   useStoreVersion(store);
@@ -200,6 +142,28 @@ export default function Sidebar(): React.JSX.Element {
   const { selection, navigate } = useSelection();
   const newAreaInputRef = useRef<HTMLInputElement>(null);
   const tree = useMemo(() => buildTree(counts), [counts]);
+  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } = useCollapsedAreas();
+  // The sortable tree renders the full area tree flattened; collapsed
+  // areas contribute their row but not their (hidden) children.
+  const sortableNodes = useMemo<readonly SortableTreeNode<string>[]>(() => {
+    const map = (ns: AreaNode[]): SortableTreeNode<string>[] =>
+      ns.map((n) => ({
+        id: n.count.id,
+        children: collapsed.has(n.count.id) ? [] : map(n.children),
+      }));
+    return map(tree);
+  }, [tree, collapsed]);
+  const nodeById = useMemo(() => {
+    const m = new Map<string, AreaNode>();
+    const walk = (ns: AreaNode[]): void => {
+      for (const n of ns) {
+        m.set(n.count.id, n);
+        walk(n.children);
+      }
+    };
+    walk(tree);
+    return m;
+  }, [tree]);
   const { active: filterActive, selected: filterSelected } = usePersonFilter();
   const allAreaIds = useMemo<string[]>(
     () => tree.flatMap(function walk(n: AreaNode): string[] {
@@ -217,7 +181,6 @@ export default function Sidebar(): React.JSX.Element {
   }, [selection, counts]);
 
   const inboxIds = useInboxTaskIds(store);
-  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } = useCollapsedAreas();
 
   const selectedId = selection.kind === 'area' ? selection.id : null;
 
@@ -248,10 +211,13 @@ export default function Sidebar(): React.JSX.Element {
     const id = createArea(store, { name, color: activeColor });
     navigate({ kind: 'area', id });
   }
-  function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderArea(store, activeId, beforeId);
+  function onMoveArea(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveArea(store, activeId, parentId, beforeId);
   }
-  const rootIds = tree.map((n) => n.count.id);
 
   return (
     <aside className="sidebar" aria-label="Sidebar">
@@ -309,14 +275,16 @@ export default function Sidebar(): React.JSX.Element {
           </button>
         </h2>
         {tree.length > 0 && (
-          <SortableList
-            itemIds={rootIds}
-            onReorder={onReorder}
-            ariaLabel="Top-level areas"
+          <SortableTree
+            nodes={sortableNodes}
+            onMove={onMoveArea}
+            ariaLabel="Areas"
             className="sidebar-section-body"
+            indentWidth={26}
+            maxDepth={1}
           >
-            {(id, handle) => {
-              const node = tree.find((n) => n.count.id === id);
+            {(id, handle, depth) => {
+              const node = nodeById.get(id);
               if (!node) return <></>;
               const fc = filtered.get(node.count.id);
               const override = filterActive
@@ -325,33 +293,24 @@ export default function Sidebar(): React.JSX.Element {
                   : 0
                 : null;
               return (
-                <div className="sidebar-area-li-root">
-                  <SortableAreaRow
-                    handle={handle}
-                    node={node}
-                    selectedId={selectedId}
-                    onSelect={(sid) => navigate({ kind: 'area', id: sid })}
-                    isTopLevel
-                    dim={dimmed.has(node.count.id)}
-                    taskCountOverride={override}
-                    collapsed={node.children.length > 0 ? collapsed.has(node.count.id) : null}
-                    onToggleCollapse={toggleCollapse}
-                  />
-                  {!collapsed.has(node.count.id) && (
-                    <SubAreaList
-                      parent={node}
-                      selectedId={selectedId}
-                      onSelect={(sid) => navigate({ kind: 'area', id: sid })}
-                      onReorder={onReorder}
-                      dimmed={dimmed}
-                      filtered={filtered}
-                      filterActive={filterActive}
-                    />
-                  )}
-                </div>
+                <SortableAreaRow
+                  handle={handle}
+                  node={node}
+                  selectedId={selectedId}
+                  onSelect={(sid) => navigate({ kind: 'area', id: sid })}
+                  isTopLevel={depth === 0}
+                  dim={dimmed.has(node.count.id)}
+                  taskCountOverride={override}
+                  collapsed={
+                    depth === 0 && node.children.length > 0
+                      ? collapsed.has(node.count.id)
+                      : null
+                  }
+                  onToggleCollapse={toggleCollapse}
+                />
               );
             }}
-          </SortableList>
+          </SortableTree>
         )}
         <div className="sidebar-section-add">
           <InlineAddInput

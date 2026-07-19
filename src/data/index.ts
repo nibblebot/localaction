@@ -101,9 +101,9 @@ export {
 export type { TaskTreeNode } from './tasks.ts';
 
 export {
-  reorderArea,
+  moveArea,
+  moveTask,
   reorderProject,
-  reorderTask,
   backfillOrder,
   readSiblingOrders,
 } from './order.ts';

@@ -1579,20 +1579,6 @@
   cursor: grabbing;
 }
 
-.sidebar-area-siblings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-area-siblings > .sortable-item-slot {
-  /* Sub-area names indent past the top-level name offset
-     (16px caret gutter + 6px item padding). */
-  padding-left: 26px;
-}
-
 /* ------------------------------------------------------------
    Project row drag handle (grip on the left of the row).
    ------------------------------------------------------------ */
@@ -1668,30 +1654,6 @@
 .task-line-drag-handle svg {
   width: 24px;
   height: 24px;
-}
-
-/* Nested sub-task tree — the children wrapper sits below the row
-   content (flex-basis:100% wraps inside the .task-line flex parent)
-   and indents one level per nesting depth. Sub-tasks are themselves
-   rendered as full .task-line rows, so a single recursive call
-   yields any depth. Rows have no horizontal padding, so nested rows
-   (and their right-aligned action icons) end at the same right edge
-   as top-level rows. */
-.task-line-children {
-  flex-basis: 100%;
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  margin: 4px 0 0;
-  padding-left: 22px;
-  border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.task-line-children:empty {
-  display: none;
 }
 
 .task-line.sortable-row-active {

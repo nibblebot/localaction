@@ -148,7 +148,10 @@ erDiagram
   No `order`, no timestamp cells on links (HLC carries the merge metadata).
 ### Ordering
 
-Drag-to-reorder is sibling-scoped. Each ordered table (`areas`, `projects`,
+Drag-to-reorder spans the whole tree: one flattened `SortableTree`
+(dnd-kit) derives a `(parent, before)` drop from vertical position plus
+horizontal (nest/unnest) intent, and the move helpers write parent +
+order in one transaction. Each ordered table (`areas`, `projects`,
 `tasks`) has an `order` key. `order.ts`:
 
 - Appends new rows at `lastSiblingOrder + 1000`.
@@ -157,9 +160,11 @@ Drag-to-reorder is sibling-scoped. Each ordered table (`areas`, `projects`,
   evenly-spaced integers from `RENORMALIZE_SPACING` (1000), in one transaction.
 - `backfillOrder()` seeds missing `order` cells (from `idHash(id)` + timestamps)
   on boot — idempotent, run after OPFS loads.
-- Reorder helpers (`reorderArea` / `reorderProject` / `reorderTask`) move a
-  row within its **current** sibling group only. Reparenting (changing
-  `parentId` / `areaId` / `projectId`) is a separate `update*` mutation.
+- Move helpers (`moveArea` / `moveTask`) reorder within a sibling group AND
+  reparent in a single write (parent cell + `order` + `updatedAt`). Both
+  refuse moves that would create a cycle (a row under itself or one of
+  its own descendants) or target a missing parent. `reorderProject`
+  stays sibling-scoped (projects have no tree UI).
 
 ## Persistence
 

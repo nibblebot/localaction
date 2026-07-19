@@ -201,31 +201,51 @@ function moveWithinSiblings(
   if (beforeId === movingId) return;
   const siblings = readSiblingOrders(store, columns.table, columns.parent, parentId);
   const newOrder = computeInsertOrder(store, columns.table, siblings, movingId, beforeId);
-  store.setPartialRow(
-    columns.table,
-    movingId,
-    row({
-      [columns.parent]: parentId,
-      [columns.order]: newOrder,
-      [columns.updatedAt]: nowIso(),
-    }),
-  );
+  store.transaction(() => {
+    // A null parent is stored as an absent cell (mirrors updateArea /
+    // updateTask); `row()` strips nulls, so delete the cell explicitly.
+    if (parentId === null) {
+      store.delCell(columns.table, movingId, columns.parent);
+    }
+    store.setPartialRow(
+      columns.table,
+      movingId,
+      row({
+        [columns.parent]: parentId,
+        [columns.order]: newOrder,
+        [columns.updatedAt]: nowIso(),
+      }),
+    );
+  });
 }
 
 /**
- * Move an area to a new sibling position. Keeps the row's `parentId`
- * unchanged; this is a sibling reorder, not a reparent. Reparenting
- * is handled by `updateArea({ parentId })` (slice 10).
+ * Move an area to a new sibling position under `parentId`, reparenting
+ * it when `parentId` differs from its current parent (`null` = root
+ * areas). A single write updates parent + order so subscribers see one
+ * change.
+ *
+ * Refused (no-op) when the target parent is missing, or when the move
+ * would create a cycle — `parentId` being the area itself or one of
+ * its descendants.
  */
-export function reorderArea(
+export function moveArea(
   store: MergeableStore,
   areaId: string,
+  parentId: string | null,
   beforeId: string | undefined,
 ): void {
   if (!store.hasRow(TABLES.areas, areaId)) return;
-  const parentId = normalizeRelation(
-    store.getCell(TABLES.areas, areaId, COLUMNS.areas.parentId),
-  );
+  if (parentId !== null) {
+    if (!store.hasRow(TABLES.areas, parentId)) return;
+    // Cycle guard: walking up the ancestor chain from the target
+    // parent must never reach the moving area.
+    let cur: string | null = parentId;
+    while (cur !== null) {
+      if (cur === areaId) return;
+      cur = normalizeRelation(store.getCell(TABLES.areas, cur, COLUMNS.areas.parentId));
+    }
+  }
   moveWithinSiblings(
     store,
     ORDER_COLUMNS[TABLES.areas],
@@ -259,20 +279,50 @@ export function reorderProject(
 }
 
 /**
- * Move a task to a new sibling position within its current placement
- * group (top-level Inbox/Area/Project tasks, or sub-tasks of one parent).
- * Reordering across placements is not supported — use
- * `updateTask({ placement })` to reparent first.
+ * Move a task to a new sibling position within `placement`, reparenting
+ * it when the placement differs from its current one. `placement` is
+ * the encoded cell value (ADR-0001: `project:<id>`, `area:<id>`,
+ * `task:<id>`, or `null` for the Inbox). A single write updates
+ * placement + order so subscribers see one change.
+ *
+ * Refused (no-op) when the target parent row is missing, or when the
+ * target is `task:<id>` and the move would create a cycle — the parent
+ * task being the moving task itself or one of its descendants.
+ *
+ * The placement string is parsed locally to avoid an import cycle
+ * (tasks.ts already imports this module).
  */
-export function reorderTask(
+export function moveTask(
   store: MergeableStore,
   taskId: string,
+  placement: string | null,
   beforeId: string | undefined,
 ): void {
   if (!store.hasRow(TABLES.tasks, taskId)) return;
-  const placement = normalizeRelation(
-    store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.placement),
-  );
+  if (placement !== null) {
+    const sep = placement.indexOf(':');
+    const kind = sep > 0 ? placement.slice(0, sep) : '';
+    const parentRef = sep > 0 ? placement.slice(sep + 1) : '';
+    if (kind === 'task') {
+      if (!store.hasRow(TABLES.tasks, parentRef)) return;
+      // Cycle guard: walking up the placement chain from the target
+      // parent must never reach the moving task.
+      let cur: string | null = parentRef;
+      while (cur !== null) {
+        if (cur === taskId) return;
+        const p = normalizeRelation(
+          store.getCell(TABLES.tasks, cur, COLUMNS.tasks.placement),
+        );
+        cur = p !== null && p.startsWith('task:') ? p.slice(5) : null;
+      }
+    } else if (kind === 'project') {
+      if (!store.hasRow(TABLES.projects, parentRef)) return;
+    } else if (kind === 'area') {
+      if (!store.hasRow(TABLES.areas, parentRef)) return;
+    } else {
+      return;
+    }
+  }
   moveWithinSiblings(
     store,
     ORDER_COLUMNS[TABLES.tasks],

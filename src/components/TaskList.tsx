@@ -3,7 +3,7 @@
  * inbox, area, and project views. View-specific differences are
  * flags on TaskRow / the list wrappers, never separate components:
  *
- * - `readOnly`        — inbox/area flat lists: span title, no row
+ * - `readOnly`        — area flat list: span title, no row
  *                       actions (person, add sub-task, delete).
  * - `effectiveStatus` — flat lists show ancestor-aware effective
  *                       status; trees use the task's own status.

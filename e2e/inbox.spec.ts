@@ -44,6 +44,25 @@ async function createInboxTask(page: Page, title: string): Promise<void> {
   await input.press('Enter');
 }
 
+// The OPFS persister auto-saves asynchronously; reloading before the
+// save lands leaves a truncated file and the test then depends on the
+// WS sync round-trip winning a 5s race. Poll the OPFS snapshot until it
+// contains the marker so the reload hydrates deterministically.
+async function waitForOpfsSave(page: Page, marker: string): Promise<void> {
+  await expect(async () => {
+    const text = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      try {
+        const handle = await root.getFileHandle('localaction.json');
+        return await (await handle.getFile()).text();
+      } catch {
+        return '';
+      }
+    });
+    expect(text).toContain(marker);
+  }).toPass({ timeout: 5000 });
+}
+
 test.describe('inbox visibility', () => {
   test.beforeEach(async ({ page }) => {
     await cleanOpfs(page);
@@ -59,19 +78,20 @@ test.describe('inbox visibility', () => {
 
     // Sidebar count + body must reflect the new task without any extra clicks.
     await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
-    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveText('Fresh inbox task');
+    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveValue('Fresh inbox task');
   });
 
   test('inbox tasks survive a page reload', async ({ page }) => {
     await openInbox(page);
     await createInboxTask(page, 'Persisted inbox task');
     await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
+    await waitForOpfsSave(page, 'Persisted inbox task');
 
     await page.reload();
     await page.waitForSelector('.sidebar-inbox-link');
     await openInbox(page);
 
     await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
-    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveText('Persisted inbox task');
+    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveValue('Persisted inbox task');
   });
 });

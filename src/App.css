@@ -245,6 +245,24 @@
   padding: var(--space-5) var(--space-6);
 }
 
+/* Flat-pane header (Inbox): title left, pane actions right. The
+   inline-end margin keeps header actions clear of the fixed
+   `.appearance-fab` (40px + its inset) floating at the top-right. */
+.main-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-inline-end: calc(40px + var(--space-2));
+}
+
+.main-pane-title {
+  margin: 0;
+  font-size: 1.29rem;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
 .main-empty {
   max-width: 480px;
   margin: 40px auto;

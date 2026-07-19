@@ -389,6 +389,34 @@ interface PaneTabsProps<T extends string> {
   onToggleCompleted?: () => void;
 }
 
+/**
+ * Completed-task visibility toggle, shared by the pane tab bars and the
+ * inbox header. Renders active (accent tint) while done tasks show in
+ * place.
+ */
+function CompletedToggle({
+  showCompleted,
+  onToggle,
+}: {
+  showCompleted: boolean;
+  onToggle: () => void;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      className={`area-tab-action${showCompleted ? ' area-tab-action-active' : ''}`}
+      aria-label={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+      title={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
+      aria-pressed={showCompleted}
+      onClick={onToggle}
+    >
+      <svg className="svg-icon" aria-hidden="true">
+        <use href="/icons.svg#check-icon" />
+      </svg>
+    </button>
+  );
+}
+
 function PaneTabs<T extends string>({
   tabs,
   tab,
@@ -417,18 +445,7 @@ function PaneTabs<T extends string>({
       })}
       <div className="area-tabs-spacer" />
       {onToggleCompleted && (
-        <button
-          type="button"
-          className={`area-tab-action${showCompleted ? ' area-tab-action-active' : ''}`}
-          aria-label={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
-          title={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
-          aria-pressed={showCompleted}
-          onClick={onToggleCompleted}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#check-icon" />
-          </svg>
-        </button>
+        <CompletedToggle showCompleted={showCompleted ?? false} onToggle={onToggleCompleted} />
       )}
       <button type="button" className="area-tab-action" aria-label="Search" title="Search">
         <svg className="svg-icon" aria-hidden="true">
@@ -1467,10 +1484,11 @@ function ProjectNotesTab({
 
 function InboxPane(): React.JSX.Element {
   const { store } = useDataLayer();
-  // Subscribe so newly-created tasks re-render the list.
-  useRowIds(TABLES.tasks, store);
+  // Subscribe so task cell changes (status, order) re-render the tree.
   useStoreVersion(store);
   const topLevelIds = useInboxTaskIds(store);
+  // TaskTreeByStatus builds the tree itself — feed it the flat deep
+  // list (top-level + descendants), same as the project/area tabs.
   const allIds = useMemo(() => {
     const out: string[] = [];
     for (const t of topLevelIds) {
@@ -1479,28 +1497,37 @@ function InboxPane(): React.JSX.Element {
     }
     return out;
   }, [topLevelIds, store]);
+  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
   function addTask(title: string): void {
     createTask(store, { title });
   }
-  const orderedIds = sortTaskIds(store, allIds);
+  function onReorder(activeId: string, beforeId: string | undefined): void {
+    reorderTask(store, activeId, beforeId);
+  }
   const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(orderedIds.length === 0);
+  const wasEmpty = useRef(allIds.length === 0);
   useEffect(() => {
-    const empty = orderedIds.length === 0;
+    const empty = allIds.length === 0;
     if (empty || wasEmpty.current) addInputRef.current?.focus();
     wasEmpty.current = empty;
-  }, [orderedIds.length]);
+  }, [allIds.length]);
   return (
     <main className="main" aria-label="Inbox">
       <div className="main-body">
         <header className="main-pane-header">
           <h2 className="main-pane-title">Inbox</h2>
+          <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
         </header>
-        <TaskList ids={orderedIds} readOnly effectiveStatus />
+        <TaskTreeByStatus
+          ids={allIds}
+          onReorder={onReorder}
+          ariaLabel="Inbox tasks"
+          showCompleted={showCompleted}
+        />
         <InlineAddInput
           ref={addInputRef}
           placeholder={
-            orderedIds.length === 0
+            allIds.length === 0
               ? 'No inbox tasks — capture one here.'
               : 'New inbox task…'
           }

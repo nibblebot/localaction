@@ -116,10 +116,12 @@ test.describe('Reorder rendering', () => {
     await createTask(page, `Task one ${tok}`);
     await createTask(page, `Task two ${tok}`);
     await createTask(page, `Task three ${tok}`);
-    // Wait for the last task to settle into the list.
+    // Wait for the last task to settle into the list. (Controlled
+    // textareas expose their text via the value property, never the
+    // attribute, so match by position + toHaveValue.)
     await expect(
-      page.locator(`.task-line-title[value="Task three ${tok}"]`),
-    ).toBeVisible();
+      page.locator('.tasks-tab .task-line-title').last(),
+    ).toHaveValue(`Task three ${tok}`);
     const order = await taskOrder(page, tok);
     expect(order).toEqual([
       `Task one ${tok}`,

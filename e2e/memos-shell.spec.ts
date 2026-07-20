@@ -84,7 +84,7 @@ test.describe('LocalAction shell', () => {
     const projectName = `Honeymoon ${uniq()}`;
     // Wait for the app shell + sidebar to be ready before interacting.
     await page.goto('/#/');
-    await expect(page.locator('.sidebar-section-title-action', { hasTitle: 'New area' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'New area' })).toBeVisible();
     // Root area
     await createArea(page, root);
     // Sub-area via the inline + on the root pane

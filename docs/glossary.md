@@ -45,12 +45,12 @@ An individual a LocalAction entity (Area, Project, or Task) is associated with. 
 
 ## Cast
 
-The set of Persons associated with an Area. The cast is a **declaration**: it is the constraint pool its descendant entities (sub-areas, projects, tasks) draw from (the [D4 cast-as-hard-constraint](#) invariant is enforced at read time by intersection). A cast is edited through the Area's header cast chips. Sub-areas / Projects / Tasks also carry a set, but that set is "this entity's persons" — the term **cast** specifically denotes the role an Area's set plays.
+The set of Persons associated with an Area — simply the Area's own [Person Links](#person-link), edited through the Area's header cast chips. Sub-areas / Projects / Tasks also carry a set, but that set is "this entity's persons" — the term **cast** specifically denotes an Area's set. There is no inheritance or constraint: every entity's set stands alone, and assignment popovers list every present Person.
 
 ## Effective Person Set
 
 The Persons an entity actually resolves to at read time:
-`{Self} ∪ ( storedSet(e) ∩ effectiveCast(parent(e)) )`, or `{Self}` when that yields empty. Always non-empty. Stored rows are never mutated to enforce it — see [architecture.md](./architecture.md) for the read path.
+`{Self} ∪ ( storedSet(e) ∩ persons_present )`. Always non-empty. Stored rows are never mutated to enforce it — see [architecture.md](./architecture.md) for the read path.
 
 ## Person Link
 

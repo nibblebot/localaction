@@ -2,15 +2,16 @@ import type { MergeableStore } from 'tinybase';
 import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
-import { effectiveSetForEntity } from './personSelectors.ts';
+import { peopleForEntity } from './personSelectors.ts';
 import { getRootPlacement } from './tasks.ts';
 
 /**
  * Any-of (OR) match per the spec. An entity matches if any of its
- * effective persons is in `filter` (filter ⊆ effectivePersons).
+ * people is in `filter` (filter ∩ people ≠ ∅).
  *
- * Self is always present in every effective set (I5, I7), so filtering
- * to {Self} matches every entity. Empty filter = no filter = match all.
+ * Self is always present in every entity's people (I5, I7), so
+ * filtering to {Self} matches every entity. Empty filter = no
+ * filter = match all.
  */
 function entityMatches(
   store: MergeableStore,
@@ -19,7 +20,7 @@ function entityMatches(
   filter: ReadonlySet<string>,
 ): boolean {
   if (filter.size === 0) return true;
-  const set = effectiveSetForEntity(store, entityType, entityId);
+  const set = peopleForEntity(store, entityType, entityId);
   for (const id of set) {
     if (filter.has(id)) return true;
   }

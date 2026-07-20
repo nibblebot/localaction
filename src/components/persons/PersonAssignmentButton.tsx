@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useDataLayer, useStoreVersion, type NoteEntityType } from '../../data/index.ts';
-import { useEffectiveSet, effectiveCastSetForEntity } from '../../data/personSelectors.ts';
+import { useDataLayer, type NoteEntityType } from '../../data/index.ts';
+import { usePeopleForEntity } from '../../data/personSelectors.ts';
 import PersonAvatarsRow from './PersonAvatarsRow.tsx';
 import PersonAssignmentPopover from './PersonAssignmentPopover.tsx';
-import { getEntityPersonIds } from '../../data/personLinks.ts';
+import { useEntityPersonIds } from '../../data/personLinks.ts';
 
 export interface PersonAssignmentButtonProps {
   entityType: NoteEntityType;
@@ -14,7 +14,7 @@ export interface PersonAssignmentButtonProps {
 
 /**
  * The clickable surface that opens the assignment popover. Renders
- * the resolved effective-set avatars (per spec §7.3 rows always
+ * the resolved people avatars (per spec §7.3 rows always
  * show the avatars — Self disc included — even when the resolved
  * set is just {Self}). Clicking anchors the popover.
  */
@@ -24,12 +24,9 @@ export default function PersonAssignmentButton({
   pickerTitle,
 }: PersonAssignmentButtonProps): React.JSX.Element {
   const { store } = useDataLayer();
-  useStoreVersion(store);
-  const effective = useEffectiveSet(store, entityType, entityId);
+  const people = usePeopleForEntity(store, entityType, entityId);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-  const cast = effectiveCastSetForEntity(store, entityType, entityId);
-  const castList = [...cast];
-  const current = getEntityPersonIds(store, entityType, entityId);
+  const current = useEntityPersonIds(store, entityType, entityId);
 
   function handleClick(e: React.MouseEvent<HTMLButtonElement>): void {
     e.stopPropagation();
@@ -54,14 +51,13 @@ export default function PersonAssignmentButton({
           gap: 4,
         }}
       >
-        <PersonAvatarsRow personIds={effective} small />
+        <PersonAvatarsRow personIds={people} small />
       </button>
       <PersonAssignmentPopover
         anchor={anchor}
         entityType={entityType}
         entityId={entityId}
         current={current}
-        cast={castList}
         title={pickerTitle}
         onClose={() => setAnchor(null)}
       />

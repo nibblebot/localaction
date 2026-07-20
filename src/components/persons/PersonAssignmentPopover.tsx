@@ -11,7 +11,10 @@ import {
   addEntityPerson,
   removeEntityPerson,
 } from '../../data/personLinks.ts';
-import { createPerson } from '../../data/persons.ts';
+import {
+  sortPersonIds,
+  usePresentPersonIds,
+} from '../../data/personSelectors.ts';
 import PersonAvatar from './PersonAvatar.tsx';
 import PersonEditPopover from './PersonEditPopover.tsx';
 export interface PersonAssignmentPopoverProps {
@@ -25,15 +28,10 @@ export interface PersonAssignmentPopoverProps {
   entityType: NoteEntityType;
   entityId: string;
   /**
-   * The current stored set for this entity (NOT the effective set —
+   * The current stored set for this entity (NOT the derived set —
    * we let Self stay implicit). Use `useEntityPersonIds`.
    */
   current: readonly string[];
-  /**
-   * The cast this assignment must be a subset of (D4). Used to scope
-   * the picker's options.
-   */
-  cast: readonly string[];
   /** Header rendered above the option list, e.g. "Assign · Family". */
   title?: string;
   /** Close the popover (backdrop click + Escape). */
@@ -42,21 +40,21 @@ export interface PersonAssignmentPopoverProps {
 
 /**
  * Assignment popover for a single entity (area cast, project, or
- * task). D4 is shown by absence — only persons in the cast are
- * listed. Self is locked-on and tagged "default" (I7).
+ * task). Lists every present person — people are created from the
+ * sidebar's People facet, not here — and toggling a row links or
+ * unlinks that person. Self is locked-on and tagged "default" (I7).
  */
 export default function PersonAssignmentPopover({
   anchor,
   entityType,
   entityId,
   current,
-  cast,
   title,
   onClose,
 }: PersonAssignmentPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
+  useStoreVersion(store);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [creating, setCreating] = useState(false);
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   // Anchor for the edit popover, placed next to the row that was clicked.
   const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(
@@ -76,6 +74,7 @@ export default function PersonAssignmentPopover({
   }, [anchor, onClose]);
 
   const selectedSet = useMemo(() => new Set(current), [current]);
+  const everyone = sortPersonIds(store, usePresentPersonIds(store));
 
   if (!anchor) return null;
 
@@ -83,18 +82,12 @@ export default function PersonAssignmentPopover({
   const y = Math.max(8, Math.min(anchor.y, window.innerHeight - 240));
 
   function toggle(personId: string): void {
-    if (personId === SELF_PERSON_ID) return; // Self always in cast
+    if (personId === SELF_PERSON_ID) return; // Self always assigned
     if (selectedSet.has(personId)) {
       removeEntityPerson(store, entityType, entityId, personId);
     } else {
       addEntityPerson(store, entityType, entityId, personId);
     }
-  }
-
-  async function createAndAdd(name: string): Promise<void> {
-    const id = createPerson(store, { name });
-    setCreating(false);
-    addEntityPerson(store, entityType, entityId, id);
   }
 
   return (
@@ -108,7 +101,7 @@ export default function PersonAssignmentPopover({
         style={{ top: y, left: x }}
       >
         {title && <div className="person-picker-title">{title}</div>}
-        {cast.map((pid) => (
+        {everyone.map((pid) => (
           <PersonRow
             key={pid}
             personId={pid}
@@ -123,20 +116,6 @@ export default function PersonAssignmentPopover({
             }}
           />
         ))}
-        {creating ? (
-          <NewPersonRow
-            onCancel={() => setCreating(false)}
-            onCreate={createAndAdd}
-          />
-        ) : (
-          <button
-            type="button"
-            className="person-picker-new"
-            onClick={() => setCreating(true)}
-          >
-            + New person
-          </button>
-        )}
       </div>
       <PersonEditPopover
         anchor={editAnchor}
@@ -202,48 +181,5 @@ function PersonRow({
         </svg>
       </button>
     </label>
-  );
-}
-
-function NewPersonRow({
-  onCancel,
-  onCreate,
-}: {
-  onCancel: () => void;
-  onCreate: (name: string) => void;
-}): React.JSX.Element {
-  const [name, setName] = useState('');
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
-  return (
-    <form
-      className="person-picker-row"
-      onSubmit={(e) => {
-        e.preventDefault();
-        const trimmed = name.trim();
-        if (!trimmed) return;
-        onCreate(trimmed);
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="text"
-        className="person-edit-name"
-        value={name}
-        placeholder="Person name"
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            onCancel();
-          }
-        }}
-      />
-      <button type="submit" className="btn btn-primary btn-sm" disabled={!name.trim()}>
-        Add
-      </button>
-    </form>
   );
 }

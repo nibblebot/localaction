@@ -80,9 +80,10 @@ The seam between React and TinyBase. Everything is re-exported from
 - **Selectors** — `selectors.ts` derives rollups (`useAreaCounts`,
   `useProjectRollups`, `useNotesForAreaTree`). Each `get*` takes an optional
   `_version` dependency token so React Compiler can memoise the derived output.
-  `personSelectors.ts` derives the effective cast and effective person
-  set of any entity (a read-time intersection that implements narrowing,
-  deletion, and the no-migration default in one mechanism). `personFilter.ts`
+  `personSelectors.ts` derives the people of any entity
+  (`{Self} ∪ (storedSet ∩ persons_present)` — the read-time presence
+  intersection is what makes deletion non-destructive and revivable).
+  `personFilter.ts`
   exposes `areaHasMatch` + `useDimmedAreaIds` for the sidebar filter dim.
 - **Ordering** — `order.ts` (see [Ordering](#ordering) below).
 - **Helpers** — `colors.ts` (the area palette), `slug.ts` (note slugs),
@@ -141,10 +142,10 @@ erDiagram
   row per non-Self membership, row id `${entityType}:${entityId}:${personId}`
   (deterministic composite so two devices adding the same person
   converge to one row). Self is never stored; it is force-unioned at
-  read time. The effective person set of any entity is derived at
-  read time as `{Self} ∪ (storedSet ∩ effectiveCast(parent))` — a
-  narrowing parent's cast writes only that parent's cell; descendants
-  re-derive, so narrowing and deletion are non-destructive and revivable.
+  read time. The people of any entity are derived at read time as
+  `{Self} ∪ (storedSet ∩ persons_present)` — each entity's set stands
+  alone (no inheritance or narrowing), and a deleted person drops out
+  of every association without mutating the stored rows.
   No `order`, no timestamp cells on links (HLC carries the merge metadata).
 ### Ordering
 

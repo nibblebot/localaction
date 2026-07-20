@@ -157,14 +157,10 @@ export {
 } from './personLinks.ts';
 
 export {
-  effectiveCastForArea,
-  effectiveCastForEntity,
-  effectiveSetForEntity,
-  effectiveCastSetForArea,
-  effectiveCastSetForEntity,
+  peopleForEntity,
   presentPersonIds,
-  useEffectiveSet,
-  useEffectiveCast,
+  sortPersonIds,
+  usePeopleForEntity,
   usePresentPersonIds,
 } from './personSelectors.ts';
 

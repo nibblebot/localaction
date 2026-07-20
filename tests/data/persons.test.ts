@@ -23,11 +23,7 @@ import {
   getEntityPersonIds,
   getEntityIdsForPerson,
 } from '../../src/data/personLinks.ts';
-import {
-  effectiveCastForArea,
-  effectiveSetForEntity,
-  effectiveCastSetForArea,
-} from '../../src/data/personSelectors.ts';
+import { peopleForEntity } from '../../src/data/personSelectors.ts';
 import { row } from '../../src/data/internal.ts';
 
 function freshStore(): MergeableStore {
@@ -260,69 +256,63 @@ describe('getEntityIdsForPerson', () => {
   });
 });
 
-describe('effective cast / set derivation', () => {
+describe('people derivation (peopleForEntity)', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
   });
 
-  it('a top-level area with no stored persons has the cast {Self}', () => {
-    expect(effectiveCastForArea(store, 'A1')).toEqual([SELF_PERSON_ID]);
+  it('an entity with no stored persons has the people {Self}', () => {
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).toEqual([SELF_PERSON_ID]);
   });
 
-  it('a top-level area carries its stored set as the cast, intersected with present persons', () => {
+  it('an area carries its stored set, unioned with Self', () => {
     ensureSelfPerson(store);
     const mom = createPerson(store, { name: 'Mom' });
     setEntityPersons(store, NOTE_ENTITY_TYPE.area, 'A1', [mom]);
-    expect(effectiveCastForArea(store, 'A1').sort()).toEqual([mom, SELF_PERSON_ID].sort());
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1').sort()).toEqual([mom, SELF_PERSON_ID].sort());
   });
 
-  it('a sub-area inherits the parent cast intersected with its own set', () => {
+  it("a sub-area's people are its own stored set — no inheritance from the parent", () => {
     ensureSelfPerson(store);
     const mom = createPerson(store, { name: 'Mom' });
     const dad = createPerson(store, { name: 'Dad' });
     seedArea(store, 'P', 'Parent');
     seedArea(store, 'S', 'Sub', 'P');
     setEntityPersons(store, NOTE_ENTITY_TYPE.area, 'P', [mom, dad]);
-    // Sub-area declares only {Mom}; effective cast is {Mom, Self} (Dad is dropped — narrowed by sub-area's own set).
+    // Sub-area declares only {Mom}; its people are exactly {Mom, Self}.
     setEntityPersons(store, NOTE_ENTITY_TYPE.area, 'S', [mom]);
-    const cast = effectiveCastForArea(store, 'S');
-    expect(cast).toContain(SELF_PERSON_ID);
-    expect(cast).toContain(mom);
-    expect(cast).not.toContain(dad);
+    const people = peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'S');
+    expect(people).toContain(SELF_PERSON_ID);
+    expect(people).toContain(mom);
+    expect(people).not.toContain(dad);
   });
 
-  it('deleting a person removes them from every cast at read time (I9)', () => {
+  it('deleting a person removes them from every entity at read time (I9)', () => {
     ensureSelfPerson(store);
     const mom = createPerson(store, { name: 'Mom' });
     setEntityPersons(store, NOTE_ENTITY_TYPE.area, 'A1', [mom]);
-    expect(effectiveCastForArea(store, 'A1')).toContain(mom);
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).toContain(mom);
     deletePerson(store, mom);
-    expect(effectiveCastForArea(store, 'A1')).not.toContain(mom);
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).not.toContain(mom);
   });
 
-  it('effectiveSetForEntity always contains Self and falls back to {Self} on empty intersection', () => {
+  it('peopleForEntity always contains Self and falls back to {Self} when nothing is stored', () => {
     ensureSelfPerson(store);
-    // No link rows at all → effective set is {Self}.
-    expect(effectiveSetForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).toEqual([SELF_PERSON_ID]);
+    // No link rows at all → people are {Self}.
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).toEqual([SELF_PERSON_ID]);
   });
 
-  it('effectiveSetForEntity intersects stored set with parent cast (I4)', () => {
+  it("a task's stored set is not narrowed by its area's people", () => {
     ensureSelfPerson(store);
     const mom = createPerson(store, { name: 'Mom' });
     const dad = createPerson(store, { name: 'Dad' });
     seedArea(store, 'A1', 'A1');
     setEntityPersons(store, NOTE_ENTITY_TYPE.area, 'A1', [mom]);
-    // Task T1 declares {Mom, Dad}; parent cast (area's effective cast) is {Mom, Self} → {Mom, Self}.
+    // Task T1 declares {Mom, Dad}; Dad is not on the area but stays on the task.
     seedTask(store, 'T1', 'A1');
     setEntityPersons(store, NOTE_ENTITY_TYPE.task, 'T1', [mom, dad]);
-    expect(effectiveSetForEntity(store, NOTE_ENTITY_TYPE.task, 'T1').sort()).toEqual([SELF_PERSON_ID, mom].sort());
-  });
-
-  it('effectiveCastSetForArea is always a Set that includes Self', () => {
-    ensureSelfPerson(store);
-    const set = effectiveCastSetForArea(store, 'A1');
-    expect(set.has(SELF_PERSON_ID)).toBe(true);
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.task, 'T1').sort()).toEqual([SELF_PERSON_ID, mom, dad].sort());
   });
 });
 

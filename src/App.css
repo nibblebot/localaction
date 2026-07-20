@@ -1793,6 +1793,19 @@
   padding: 4px 0;
 }
 
+.person-filter-new-form {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+.person-filter-new-form .inline-add-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
 /* Filter banner over MainPane */
 
 .person-filter-banner {
@@ -1963,23 +1976,6 @@
 .person-picker-row-edit:hover {
   background: var(--surface-hover);
   color: var(--text-h);
-}
-
-.person-picker-new {
-  margin-top: 4px;
-  padding: 6px;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  font-size: 0.86rem;
-  color: var(--accent);
-  text-align: start;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.person-picker-new:hover {
-  background: var(--surface-hover);
 }
 
 .person-picker-backdrop {

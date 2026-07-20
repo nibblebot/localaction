@@ -30,10 +30,10 @@ import {
   getPlacement,
   useInboxTaskIds,
   useAreaTaskIds,
-  useEffectiveCast,
+  usePeopleForEntity,
   useHiddenCount,
-  effectiveSetForEntity,
-  getEntityPersonIds,
+  peopleForEntity,
+  useEntityPersonIds,
   usePerson,
 } from '../data/index.ts';
 import type { Area, NoteEntityType, ProjectRollup } from '../data/index.ts';
@@ -222,7 +222,7 @@ function AreaHeader({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const cast = useEffectiveCast(store, areaId);
+  const cast = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
 
   function commit(): void {
     const trimmed = draft.trim();
@@ -336,6 +336,7 @@ function AreaHeaderCast({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   useStoreVersion(store);
+  const current = useEntityPersonIds(store, NOTE_ENTITY_TYPE.area, areaId);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   return (
@@ -357,8 +358,7 @@ function AreaHeaderCast({
         anchor={anchor}
         entityType={NOTE_ENTITY_TYPE.area}
         entityId={areaId}
-        current={getEntityPersonIds(store, NOTE_ENTITY_TYPE.area, areaId)}
-        cast={[...cast]}
+        current={current}
         title="Cast"
         onClose={() => setAnchor(null)}
       />
@@ -587,7 +587,7 @@ function AreaProjectGroups({
     if (filter.length === 0) return inArea;
     const set = new Set(filter);
     return inArea.filter((p) => {
-      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
+      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
         if (set.has(id)) return true;
       }
       return false;
@@ -1093,7 +1093,7 @@ function ProjectTasksGroup({
     if (filter.length === 0) return orderedIds;
     const set = new Set(filter);
     return orderedIds.filter((tid) => {
-      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
+      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
         if (set.has(id)) return true;
       }
       return false;
@@ -1184,7 +1184,7 @@ function NotesTab({
         store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId) ?? '',
       );
       if (!noteEntityId || noteEntityType === '') return false;
-      for (const id of effectiveSetForEntity(
+      for (const id of peopleForEntity(
         store,
         noteEntityType as NoteEntityType,
         noteEntityId,
@@ -1513,7 +1513,7 @@ function ProjectTasksTab({
     if (filter.length === 0) return orderedIds;
     const set = new Set(filter);
     return orderedIds.filter((tid) => {
-      for (const id of effectiveSetForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
+      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
         if (set.has(id)) return true;
       }
       return false;
@@ -1612,7 +1612,7 @@ function ProjectNotesTab({
     if (filter.length === 0) return noteIds;
     const set = new Set(filter);
     return noteIds.filter((nid) => {
-      for (const id of effectiveSetForEntity(
+      for (const id of peopleForEntity(
         store,
         NOTE_ENTITY_TYPE.project,
         nid,

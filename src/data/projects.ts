@@ -48,6 +48,11 @@ export function updateProject(
   } else if (patch.areaId !== undefined) {
     next[COLUMNS.projects.areaId] = patch.areaId;
   }
+  if (patch.dueDate === null) {
+    store.delCell(TABLES.projects, id, COLUMNS.projects.dueDate);
+  } else if (patch.dueDate !== undefined) {
+    next[COLUMNS.projects.dueDate] = patch.dueDate;
+  }
   store.setPartialRow(TABLES.projects, id, row(next));
 }
 
@@ -59,6 +64,7 @@ export function useProject(store: MergeableStore, id: string | undefined): Proje
     id,
     name: String(row[COLUMNS.projects.name] ?? ''),
     areaId: normalizeRelation(row[COLUMNS.projects.areaId]),
+    dueDate: normalizeRelation(row[COLUMNS.projects.dueDate]),
     order: Number(row[COLUMNS.projects.order] ?? 0),
     createdAt: String(row[COLUMNS.projects.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.projects.updatedAt] ?? ''),

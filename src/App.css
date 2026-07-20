@@ -2089,3 +2089,130 @@
   color: var(--text-muted);
   background: transparent;
 }
+
+/* ============================================================
+   Project due date (row button + calendar popover)
+   ============================================================ */
+
+.project-row-due {
+  width: auto;
+  min-width: 26px;
+  padding: 0 4px;
+}
+
+.project-row-due-label {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.project-row-due-set {
+  color: var(--text);
+}
+
+.due-calendar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
+.due-calendar {
+  position: fixed;
+  z-index: 60;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(43, 34, 24, 0.16);
+  width: 232px;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.due-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.due-calendar-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.due-calendar-nav {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.due-calendar-nav:hover {
+  background: var(--surface-hover);
+  color: var(--text-h);
+}
+
+.due-calendar-nav svg {
+  width: 12px;
+  height: 12px;
+}
+
+.due-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.due-calendar-weekday {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2px 0;
+}
+
+.due-calendar-day {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  padding: 0;
+}
+
+.due-calendar-day:hover {
+  background: var(--surface-hover);
+}
+
+.due-calendar-day-today {
+  outline: 1px solid var(--accent-border);
+  outline-offset: -1px;
+}
+
+.due-calendar-day-selected,
+.due-calendar-day-selected:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.due-calendar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.due-calendar-spacer {
+  flex: 1 1 auto;
+}

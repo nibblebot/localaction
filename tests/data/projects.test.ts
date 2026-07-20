@@ -50,6 +50,16 @@ describe('projects', () => {
     expect(store.getCell(TABLES.projects, p, COLUMNS.projects.areaId)).toBe(b);
   });
 
+  it('updateProject sets and clears the due date', () => {
+    const d = createArea(store, { name: 'Family' });
+    const p = createProject(store, { name: 'P', areaId: d });
+    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.dueDate)).toBeUndefined();
+    updateProject(store, p, { dueDate: '2026-08-14' });
+    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.dueDate)).toBe('2026-08-14');
+    updateProject(store, p, { dueDate: null });
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.dueDate)).toBe(false);
+  });
+
   it('deleteProject removes the row', () => {
     const d = createArea(store, { name: 'Family' });
     const p = createProject(store, { name: 'P', areaId: d });

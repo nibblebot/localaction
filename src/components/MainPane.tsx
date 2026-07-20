@@ -51,6 +51,7 @@ import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
 import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
+import ProjectDueDateButton from './ProjectDueDateButton.tsx';
 import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
 import PersonAvatar from './persons/PersonAvatar.tsx';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
@@ -754,6 +755,7 @@ function ProjectRow({
             {done} / {total}
           </span>
         </div>
+        <ProjectDueDateButton projectId={projectId} />
         <PersonAssignmentButton
           entityType={NOTE_ENTITY_TYPE.project}
           entityId={projectId}
@@ -885,6 +887,7 @@ function SortableProjectRow({
             {done} / {total}
           </span>
         </div>
+        <ProjectDueDateButton projectId={projectId} />
         <PersonAssignmentButton
           entityType={NOTE_ENTITY_TYPE.project}
           entityId={projectId}

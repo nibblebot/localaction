@@ -28,6 +28,8 @@ export interface Project {
   id: string;
   name: string;
   areaId: string | null;
+  /** Date-only ISO string (`YYYY-MM-DD`), or null when no due date. */
+  dueDate: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -91,6 +93,8 @@ export interface ProjectInput {
 export interface ProjectPatch {
   name?: string;
   areaId?: string | null;
+  /** Set a date-only ISO string, or null to clear the due date. */
+  dueDate?: string | null;
 }
 
 export interface TaskInput {

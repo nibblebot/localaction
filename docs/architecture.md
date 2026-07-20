@@ -107,6 +107,7 @@ erDiagram
   areas { float order }
   projects { string id PK }
   projects { string areaId FK "nullable" }
+  projects { string dueDate "optional; YYYY-MM-DD" }
   projects { float order }
   tasks { string id PK }
   tasks { string title }

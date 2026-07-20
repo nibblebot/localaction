@@ -41,6 +41,11 @@ export const COLUMNS = {
     id: 'id',
     name: 'name',
     areaId: 'areaId',
+    /**
+     * Optional due date as a date-only ISO string (`YYYY-MM-DD`).
+     * Absent (cell deleted) means no due date — null is never stored.
+     */
+    dueDate: 'dueDate',
     order: 'order',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',

@@ -21,8 +21,9 @@
  *   block makes the dragged section the first section.
  *
  * `readOnlySections` (area rollup views): section headers render as
- * plain text with no drag handle, rename, or delete; empty sections are
- * hidden. Tasks stay fully draggable between groups.
+ * plain text with no drag handle, rename, or delete. Empty sections
+ * still show, matching the project view. Tasks stay fully draggable
+ * between groups.
  */
 import { useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -214,12 +215,11 @@ export function SectionedTaskTree({
     return showCompleted ? tree.children : pruneDoneTasks(store, tree.children);
   };
   nodes.push(...buildGroup(projectKey));
+  // Every section renders — empty ones included — so rollups match the
+  // project view. In the project view they stay editable; rollups show
+  // them as plain read-only headers.
   for (const sid of sectionIds) {
-    const children = buildGroup(sectionNodeId(sid));
-    // Rollup views skip empty sections; the project view always shows
-    // them so they can be renamed, reordered, and filled.
-    if (readOnlySections && children.length === 0) continue;
-    nodes.push({ id: sectionNodeId(sid), children });
+    nodes.push({ id: sectionNodeId(sid), children: buildGroup(sectionNodeId(sid)) });
   }
 
   if (nodes.length === 0) return null;

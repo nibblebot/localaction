@@ -105,14 +105,39 @@ export function createServerPersister(
   const mirror = createStore();
   const p = createServerTabularPersister(mirror, db);
 
-  // Bridge: full-content copy per finished transaction. Deliberate
-  // simplicity — the dataset is a personal action tracker; `setContent`
-  // diffs and the tabular persister then saves only the changed tables
-  // incrementally. Verified: cell writes and row deletions both propagate
-  // to SQL. If profiling ever shows this hot, the fallback is bridging via
-  // `store.getTransactionMergeableChanges()`.
+  // Bridge: row-level diff per finished transaction.
+  //
+  // The previous design called `mirror.setContent(store.getContent())`,
+  // which lets TinyBase diff and save incrementally. That fails at scale:
+  // the tabular SQLite persister builds one `INSERT INTO t VALUES (...),(...)…`
+  // per table per save, and SQLite caps bound parameters per statement at
+  // 999 (`SQLITE_RANGE: column index out of range`). A tasks table with
+  // 9 columns tops out around 110 rows per save — beyond that, every save
+  // is silently dropped (`onIgnoredError` logs it; data is lost on restart).
+  //
+  // We bridge per-row instead. Each `setRow` / `delRow` on the mirror
+  // produces a small per-row statement on the next save; bound params
+  // stay under 999 regardless of table size. Verified: a 10k-task seeding
+  // transaction persists intact and reloads with all rows present.
   const bridgeId = store.addDidFinishTransactionListener(() => {
-    mirror.setContent(store.getContent());
+    const [nextTables, nextValues] = store.getContent();
+    // Values are tiny (single key/value table) — a bulk write is fine.
+    mirror.setValues(nextValues);
+    const prevTables = mirror.getTables();
+    for (const tableId of Object.keys(prevTables)) {
+      if (!(tableId in nextTables)) mirror.delTable(tableId);
+    }
+    for (const [tableId, nextRows] of Object.entries(nextTables)) {
+      const prevRows = prevTables[tableId] ?? {};
+      // Deletions first — a row replaced wholesale should appear as a
+      // single fresh insert, not a delete + insert pair.
+      for (const rowId of Object.keys(prevRows)) {
+        if (!(rowId in nextRows)) mirror.delRow(tableId, rowId);
+      }
+      for (const [rowId, row] of Object.entries(nextRows)) {
+        mirror.setRow(tableId, rowId, row);
+      }
+    }
   });
 
   const startAutoLoad = async (

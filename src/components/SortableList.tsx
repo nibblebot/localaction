@@ -36,8 +36,8 @@ import { CSS } from '@dnd-kit/utilities';
  *   row); for partial handles (e.g. an icon button) spread only on
  *   the handle element.
  * - `renderOverlay` is an optional render function for the floating
- *   preview that follows the cursor. If omitted, the dnd-kit default
- *   preview is used.
+ *   preview that follows the cursor. If omitted, the row is re-rendered
+ *   inside the overlay with an inert handle (`sortableOverlayHandle`).
  */
 export interface SortableListProps<TId extends string> {
   itemIds: readonly TId[];
@@ -65,6 +65,23 @@ export interface SortableHandleProps {
   isDragging: boolean;
   isOver: boolean;
 }
+
+/**
+ * Inert handle used to re-render a row inside the DragOverlay when the
+ * caller does not supply `renderOverlay`. No listeners/attributes (the
+ * preview is non-interactive) and `isDragging: false` so the preview
+ * renders at full opacity, without the source row's drag chrome.
+ * (Not exported: `react/only-export-components` only allows literal
+ * constant exports, so `SortableTree` declares its own copy.)
+ */
+const sortableOverlayHandle: SortableHandleProps = {
+  ref: () => {},
+  style: {},
+  attributes: {},
+  listeners: undefined,
+  isDragging: false,
+  isOver: false,
+};
 interface SortableSlotProps<TId extends string> {
   id: TId;
   className?: string;
@@ -209,8 +226,12 @@ export function SortableList<TId extends string>({
           ))}
         </div>
       </SortableContext>
-      <DragOverlay dropAnimation={null}>
-        {activeId !== null && renderOverlay ? renderOverlay(activeId) : null}
+      <DragOverlay className="drag-overlay" dropAnimation={null}>
+        {activeId !== null
+          ? renderOverlay
+            ? renderOverlay(activeId)
+            : children(activeId, sortableOverlayHandle)
+          : null}
       </DragOverlay>
     </DndContext>
   );

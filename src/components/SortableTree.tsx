@@ -27,6 +27,21 @@ import { CSS } from '@dnd-kit/utilities';
 import type { SortableHandleProps } from './SortableList.tsx';
 
 /**
+ * Inert handle used to re-render a row inside the DragOverlay when the
+ * caller does not supply `renderOverlay`. Identical to the one in
+ * `SortableList.tsx` — duplicated (not shared) because
+ * `react/only-export-components` only allows literal constant exports.
+ */
+const sortableOverlayHandle: SortableHandleProps = {
+  ref: () => {},
+  style: {},
+  attributes: {},
+  listeners: undefined,
+  isDragging: false,
+  isOver: false,
+};
+
+/**
  * Flattened-tree sortable list (dnd-kit tree pattern) — one DndContext
  * spans the whole tree, so a drag can reorder within a sibling group
  * AND reparent across groups. Sibling-only callers should keep using
@@ -58,7 +73,9 @@ import type { SortableHandleProps } from './SortableList.tsx';
  *   slot wrapper (`depth * indentWidth` px of left padding).
  * - `renderOverlay` optionally renders the floating preview; it
  *   receives the projected (target) depth so the preview can indent
- *   to match where the drop will land.
+ *   to match where the drop will land. If omitted, the row is
+ *   re-rendered inside the overlay with an inert handle, indented
+ *   to the projected depth.
  * - `maxDepth` clamps how deep a row may be nested (e.g. 1 for a
  *   two-level tree). Depth can never exceed "previous row's depth + 1",
  *   so no level is ever skipped.
@@ -297,6 +314,13 @@ export function SortableTree<TId extends string>({
       ? getProjection(rendered, activeId, overId, offsetX, indentWidth, maxDepth)
       : null;
 
+  // Depth used by the overlay: where the drop will land, else the row's
+  // current depth — same value the `renderOverlay` path receives.
+  const activeDepth =
+    activeId === null
+      ? 0
+      : (projected?.depth ?? flattened.find((i) => i.id === activeId)?.depth ?? 0);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -406,15 +430,20 @@ export function SortableTree<TId extends string>({
           ))}
         </div>
       </SortableContext>
-      <DragOverlay dropAnimation={null}>
-        {activeId !== null && renderOverlay
-          ? renderOverlay(
-              activeId,
-              projected?.depth ??
-                flattened.find((i) => i.id === activeId)?.depth ??
-                0,
-            )
-          : null}
+      <DragOverlay className="drag-overlay" dropAnimation={null}>
+        {activeId !== null ? (
+          renderOverlay ? (
+            renderOverlay(activeId, activeDepth)
+          ) : (
+            <div
+              style={
+                activeDepth > 0 ? { paddingLeft: activeDepth * indentWidth } : undefined
+              }
+            >
+              {children(activeId, sortableOverlayHandle, activeDepth)}
+            </div>
+          )
+        ) : null}
       </DragOverlay>
     </DndContext>
   );

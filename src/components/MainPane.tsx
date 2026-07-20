@@ -15,6 +15,7 @@ import {
   createTask,
   createNote,
   createArea,
+  createSection,
   getArea,
   deleteProject,
   deleteArea,
@@ -48,6 +49,7 @@ import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
+import { SectionedTaskTree } from './SectionedTaskTree.tsx';
 import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
@@ -1110,29 +1112,15 @@ function ProjectTasksGroup({
     filter,
   );
 
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
-    moveTask(
-      store,
-      activeId,
-      parentId
-        ? `task${PLACEMENT_SEP}${parentId}`
-        : `project${PLACEMENT_SEP}${projectId}`,
-      beforeId,
-    );
-  }
-
   return (
     <>
       <ProjectHeader name={projectName} count={visibleIds.length} />
-      <TaskTreeByStatus
+      <SectionedTaskTree
+        projectId={projectId}
         ids={visibleIds}
-        onMove={onMove}
-        ariaLabel={`Tasks for ${projectName}`}
         showCompleted={showCompleted}
+        readOnlySections
+        ariaLabel={`Tasks for ${projectName}`}
       />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
@@ -1493,23 +1481,7 @@ function ProjectTasksTab({
   showCompleted: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const [taskIds, setTaskIds] = useState<string[]>(() => {
-    const ids: string[] = [];
-    collectTaskIds(store, projectId, ids);
-    return ids;
-  });
-  useEffect(() => {
-    const refresh = (): void => {
-      const ids: string[] = [];
-      collectTaskIds(store, projectId, ids);
-      setTaskIds(ids);
-    };
-    refresh();
-    const listenerId = store.addDidFinishTransactionListener(refresh);
-    return () => {
-      store.delListener(listenerId);
-    };
-  }, [store, projectId]);
+  const taskIds = useTasksForProjectDeep(store, projectId);
   const { selected: filter } = usePersonFilter();
   const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.task, taskIds, filter);
   const orderedIds = useMemo(
@@ -1533,23 +1505,16 @@ function ProjectTasksTab({
     });
   }, [store, orderedIds, filter]);
 
+  // Id of a just-created section whose name input should autofocus.
+  const [focusSectionId, setFocusSectionId] = useState<string | null>(null);
+
   function addTask(title: string): void {
     createTask(store, { title, placement: { kind: 'project', id: projectId } });
   }
 
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
-    moveTask(
-      store,
-      activeId,
-      parentId
-        ? `task${PLACEMENT_SEP}${parentId}`
-        : `project${PLACEMENT_SEP}${projectId}`,
-      beforeId,
-    );
+  function addSection(): void {
+    const sid = createSection(store, { name: '', projectId });
+    setFocusSectionId(sid);
   }
 
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -1557,28 +1522,50 @@ function ProjectTasksTab({
   useEffect(() => {
     if (!isActive) return;
     const empty = taskIds.length === 0;
-    if (empty || wasEmpty.current) addInputRef.current?.focus();
+    // Focus for quick entry when the list is (or just was) empty — but
+    // never steal focus from a row that just grabbed it (a section's
+    // add-task action focuses its new title input in the same commit).
+    if (
+      (empty || wasEmpty.current) &&
+      (document.activeElement === null || document.activeElement === document.body)
+    ) {
+      addInputRef.current?.focus();
+    }
     wasEmpty.current = empty;
   }, [isActive, taskIds.length]);
 
   return (
     <section className="tasks-tab" aria-label="Tasks">
-      <TaskTreeByStatus
+      <SectionedTaskTree
+        projectId={projectId}
         ids={visibleIds}
-        onMove={onMove}
-        ariaLabel={`Tasks for ${projectName}`}
         showCompleted={showCompleted}
+        focusSectionId={focusSectionId}
+        ariaLabel={`Tasks for ${projectName}`}
       />
-      <InlineAddInput
-        ref={addInputRef}
-        placeholder={
-          taskIds.length === 0
-            ? 'No tasks yet — add the first one.'
-            : 'New task…'
-        }
-        ariaLabel="New task"
-        onSubmit={addTask}
-      />
+      <div className="tasks-tab-footer">
+        <InlineAddInput
+          ref={addInputRef}
+          placeholder={
+            taskIds.length === 0
+              ? 'No tasks yet — add the first one.'
+              : 'New task…'
+          }
+          ariaLabel="New task"
+          onSubmit={addTask}
+        />
+        <button
+          type="button"
+          className="tasks-tab-add-section"
+          aria-label="Add section"
+          title="Add section"
+          onClick={addSection}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#add-icon" />
+          </svg>
+        </button>
+      </div>
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
@@ -1796,22 +1783,6 @@ function stripPreview(body: string): string {
   if (!trimmed) return '';
   const first = trimmed.split('\n', 1)[0] ?? '';
   return first.length > 140 ? `${first.slice(0, 140)}…` : first;
-}
-
-function collectTaskIds(
-  store: MergeableStore,
-  projectId: string,
-  out: string[],
-): void {
-  for (const id of store.getRowIds(TABLES.tasks)) {
-    const p = getPlacement(store, id);
-    if (p.kind !== 'project' || p.id !== projectId) continue;
-    out.push(id);
-  }
-  // Walk nested children from every top-level task — not just the first —
-  // so sub-tasks of any sibling are included.
-  const tops = [...out];
-  for (const tid of tops) collectChildIds(store, tid, out);
 }
 
 function collectChildIds(

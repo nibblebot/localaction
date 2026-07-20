@@ -45,13 +45,11 @@ sync protocol.
 
 ## Schema versioning
 
-Phase 0 has no migrations (greenfield, single schema version `SCHEMA_VERSION`
-= 1). When the schema evolves:
+There are no row migrations (ADR-0001 clean cutover). `SCHEMA_VERSION`
+(currently 3) is stamped into the store as a value; on load,
+`reconcileSchemaVersion` wipes every table when the stored version
+differs. When the schema evolves:
 
 1. Bump `SCHEMA_VERSION`.
-2. Add a migration in the provider's effect that runs against the merged store
-   before user code observes it.
-3. Update `COLUMNS` to add new columns.
-
-The server should refuse to sync with a mismatched `schemaVersion` value in
-the `Values` table.
+2. Update `TABLES` / `COLUMNS` for the new shape.
+3. Existing persisted stores (OPFS + server SQLite) are wiped on next load.

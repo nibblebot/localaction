@@ -1,6 +1,7 @@
 export const TABLES = {
   areas: 'areas',
   projects: 'projects',
+  sections: 'sections',
   tasks: 'tasks',
   notes: 'notes',
   persons: 'persons',
@@ -13,7 +14,7 @@ export const TABLES = {
  * any persisted store (OPFS client snapshot + server SQLite) on load —
  * see `reconcileSchemaVersion`. There is no row migration (ADR-0001).
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 /**
  * Keyed-value id recording the schema version last applied to a persisted
@@ -50,12 +51,21 @@ export const COLUMNS = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
   },
+  sections: {
+    id: 'id',
+    name: 'name',
+    projectId: 'projectId',
+    order: 'order',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+  },
   tasks: {
     id: 'id',
     title: 'title',
     /**
      * Discriminated placement reference (ADR-0001): `area:<id>`,
-     * `project:<id>`, `task:<id>` (sub-task), or absent for an Inbox root.
+     * `project:<id>`, `section:<id>` (top-level task inside a project
+     * Section), `task:<id>` (sub-task), or absent for an Inbox root.
      * One mergeable cell resolves a single owner under last-writer-wins.
      */
     placement: 'placement',
@@ -102,6 +112,7 @@ export const COLUMNS = {
 
 export type AreaColumn = (typeof COLUMNS.areas)[keyof typeof COLUMNS.areas];
 export type ProjectColumn = (typeof COLUMNS.projects)[keyof typeof COLUMNS.projects];
+export type SectionColumn = (typeof COLUMNS.sections)[keyof typeof COLUMNS.sections];
 export type TaskColumn = (typeof COLUMNS.tasks)[keyof typeof COLUMNS.tasks];
 export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
 export type PersonColumn = (typeof COLUMNS.persons)[keyof typeof COLUMNS.persons];
@@ -125,3 +136,16 @@ export const NOTE_ENTITY_TYPE = {
 
 export type NoteEntityType =
   (typeof NOTE_ENTITY_TYPE)[keyof typeof NOTE_ENTITY_TYPE];
+
+/**
+ * Entity types a tombstone can name. Superset of `NOTE_ENTITY_TYPE`:
+ * sections never carry notes or person links, but deleting one must
+ * still leave a typed tombstone so the deletion wins after sync merges.
+ */
+export const TOMBSTONE_ENTITY_TYPE = {
+  ...NOTE_ENTITY_TYPE,
+  section: 'section',
+} as const;
+
+export type TombstoneEntityType =
+  (typeof TOMBSTONE_ENTITY_TYPE)[keyof typeof TOMBSTONE_ENTITY_TYPE];

@@ -1,8 +1,8 @@
 import { useRowIds } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES } from './schema.ts';
+import type { TombstoneEntityType } from './schema.ts';
 import { nowIso, row } from './internal.ts';
-import type { NoteEntityType } from './schema.ts';
 import type { Tombstone } from './types.ts';
 
 /**
@@ -12,13 +12,13 @@ import type { Tombstone } from './types.ts';
  * never removed; the reconciler deletes any entity whose containment
  * subtree is rooted at a tombstoned target.
  */
-export function tombstoneId(entityType: NoteEntityType, entityId: string): string {
+export function tombstoneId(entityType: TombstoneEntityType, entityId: string): string {
   return `${entityType}:${entityId}`;
 }
 
 export function writeTombstone(
   store: MergeableStore,
-  entityType: NoteEntityType,
+  entityType: TombstoneEntityType,
   entityId: string,
 ): void {
   store.setRow(
@@ -34,7 +34,7 @@ export function writeTombstone(
 
 export function hasTombstone(
   store: MergeableStore,
-  entityType: NoteEntityType,
+  entityType: TombstoneEntityType,
   entityId: string,
 ): boolean {
   return store.hasRow(TABLES.tombstones, tombstoneId(entityType, entityId));
@@ -42,14 +42,14 @@ export function hasTombstone(
 
 export function getTombstone(
   store: MergeableStore,
-  entityType: NoteEntityType,
+  entityType: TombstoneEntityType,
   entityId: string,
 ): Tombstone | undefined {
   const r = store.getRow(TABLES.tombstones, tombstoneId(entityType, entityId));
   if (!r || Object.keys(r).length === 0) return undefined;
   return {
     id: tombstoneId(entityType, entityId),
-    entityType: String(r[COLUMNS.tombstones.entityType] ?? entityType) as NoteEntityType,
+    entityType: String(r[COLUMNS.tombstones.entityType] ?? entityType) as TombstoneEntityType,
     entityId: String(r[COLUMNS.tombstones.entityId] ?? entityId),
     deletedAt: String(r[COLUMNS.tombstones.deletedAt] ?? ''),
   };

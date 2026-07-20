@@ -14,6 +14,10 @@ A nested Area. Same semantics as Area — ongoing, container — but lives under
 
 A bounded effort with a clear end state, owned by an Area (or sub-Area). Projects have tasks that, when completed, mean the project is done. NOT used for ongoing concerns; use an Area (or sub-Area) for those.
 
+## Section
+
+A named group of top-level Tasks inside a Project (e.g. "Phase 1", "Backlog"). Sections exist only at the top level of a Project — they never nest, belong to exactly one Project, and hold Tasks only (no Notes, no Persons). A Task joins a Section through its `section:<id>` placement; its owning Project resolves through the Section row. Sections are ordered by drag within their Project and always render after the Project's unsectioned Tasks. Deleting a Section deletes its Tasks (containment cascade, with a typed tombstone).
+
 ## Task
 
 A unit of action. A top-level Task has exactly one of three ownership states: it belongs to a Project, belongs directly to an Area, or is unassociated and therefore appears in the Inbox. Only the top-level Task carries that ownership; every descendant resolves its owner through its ancestry, and moving the top-level Task moves the whole tree. Has an `open` / `done` status: a Task may be done only when all of its descendants are done, and reopening a descendant reopens every ancestor.

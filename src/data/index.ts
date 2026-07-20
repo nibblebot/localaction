@@ -3,6 +3,7 @@ export {
   COLUMNS,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
+  TOMBSTONE_ENTITY_TYPE,
   SELF_PERSON_ID,
   SCHEMA_VERSION,
   SCHEMA_VERSION_VALUE_ID,
@@ -13,9 +14,11 @@ export type {
   TableName,
   AreaColumn,
   ProjectColumn,
+  SectionColumn,
   TaskColumn,
   TaskStatus,
   NoteEntityType,
+  TombstoneEntityType,
   TombstoneColumn,
   PersonColumn,
   PersonLinkColumn,
@@ -44,6 +47,9 @@ export type { DataLayerProviderProps } from './DataLayerProvider.tsx';
 export type {
   Area,
   Project,
+  Section,
+  SectionInput,
+  SectionPatch,
   Task,
   Note,
   Person,
@@ -74,6 +80,14 @@ export {
   useProject,
 } from './projects.ts';
 export {
+  createSection,
+  updateSection,
+  getSection,
+  useSection,
+  getSectionIdsForProject,
+  useSectionIdsForProject,
+} from './sections.ts';
+export {
   createTask,
   createTaskAfter,
   updateTask,
@@ -91,6 +105,7 @@ export {
   childTaskIds,
   descendantTaskIds,
   buildTaskTree,
+  pruneDoneTasks,
   topLevelTaskIdsForPlacement,
   getTasksForProjectDeep,
   useTasksForProjectDeep,
@@ -104,6 +119,7 @@ export type { TaskTreeNode } from './tasks.ts';
 export {
   moveArea,
   moveTask,
+  moveSection,
   reorderProject,
   backfillOrder,
   readSiblingOrders,
@@ -122,6 +138,7 @@ export {
   deleteArea,
   deleteProject,
   deleteTask,
+  deleteSection,
   cascadeDeleteSubtree,
   reconcileTombstones,
   installTombstoneReconciler,

@@ -5,12 +5,14 @@ import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Task, TaskInput, TaskPatch, TaskPlacement } from './types.ts';
 import { moveTask, readSiblingOrders } from './order.ts';
+import { getSectionIdsForProject } from './sections.ts';
 
 /**
  * Placement reference encoding (ADR-0001). A task's single `placement`
- * cell holds `${kind}:${id}` for project/area/task roots, or is absent
- * for an Inbox root. Parts are UUIDs (or the literal `self`), so `:` is
- * a safe separator.
+ * cell holds `${kind}:${id}` for project/section/area/task roots, or is
+ * absent for an Inbox root. Parts are UUIDs (or the literal `self`), so
+ * `:` is a safe separator. `section:<id>` marks a top-level task inside
+ * a project Section; the owning project resolves through the section row.
  */
 export const PLACEMENT_SEP = ':';
 
@@ -26,7 +28,7 @@ export function decodePlacement(raw: unknown): TaskPlacement {
   const kind = raw.slice(0, idx);
   const id = raw.slice(idx + 1);
   if (id === '') return { kind: 'inbox' };
-  if (kind === 'project' || kind === 'area' || kind === 'task') {
+  if (kind === 'project' || kind === 'area' || kind === 'section' || kind === 'task') {
     return { kind, id };
   }
   return { kind: 'inbox' };
@@ -181,7 +183,8 @@ export function getPlacement(store: MergeableStore, id: string): TaskPlacement {
 /**
  * Walk up the parent chain to the owning root. A Sub-Task resolves
  * ownership through its ancestry (ADR-0001); an orphaned sub-task
- * (parent gone) resolves to the Inbox.
+ * (parent gone) resolves to the Inbox. A Section root resolves to the
+ * section's owning Project (a missing section resolves to the Inbox).
  */
 export function getRootPlacement(store: MergeableStore, id: string): TaskPlacement {
   let cur = id;
@@ -190,6 +193,12 @@ export function getRootPlacement(store: MergeableStore, id: string): TaskPlaceme
     if (guard.has(cur)) return { kind: 'inbox' };
     guard.add(cur);
     const p = getPlacement(store, cur);
+    if (p.kind === 'section') {
+      const projectId = normalizeRelation(
+        store.getCell(TABLES.sections, p.id, COLUMNS.sections.projectId),
+      );
+      return projectId === null ? { kind: 'inbox' } : { kind: 'project', id: projectId };
+    }
     if (p.kind !== 'task') return p;
     if (!store.hasRow(TABLES.tasks, p.id)) return { kind: 'inbox' };
     cur = p.id;
@@ -277,6 +286,26 @@ function collectDescendants(
   }
 }
 
+/**
+ * Prune done subtrees out of a task tree, once, so hidden-completed
+ * mode drops a done task and everything nested under it. Sibling
+ * order is preserved.
+ */
+export function pruneDoneTasks(
+  store: MergeableStore,
+  nodes: readonly TaskTreeNode[],
+): TaskTreeNode[] {
+  const out: TaskTreeNode[] = [];
+  for (const node of nodes) {
+    const done =
+      store.hasRow(TABLES.tasks, node.id) &&
+      store.getCell(TABLES.tasks, node.id, COLUMNS.tasks.status) === TASK_STATUS.done;
+    if (done) continue;
+    out.push({ id: node.id, children: pruneDoneTasks(store, node.children) });
+  }
+  return out;
+}
+
 /** Top-level (non-sub-task) tasks whose placement equals `encoded`. */
 export function topLevelTaskIdsForPlacement(
   store: MergeableStore,
@@ -303,6 +332,14 @@ export function getTasksForProjectDeep(
   for (const top of topLevelTaskIdsForPlacement(store, `project${PLACEMENT_SEP}${projectId}`)) {
     out.push(top);
     collectDescendants(store, top, out);
+  }
+  // Section-rooted top-level tasks belong to the project too — their
+  // placement points at the section, not the project (ADR-0001).
+  for (const sid of getSectionIdsForProject(store, projectId)) {
+    for (const top of topLevelTaskIdsForPlacement(store, `section${PLACEMENT_SEP}${sid}`)) {
+      out.push(top);
+      collectDescendants(store, top, out);
+    }
   }
   return out;
 }

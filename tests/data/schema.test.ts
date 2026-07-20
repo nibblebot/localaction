@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   COLUMNS,
   NOTE_ENTITY_TYPE,
+  TOMBSTONE_ENTITY_TYPE,
   SELF_PERSON_ID,
   TABLES,
   TASK_STATUS,
 } from '../../src/data/schema.ts';
 
 describe('schema constants', () => {
-  it('exposes the seven top-level tables the schema defines', () => {
+  it('exposes the eight top-level tables the schema defines', () => {
     expect(Object.values(TABLES).sort()).toEqual(
       [
         'areas',
@@ -16,6 +17,7 @@ describe('schema constants', () => {
         'person_links',
         'persons',
         'projects',
+        'sections',
         'tasks',
         'tombstones',
       ].sort(),
@@ -41,6 +43,23 @@ describe('schema constants', () => {
     expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(
       ['area', 'project', 'task'],
     );
+  });
+
+  it('lets tombstones name sections without widening note targets', () => {
+    expect(Object.keys(TOMBSTONE_ENTITY_TYPE).sort()).toEqual(
+      ['area', 'project', 'section', 'task'],
+    );
+  });
+
+  it('declares the section table columns', () => {
+    expect(COLUMNS.sections).toEqual({
+      id: 'id',
+      name: 'name',
+      projectId: 'projectId',
+      order: 'order',
+      createdAt: 'createdAt',
+      updatedAt: 'updatedAt',
+    });
   });
 
   it('declares the person table columns and the self id constant', () => {

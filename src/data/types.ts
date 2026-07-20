@@ -1,4 +1,4 @@
-import type { TaskStatus, NoteEntityType } from './schema.ts';
+import type { TaskStatus, NoteEntityType, TombstoneEntityType } from './schema.ts';
 import type { AreaColorId } from './colors.ts';
 
 /**
@@ -7,10 +7,13 @@ import type { AreaColorId } from './colors.ts';
  * its parent, and ownership resolves by walking up the chain.
  *
  * `{ kind: 'inbox' }` is the unassociated root — derived into the Inbox.
+ * `{ kind: 'section', id }` puts a top-level Task inside a project
+ * Section; the owning Project resolves through the Section row.
  */
 export type TaskPlacement =
   | { kind: 'project'; id: string }
   | { kind: 'area'; id: string }
+  | { kind: 'section'; id: string }
   | { kind: 'task'; id: string }
   | { kind: 'inbox' };
 
@@ -33,6 +36,30 @@ export interface Project {
   order: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * A named group of top-level Tasks inside a Project (glossary: Section).
+ * Sections live only at the top level of a Project — they never nest
+ * and never hold sub-tasks directly.
+ */
+export interface Section {
+  id: string;
+  name: string;
+  projectId: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SectionInput {
+  name: string;
+  projectId: string;
+}
+
+export interface SectionPatch {
+  name?: string;
+  order?: number;
 }
 
 export interface Task {
@@ -122,7 +149,7 @@ export interface TaskPatch {
  */
 export interface Tombstone {
   id: string;
-  entityType: NoteEntityType;
+  entityType: TombstoneEntityType;
   entityId: string;
   deletedAt: string;
 }

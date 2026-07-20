@@ -1,6 +1,6 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES, NOTE_ENTITY_TYPE } from './schema.ts';
-import type { NoteEntityType } from './schema.ts';
+import { COLUMNS, TABLES, NOTE_ENTITY_TYPE, TOMBSTONE_ENTITY_TYPE } from './schema.ts';
+import type { TombstoneEntityType } from './schema.ts';
 import { normalizeRelation } from './internal.ts';
 import { descendantAreaIds } from './areas.ts';
 import {
@@ -23,11 +23,12 @@ import { writeTombstone } from './tombstones.ts';
  */
 export function cascadeDeleteSubtree(
   store: MergeableStore,
-  entityType: NoteEntityType,
+  entityType: TombstoneEntityType,
   entityId: string,
 ): boolean {
   const doomedAreas = new Set<string>();
   const doomedProjects = new Set<string>();
+  const doomedSections = new Set<string>();
   const doomedTasks = new Set<string>();
 
   if (entityType === NOTE_ENTITY_TYPE.area) {
@@ -36,6 +37,8 @@ export function cascadeDeleteSubtree(
     doomedProjects.add(entityId);
   } else if (entityType === NOTE_ENTITY_TYPE.task) {
     for (const t of descendantTaskIds(store, entityId)) doomedTasks.add(t);
+  } else if (entityType === TOMBSTONE_ENTITY_TYPE.section) {
+    doomedSections.add(entityId);
   }
 
   // Projects under any doomed area join the doomed set.
@@ -46,13 +49,22 @@ export function cascadeDeleteSubtree(
     if (areaId !== null && doomedAreas.has(areaId)) doomedProjects.add(pid);
   }
 
-  // Tasks rooted at a doomed area/project drag their whole subtree in.
+  // Sections under any doomed project join the doomed set.
+  for (const sid of store.getRowIds(TABLES.sections)) {
+    const projectId = normalizeRelation(
+      store.getCell(TABLES.sections, sid, COLUMNS.sections.projectId),
+    );
+    if (projectId !== null && doomedProjects.has(projectId)) doomedSections.add(sid);
+  }
+
+  // Tasks rooted at a doomed area/project/section drag their whole subtree in.
   for (const tid of store.getRowIds(TABLES.tasks)) {
     const placement = getPlacement(store, tid);
     if (placement.kind === 'task') continue;
     const ownerDoomed =
       (placement.kind === 'area' && doomedAreas.has(placement.id)) ||
-      (placement.kind === 'project' && doomedProjects.has(placement.id));
+      (placement.kind === 'project' && doomedProjects.has(placement.id)) ||
+      (placement.kind === 'section' && doomedSections.has(placement.id));
     if (!ownerDoomed) continue;
     for (const d of descendantTaskIds(store, tid)) doomedTasks.add(d);
   }
@@ -66,6 +78,7 @@ export function cascadeDeleteSubtree(
   };
 
   for (const tid of doomedTasks) deleteIfPresent(TABLES.tasks, tid);
+  for (const sid of doomedSections) deleteIfPresent(TABLES.sections, sid);
   for (const pid of doomedProjects) deleteIfPresent(TABLES.projects, pid);
   for (const aid of doomedAreas) deleteIfPresent(TABLES.areas, aid);
 
@@ -117,6 +130,12 @@ export function deleteTask(store: MergeableStore, id: string): void {
   cascadeDeleteSubtree(store, NOTE_ENTITY_TYPE.task, id);
 }
 
+export function deleteSection(store: MergeableStore, id: string): void {
+  if (!store.hasRow(TABLES.sections, id)) return;
+  writeTombstone(store, TOMBSTONE_ENTITY_TYPE.section, id);
+  cascadeDeleteSubtree(store, TOMBSTONE_ENTITY_TYPE.section, id);
+}
+
 /**
  * Sweep every tombstone and remove any subtree that is still present.
  * Idempotent: deleting already-absent rows is a no-op, so re-running on
@@ -133,11 +152,18 @@ export function reconcileTombstones(store: MergeableStore): boolean {
       TABLES.tombstones,
       tid,
       COLUMNS.tombstones.entityType,
-    ) as NoteEntityType;
+    ) as TombstoneEntityType;
     const entityId = String(
       store.getCell(TABLES.tombstones, tid, COLUMNS.tombstones.entityId) ?? '',
     );
-    if (entityType !== 'area' && entityType !== 'project' && entityType !== 'task') continue;
+    if (
+      entityType !== 'area' &&
+      entityType !== 'project' &&
+      entityType !== 'section' &&
+      entityType !== 'task'
+    ) {
+      continue;
+    }
     if (cascadeDeleteSubtree(store, entityType, entityId)) any = true;
   }
   return any;

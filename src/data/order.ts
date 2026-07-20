@@ -33,6 +33,7 @@ interface SiblingRow {
 type OrderedTable =
   | typeof TABLES.areas
   | typeof TABLES.projects
+  | typeof TABLES.sections
   | typeof TABLES.tasks;
 
 interface OrderColumns {
@@ -54,6 +55,12 @@ const ORDER_COLUMNS: Record<OrderedTable, OrderColumns> = {
     parent: COLUMNS.projects.areaId,
     order: COLUMNS.projects.order,
     updatedAt: COLUMNS.projects.updatedAt,
+  },
+  [TABLES.sections]: {
+    table: TABLES.sections,
+    parent: COLUMNS.sections.projectId,
+    order: COLUMNS.sections.order,
+    updatedAt: COLUMNS.sections.updatedAt,
   },
   [TABLES.tasks]: {
     table: TABLES.tasks,
@@ -279,11 +286,33 @@ export function reorderProject(
 }
 
 /**
+ * Move a section to a new sibling position within its project.
+ * Sections never leave their project — there is no reparenting.
+ */
+export function moveSection(
+  store: MergeableStore,
+  sectionId: string,
+  beforeId: string | undefined,
+): void {
+  if (!store.hasRow(TABLES.sections, sectionId)) return;
+  const projectId = normalizeRelation(
+    store.getCell(TABLES.sections, sectionId, COLUMNS.sections.projectId),
+  );
+  moveWithinSiblings(
+    store,
+    ORDER_COLUMNS[TABLES.sections],
+    projectId,
+    sectionId,
+    beforeId,
+  );
+}
+
+/**
  * Move a task to a new sibling position within `placement`, reparenting
  * it when the placement differs from its current one. `placement` is
- * the encoded cell value (ADR-0001: `project:<id>`, `area:<id>`,
- * `task:<id>`, or `null` for the Inbox). A single write updates
- * placement + order so subscribers see one change.
+ * the encoded cell value (ADR-0001: `project:<id>`, `section:<id>`,
+ * `area:<id>`, `task:<id>`, or `null` for the Inbox). A single write
+ * updates placement + order so subscribers see one change.
  *
  * Refused (no-op) when the target parent row is missing, or when the
  * target is `task:<id>` and the move would create a cycle — the parent
@@ -317,6 +346,8 @@ export function moveTask(
       }
     } else if (kind === 'project') {
       if (!store.hasRow(TABLES.projects, parentRef)) return;
+    } else if (kind === 'section') {
+      if (!store.hasRow(TABLES.sections, parentRef)) return;
     } else if (kind === 'area') {
       if (!store.hasRow(TABLES.areas, parentRef)) return;
     } else {
@@ -341,9 +372,9 @@ export function moveTask(
  */
 export function backfillOrder(store: MergeableStore): void {
   // Tasks already had `order` per the original schema; skip if all set.
-  // Areas and projects are the new ones.
+  // Areas, projects and sections are the new ones.
   store.transaction(() => {
-    for (const table of [TABLES.areas, TABLES.projects] as const) {
+    for (const table of [TABLES.areas, TABLES.projects, TABLES.sections] as const) {
       const columns = ORDER_COLUMNS[table];
       // Group row ids by their parent scope.
       const groups = new Map<string, string[]>();

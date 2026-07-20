@@ -66,12 +66,13 @@ The seam between React and TinyBase. Everything is re-exported from
 - **Store** — `store.ts` holds a process-wide `createMergeableStore()` singleton
   (`getStore()`). A MergeableStore tracks per-cell HLC timestamps, which is what
   makes conflict-free sync possible.
-- **Schema** — `schema.ts` defines six tables and their column keys as `const`
-  maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`) and
-  `NOTE_ENTITY_TYPE` (`area` / `project` / `task`) enums-as-objects, and
+- **Schema** — `schema.ts` defines eight tables and their column keys as
+  `const` maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`),
+  `NOTE_ENTITY_TYPE` (`area` / `project` / `task`), and
+  `TOMBSTONE_ENTITY_TYPE` (those three + `section`) enums-as-objects, and
   the `SELF_PERSON_ID` literal (`"self"`).
 - **CRUD + hooks** — one module per entity (`areas.ts`, `projects.ts`,
-  `tasks.ts`, `notes.ts`, `persons.ts`, `personLinks.ts`). Each exposes
+  `sections.ts`, `tasks.ts`, `notes.ts`, `persons.ts`, `personLinks.ts`). Each exposes
   imperative mutators/readers (`createX` / `updateX` / `deleteX` / `getX`)
   **and** a React hook (`useX`) built on `tinybase/ui-react`'s
   `useRow` / `useRowIds`. IDs are `crypto.randomUUID()` except for the
@@ -96,9 +97,11 @@ erDiagram
   areas ||--o{ areas : "parentId (self-ref tree)"
   areas ||--o{ projects : "areaId"
   areas ||--o{ notes : "entityType=area"
-  projects ||--o{ tasks : "projectId"
+  projects ||--o{ sections : "projectId"
+  projects ||--o{ tasks : "placement=project:<id>"
+  sections ||--o{ tasks : "placement=section:<id>"
   projects ||--o{ notes : "entityType=project"
-  tasks ||--o{ tasks : "parentTaskId (self-ref)"
+  tasks ||--o{ tasks : "placement=task:<id> (self-ref)"
   tasks ||--o{ notes : "entityType=task"
   areas { string id PK }
   areas { string name }
@@ -109,10 +112,13 @@ erDiagram
   projects { string areaId FK "nullable" }
   projects { string dueDate "optional; YYYY-MM-DD" }
   projects { float order }
+  sections { string id PK }
+  sections { string name }
+  sections { string projectId FK }
+  sections { float order }
   tasks { string id PK }
   tasks { string title }
-  tasks { string projectId FK }
-  tasks { string parentTaskId FK "nullable; nested tasks" }
+  tasks { string placement "project:<id>|section:<id>|area:<id>|task:<id>; absent = Inbox" }
   tasks { string status "open|done" }
   tasks { string dueDate "optional; YYYY-MM-DD" }
   tasks { float order }
@@ -155,7 +161,7 @@ Drag-to-reorder spans the whole tree: one flattened `SortableTree`
 (dnd-kit) derives a `(parent, before)` drop from vertical position plus
 horizontal (nest/unnest) intent, and the move helpers write parent +
 order in one transaction. Each ordered table (`areas`, `projects`,
-`tasks`) has an `order` key. `order.ts`:
+`sections`, `tasks`) has an `order` key. `order.ts`:
 
 - Appends new rows at `lastSiblingOrder + 1000`.
 - On a drag, `computeInsertOrder` takes the midpoint between neighbours; when
@@ -163,11 +169,12 @@ order in one transaction. Each ordered table (`areas`, `projects`,
   evenly-spaced integers from `RENORMALIZE_SPACING` (1000), in one transaction.
 - `backfillOrder()` seeds missing `order` cells (from `idHash(id)` + timestamps)
   on boot — idempotent, run after OPFS loads.
-- Move helpers (`moveArea` / `moveTask`) reorder within a sibling group AND
-  reparent in a single write (parent cell + `order` + `updatedAt`). Both
-  refuse moves that would create a cycle (a row under itself or one of
-  its own descendants) or target a missing parent. `reorderProject`
-  stays sibling-scoped (projects have no tree UI).
+- Move helpers (`moveArea` / `moveTask` / `moveSection`) reorder within a
+  sibling group AND (areas/tasks) reparent in a single write (parent cell +
+  `order` + `updatedAt`). Both refuse moves that would create a cycle (a
+  row under itself or one of its own descendants) or target a missing
+  parent. `moveSection` and `reorderProject` stay sibling-scoped
+  (sections never leave their project; projects have no tree UI).
 
 ## Persistence
 

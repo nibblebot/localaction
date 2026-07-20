@@ -93,7 +93,14 @@ Tabs remember their last selection per area.
 Selecting a project (`#/p/<id>`) opens `ProjectPane`: a project header with a
 breadcrumb back to its area, and two tabs:
 
-- **Tasks** — the project's task tree (nested tasks, status toggle, reorder).
+- **Tasks** — the project's task tree (nested tasks, status toggle, reorder),
+  optionally grouped into **Sections**. The `+` icon next to the new-task
+  input adds a section; a section header carries an inline-editable name, an
+  add-task action, and a delete action (which deletes the section's tasks,
+  after confirmation). One flattened drag surface spans the unsectioned group
+  and every section: tasks drag within/between groups (and nest as sub-tasks),
+  and sections drag to reorder — sections always stay at the top level of the
+  project and always follow the unsectioned group.
 - **Notes** — notes attached to this project.
 
 ## Notes & markdown
@@ -130,7 +137,9 @@ attribute on the document root and persisted to `localStorage`
   handle; used for flat sibling lists (project rows).
 - **`SortableTree`** — the flattened-tree drag surface (dnd-kit) for the
   sidebar area tree and task trees; vertical position + horizontal
-  nest/unnest intent resolve to a reparenting move.
+  nest/unnest intent resolve to a reparenting move. A per-row `maxDepthOf`
+  override pins certain rows to a fixed level (project section headers can
+  never nest).
 - **`PromptModal`** — modal used for create flows (new area / project / task /
   note).
 - **`ConfirmModal` / `ConfirmButton`** — confirmation for destructive actions

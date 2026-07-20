@@ -1710,6 +1710,103 @@
 }
 
 /* ============================================================
+   Sections — named groups of top-level tasks inside a project.
+   A section row is a header inside the same flattened sortable
+   tree as the task rows: drag handle on the left, name, then
+   hover-revealed actions like task rows.
+   ============================================================ */
+
+.section-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  margin-top: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+
+.section-row .editable-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.89rem;
+  font-weight: 600;
+  color: var(--text-h);
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.section-row .editable-title:focus {
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
+.section-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.89rem;
+  font-weight: 600;
+  color: var(--text-h);
+  padding: 2px 4px;
+}
+
+/* Action icons stay quiet until the row is hovered (task rows reveal
+   theirs on focus/hover of the row itself). */
+.section-row .task-line-action {
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+
+.section-row:hover .task-line-action,
+.section-row:focus-within .task-line-action {
+  opacity: 1;
+}
+
+/* Footer row under the project task tree: the new-task input plus the
+   add-section icon button. */
+.tasks-tab-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tasks-tab-footer .inline-add-input {
+  flex: 1 1 auto;
+}
+
+.tasks-tab-add-section {
+  width: 26px;
+  height: 26px;
+  margin-top: 6px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex-shrink: 0;
+  transition: border-color 0.1s, color 0.1s, background 0.1s;
+}
+
+.tasks-tab-add-section:hover {
+  border-color: var(--text-muted);
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+.tasks-tab-add-section svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ============================================================
    Person facet
    ============================================================ */
 

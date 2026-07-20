@@ -14,7 +14,6 @@
  *                       pruning their subtrees from the tree.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { MergeableStore } from 'tinybase';
 import {
   useDataLayer,
   useTask,
@@ -26,49 +25,18 @@ import {
   deleteTask,
   getRootPlacement,
   buildTaskTree,
-  TABLES,
+  pruneDoneTasks,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
-  COLUMNS,
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
+import { consumeTaskTitleFocus, queueTaskTitleFocus } from './taskTitleFocus.ts';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import TaskDueDateButton from './TaskDueDateButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
-
-function isTaskDone(store: MergeableStore, taskId: string): boolean {
-  if (!store.hasRow(TABLES.tasks, taskId)) return false;
-  return store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.status) === TASK_STATUS.done;
-}
-
-/**
- * Id of a freshly created task whose title input should grab focus once
- * mounted. Set by the "Add sub-task" action before the store write so
- * the new row's TaskTitleInput picks it up in its mount effect, then
- * cleared on consumption. Module-scoped because the input mounts deep
- * inside the (possibly re-navigated) task tree.
- */
-let pendingTitleFocus: string | null = null;
-
-/**
- * Prune done subtrees out of a task tree, once, so hidden-completed
- * mode drops a done task and everything nested under it. Sibling
- * order is preserved.
- */
-function pruneDoneTasks(
-  store: MergeableStore,
-  nodes: readonly TaskTreeNode[],
-): TaskTreeNode[] {
-  const out: TaskTreeNode[] = [];
-  for (const node of nodes) {
-    if (isTaskDone(store, node.id)) continue;
-    out.push({ id: node.id, children: pruneDoneTasks(store, node.children) });
-  }
-  return out;
-}
 
 function TaskTitleInput({
   taskId,
@@ -82,8 +50,7 @@ function TaskTitleInput({
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (pendingTitleFocus === taskId) {
-      pendingTitleFocus = null;
+    if (consumeTaskTitleFocus(taskId)) {
       ref.current?.focus();
     }
   }, [taskId]);
@@ -137,7 +104,7 @@ function TaskTitleInput({
           // empty sibling immediately below, focused for quick entry.
           if (e.shiftKey) {
             const nextId = createTaskAfter(store, taskId, '');
-            if (nextId) pendingTitleFocus = nextId;
+            if (nextId) queueTaskTitleFocus(nextId);
           }
           e.currentTarget.blur();
         } else if (e.key === 'Escape') {
@@ -235,7 +202,7 @@ export function TaskRow({
                 title: '',
                 placement: { kind: 'task', id: taskId },
               });
-              pendingTitleFocus = childId;
+              queueTaskTitleFocus(childId);
               const root = getRootPlacement(store, taskId);
               if (root.kind === 'project') navigate({ kind: 'project', id: root.id });
               else if (root.kind === 'area') navigate({ kind: 'area', id: root.id });

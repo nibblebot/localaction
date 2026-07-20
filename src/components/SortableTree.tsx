@@ -97,6 +97,12 @@ export interface SortableTreeProps<TId extends string> {
   indentWidth?: number;
   /** Deepest allowed nesting; default unbounded. */
   maxDepth?: number;
+  /**
+   * Per-row override of `maxDepth`, keyed by the DRAGGED row's id.
+   * Use it to pin certain rows to a fixed level (e.g. 0 keeps section
+   * headers from nesting under tasks) while leaving others unbounded.
+   */
+  maxDepthOf?: (id: TId) => number;
   className?: string;
   ariaLabel?: string;
 }
@@ -183,6 +189,9 @@ function getProjection<TId extends string>(
   let depth = projectedDepth;
   if (depth >= maxDepth) depth = maxDepth;
   if (depth < minDepth) depth = minDepth;
+  // A shallow neighbour below can push `minDepth` past the caller's
+  // depth limit — the limit always wins.
+  if (depth > maxDepth) depth = maxDepth;
 
   let parentId: TId | null;
   if (depth === 0 || !previousItem) {
@@ -294,6 +303,7 @@ export function SortableTree<TId extends string>({
   renderOverlay,
   indentWidth = 24,
   maxDepth = Number.POSITIVE_INFINITY,
+  maxDepthOf,
   className,
   ariaLabel,
 }: SortableTreeProps<TId>): ReactElement {
@@ -309,9 +319,13 @@ export function SortableTree<TId extends string>({
     [flattened, activeId],
   );
 
+  // Depth limit for the row currently being dragged.
+  const activeMaxDepth =
+    activeId !== null && maxDepthOf ? maxDepthOf(activeId) : maxDepth;
+
   const projected =
     activeId !== null && overId !== null
-      ? getProjection(rendered, activeId, overId, offsetX, indentWidth, maxDepth)
+      ? getProjection(rendered, activeId, overId, offsetX, indentWidth, activeMaxDepth)
       : null;
 
   // Depth used by the overlay: where the drop will land, else the row's
@@ -362,7 +376,7 @@ export function SortableTree<TId extends string>({
         overIdStr,
         delta.x,
         indentWidth,
-        maxDepth,
+        maxDepthOf ? maxDepthOf(activeIdStr) : maxDepth,
       );
       if (!projection) return;
       const current = currentPosition(flattened, activeIdStr);
@@ -375,7 +389,7 @@ export function SortableTree<TId extends string>({
       }
       onMove(activeIdStr, projection.parentId, projection.beforeId);
     },
-    [flattened, indentWidth, maxDepth, onMove, reset],
+    [flattened, indentWidth, maxDepth, maxDepthOf, onMove, reset],
   );
 
   return (

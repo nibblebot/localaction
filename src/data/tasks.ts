@@ -306,6 +306,16 @@ export function pruneDoneTasks(
   return out;
 }
 
+/** Canonical task ordering: `order` cell ascending, id as tiebreak. */
+export function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
+  return [...ids].sort((a, b) => {
+    const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
+    const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
+    if (oa !== ob) return oa - ob;
+    return a.localeCompare(b);
+  });
+}
+
 /** Top-level (non-sub-task) tasks whose placement equals `encoded`. */
 export function topLevelTaskIdsForPlacement(
   store: MergeableStore,

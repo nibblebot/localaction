@@ -760,32 +760,6 @@
   padding: var(--space-2) var(--space-2);
 }
 
-.tasks-tab-target {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-  font-size: 0.89rem;
-  color: var(--text-secondary);
-}
-
-.field-label-inline {
-  font-size: 0.79rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-muted);
-}
-
-.tasks-tab-target select {
-  font: inherit;
-  font-size: 0.93rem;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-h);
-}
-
 .project-header {
   display: flex;
   align-items: baseline;
@@ -1743,15 +1717,6 @@
 .section-row .editable-title:focus {
   background: var(--bg);
   box-shadow: inset 0 0 0 1px var(--accent-border);
-}
-
-.section-row-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.89rem;
-  font-weight: 600;
-  color: var(--text-h);
-  padding: 2px 4px;
 }
 
 /* Action icons stay quiet until the row is hovered (task rows reveal

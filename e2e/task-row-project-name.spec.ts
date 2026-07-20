@@ -13,7 +13,9 @@ async function createProject(page: Page, name: string): Promise<void> {
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  const input = page.locator('.tasks-tab .inline-add-input');
+  // Each project group carries its own add-task input; the first
+  // group's matches the old tab-level default target (first project).
+  const input = page.locator('.tasks-tab .inline-add-input').first();
   await input.fill(title);
   await input.press('Enter');
 }

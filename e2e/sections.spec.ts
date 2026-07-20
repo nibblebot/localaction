@@ -127,19 +127,21 @@ test.describe('Project sections', () => {
       .toEqual([`S:Second ${tok}`, `S:First ${tok}`]);
   });
 
-  test('empty sections show in the area Tasks rollup as read-only headers', async ({ page }) => {
+  test('empty sections show in the area Tasks rollup, fully editable', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
     await addSection(page, `Empty ${tok}`);
 
-    // Back to the area view, Tasks tab: the empty section header renders
-    // as plain text — no drag handle, rename input, or delete action.
+    // Back to the area view, Tasks tab: the section header is the same
+    // editable row as in the project view — rename input plus add-task
+    // and delete actions (the project has no other sections).
     await page.locator('.area-header-crumb', { hasText: `Area ${tok}` }).click();
     await page.locator('.area-tab', { hasText: 'Tasks' }).click();
-    const header = page.locator('.section-row', { hasText: `Empty ${tok}` });
-    await expect(header.locator('.section-row-name')).toHaveText(`Empty ${tok}`);
-    await expect(header.locator('.editable-title')).toHaveCount(0);
-    await expect(header.locator('button')).toHaveCount(0);
+    const header = page.locator('.section-row');
+    await expect(header).toHaveCount(1);
+    await expect(header.locator('.editable-title')).toHaveValue(`Empty ${tok}`);
+    await expect(header.locator('button[aria-label="Add task to section"]')).toBeAttached();
+    await expect(header.locator('button[aria-label="Delete section"]')).toBeAttached();
   });
 
   test('deleting a section deletes its tasks after confirmation', async ({ page }) => {

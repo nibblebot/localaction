@@ -20,10 +20,8 @@
  *   pinned to depth 0 via `maxDepthOf`; a drop into the unsectioned
  *   block makes the dragged section the first section.
  *
- * `readOnlySections` (area rollup views): section headers render as
- * plain text with no drag handle, rename, or delete. Empty sections
- * still show, matching the project view. Tasks stay fully draggable
- * between groups.
+ * Every section renders — empty ones included — so the area rollup
+ * matches the project view.
  */
 import { useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -85,12 +83,10 @@ function topLevelPlacementKey(store: MergeableStore, id: string): string | null 
 function SectionRow({
   sectionId,
   handle,
-  readOnly,
   autoFocusName,
 }: {
   sectionId: string;
   handle?: SortableHandleProps;
-  readOnly?: boolean;
   autoFocusName?: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
@@ -124,57 +120,51 @@ function SectionRow({
           </svg>
         </button>
       )}
-      {readOnly ? (
-        <span className="section-row-name">{section.name || 'Untitled section'}</span>
-      ) : (
-        <>
-          <EditableTitle
-            value={section.name}
-            placeholder="Untitled section"
-            autoFocusOnCreate={autoFocusName}
-            onCommit={(next) => updateSection(store, sectionId, { name: next })}
-          />
-          <button
-            type="button"
-            className="task-line-action"
-            aria-label="Add task to section"
-            title="Add task to section"
-            onClick={() => {
-              const childId = createTask(store, {
-                title: '',
-                placement: { kind: 'section', id: sectionId },
-              });
-              queueTaskTitleFocus(childId);
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#plus-filled-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="task-line-action task-line-action-danger"
-            aria-label="Delete section"
-            title="Delete"
-            onClick={() => setConfirmDelete(true)}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#trash-icon" />
-            </svg>
-          </button>
-          <ConfirmModal
-            open={confirmDelete}
-            title="Delete section?"
-            message={`"${section.name || 'Untitled section'}" and its tasks will be deleted.`}
-            confirmLabel="Delete"
-            onConfirm={() => {
-              deleteSection(store, sectionId);
-              setConfirmDelete(false);
-            }}
-            onCancel={() => setConfirmDelete(false)}
-          />
-        </>
-      )}
+      <EditableTitle
+        value={section.name}
+        placeholder="Untitled section"
+        autoFocusOnCreate={autoFocusName}
+        onCommit={(next) => updateSection(store, sectionId, { name: next })}
+      />
+      <button
+        type="button"
+        className="task-line-action"
+        aria-label="Add task to section"
+        title="Add task to section"
+        onClick={() => {
+          const childId = createTask(store, {
+            title: '',
+            placement: { kind: 'section', id: sectionId },
+          });
+          queueTaskTitleFocus(childId);
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#plus-filled-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="task-line-action task-line-action-danger"
+        aria-label="Delete section"
+        title="Delete"
+        onClick={() => setConfirmDelete(true)}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#trash-icon" />
+        </svg>
+      </button>
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete section?"
+        message={`"${section.name || 'Untitled section'}" and its tasks will be deleted.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          deleteSection(store, sectionId);
+          setConfirmDelete(false);
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
@@ -183,7 +173,6 @@ export function SectionedTaskTree({
   projectId,
   ids,
   showCompleted = false,
-  readOnlySections = false,
   focusSectionId,
   ariaLabel,
 }: {
@@ -192,8 +181,6 @@ export function SectionedTaskTree({
   ids: readonly string[];
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted?: boolean;
-  /** Area rollups: plain section headers, no section editing. */
-  readOnlySections?: boolean;
   /** Section whose name input should grab focus (just created). */
   focusSectionId?: string | null;
   ariaLabel?: string;
@@ -215,9 +202,6 @@ export function SectionedTaskTree({
     return showCompleted ? tree.children : pruneDoneTasks(store, tree.children);
   };
   nodes.push(...buildGroup(projectKey));
-  // Every section renders — empty ones included — so rollups match the
-  // project view. In the project view they stay editable; rollups show
-  // them as plain read-only headers.
   for (const sid of sectionIds) {
     nodes.push({ id: sectionNodeId(sid), children: buildGroup(sectionNodeId(sid)) });
   }
@@ -231,7 +215,6 @@ export function SectionedTaskTree({
   ): void {
     const activeSection = decodeSectionNodeId(activeId);
     if (activeSection !== null) {
-      if (readOnlySections) return;
       const beforeSection = beforeId ? decodeSectionNodeId(beforeId) : null;
       if (beforeId !== undefined && beforeSection === null) {
         // Dropped into the unsectioned block at the top — become the
@@ -269,8 +252,7 @@ export function SectionedTaskTree({
           return (
             <SectionRow
               sectionId={sid}
-              handle={readOnlySections ? undefined : handle}
-              readOnly={readOnlySections}
+              handle={handle}
               autoFocusName={focusSectionId === sid}
             />
           );

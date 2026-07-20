@@ -15,7 +15,6 @@ import {
   createTask,
   createNote,
   createArea,
-  createSection,
   getArea,
   deleteProject,
   deleteArea,
@@ -24,6 +23,7 @@ import {
   moveTask,
   PLACEMENT_SEP,
   getEffectiveTaskStatus,
+  sortTaskIds,
   TABLES,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
@@ -49,7 +49,7 @@ import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
-import { SectionedTaskTree } from './SectionedTaskTree.tsx';
+import ProjectTaskList from './ProjectTaskList.tsx';
 import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
@@ -974,16 +974,12 @@ function TasksTab({
     [rollups, areaId],
   );
 
-  const [targetProjectId, setTargetProjectId] = useState<string | null>(null);
-
+  // With no projects yet, a single tab-level input spins up a
+  // "General" project on first task. Once projects exist, each
+  // project group's own ProjectTaskList carries the add-task input.
   function addTask(title: string): void {
-    if (projects.length === 0) {
-      const newId = createProject(store, { name: 'General', areaId });
-      createTask(store, { title, placement: { kind: 'project', id: newId } });
-    } else {
-      const pid = targetProjectId ?? projects[0]!.id;
-      createTask(store, { title, placement: { kind: 'project', id: pid } });
-    }
+    const newId = createProject(store, { name: 'General', areaId });
+    createTask(store, { title, placement: { kind: 'project', id: newId } });
   }
 
   const addInputRef = useRef<HTMLInputElement>(null);
@@ -998,23 +994,14 @@ function TasksTab({
   return (
     <section className="tasks-tab" aria-label="Tasks">
       <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
-      {projects.length > 1 && (
-        <div className="tasks-tab-target">
-          <label className="field-label-inline">Add new tasks to</label>
-          <select
-            value={targetProjectId ?? projects[0]!.id}
-            onChange={(e) => setTargetProjectId(e.target.value)}
-          >
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name || 'Untitled'}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
       {projects.map((p) => (
-        <ProjectTasksGroup key={p.id} projectId={p.id} projectName={p.name} showCompleted={showCompleted} />
+        <ProjectTaskList
+          key={p.id}
+          projectId={p.id}
+          projectName={p.name}
+          showCompleted={showCompleted}
+          showHeader
+        />
       ))}
       {subAreas.map((sa) => (
         <SubAreaTasks
@@ -1025,16 +1012,14 @@ function TasksTab({
           showCompleted={showCompleted}
         />
       ))}
-      <InlineAddInput
-        ref={addInputRef}
-        placeholder={
-          projects.length === 0
-            ? 'No projects yet — name a task to spin one up.'
-            : 'New task…'
-        }
-        ariaLabel="New task"
-        onSubmit={addTask}
-      />
+      {projects.length === 0 && (
+        <InlineAddInput
+          ref={addInputRef}
+          placeholder="No projects yet — name a task to spin one up."
+          ariaLabel="New task"
+          onSubmit={addTask}
+        />
+      )}
     </section>
   );
 }
@@ -1064,85 +1049,15 @@ function SubAreaTasks({
       <SubAreaHeader areaId={areaId} name={name} />
       <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
       {projects.map((p) => (
-        <ProjectTasksGroup
+        <ProjectTaskList
           key={p.id}
           projectId={p.id}
           projectName={p.name}
           showCompleted={showCompleted}
+          showHeader
         />
       ))}
     </div>
-  );
-}
-
-function ProjectTasksGroup({
-  projectId,
-  projectName,
-  showCompleted,
-}: {
-  projectId: string;
-  projectName: string;
-  showCompleted: boolean;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  useStoreVersion(store);
-  const taskIds = useTasksForProjectDeep(store, projectId);
-  const { selected: filter } = usePersonFilter();
-  const orderedIds = [...taskIds].sort((a, b) => {
-    const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
-    const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
-    if (oa !== ob) return oa - ob;
-    return a.localeCompare(b);
-  });
-  const visibleIds = useMemo(() => {
-    if (filter.length === 0) return orderedIds;
-    const set = new Set(filter);
-    return orderedIds.filter((tid) => {
-      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
-        if (set.has(id)) return true;
-      }
-      return false;
-    });
-  }, [store, orderedIds, filter]);
-
-  const hiddenCount = useHiddenCount(
-    store,
-    NOTE_ENTITY_TYPE.task,
-    taskIds,
-    filter,
-  );
-
-  return (
-    <>
-      <ProjectHeader name={projectName} count={visibleIds.length} />
-      <SectionedTaskTree
-        projectId={projectId}
-        ids={visibleIds}
-        showCompleted={showCompleted}
-        readOnlySections
-        ariaLabel={`Tasks for ${projectName}`}
-      />
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
-        </p>
-      )}
-    </>
-  );
-}
-
-function ProjectHeader({
-  name,
-  count,
-}: {
-  name: string;
-  count: number;
-}): React.JSX.Element {
-  return (
-    <header className="project-header">
-      <span className="project-header-name">{name || 'Untitled'}</span>
-      <span className="project-header-count">· {count}</span>
-    </header>
   );
 }
 
@@ -1480,97 +1395,14 @@ function ProjectTasksTab({
   isActive: boolean;
   showCompleted: boolean;
 }): React.JSX.Element {
-  const { store } = useDataLayer();
-  const taskIds = useTasksForProjectDeep(store, projectId);
-  const { selected: filter } = usePersonFilter();
-  const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.task, taskIds, filter);
-  const orderedIds = useMemo(
-    () =>
-      [...taskIds].sort((a, b) => {
-        const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
-        const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
-        if (oa !== ob) return oa - ob;
-        return a.localeCompare(b);
-      }),
-    [store, taskIds],
-  );
-  const visibleIds = useMemo(() => {
-    if (filter.length === 0) return orderedIds;
-    const set = new Set(filter);
-    return orderedIds.filter((tid) => {
-      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.task, tid)) {
-        if (set.has(id)) return true;
-      }
-      return false;
-    });
-  }, [store, orderedIds, filter]);
-
-  // Id of a just-created section whose name input should autofocus.
-  const [focusSectionId, setFocusSectionId] = useState<string | null>(null);
-
-  function addTask(title: string): void {
-    createTask(store, { title, placement: { kind: 'project', id: projectId } });
-  }
-
-  function addSection(): void {
-    const sid = createSection(store, { name: '', projectId });
-    setFocusSectionId(sid);
-  }
-
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(taskIds.length === 0);
-  useEffect(() => {
-    if (!isActive) return;
-    const empty = taskIds.length === 0;
-    // Focus for quick entry when the list is (or just was) empty — but
-    // never steal focus from a row that just grabbed it (a section's
-    // add-task action focuses its new title input in the same commit).
-    if (
-      (empty || wasEmpty.current) &&
-      (document.activeElement === null || document.activeElement === document.body)
-    ) {
-      addInputRef.current?.focus();
-    }
-    wasEmpty.current = empty;
-  }, [isActive, taskIds.length]);
-
   return (
     <section className="tasks-tab" aria-label="Tasks">
-      <SectionedTaskTree
+      <ProjectTaskList
         projectId={projectId}
-        ids={visibleIds}
+        projectName={projectName}
         showCompleted={showCompleted}
-        focusSectionId={focusSectionId}
-        ariaLabel={`Tasks for ${projectName}`}
+        autoFocusAddInput={isActive}
       />
-      <div className="tasks-tab-footer">
-        <InlineAddInput
-          ref={addInputRef}
-          placeholder={
-            taskIds.length === 0
-              ? 'No tasks yet — add the first one.'
-              : 'New task…'
-          }
-          ariaLabel="New task"
-          onSubmit={addTask}
-        />
-        <button
-          type="button"
-          className="tasks-tab-add-section"
-          aria-label="Add section"
-          title="Add section"
-          onClick={addSection}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#add-icon" />
-          </svg>
-        </button>
-      </div>
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
-        </p>
-      )}
     </section>
   );
 }
@@ -1767,14 +1599,6 @@ function AreaTasksSection({ areaId, showCompleted }: { areaId: string; showCompl
       <TaskList ids={visibleIds} readOnly effectiveStatus />
     </Group>
   );
-}
-function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
-  return [...ids].sort((a, b) => {
-    const oa = Number(store.getCell(TABLES.tasks, a, COLUMNS.tasks.order) ?? 0);
-    const ob = Number(store.getCell(TABLES.tasks, b, COLUMNS.tasks.order) ?? 0);
-    if (oa !== ob) return oa - ob;
-    return a.localeCompare(b);
-  });
 }
 
 

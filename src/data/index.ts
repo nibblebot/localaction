@@ -106,6 +106,7 @@ export {
   descendantTaskIds,
   buildTaskTree,
   pruneDoneTasks,
+  sortTaskIds,
   topLevelTaskIdsForPlacement,
   getTasksForProjectDeep,
   useTasksForProjectDeep,

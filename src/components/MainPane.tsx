@@ -1390,7 +1390,11 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
   return (
     <main className="main" aria-label="Editor">
       <div className="main-body">
-        <ProjectPaneHeader areaId={project.areaId} name={projectName} />
+        <ProjectPaneHeader
+          areaId={project.areaId}
+          projectId={projectId}
+          name={projectName}
+        />
         <PaneTabs
           tabs={PROJECT_TABS}
           tab={tab}
@@ -1420,9 +1424,11 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
 
 function ProjectPaneHeader({
   areaId,
+  projectId,
   name,
 }: {
   areaId: string | null;
+  projectId: string;
   name: string;
 }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -1467,6 +1473,10 @@ function ProjectPaneHeader({
         <use href="/icons.svg#project-list-icon" />
       </svg>
       <h1 className="area-header-name">{name || 'Untitled'}</h1>
+      <PersonAssignmentButton
+        entityType={NOTE_ENTITY_TYPE.project}
+        entityId={projectId}
+      />
     </div>
   );
 }

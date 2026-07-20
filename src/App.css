@@ -1903,7 +1903,7 @@
    ============================================================ */
 
 .person-picker {
-  position: absolute;
+  position: fixed;
   z-index: 50;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1989,7 +1989,7 @@
    ============================================================ */
 
 .person-edit {
-  position: absolute;
+  position: fixed;
   z-index: 60;
   background: var(--surface);
   border: 1px solid var(--border);

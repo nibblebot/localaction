@@ -54,7 +54,7 @@ export default function PersonEditPopover({
 
   if (!anchor) return null;
 
-  const x = Math.max(8, Math.min(anchor.x, window.innerWidth - 280));
+  const x = Math.max(8, Math.min(anchor.x, window.innerWidth - 304));
   const y = Math.max(8, Math.min(anchor.y, window.innerHeight - 200));
 
   function commit(): void {

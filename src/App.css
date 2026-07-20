@@ -1265,6 +1265,31 @@
   color: var(--text-secondary);
 }
 
+.quick-add-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 0.96rem;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin: var(--space-2) 0 var(--space-4);
+  outline: none;
+  transition: border-color 0.1s;
+}
+
+.quick-add-input::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.quick-add-input:focus {
+  border-color: var(--accent);
+}
+
 
 .modal-actions {
   display: flex;

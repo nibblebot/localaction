@@ -6,6 +6,7 @@ import MainPane from './components/MainPane.tsx';
 import { Inspector } from 'tinybase/ui-react-inspector';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import AppearanceMenu from './components/appearance/AppearanceMenu.tsx';
+import QuickAddModal from './components/QuickAddModal.tsx';
 import PersonFilterProvider from './components/persons/PersonFilterContext.tsx';
 import './App.css';
 
@@ -23,6 +24,7 @@ function App(): React.JSX.Element {
                 <MainPane />
                 <Inspector />
                 <AppearanceMenu />
+                <QuickAddModal />
               </div>
             </SelectionProvider>
           </DataLayerProvider>

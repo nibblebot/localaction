@@ -94,4 +94,27 @@ test.describe('inbox visibility', () => {
     await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
     await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveValue('Persisted inbox task');
   });
+
+  test('Shift+Enter in a task title saves it and opens a focused empty sibling below', async ({ page }) => {
+    await openInbox(page);
+    await createInboxTask(page, 'Alpha');
+    await createInboxTask(page, 'Beta');
+
+    const titles = page.locator('main[aria-label="Inbox"] .task-line-title');
+    await titles.first().click();
+    await page.keyboard.press('Shift+Enter');
+
+    // New empty row sits directly under the current one, focused for
+    // quick entry; the untouched sibling stays put.
+    await expect(titles).toHaveCount(3);
+    await expect(titles.nth(0)).toHaveValue('Alpha');
+    await expect(titles.nth(1)).toHaveValue('');
+    await expect(titles.nth(2)).toHaveValue('Beta');
+    await expect(titles.nth(1)).toBeFocused();
+
+    // The focused row is a real editable task: typing + Enter commits it.
+    await page.keyboard.type('Middle');
+    await page.keyboard.press('Enter');
+    await expect(titles.nth(1)).toHaveValue('Middle');
+  });
 });

@@ -20,6 +20,7 @@ import {
   useTask,
   useEffectiveTaskStatus,
   createTask,
+  createTaskAfter,
   updateTask,
   setTaskStatus,
   deleteTask,
@@ -131,6 +132,12 @@ function TaskTitleInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
+          // Shift+Enter: save this title (via blur) and open a fresh
+          // empty sibling immediately below, focused for quick entry.
+          if (e.shiftKey) {
+            const nextId = createTaskAfter(store, taskId, '');
+            if (nextId) pendingTitleFocus = nextId;
+          }
           e.currentTarget.blur();
         } else if (e.key === 'Escape') {
           e.preventDefault();

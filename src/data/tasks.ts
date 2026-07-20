@@ -4,7 +4,7 @@ import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import type { TaskStatus } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Task, TaskInput, TaskPatch, TaskPlacement } from './types.ts';
-import { readSiblingOrders } from './order.ts';
+import { moveTask, readSiblingOrders } from './order.ts';
 
 /**
  * Placement reference encoding (ADR-0001). A task's single `placement`
@@ -63,6 +63,32 @@ export function createTask(store: MergeableStore, input: TaskInput): string {
       [COLUMNS.tasks.updatedAt]: ts,
     }),
   );
+  return id;
+}
+
+/**
+ * Create a task as the next sibling after `afterId`: same placement,
+ * ordered immediately below it. Backs quick entry (Shift+Enter in a
+ * task title saves and opens a fresh row under the current one).
+ * Returns null when `afterId` no longer exists.
+ */
+export function createTaskAfter(
+  store: MergeableStore,
+  afterId: string,
+  title: string,
+): string | null {
+  if (!store.hasRow(TABLES.tasks, afterId)) return null;
+  const placement = getRawPlacement(store, afterId);
+  const id = createTask(store, { title, placement: decodePlacement(placement) });
+  const siblings = readSiblingOrders(store, TABLES.tasks, COLUMNS.tasks.placement, placement);
+  const idx = siblings.findIndex((s) => s.id === afterId);
+  const beforeId = idx >= 0 ? siblings[idx + 1]?.id : undefined;
+  // `createTask` appends to the end of the sibling group; only move when
+  // a real sibling follows `afterId` (the end-append is already right
+  // when `afterId` was last, where the row after it is the new task).
+  if (beforeId !== undefined && beforeId !== id) {
+    moveTask(store, id, placement, beforeId);
+  }
   return id;
 }
 

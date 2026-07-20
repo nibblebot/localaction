@@ -75,6 +75,7 @@ export {
 } from './projects.ts';
 export {
   createTask,
+  createTaskAfter,
   updateTask,
   setTaskStatus,
   getTask,

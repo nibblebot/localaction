@@ -766,6 +766,12 @@
   gap: 6px;
   margin: var(--space-3) 0 var(--space-2);
   padding-inline: 4px;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+
+.project-header:hover .project-header-name {
+  text-decoration: underline;
 }
 
 .project-header-name {

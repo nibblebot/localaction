@@ -6,11 +6,13 @@
  * add-section action, and the person-filter "N tasks hidden" stub.
  *
  * `showHeader` (area rollup) prepends a project-name header with a
- * visible-task count; the project view omits it because the pane
- * header already names the project.
+ * visible-task count; the header links to the project's own Tasks
+ * view. The project view omits it because the pane header already
+ * names the project.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useDataLayer, createTask, createSection } from '../data/index.ts';
+import { formatRoute } from '../router.ts';
 import { useProjectTaskList } from './useProjectTaskList.ts';
 import { SectionedTaskTree } from './SectionedTaskTree.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
@@ -66,10 +68,14 @@ export default function ProjectTaskList({
   return (
     <>
       {showHeader && (
-        <header className="project-header">
+        <a
+          className="project-header"
+          href={formatRoute({ kind: 'project', id: projectId })}
+          title={`Open ${projectName || 'Untitled'}`}
+        >
           <span className="project-header-name">{projectName || 'Untitled'}</span>
           <span className="project-header-count">· {visibleIds.length}</span>
-        </header>
+        </a>
       )}
       <SectionedTaskTree
         projectId={projectId}

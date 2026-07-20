@@ -33,8 +33,17 @@ function personName(store: MergeableStore, personId: string): string {
  * Canonical person ordering: Self first, then alphabetical by name.
  * Shared by the sidebar facet, the assignment popover, and the
  * read-model derivations so every surface lists people identically.
+ *
+ * `_tables` is a React Compiler dependency token (see
+ * `peopleForEntity`): callers inside components MUST pass the value
+ * from `useTables(store)` so a rename re-sorts instead of serving a
+ * memoised stale order.
  */
-export function sortPersonIds(store: MergeableStore, ids: readonly string[]): string[] {
+export function sortPersonIds(
+  store: MergeableStore,
+  ids: readonly string[],
+  _tables?: unknown,
+): string[] {
   return [...ids].sort((a, b) => {
     // Self always first.
     if (a === SELF_PERSON_ID) return -1;
@@ -60,7 +69,7 @@ export function peopleForEntity(
 ): string[] {
   const stored = getEntityPersonIds(store, entityType, entityId);
   const present = stored.filter((pid) => personPresent(store, pid));
-  return sortPersonIds(store, [...new Set([SELF_PERSON_ID, ...present])]);
+  return sortPersonIds(store, [...new Set([SELF_PERSON_ID, ...present])], _tables);
 }
 
 /**

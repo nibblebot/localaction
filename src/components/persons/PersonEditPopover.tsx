@@ -40,6 +40,18 @@ export default function PersonEditPopover({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const isSelf = personId === SELF_PERSON_ID;
 
+  // Re-seed the form when the popover switches to a different person
+  // (the component stays mounted between opens, so useState alone
+  // would keep the previous person's name). Adjust-during-render per
+  // the React docs; never fires while typing because personId is
+  // stable for an open editor.
+  const [seededFor, setSeededFor] = useState(personId);
+  if (seededFor !== personId) {
+    setSeededFor(personId);
+    setName(initial?.name ?? '');
+    setColor(initial?.color ?? nameDerivedHue(initial?.name ?? ''));
+  }
+
   useEffect(() => {
     if (!anchor) return;
     const onKey = (e: KeyboardEvent): void => {

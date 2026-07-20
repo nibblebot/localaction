@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTables } from 'tinybase/ui-react';
 import {
   useDataLayer,
-  useStoreVersion,
-  COLUMNS,
-  TABLES,
   SELF_PERSON_ID,
   type NoteEntityType,
 } from '../../data/index.ts';
@@ -15,6 +13,7 @@ import {
   sortPersonIds,
   usePresentPersonIds,
 } from '../../data/personSelectors.ts';
+import { usePerson } from '../../data/persons.ts';
 import PersonAvatar from './PersonAvatar.tsx';
 import PersonEditPopover from './PersonEditPopover.tsx';
 export interface PersonAssignmentPopoverProps {
@@ -53,7 +52,7 @@ export default function PersonAssignmentPopover({
   onClose,
 }: PersonAssignmentPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
-  useStoreVersion(store);
+  const tables = useTables(store);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   // Anchor for the edit popover, placed next to the row that was clicked.
@@ -74,7 +73,8 @@ export default function PersonAssignmentPopover({
   }, [anchor, onClose]);
 
   const selectedSet = useMemo(() => new Set(current), [current]);
-  const everyone = sortPersonIds(store, usePresentPersonIds(store));
+  // `tables` is the React Compiler dep token so a rename re-sorts.
+  const everyone = sortPersonIds(store, usePresentPersonIds(store), tables);
 
   if (!anchor) return null;
 
@@ -145,13 +145,11 @@ function PersonRow({
   onEdit: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  useStoreVersion(store);
-  const name = String(
-    store.getCell(TABLES.persons, personId, COLUMNS.persons.name) ?? '',
-  );
-  const color = String(
-    store.getCell(TABLES.persons, personId, COLUMNS.persons.color) ?? '',
-  );
+  // Reactive read (`useRow`) — imperative `getCell` here would go
+  // stale under React Compiler memoisation after a rename/recolor.
+  const person = usePerson(store, personId);
+  const name = person?.name ?? '';
+  const color = person?.color ?? '';
   return (
     <label
       className={`person-picker-row${locked ? ' person-picker-row-locked' : ''}`}

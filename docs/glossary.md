@@ -43,6 +43,8 @@ A URL-safe identifier for a Note, derived from its title. Stable across renames 
 
 An individual a LocalAction entity (Area, Project, or Task) is associated with. The app's own user is always represented by a distinguished Person called **Self**. Persons carry a name and a colour; their avatar is derived from their name (see [ux.md](./ux.md)). A Person is **not** a node in the Area trie — it is an orthogonal facet, M:N across every entity type.
 
+Self's name is a display name, not an identity: the user can rename Self like any other Person, and every canonical behaviour (always present, always assigned, non-deletable, sorted first, never stored as a link) keys off the fixed row id `"self"`, so a rename changes only what is rendered.
+
 ## Cast
 
 The set of Persons associated with an Area — simply the Area's own [Person Links](#person-link), edited through the Area's header cast chips. Sub-areas / Projects / Tasks also carry a set, but that set is "this entity's persons" — the term **cast** specifically denotes an Area's set. There is no inheritance or constraint: every entity's set stands alone, and assignment popovers list every present Person.

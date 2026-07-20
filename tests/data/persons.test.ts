@@ -23,7 +23,7 @@ import {
   getEntityPersonIds,
   getEntityIdsForPerson,
 } from '../../src/data/personLinks.ts';
-import { peopleForEntity } from '../../src/data/personSelectors.ts';
+import { peopleForEntity, sortPersonIds } from '../../src/data/personSelectors.ts';
 import { row } from '../../src/data/internal.ts';
 
 function freshStore(): MergeableStore {
@@ -134,6 +134,45 @@ describe('updatePerson', () => {
     expect(got?.name).toBe('Mother');
     expect(got?.color).toBe('#abcdef');
     expect(got?.updatedAt).not.toBe(before);
+  });
+});
+
+describe('renaming Self', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+    ensureSelfPerson(store);
+    updatePerson(store, SELF_PERSON_ID, { name: 'Joshua' });
+  });
+
+  it('keeps the canonical id with the new display name', () => {
+    const self = getPerson(store, SELF_PERSON_ID);
+    expect(self?.id).toBe(SELF_PERSON_ID);
+    expect(self?.name).toBe('Joshua');
+  });
+
+  it('stays first in canonical order', () => {
+    const mom = createPerson(store, { name: 'Mom' });
+    expect(sortPersonIds(store, [mom, SELF_PERSON_ID])).toEqual([
+      SELF_PERSON_ID,
+      mom,
+    ]);
+  });
+
+  it('stays force-unioned into every entity\'s people', () => {
+    expect(peopleForEntity(store, NOTE_ENTITY_TYPE.area, 'A1')).toEqual([
+      SELF_PERSON_ID,
+    ]);
+  });
+
+  it('stays non-deletable', () => {
+    deletePerson(store, SELF_PERSON_ID);
+    expect(getPerson(store, SELF_PERSON_ID)?.name).toBe('Joshua');
+  });
+
+  it('is not re-seeded back to "Self" by the bootstrap', () => {
+    ensureSelfPerson(store);
+    expect(getPerson(store, SELF_PERSON_ID)?.name).toBe('Joshua');
   });
 });
 

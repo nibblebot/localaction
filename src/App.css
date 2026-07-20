@@ -1787,6 +1787,45 @@
   line-height: 1.4;
 }
 
+/* Chip wrapper: positions the hover/focus edit badge without
+   shifting the chip layout. */
+.person-filter-chip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.person-filter-chip-edit {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.person-filter-chip-edit .svg-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.person-filter-chip-wrap:hover .person-filter-chip-edit,
+.person-filter-chip-wrap:focus-within .person-filter-chip-edit {
+  display: inline-flex;
+}
+
+.person-filter-chip-edit:hover {
+  background: var(--surface-hover);
+  color: var(--text-h);
+}
+
 .person-filter-empty {
   font-size: 0.86rem;
   color: var(--text-muted);

@@ -55,4 +55,44 @@ test.describe('People', () => {
     await expect(page.locator('.person-filter-new-form')).toHaveCount(0);
     await expect(page.locator('.person-filter-chip', { hasText: 'Ghost' })).toHaveCount(0);
   });
+
+  test('Self can be renamed from the sidebar and stays the canonical default', async ({ page }) => {
+    const newName = `Me ${uniq()}`;
+    await page.goto('/#/');
+
+    // Edit affordance lives on the chip (hover reveals it).
+    const selfChip = page.locator('.person-filter-chip-wrap', { hasText: 'Self' });
+    await selfChip.hover();
+    await selfChip.getByRole('button', { name: 'Edit Self' }).click();
+    const editor = page.locator('.person-edit');
+    await expect(editor).toBeVisible();
+    // Canonical: Self stays non-deletable even while being renamed.
+    await expect(editor.getByRole('button', { name: 'Delete' })).toBeDisabled();
+    await editor.locator('.person-edit-name').fill(newName);
+    await editor.getByRole('button', { name: 'Done' }).click();
+
+    // The chip shows the new display name, still first in canonical order.
+    const renamedChip = page.locator('.person-filter-chip-wrap', { hasText: newName });
+    await expect(renamedChip).toBeVisible();
+    await expect(page.locator('.person-filter-chip-wrap').first()).toHaveText(new RegExp(newName));
+
+    // In the assignment popover the renamed Self is still locked-on
+    // and tagged "default".
+    await createArea(page, `Fam ${uniq()}`);
+    await page.locator('.area-header-cast-chip').first().click();
+    const popover = page.locator('.person-picker');
+    await expect(popover).toBeVisible();
+    const selfRow = popover.locator('.person-picker-row', { hasText: newName });
+    await expect(selfRow).toBeVisible();
+    await expect(selfRow.locator('.person-picker-row-note')).toHaveText('default');
+    await expect(selfRow.locator('input[type="checkbox"]')).toBeDisabled();
+    await page.keyboard.press('Escape');
+
+    // Restore the seeded name — the suite shares one DB across specs.
+    await renamedChip.hover();
+    await renamedChip.getByRole('button', { name: `Edit ${newName}` }).click();
+    await editor.locator('.person-edit-name').fill('Self');
+    await editor.getByRole('button', { name: 'Done' }).click();
+    await expect(page.locator('.person-filter-chip-wrap', { hasText: 'Self' })).toBeVisible();
+  });
 });

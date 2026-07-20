@@ -77,7 +77,9 @@ three **tabs**, each carrying a live count and an add action:
   Projects from every sub-area (recursively) roll up into this tab
   under a clickable sub-area heading.
 - **Tasks** — tasks grouped by their project, with nested sub-tasks, an
-  open/done toggle, and drag-to-reorder. Sub-area tasks and projects roll up
+  open/done toggle, and drag-to-reorder. Every task and sub-task row carries
+  the same due-date affordance as project rows (calendar icon, or `MM/DD`
+  once set; popover to pick or clear). Sub-area tasks and projects roll up
   the same way, each under its own sub-area heading.
 - **Notes** — notes attached to this area or any area in its subtree (or their
   projects/tasks), each shown as a line with a markdown body preview.

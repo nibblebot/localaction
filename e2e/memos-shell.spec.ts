@@ -202,14 +202,14 @@ test.describe('LocalAction shell', () => {
     const now = new Date();
     const mm = String(now.getMonth() + 1).padStart(2, '0');
     await expect(calendar).toHaveCount(0);
-    await expect(row.locator('.project-row-due-label')).toHaveText(`${mm}/14`);
+    await expect(row.locator('.due-date-label')).toHaveText(`${mm}/14`);
 
     // Reopen and clear: the MM/DD label disappears.
     await row.getByRole('button', { name: /Due .* — change/ }).click();
     await page.getByRole('dialog', { name: 'Pick due date' })
       .getByRole('button', { name: 'Clear' })
       .click();
-    await expect(row.locator('.project-row-due-label')).toHaveCount(0);
+    await expect(row.locator('.due-date-label')).toHaveCount(0);
     await expect(row.getByRole('button', { name: 'Set due date' })).toBeVisible();
   });
 

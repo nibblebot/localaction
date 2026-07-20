@@ -36,6 +36,7 @@ import { useSelection } from './useSelection.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
+import TaskDueDateButton from './TaskDueDateButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
 
 function isTaskDone(store: MergeableStore, taskId: string): boolean {
@@ -219,6 +220,7 @@ export function TaskRow({
       )}
       {!readOnly && (
         <>
+          <TaskDueDateButton taskId={taskId} />
           <PersonAssignmentButton
             entityType={NOTE_ENTITY_TYPE.task}
             entityId={taskId}

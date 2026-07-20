@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { TASK_STATUS } from '../../src/data/schema.ts';
+import { TABLES, COLUMNS, TASK_STATUS } from '../../src/data/schema.ts';
 import {
   createTask,
   createTaskAfter,
@@ -71,6 +71,18 @@ describe('task placement', () => {
     expect(getTask(store, t)?.placement).toEqual({ kind: 'area', id: a });
     updateTask(store, t, { placement: { kind: 'inbox' } });
     expect(getTask(store, t)?.placement).toEqual({ kind: 'inbox' });
+  });
+
+  it('updateTask sets and clears a due date (absent cell, never null)', () => {
+    const t = createTask(store, { title: 'x' });
+    expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.dueDate)).toBeUndefined();
+    expect(getTask(store, t)?.dueDate).toBeNull();
+    updateTask(store, t, { dueDate: '2026-08-14' });
+    expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.dueDate)).toBe('2026-08-14');
+    expect(getTask(store, t)?.dueDate).toBe('2026-08-14');
+    updateTask(store, t, { dueDate: null });
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.dueDate)).toBe(false);
+    expect(getTask(store, t)?.dueDate).toBeNull();
   });
 
   it('encodePlacement / decodePlacement round-trip every kind', () => {

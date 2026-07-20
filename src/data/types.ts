@@ -40,6 +40,8 @@ export interface Task {
   title: string;
   placement: TaskPlacement;
   status: TaskStatus;
+  /** Date-only ISO string (`YYYY-MM-DD`), or null when no due date. */
+  dueDate: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -109,6 +111,8 @@ export interface TaskPatch {
   title?: string;
   placement?: TaskPlacement;
   status?: TaskStatus;
+  /** Set a date-only ISO string, or null to clear the due date. */
+  dueDate?: string | null;
   order?: number;
 }
 

@@ -114,6 +114,7 @@ erDiagram
   tasks { string projectId FK }
   tasks { string parentTaskId FK "nullable; nested tasks" }
   tasks { string status "open|done" }
+  tasks { string dueDate "optional; YYYY-MM-DD" }
   tasks { float order }
   notes { string id PK }
   notes { string slug }

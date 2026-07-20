@@ -757,7 +757,7 @@
 .tasks-tab {
   background: var(--surface);
   border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-2);
 }
 
 .tasks-tab-target {
@@ -852,7 +852,7 @@
   align-items: center;
   align-content: flex-start;
   gap: 10px;
-  padding: 6px 0;
+  padding: 4px 0;
   border-radius: var(--radius-sm);
 }
 
@@ -1675,8 +1675,8 @@
    ------------------------------------------------------------ */
 
 .task-line-drag-handle {
-  width: 40px;
-  height: 40px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2091,22 +2091,26 @@
 }
 
 /* ============================================================
-   Project due date (row button + calendar popover)
+   Due date (row button + calendar popover; projects and tasks)
    ============================================================ */
 
-.project-row-due {
+.due-date {
   width: auto;
-  min-width: 26px;
+  min-width: 22px;
   padding: 0 4px;
 }
 
-.project-row-due-label {
+.project-row-action.due-date {
+  min-width: 26px;
+}
+
+.due-date-label {
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.project-row-due-set {
+.due-date-set {
   color: var(--text);
 }
 

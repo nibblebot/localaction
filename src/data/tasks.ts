@@ -108,6 +108,11 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
     }
   }
   if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
+  if (patch.dueDate === null) {
+    store.delCell(TABLES.tasks, id, COLUMNS.tasks.dueDate);
+  } else if (patch.dueDate !== undefined) {
+    next[COLUMNS.tasks.dueDate] = patch.dueDate;
+  }
   store.setPartialRow(TABLES.tasks, id, row(next));
 }
 
@@ -318,6 +323,7 @@ function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
     title: String(r[COLUMNS.tasks.title] ?? ''),
     placement: decodePlacement(r[COLUMNS.tasks.placement]),
     status: (String(r[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
+    dueDate: normalizeRelation(r[COLUMNS.tasks.dueDate]),
     order: Number(r[COLUMNS.tasks.order] ?? 0),
     createdAt: String(r[COLUMNS.tasks.createdAt] ?? ''),
     updatedAt: String(r[COLUMNS.tasks.updatedAt] ?? ''),

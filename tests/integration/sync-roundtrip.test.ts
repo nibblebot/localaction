@@ -10,7 +10,8 @@
  *   2. A write on one client's store replicates to the other.
  *   3. After both clients disconnect, a third "fresh" client sees the
  *      full persisted state (Area, Sub-Area, Project).
- *   4. The SQLite file round-trips through `createSqlite3Persister.load()`.
+ *   4. The SQLite file round-trips through the tabular server persister's
+ *      `load()` (`createServerTabularPersister`).
  *
  * Runs under vitest with `@vitest-environment node` (no DOM, real
  * `ws`/`sqlite3` Node modules).
@@ -26,14 +27,14 @@ import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { createMergeableStore } from 'tinybase';
+import { createMergeableStore, createStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
 import {
   createWsSynchronizer,
 } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { startServer, type RunningServer } from '../../server/index.ts';
 import { openDatabase } from '../../server/db.ts';
+import { createServerTabularPersister } from '../../server/persister.ts';
 
 // TinyBase's public types don't name the synchronizer class returned by
 // `createWsSynchronizer`; aliasing it here keeps callsites off the
@@ -140,9 +141,9 @@ async function waitForPersisted(
   const deadline = Date.now() + timeoutMs;
   let last: unknown;
   while (Date.now() < deadline) {
-    const probe = createMergeableStore();
+    const probe = createStore();
     const db = await openDatabase(file, { readonly: true });
-    const persister = createSqlite3Persister(probe, db);
+    const persister = createServerTabularPersister(probe, db);
     try {
       await persister.load();
       last = probe.getCell(table, row, cell);
@@ -203,9 +204,9 @@ describe('sync server round-trip', () => {
       await freshSync.destroy();
     }
 
-    const reload = createMergeableStore();
+    const reload = createStore();
     const reloadDb = await openDatabase(dbPath, { readonly: true });
-    const reloadPersister = createSqlite3Persister(reload, reloadDb);
+    const reloadPersister = createServerTabularPersister(reload, reloadDb);
     await reloadPersister.load();
     const { promise: closed, resolve: closeResolved } =
       Promise.withResolvers<void>();

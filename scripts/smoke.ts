@@ -2,10 +2,13 @@ import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
-import { createMergeableStore } from 'tinybase';
+import { createMergeableStore, createStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
 import { openDatabase } from '../server/db.ts';
+import {
+  createServerTabularPersister,
+  VALUES_TABLE_NAME,
+} from '../server/persister.ts';
 import {
   createWsSynchronizer,
 } from 'tinybase/synchronizers/synchronizer-ws-client';
@@ -78,6 +81,38 @@ async function main() {
 
     await waitForPersisted(DB_PATH, 'projects', 'p1', 'name', 'Plan vacation');
     console.log('smoke: writes persisted to SQLite');
+
+    // Direct proof of tabular mode: the project row lives in a per-entity
+    // `projects` SQL table keyed by `_id`, not in a JSON blob.
+    const rawDb = await openDatabase(DB_PATH, { readonly: true });
+    const { promise: projectRowsPromise, resolve: gotRows, reject: rowsFailed } =
+      Promise.withResolvers<Array<{ name: string }>>();
+    rawDb.all(
+      "SELECT name FROM projects WHERE _id = 'p1'",
+      (err: Error | null, rows: Array<{ name: string }>) =>
+        err ? rowsFailed(err) : gotRows(rows),
+    );
+    const projectRows = await projectRowsPromise;
+    assert(
+      projectRows.length === 1 && projectRows[0]!.name === 'Plan vacation',
+      `tabular SELECT from projects did not return the p1 row (got ${JSON.stringify(projectRows)})`,
+    );
+    const { promise: tableRows, resolve: gotTables, reject: tablesFailed } =
+      Promise.withResolvers<Array<{ name: string }>>();
+    rawDb.all(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+      (err: Error | null, rows: Array<{ name: string }>) =>
+        err ? tablesFailed(err) : gotTables(rows),
+    );
+    const tableNames = (await tableRows).map((r) => r.name);
+    for (const expected of ['areas', 'projects', VALUES_TABLE_NAME]) {
+      assert(
+        tableNames.includes(expected),
+        `tabular tables missing ${expected} (have: ${tableNames.join(', ')})`,
+      );
+    }
+    await new Promise<void>((resolve) => rawDb.close(() => resolve()));
+    console.log('smoke: raw SQL confirms tabular tables (areas, projects, values)');
     await syncA.destroy();
     await syncB.destroy();
 
@@ -108,9 +143,9 @@ async function main() {
     console.log('smoke: fresh client loaded persisted state');
     await freshSync.destroy();
 
-    const reload = createMergeableStore();
+    const reload = createStore();
     const reloadDb = await openDatabase(DB_PATH, { readonly: true });
-    const reloadPersister = createSqlite3Persister(reload, reloadDb);
+    const reloadPersister = createServerTabularPersister(reload, reloadDb);
     await reloadPersister.load();
     assert(
       reload.getCell('areas', 'd1', 'name') === 'Family',
@@ -170,9 +205,9 @@ async function waitForPersisted(
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const probe = createMergeableStore();
+    const probe = createStore();
     const db = await openDatabase(file, { readonly: true });
-    const persister = createSqlite3Persister(probe, db);
+    const persister = createServerTabularPersister(probe, db);
     try {
       await persister.load();
       if (probe.getCell(table, row, cell) === value) return;

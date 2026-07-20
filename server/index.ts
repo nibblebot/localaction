@@ -4,10 +4,9 @@ import { dirname, extname, join } from 'node:path';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore, type MergeableStore } from 'tinybase';
-import { createSqlite3Persister } from 'tinybase/persisters/persister-sqlite3';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-import { reconcileSchemaVersion } from '../src/data/schemaVersion.ts';
 import { openDatabase, type ServerDatabase } from './db.ts';
+import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 export const DEFAULT_PORT = 5173;
 export const WS_PATH = '/ws';
 export const STATIC_ROOT_NAME = 'dist';
@@ -92,13 +91,13 @@ export async function attachSyncServer(
   // FDs (no `db.close()`) and forced the per-connection persister factory
   // to redo the schema bootstrap. The `Database` is closed in `close()`.
   const db = await openDatabase(dbPath);
+  await dropLegacyJsonTable(db);
   const tinyServer = createWsServer(wsServer, async (pathId) => {
     const safePathId = sanitizePathId(pathId);
     if (!safePathId) {
       throw new Error(`invalid sync path: ${pathId}`);
     }
     const store = createMergeableStore();
-    const sqlitePersister = createSqlite3Persister(store, db);
     process.stderr.write(
       `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
     );
@@ -122,10 +121,7 @@ export async function attachSyncServer(
         touched.clear();
       });
     }
-    // Clean-cutover wipe happens inside the wrapper's startAutoLoad
-    // AFTER p.load() — the persister reads the old SQLite snapshot on
-    // load, so reconcile must follow. ADR-0001 mandates no row migration.
-    return wrapSqlitePersisterForWsServer(sqlitePersister, store);
+    return createServerPersister(store, db);
   });
 
   httpServer.on('upgrade', (req, socket, head) => {
@@ -173,47 +169,6 @@ function checkSecret(url: URL, expected: string): boolean {
 function sanitizePathId(pathId: string): string {
   return pathId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 128);
 }
-/**
- * Adapts a SQLite persister for `createWsServer`'s `createPersisterForPath`.
- *
- * `createWsServer` calls `startAutoLoad()` on the persister it receives. The
- * SQLite persister's autoload subscribes to the underlying database's
- * `CHANGE` event, which fires for our own writes too. That callback chain
- * ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
- * would overwrite the just-saved state with whatever stale view a client
- * happens to have. The server is the sole writer; client updates arrive as
- * WS `ContentDiff` messages handled by the WS server's own autoLoad path.
- * So the wrapper exposes `startAutoLoad` as a no-op and forwards every
- * other call (notably `startAutoSave`, which writes to disk).
- */
-type Sqlite3Persister = ReturnType<typeof createSqlite3Persister>;
-function wrapSqlitePersisterForWsServer(
-  p: Sqlite3Persister,
-  store: MergeableStore,
-): Sqlite3Persister {
-  return {
-    ...p,
-    // `createWsServer` calls `startAutoLoad()` on the persister it receives.
-    // The SQLite persister's autoload subscribes to the underlying database's
-    // `CHANGE` event, which fires for our own writes too. That callback chain
-    // ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
-    // would overwrite just-saved state with whatever stale view a client has.
-    // We still want the initial `load(initialContent)` so a freshly-spawned
-    // serverClient restores persisted state from SQLite, but we must skip
-    // the CHANGE-event autoload registration that would otherwise fire on
-    // every one of our own writes. Client updates arrive as WS `ContentDiff`
-    // messages handled by the WS server's own autoLoad path.
-    startAutoLoad: async (initialContent?: unknown): Promise<Sqlite3Persister> => {
-      await p.load(initialContent as Parameters<Sqlite3Persister['load']>[0]);
-      // Clean-cutover wipe AFTER load: the persister just read the old
-      // SQLite snapshot; reconcileSchemaVersion drops every row whose
-      // recorded version differs and stamps the current one. ADR-0001.
-      reconcileSchemaVersion(store);
-      return p;
-    },
-  };
-}
-
 
 const MIME_TYPES: Readonly<Record<string, string>> = {
   '.html': 'text/html; charset=utf-8',

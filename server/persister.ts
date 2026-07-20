@@ -1,0 +1,175 @@
+/**
+ * Server-side SQLite persistence: tabular saving.
+ *
+ * One SQL table per TinyBase table (identity mapping — SQL table name ===
+ * store table id), one column per cell, so the database is inspectable and
+ * queryable with normal SQL tooling. Row ids live in the TinyBase-default
+ * `_id` column (no writer ever sets an `id` cell, so there is no collision).
+ *
+ * Load-bearing constraint: tabular mode does not work with a MergeableStore
+ * (DpcTabular requires a regular Store; against a MergeableStore autosave
+ * silently writes nothing and reload returns garbage), but `createWsServer`
+ * syncs the store returned by `persister.getStore()`, which must stay the
+ * MergeableStore. Hence the plain-Store mirror bridge in
+ * `createServerPersister`: a tabular persister attached to a plain Store
+ * that mirrors the sync MergeableStore; the facade exposes the mergeable
+ * store via `getStore()` but loads/saves through the mirror.
+ *
+ * If a future tinybase upgrade makes tabular + MergeableStore work (or
+ * changes `createWsServer`'s persister contract), this module is the single
+ * seam to simplify — do not scatter the workaround.
+ */
+import { createStore, type MergeableStore, type Store, type Tables } from 'tinybase';
+import {
+  createSqlite3Persister,
+  type Sqlite3Persister,
+} from 'tinybase/persisters/persister-sqlite3';
+import { TABLES } from '../src/data/schema.ts';
+import { row } from '../src/data/internal.ts';
+import { reconcileSchemaVersion } from '../src/data/schemaVersion.ts';
+import type { ServerDatabase } from './db.ts';
+
+/**
+ * The key/value table holding the `schemaVersion` value. Named explicitly
+ * (not `values`) because `VALUES` is a SQLite keyword and breaks ad-hoc
+ * `SELECT * FROM values` queries.
+ */
+export const VALUES_TABLE_NAME = 'tinybase_values';
+
+// Identity mapping in both directions (SQL table name === store table id)
+// for every table in the app schema. `TABLES` is the single source — do not
+// hand-list table names here.
+const TABLE_NAMES = Object.values(TABLES);
+const IDENTITY = Object.fromEntries(TABLE_NAMES.map((n) => [n, n]));
+const TABULAR_CONFIG = {
+  mode: 'tabular',
+  tables: { load: IDENTITY, save: IDENTITY },
+  // `values: {load: true, save: true}` is REQUIRED, not optional:
+  // `reconcileSchemaVersion` decides the ADR-0001 wipe from the persisted
+  // `schemaVersion` value; without persisting values, every server restart
+  // would read `undefined` and wipe the entire database.
+  values: { load: true, save: true, tableName: VALUES_TABLE_NAME },
+} as const;
+
+const onIgnoredError = (error: unknown): void => {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`[srv persister] ignored error: ${message}\n`);
+};
+
+/**
+ * A tabular SQLite persister for a plain Store. Used directly by
+ * smoke/integration probes and by the facade in `createServerPersister`.
+ * The `onIgnoredError` handler keeps tabular save failures from vanishing
+ * silently (the old server passed no handler at all).
+ */
+export function createServerTabularPersister(
+  store: Store,
+  db: ServerDatabase,
+): Sqlite3Persister {
+  return createSqlite3Persister(store, db, TABULAR_CONFIG, undefined, onIgnoredError);
+}
+
+/**
+ * SQLite has no per-row column absence: rows missing an optional cell read
+ * back NULL and TinyBase loads them as dense `null` cells (e.g. an area
+ * without `parentId` reloads with `parentId: null` instead of absent).
+ * Dense nulls would sync to all clients, so they are stripped on load via
+ * the data layer's existing null-stripper, keeping the in-memory store
+ * sparse — exactly today's behavior.
+ */
+function cleanTables(tables: Tables): Tables {
+  const out: Tables = {};
+  for (const [tableId, rows] of Object.entries(tables)) {
+    const cleanRows: Tables[string] = {};
+    for (const [rowId, cells] of Object.entries(rows)) {
+      // TinyBase's `Cell` type is wider (allows arbitrary objects) than the
+      // primitives this app writes; `row()` only filters null/undefined.
+      cleanRows[rowId] = row(
+        cells as Record<string, string | number | boolean | null | undefined>,
+      );
+    }
+    out[tableId] = cleanRows;
+  }
+  return out;
+}
+
+/**
+ * The facade returned to `createWsServer`'s persister factory: exposes the
+ * mergeable sync store via `getStore()` but loads/saves through a plain
+ * Store mirror bridged from it.
+ */
+export function createServerPersister(
+  store: MergeableStore,
+  db: ServerDatabase,
+): Sqlite3Persister {
+  const mirror = createStore();
+  const p = createServerTabularPersister(mirror, db);
+
+  // Bridge: full-content copy per finished transaction. Deliberate
+  // simplicity — the dataset is a personal action tracker; `setContent`
+  // diffs and the tabular persister then saves only the changed tables
+  // incrementally. Verified: cell writes and row deletions both propagate
+  // to SQL. If profiling ever shows this hot, the fallback is bridging via
+  // `store.getTransactionMergeableChanges()`.
+  const bridgeId = store.addDidFinishTransactionListener(() => {
+    mirror.setContent(store.getContent());
+  });
+
+  const startAutoLoad = async (
+    initialContent?: unknown,
+  ): Promise<Sqlite3Persister> => {
+    // `createWsServer` calls `startAutoLoad()` on the persister it receives.
+    // The SQLite persister's autoload subscribes to the underlying database's
+    // `CHANGE` event, which fires for our own writes too. That callback chain
+    // ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
+    // would overwrite just-saved state with whatever stale view a client has.
+    // We still want the initial `load(initialContent)` so a freshly-spawned
+    // server client restores persisted state from SQLite, but we must skip
+    // the CHANGE-event autoload registration that would otherwise fire on
+    // every one of our own writes. The server is the sole writer; client
+    // updates arrive as WS `ContentDiff` messages handled by the WS server's
+    // own autoLoad path.
+    await p.load(initialContent as Parameters<Sqlite3Persister['load']>[0]);
+    store.setContent([cleanTables(mirror.getTables()), mirror.getValues()]);
+    // Clean-cutover wipe AFTER load: the persister just read the old SQLite
+    // snapshot; reconcileSchemaVersion drops every row whose recorded version
+    // differs and stamps the current one. ADR-0001. The wipe flows through
+    // the bridge into the mirror, and the WS server calls `startAutoSave()`
+    // (forwarded by the spread) immediately after `startAutoLoad()`, whose
+    // initial full save persists the post-reconcile state.
+    reconcileSchemaVersion(store);
+    return facade;
+  };
+
+  const destroy = async (): Promise<Sqlite3Persister> => {
+    // `createWsServer` destroys the persister when a path's last client
+    // disconnects; the bridge listener must not leak.
+    store.delListener(bridgeId);
+    await p.destroy();
+    return facade;
+  };
+
+  const facade: Sqlite3Persister = {
+    ...p,
+    // CRITICAL override: bare `...p` would expose the plain mirror and the
+    // WS server would try to sync a non-mergeable store.
+    getStore: () => store,
+    startAutoLoad,
+    destroy,
+    // startAutoSave/stopAutoSave/save/load/getDb etc. are forwarded
+    // unchanged by the spread.
+  };
+  return facade;
+}
+
+/**
+ * Removes the orphaned JSON-mode `tinybase` table on cutover to tabular
+ * saving. Idempotent (`IF EXISTS`).
+ */
+export async function dropLegacyJsonTable(db: ServerDatabase): Promise<void> {
+  const { promise, resolve, reject } = Promise.withResolvers<void>();
+  db.exec('DROP TABLE IF EXISTS tinybase', (err: Error | null) =>
+    err ? reject(err) : resolve(),
+  );
+  await promise;
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 interface Anchor {
   x: number;
@@ -139,8 +139,19 @@ function DueDateCalendar({
   const cells = useMemo(() => monthCells(view.year, view.month), [view.year, view.month]);
   const today = todayIso();
 
-  const x = Math.max(8, Math.min(anchor.x, window.innerWidth - 240));
-  const y = Math.max(8, Math.min(anchor.y, window.innerHeight - 300));
+  // Clamp to the viewport using the *rendered* size — the anchor-side
+  // estimate can't know padding/border, so measuring avoids overflow.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: anchor.y, left: anchor.x });
+  useLayoutEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPos({
+      top: Math.max(8, Math.min(anchor.y, window.innerHeight - rect.height - 8)),
+      left: Math.max(8, Math.min(anchor.x, window.innerWidth - rect.width - 8)),
+    });
+  }, [anchor]);
 
   function shiftMonth(delta: number): void {
     setView((v) => {
@@ -153,10 +164,11 @@ function DueDateCalendar({
     <>
       <div className="due-calendar-backdrop" onClick={onClose} />
       <div
+        ref={dialogRef}
         className="due-calendar"
         role="dialog"
         aria-label="Pick due date"
-        style={{ top: y, left: x }}
+        style={{ top: pos.top, left: pos.left }}
       >
         <div className="due-calendar-header">
           <button

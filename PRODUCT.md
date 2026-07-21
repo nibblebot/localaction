@@ -6,7 +6,7 @@ product
 
 ## Platform
 
-web
+web — desktop-first, with full mobile adaptation below 768px (drawer navigation, 44px touch targets under coarse pointer).
 
 ## Users
 

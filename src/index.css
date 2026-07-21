@@ -21,7 +21,7 @@
   /* Text — near-black with a violet undertone */
   --text: #5b5670;
   --text-secondary: #4a4458;
-  --text-muted: #9b96ae;
+  --text-muted: #6c6783;
   --text-h: #1f1b2e;
   --text-on-accent: #ffffff;
   /* Sidebar count pill — derived per-theme below */
@@ -44,16 +44,16 @@
   --code-fg: #1f1b2e;
 
   /* Danger */
-  --danger: #e11d48;
+  --danger: #be123c;
   --danger-bg: #ffe4e6;
   --danger-border: #fda4af;
-  /* Success — emerald (matches progress bars) */
-  --success: #10b981;
+  /* Success — deep emerald (badge text meets AA on --success-bg; matches progress bars) */
+  --success: #047857;
   --success-bg: #d1fae5;
   --success-border: #6ee7b7;
 
   /* Warning */
-  --warning: #d97706;
+  --warning: #ab4c08;
   --warning-bg: #fef3c7;
   --warning-border: #fcd34d;
 
@@ -109,7 +109,7 @@
 
   --text: #9aa3ad;
   --text-secondary: #7a838c;
-  --text-muted: #555c64;
+  --text-muted: #7d8790;
   --text-h: #ededed;
   --text-on-accent: #ffffff;
   --sidebar-count-fg: var(--text);
@@ -156,7 +156,7 @@
 
     --text: #9aa3ad;
     --text-secondary: #7a838c;
-    --text-muted: #555c64;
+    --text-muted: #7d8790;
     --text-h: #ededed;
     --text-on-accent: #ffffff;
     --sidebar-count-fg: var(--text);
@@ -251,6 +251,15 @@ code {
 :focus-visible {
   outline: 2px solid var(--accent-border);
   outline-offset: 1px;
+}
+
+/* Reduced motion — collapse transitions/animations to instant state changes. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Custom scrollbars (subtle) */

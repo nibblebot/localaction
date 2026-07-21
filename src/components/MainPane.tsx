@@ -512,12 +512,12 @@ function PaneTabs<T extends string>({
       {onToggleCompleted && (
         <CompletedToggle showCompleted={showCompleted ?? false} onToggle={onToggleCompleted} />
       )}
-      <button type="button" className="area-tab-action" aria-label="Search" title="Search">
+      <button type="button" className="area-tab-action" aria-label="Search" title="Search (coming soon)" disabled>
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#search-icon" />
         </svg>
       </button>
-      <button type="button" className="area-tab-action" aria-label="Sort" title="Sort">
+      <button type="button" className="area-tab-action" aria-label="Sort" title="Sort (coming soon)" disabled>
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#sort-icon" />
         </svg>

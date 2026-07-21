@@ -17,12 +17,12 @@ colors:
   ink-heading: "#1f1b2e"
   ink-body: "#5b5670"
   ink-secondary: "#4a4458"
-  ink-muted: "#9b96ae"
-  danger: "#e11d48"
+  ink-muted: "#6c6783"
+  danger: "#be123c"
   danger-bg: "#ffe4e6"
-  success: "#10b981"
+  success: "#047857"
   success-bg: "#d1fae5"
-  warning: "#d97706"
+  warning: "#ab4c08"
   warning-bg: "#fef3c7"
   area-purple: "#7c5cff"
   area-blue: "#3b82f6"
@@ -147,12 +147,12 @@ A violet-tinted neutral ladder with a single vivid accent; the whole system sits
 - **Ink Heading** (#1f1b2e): Titles and primary text — near-black with a violet undertone.
 - **Ink Body** (#5b5670): Default reading text.
 - **Ink Secondary** (#4a4458): Supporting text that must carry more weight than body (messages, ghost-button labels).
-- **Ink Muted** (#9b96ae): Placeholders, counts, metadata. Reserved for short, non-critical text — never long-form body.
+- **Ink Muted** (#6c6783): Placeholders, counts, metadata. Reserved for short, non-critical text — never long-form body. Meets WCAG AA (≥4.5:1) on every light surface.
 
 ### Semantic
-- **Success** (#10b981 · dark #4caf50): Completed progress fills, *Synced* badge.
-- **Warning** (#d97706 · dark #d4a72c): *Syncing… / Retry* badge states.
-- **Danger** (#e11d48 · dark #ef5350): Destructive actions, armed-confirm buttons, *Sync error* badge.
+- **Success** (#047857 · dark #4caf50): Completed progress fills, *Synced* badge. Deepened from #10b981 so badge text meets AA on the success tint.
+- **Warning** (#ab4c08 · dark #d4a72c): *Syncing… / Retry* badge states. Deepened from #d97706 for AA on the warning tint.
+- **Danger** (#be123c · dark #ef5350): Destructive actions, armed-confirm buttons, *Sync error* badge. Deepened from #e11d48 for AA on the danger tint.
 
 ### Area palette (user-facing hue carriers)
 Areas are the user's own color dimension — the only place hues other than violet appear by design: **Purple** (#7c5cff), **Blue** (#3b82f6), **Green** (#22a06b), **Pink** (#ec4899), **Amber** (#f59e0b), **Gray** (#9aa3ad). Rendered as sidebar dots and header markers only; an unknown id falls back to Gray.

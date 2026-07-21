@@ -650,6 +650,15 @@
   color: var(--text-h);
 }
 
+/* Placeholder actions (Search/Sort) — visibly inert until implemented. */
+.area-tab-action:disabled,
+.area-tab-action:disabled:hover {
+  background: transparent;
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* Completed-tasks toggle in the "show in place" mode. */
 .area-tab-action-active {
   background: var(--accent-tint);
@@ -2436,4 +2445,128 @@
 
 .due-calendar-spacer {
   flex: 1 1 auto;
+}
+
+/* ============================================================
+   Mobile (≤767px) — drawer navigation, single-column pane
+   ============================================================ */
+
+/* Desktop: no drawer chrome at all. */
+.drawer-toggle,
+.drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  /* Hamburger — fixed in the top-inline-start corner, above pane
+     content but below popovers/backdrops in the z scale. */
+  .drawer-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: max(var(--space-2), env(safe-area-inset-top, 0px));
+    inset-inline-start: max(var(--space-2), env(safe-area-inset-left, 0px));
+    width: 40px;
+    height: 40px;
+    z-index: 45;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .drawer-toggle svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Sidebar becomes an off-canvas drawer. */
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: min(280px, 84vw);
+    z-index: 70;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease-out;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .app-shell.drawer-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .app-shell.drawer-open .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 65;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  /* Reserve the hamburger lane above pane content. */
+  .main-body {
+    padding-top: calc(40px + var(--space-4));
+  }
+}
+
+/* ============================================================
+   Coarse pointer (touch) — 44px hit areas
+   Visual sizes stay desktop-grade; invisible ::after padding
+   extends the hit region to the 44px touch minimum.
+   ============================================================ */
+
+@media (pointer: coarse) {
+  .task-line-action,
+  .note-line-action,
+  .project-row-action,
+  .task-line-drag-handle,
+  .project-row-drag-handle,
+  .task-line-check,
+  .person-avatar,
+  .sidebar-area-caret {
+    position: relative;
+  }
+
+  .task-line-action::after,
+  .note-line-action::after,
+  .project-row-action::after,
+  .task-line-drag-handle::after,
+  .project-row-drag-handle::after,
+  .task-line-check::after,
+  .person-avatar::after,
+  .sidebar-area-caret::after {
+    content: '';
+    position: absolute;
+    inset: -11px; /* 22px control + 2×11px → 44px hit area */
+  }
+
+  /* 14px checkbox needs a wider halo. */
+  .task-line-check::after {
+    inset: -15px;
+  }
+
+  /* Sidebar rows and tab-bar actions grow for real — they're
+     primary navigation, not row-level chrome. */
+  .sidebar-item {
+    min-height: 44px;
+  }
+
+  .area-tab-action {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Calendar day cells reach ~44px on phones. */
+  .due-calendar {
+    width: min(320px, calc(100vw - 16px));
+  }
 }

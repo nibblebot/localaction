@@ -118,7 +118,8 @@ function SortableAreaRow({
           type="button"
           className={classes.join(' ')}
           data-dim={dim ? 'true' : 'false'}
-          aria-label={`${displayName} (drag to reorder)`}
+          aria-label={displayName}
+          aria-current={isActive ? 'page' : undefined}
           title="Drag to reorder"
           onClick={(e) => {
             if (handle.isDragging) return;
@@ -221,7 +222,7 @@ export default function Sidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="sidebar" aria-label="Sidebar">
+    <aside className="sidebar" id="app-sidebar" aria-label="Sidebar">
       <div className="sidebar-section sidebar-app-name-row">
         <h1 className="sidebar-app-name">LocalAction</h1>
         <SyncStatusBadge />
@@ -233,6 +234,7 @@ export default function Sidebar(): React.JSX.Element {
           href={formatRoute(INBOX)}
           className={`sidebar-item sidebar-item-top sidebar-inbox-link${selection.kind === 'inbox' ? ' sidebar-item-active' : ''}`}
           aria-label="Inbox"
+          aria-current={selection.kind === 'inbox' ? 'page' : undefined}
         >
           <span className="sidebar-item-name">Inbox</span>
           {inboxIds.length > 0 ? (

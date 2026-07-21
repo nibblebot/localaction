@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
@@ -42,6 +43,7 @@ import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { INBOX } from '../router.ts';
 import ConfirmModal from './ConfirmModal.tsx';
+import AreaEditPopover from './AreaEditPopover.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
@@ -225,7 +227,13 @@ function AreaHeader({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(null);
   const cast = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
+
+  function openEditor(e: MouseEvent<HTMLElement>): void {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setEditAnchor({ x: rect.left, y: rect.bottom + 6 });
+  }
 
   function commit(): void {
     const trimmed = draft.trim();
@@ -267,7 +275,16 @@ function AreaHeader({
           /
         </span>
       )}
-      <h1 className="area-header-name">{name || 'Untitled'}</h1>
+      <h1 className="area-header-name">
+        <button
+          type="button"
+          className="area-header-name-edit"
+          onClick={openEditor}
+          title="Edit area"
+        >
+          {name || 'Untitled'}
+        </button>
+      </h1>
       <AreaHeaderCast areaId={areaId} cast={cast} />
       {showAddSubArea && onCreateSubArea && (
         adding ? (
@@ -305,6 +322,17 @@ function AreaHeader({
       )}
       <button
         type="button"
+        className="area-header-edit"
+        onClick={openEditor}
+        aria-label="Edit area"
+        title="Edit area"
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#edit-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
         className="area-header-delete"
         onClick={() => setConfirmDelete(true)}
         aria-label="Delete area"
@@ -314,6 +342,13 @@ function AreaHeader({
           <use href="/icons.svg#trash-icon" />
         </svg>
       </button>
+      <AreaEditPopover
+        anchor={editAnchor}
+        areaId={areaId}
+        name={name}
+        color={color}
+        onClose={() => setEditAnchor(null)}
+      />
       <ConfirmModal
         open={confirmDelete}
         title="Delete area?"

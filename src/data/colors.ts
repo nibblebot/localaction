@@ -1,7 +1,7 @@
 /**
  * Stable palette of area dot colors. Hex values are the design-system
  * accent shades the sidebar renders for an area's marker. Adding a color
- * here automatically makes it selectable from the AreaEditor.
+ * here automatically makes it selectable from the AreaEditPopover.
  */
 export const AREA_COLORS = [
   { id: 'purple', label: 'Purple', hex: '#7c5cff' },

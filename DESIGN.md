@@ -1,0 +1,266 @@
+---
+name: LocalAction
+description: A local-first home for everything that matters — areas, projects, tasks, and notes you truly own.
+colors:
+  accent-iris: "#7c3aed"
+  accent-iris-hover: "#6d28d9"
+  accent-wash: "#ece6fb"
+  accent-border: "#c4b5fd"
+  accent-tint: "#e9e3fa"
+  canvas-lavender-mist: "#f5f3fa"
+  surface: "#ffffff"
+  surface-hover: "#f1ecfa"
+  surface-active: "#ece6fb"
+  rail: "#f8f6fc"
+  border: "#eae6f2"
+  border-strong: "#d8d2e8"
+  ink-heading: "#1f1b2e"
+  ink-body: "#5b5670"
+  ink-secondary: "#4a4458"
+  ink-muted: "#9b96ae"
+  danger: "#e11d48"
+  danger-bg: "#ffe4e6"
+  success: "#10b981"
+  success-bg: "#d1fae5"
+  warning: "#d97706"
+  warning-bg: "#fef3c7"
+  area-purple: "#7c5cff"
+  area-blue: "#3b82f6"
+  area-green: "#22a06b"
+  area-pink: "#ec4899"
+  area-amber: "#f59e0b"
+  area-gray: "#9aa3ad"
+typography:
+  display:
+    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "1.43rem"
+    fontWeight: 600
+    letterSpacing: "-0.005em"
+  headline:
+    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "1.21rem"
+    fontWeight: 600
+    letterSpacing: "-0.005em"
+  title:
+    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "1.07rem"
+    fontWeight: 600
+    letterSpacing: "-0.005em"
+  body:
+    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "1rem"
+    fontWeight: 400
+    lineHeight: 1.5
+  label:
+    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "0.79rem"
+    fontWeight: 500
+  mono:
+    fontFamily: "ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace"
+    fontSize: "0.89rem"
+    fontWeight: 400
+rounded:
+  sm: "6px"
+  md: "10px"
+  lg: "14px"
+  pill: "999px"
+spacing:
+  space-1: "0.29rem"
+  space-2: "0.57rem"
+  space-3: "0.86rem"
+  space-4: "1.14rem"
+  space-5: "1.43rem"
+  space-6: "1.71rem"
+components:
+  button-primary:
+    backgroundColor: "{colors.accent-iris}"
+    textColor: "#ffffff"
+    rounded: "{rounded.md}"
+    padding: "6px 12px"
+  button-primary-hover:
+    backgroundColor: "{colors.accent-iris-hover}"
+  button-secondary:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink-heading}"
+    rounded: "{rounded.md}"
+    padding: "6px 12px"
+  button-ghost:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-secondary}"
+    rounded: "{rounded.md}"
+    padding: "4px 8px"
+  chip-tag:
+    backgroundColor: "{colors.accent-wash}"
+    textColor: "{colors.accent-iris-hover}"
+    rounded: "{rounded.pill}"
+    padding: "2px 8px"
+  sidebar-row-active:
+    backgroundColor: "{colors.accent-wash}"
+    textColor: "{colors.accent-iris}"
+    rounded: "{rounded.sm}"
+    padding: "4px 6px"
+  input-inline-add:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink-heading}"
+    rounded: "{rounded.sm}"
+    padding: "6px 10px"
+  modal:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.ink-heading}"
+    rounded: "{rounded.lg}"
+    padding: "1.43rem"
+---
+
+# Design System: LocalAction
+
+## 1. Overview
+
+**Creative North Star: "The Quiet Instrument"**
+
+LocalAction is a precision tool for a solo power user running their whole life through it. Like a well-made instrument, it is quiet at rest and exact in the hand: calm surfaces, one voice of color, type that stays out of the way — and the moment you touch it, it responds with energized momentum. Rows reorder under the cursor, counts roll up live, inline inputs appear exactly where the work is. The interface never performs; it works.
+
+The system is built on restraint. One accent (Iris) carries every moment of emphasis across both themes; everything else is a violet-tinted neutral ladder. Depth comes from tonal layering, not drop shadows. Chrome is minimal by doctrine — the product's depth (areas, sub-areas, sections, nested sub-tasks, rollups) is demonstrated through polish and discoverability, never through stacked UI. Local-first ownership is visible, not hidden: the sync badge states its status in plain language at all times.
+
+This system explicitly rejects the PRODUCT.md anti-references: no legacy enterprise PM feature walls or side-stripe banners (Asana/Jira), no consumer-cutesy gradients or over-rounded cards, no Evernote-era information clutter, and no soulless gray-spreadsheet utilitarianism. If a screen feels like any of those, it is off-system.
+
+**Key Characteristics:**
+- One accent, used sparingly — Iris appears on ≤10% of any screen
+- Tonal layering over shadows; surfaces are flat at rest
+- Quiet controls that wake on hover and focus
+- Inline-first editing — titles, inputs, and dates edit in place, not in dialogs
+- Density as a user knob (compact / normal / cozy), not a breakpoint strategy
+
+## 2. Colors
+
+A violet-tinted neutral ladder with a single vivid accent; the whole system sits on one hue family (~293° OKLCH) so every surface, border, and ink reads as one material.
+
+### Primary
+- **Iris** (#7c3aed · oklch(54% 0.247 293)): The single voice of emphasis. Active sidebar rows and tabs, primary buttons, focused input borders, drag-target outlines, progress fills, selected states. Dark theme lifts it to #a78bfa (oklch(71% 0.159 294)) to hold contrast on the near-black canvas.
+- **Iris Deep** (#6d28d9 · oklch(49% 0.241 293)): Hover state of Iris and tag-chip text on the accent wash.
+
+### Neutral
+- **Lavender Mist** (#f5f3fa · oklch(97% 0.009 299)): The app canvas in light theme. Cool, faintly violet — a tinted neutral toward the brand's own hue, not a warm paper.
+- **Rail** (#f8f6fc): The sidebar surface — one step lighter than the canvas so the navigation column reads as a distinct instrument panel.
+- **Surface** (#ffffff): Rows, cards, inputs, modals — the working layer above the canvas.
+- **Surface Hover / Active** (#f1ecfa / #ece6fb): Lavender tints for row hover and pressed/selected neutral states. These do the work shadows would do elsewhere.
+- **Border / Border Strong** (#eae6f2 / #d8d2e8): Hairlines and emphasized dividers, same violet family.
+- **Ink Heading** (#1f1b2e): Titles and primary text — near-black with a violet undertone.
+- **Ink Body** (#5b5670): Default reading text.
+- **Ink Secondary** (#4a4458): Supporting text that must carry more weight than body (messages, ghost-button labels).
+- **Ink Muted** (#9b96ae): Placeholders, counts, metadata. Reserved for short, non-critical text — never long-form body.
+
+### Semantic
+- **Success** (#10b981 · dark #4caf50): Completed progress fills, *Synced* badge.
+- **Warning** (#d97706 · dark #d4a72c): *Syncing… / Retry* badge states.
+- **Danger** (#e11d48 · dark #ef5350): Destructive actions, armed-confirm buttons, *Sync error* badge.
+
+### Area palette (user-facing hue carriers)
+Areas are the user's own color dimension — the only place hues other than violet appear by design: **Purple** (#7c5cff), **Blue** (#3b82f6), **Green** (#22a06b), **Pink** (#ec4899), **Amber** (#f59e0b), **Gray** (#9aa3ad). Rendered as sidebar dots and header markers only; an unknown id falls back to Gray.
+
+### Dark theme
+The dark theme is a true inversion, not a tint: near-black canvas (#0f1115), surfaces stepped up from it (#14171c rail, #181b21 surface), borders as translucent white (10% / 18%), and the accent lifted to #a78bfa. Semantic colors move to translucent tints so badges glow rather than shout.
+
+### Named Rules
+**The One Voice Rule.** Iris is the only accent in the system, and it speaks on ≤10% of any given screen — one active row, one focused input, one primary action. Its rarity is the point. If two elements on a screen are competing in Iris, one of them is wrong.
+
+**The Single Hue Family Rule.** Every neutral — canvas, surface, border, ink — is tinted toward ~293° violet. Never introduce warm grays or blue-grays; they read as dirt on this canvas.
+
+**The User's Hues Rule.** Saturated non-violet hues exist only in the area palette, applied by the user, at dot scale. Never borrow them for system chrome.
+
+## 3. Typography
+
+**Display Font:** Inter var (self-hosted variable woff2, weights 100–900, `font-display: swap`), falling back to system-ui
+**Body Font:** Inter var (same stack)
+**Label/Mono Font:** ui-monospace stack (`ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace`) for code, counters, and numeric readouts
+
+**Character:** One family, many weights. Inter's calm grotesque neutrality is the instrument body; hierarchy comes from weight and size, never from a second face. DejaVu Sans and Liberation Mono exist only as user-selectable alternates in the appearance menu — they are preferences, not design tools.
+
+### Hierarchy
+- **Display** (600, 1.43rem, -0.005em): Page-level headings — area and project headers. Small by marketing standards; this is a tool, and its largest text is a working title.
+- **Headline** (600, 1.21rem, -0.005em): Section and modal headings.
+- **Title** (600, 1.07rem, -0.005em): Group headers — project names inside the Tasks tab, sub-area headings.
+- **Body** (400, 1rem, 1.5): Default reading text. Rows and titles typically run at 0.96rem.
+- **Label** (500, 0.79rem): Count pills, tag chips, badges. Tabular figures (`font-variant-numeric: tabular-nums`) anywhere a number updates live, so counts never jitter.
+- **Mono** (400, 0.89rem): Code spans, counters, machine-facing values.
+
+### Density
+The root font-size is the density knob: 12px compact / 14px normal / 16px cozy. Every component sizes in rem, so one attribute rescales the whole app. Never hardcode px text sizes in components; never add breakpoint-based type changes — density is the user's choice, not the viewport's.
+
+### Named Rules
+**The One Family Rule.** Inter var everywhere. A second typeface in chrome is always a bug; alternate fonts ship only through the appearance menu.
+
+**The Small Display Rule.** Display type caps at 1.43rem. Big hero type is for landing pages; this is a workspace. Emphasis comes from weight and the One Voice accent, never from shouting size.
+
+## 4. Elevation
+
+Elevation-by-tone, not by shadow. Surfaces are flat at rest; layering is expressed by stepping through the neutral ladder — canvas → rail → surface → surface-hover → surface-active. Borders are 1px hairlines from the same violet family. The system ships exactly two shadows: a whisper at rest (0 1px 2px, 6% black) reserved for modals, and a lift shadow (0 8px 24px, 18% black) under the drag overlay — the one moment an object physically leaves the surface. Dark theme keeps the same doctrine with darker ambient values.
+
+### Shadow Vocabulary
+- **Rest** (`0 1px 2px rgba(43,34,24,0.06)` · dark `rgba(0,0,0,0.4)`): Modals and popovers only. Barely there — a separation cue, not an elevation statement.
+- **Lift** (`0 8px 24px rgba(15,17,21,0.18)`): The drag-overlay preview exclusively. An object in the hand casts a shadow; an object at rest does not.
+
+### Named Rules
+**The Flat-by-Default Rule.** No shadow appears on a static surface — not on cards, rows, buttons, or inputs. Depth is tonal. If a surface needs to stand out, step it up the ladder or give it a hairline, never a drop shadow.
+
+**The Lift-Only-in-Motion Rule.** The 8px lift shadow exists only while dragging. When the drag ends, the shadow ends. Persistent lift is off-system.
+
+## 5. Components
+
+Quiet controls that wake on hover. Chrome hides until needed — row actions appear on hover, inputs look like text until focused, and the dashed inline-add input is the recurring invitation to create.
+
+### Buttons
+- **Shape:** Gently rounded (10px radius; 6px padding rhythm `6px 12px`).
+- **Primary:** Iris fill, white text (0.93rem). Hover deepens to Iris Deep. The single most emphatic element on any screen — use one per view.
+- **Secondary:** Surface fill, hairline border, heading-ink text. Hover steps the surface up and the border to strong.
+- **Ghost:** Transparent at rest, secondary-ink text, tight padding (4px 8px). Hover washes the surface-hover tint. The workhorse for row-level and header actions.
+- **Danger:** Surface fill with danger border and text at rest; hover fills the danger tint. An "armed" confirmation state flips to a solid danger fill — destructive intent is always explicit before it executes.
+- **Focus:** Every interactive element shows a 2px outline in accent-border with 1px offset on `:focus-visible`. Mouse focus stays clean; keyboard focus is always visible.
+
+### Chips
+- **Tag chip:** Accent wash background, Iris Deep text, accent hairline border, full pill radius (2px 8px padding, 0.79rem/500). Used for tags and metadata.
+- **Count pill:** Bare surface (or accent tint inside an active row), muted text, pill radius, tabular figures. Carries the live rollups — sidebar totals, tab counts.
+- **Sync badge:** A pill that tells the local-first story in plain words: *Local only* (neutral), *Syncing… / Retry #n* (warning tint), *Synced* (success tint), *Sync error* (danger tint). Always visible at the foot of the sidebar; never a transient toast.
+
+### Rows and lists
+- **Sidebar row:** Transparent at rest; hover washes surface-hover; active fills the accent wash with Iris text and a tinted count pill. Top-level areas run 600 weight. Dimmed rows (empty areas) drop to 40% opacity, recovering on hover.
+- **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed 22px icon actions. Done state: strikethrough, muted ink, 60% opacity on the row.
+- **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count.
+- **Drag interaction:** Source row dims to 35% and keeps its rest shadow; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
+
+### Tabs
+Underline tabs on a hairline baseline: 1rem/500, secondary ink, 2px transparent bottom border at rest. Active tab turns Iris with a 2px Iris underline; its count pill flips to the accent tint. Tabs remember their last selection per area.
+
+### Inputs / Fields
+- **Inline-add input (signature):** A dashed hairline border on transparent background with italic muted placeholder — visually an invitation, not a form control. Hover strengthens the border; focus turns it solid Iris on a surface fill. This is how every list says "add one here."
+- **Quick-add / modal input:** Solid hairline on canvas background, 6px radius; focus border turns Iris. Placeholders are italic muted.
+- **Editable title:** No chrome at all until focus, when it gains a canvas background and an inset accent hairline. Editing in place is the default posture of the whole app.
+
+### Modals
+A surface card at 14px radius with the Rest shadow, centered over a 50% black backdrop, max-width 420px. Title (headline), message (secondary ink), actions right-aligned in a row. Confirmation for destructive actions always goes through a modal or an armed two-step button — never an instant delete.
+
+### Navigation
+The sidebar is the instrument panel: Rail surface, section titles in small caps-weight labels, area rows with user-colored dots and live count pills, the sync badge pinned at the foot. The main pane holds the working view — area or project — with a breadcrumb chain for parent context. There is no top-level chrome beyond this: no app bar, no toolbar strip.
+
+### Person avatars
+22px circles (18px small) with 10px 600-weight initials in the person's own color, a barely-there inset ring. Users' people, at chip scale — they annotate rows and areas without competing with the One Voice accent.
+
+## 6. Do's and Don'ts
+
+### Do:
+- **Do** keep Iris on ≤10% of any screen (The One Voice Rule) — one active state, one primary action, one focused field.
+- **Do** express depth by stepping the neutral ladder (canvas → rail → surface → hover → active), never with shadows on static surfaces.
+- **Do** use tabular figures for any number that updates live — rollups, counts, progress.
+- **Do** make creation feel lightweight: dashed inline-add inputs at the point of work, not "New…" buttons that open dialogs.
+- **Do** keep the sync badge visible and plain-spoken — local-first ownership is a feature users can see.
+- **Do** preserve the 2px accent `:focus-visible` outline everywhere; the keyboard is a first-class surface.
+- **Do** size in rem so the density knob rescales everything.
+
+### Don't:
+- **Don't** build legacy enterprise PM feature walls or side-stripe banners (Asana/Jira) — no colored left borders on rows or callouts, no stacked chrome to advertise capability.
+- **Don't** go consumer cutesy: no gradients (and no gradient text), no radii beyond 14px on containers, no mascots or playful illustration.
+- **Don't** recreate Evernote-era clutter — density comes from the user's content, never from competing chrome; every view keeps one clear hierarchy.
+- **Don't** ship gray-spreadsheet utilitarianism — flat #808080-family grays, default browser controls, and unstyled tables are all off-system; the violet tint is the personality.
+- **Don't** introduce a second accent hue into chrome; non-violet hues belong only to the user's area dots.
+- **Don't** put drop shadows on cards, rows, or buttons at rest (The Flat-by-Default Rule); lift exists only while dragging.
+- **Don't** hide controls behind ellipsis menus when a hover-revealed icon or inline edit would do — but never reveal on hover what a keyboard user cannot reach.
+- **Don't** use display type above 1.43rem in the app shell (The Small Display Rule); the workspace never shouts.

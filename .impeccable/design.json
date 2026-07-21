@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-20T00:00:00.000Z",
+  "title": "Design System: LocalAction",
+  "extensions": {
+    "colorMeta": {
+      "accent-iris": {
+        "role": "primary",
+        "displayName": "Iris",
+        "canonical": "#7c3aed",
+        "tonalRamp": ["oklch(25% 0.09 293)", "oklch(35% 0.16 293)", "oklch(44% 0.21 293)", "oklch(54% 0.247 293)", "oklch(63% 0.22 293)", "oklch(72% 0.17 293)", "oklch(83% 0.10 293)", "oklch(93% 0.04 293)"]
+      },
+      "accent-iris-hover": {
+        "role": "primary",
+        "displayName": "Iris Deep",
+        "canonical": "#6d28d9",
+        "tonalRamp": ["oklch(22% 0.08 293)", "oklch(32% 0.15 293)", "oklch(41% 0.20 293)", "oklch(49% 0.241 293)", "oklch(58% 0.22 293)", "oklch(68% 0.17 293)", "oklch(80% 0.10 293)", "oklch(91% 0.04 293)"]
+      },
+      "canvas-lavender-mist": {
+        "role": "neutral",
+        "displayName": "Lavender Mist",
+        "canonical": "#f5f3fa",
+        "tonalRamp": ["oklch(25% 0.03 296)", "oklch(40% 0.03 296)", "oklch(55% 0.03 296)", "oklch(70% 0.02 296)", "oklch(80% 0.015 298)", "oklch(90% 0.012 299)", "oklch(96.8% 0.009 299)", "oklch(99% 0.004 299)"]
+      },
+      "ink-heading": {
+        "role": "neutral",
+        "displayName": "Ink Heading",
+        "canonical": "#1f1b2e",
+        "tonalRamp": ["oklch(18% 0.03 293)", "oklch(23.6% 0.036 293)", "oklch(35% 0.04 293)", "oklch(46.8% 0.042 294)", "oklch(58% 0.035 294)", "oklch(70% 0.025 295)", "oklch(82% 0.018 296)", "oklch(93% 0.01 298)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["oklch(30% 0.02 296)", "oklch(45% 0.02 296)", "oklch(60% 0.015 297)", "oklch(72% 0.012 298)", "oklch(82% 0.01 298)", "oklch(92% 0.007 299)", "oklch(97% 0.004 299)", "oklch(100% 0 0)"]
+      },
+      "danger": {
+        "role": "semantic",
+        "displayName": "Danger",
+        "canonical": "#e11d48",
+        "tonalRamp": ["oklch(25% 0.10 15)", "oklch(35% 0.16 15)", "oklch(45% 0.21 15)", "oklch(55% 0.24 15)", "oklch(65% 0.20 15)", "oklch(75% 0.14 15)", "oklch(85% 0.08 15)", "oklch(94% 0.03 15)"]
+      },
+      "success": {
+        "role": "semantic",
+        "displayName": "Success",
+        "canonical": "#10b981",
+        "tonalRamp": ["oklch(25% 0.05 160)", "oklch(38% 0.09 160)", "oklch(50% 0.13 160)", "oklch(62% 0.15 160)", "oklch(72% 0.14 160)", "oklch(82% 0.10 160)", "oklch(90% 0.06 160)", "oklch(96% 0.03 160)"]
+      },
+      "warning": {
+        "role": "semantic",
+        "displayName": "Warning",
+        "canonical": "#d97706",
+        "tonalRamp": ["oklch(28% 0.06 65)", "oklch(40% 0.10 65)", "oklch(52% 0.13 65)", "oklch(63% 0.15 65)", "oklch(73% 0.14 65)", "oklch(83% 0.11 65)", "oklch(90% 0.07 65)", "oklch(96% 0.03 65)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page-level working titles — area and project headers. Caps at 1.43rem; the workspace never shouts." },
+      "headline": { "displayName": "Headline", "purpose": "Section and modal headings." },
+      "title": { "displayName": "Title", "purpose": "Group headers — project names inside the Tasks tab, sub-area headings." },
+      "body": { "displayName": "Body", "purpose": "Default reading text; rows and titles typically run at 0.96rem." },
+      "label": { "displayName": "Label", "purpose": "Count pills, tag chips, badges — always tabular figures when numeric." },
+      "mono": { "displayName": "Mono", "purpose": "Code spans, counters, machine-facing values." }
+    },
+    "shadows": [
+      { "name": "rest", "value": "0 1px 2px rgba(43, 34, 24, 0.06)", "purpose": "Modals and popovers only. Barely-there separation cue, never an elevation statement." },
+      { "name": "lift", "value": "0 8px 24px rgba(15, 17, 21, 0.18)", "purpose": "The drag-overlay preview exclusively — an object in the hand casts a shadow; an object at rest does not." }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "0.1s ease", "purpose": "Hover washes, border-color shifts, input focus. State changes are near-instant; the instrument feels alive under the hand." },
+      { "name": "progress", "value": "width 0.15s ease", "purpose": "Progress-bar fills and other continuous value changes." },
+      { "name": "focus-ring", "value": "2px solid var(--accent-border, #c4b5fd); outline-offset 1px", "purpose": ":focus-visible on every interactive element. Mouse focus stays clean; keyboard focus is always visible." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single most emphatic action on a screen — Iris fill, white text, one per view.",
+      "html": "<button class=\"ds-btn-primary\">Create project</button>",
+      "css": ".ds-btn-primary { font: inherit; font-size: 0.93rem; line-height: 1; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--accent, #7c3aed); background: var(--accent, #7c3aed); color: #ffffff; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.1s ease, border-color 0.1s ease; } .ds-btn-primary:hover { background: var(--accent-hover, #6d28d9); border-color: var(--accent-hover, #6d28d9); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral action — surface fill, hairline border; hover steps the surface up the ladder.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { font: inherit; font-size: 0.93rem; line-height: 1; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--border, #eae6f2); background: var(--surface, #ffffff); color: var(--text-h, #1f1b2e); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.1s ease, border-color 0.1s ease; } .ds-btn-secondary:hover { background: var(--surface-hover, #f1ecfa); border-color: var(--border-strong, #d8d2e8); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "The row-level workhorse — transparent at rest, wakes with a surface wash on hover.",
+      "html": "<button class=\"ds-btn-ghost\">Rename</button>",
+      "css": ".ds-btn-ghost { font: inherit; font-size: 0.93rem; line-height: 1; padding: 4px 8px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--text-secondary, #4a4458); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.1s ease, color 0.1s ease; } .ds-btn-ghost:hover { background: var(--surface-hover, #f1ecfa); color: var(--text-h, #1f1b2e); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action — quiet danger border at rest; an armed confirm step flips to a solid danger fill.",
+      "html": "<button class=\"ds-btn-danger\">Delete area</button> <button class=\"ds-btn-danger ds-btn-danger-armed\">Confirm delete</button>",
+      "css": ".ds-btn-danger { font: inherit; font-size: 0.93rem; line-height: 1; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--danger-border, #fda4af); background: var(--surface, #ffffff); color: var(--danger, #e11d48); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: background 0.1s ease; } .ds-btn-danger:hover { background: var(--danger-bg, #ffe4e6); } .ds-btn-danger:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; } .ds-btn-danger-armed { background: var(--danger, #e11d48); border-color: var(--danger, #e11d48); color: #ffffff; } .ds-btn-danger-armed:hover { background: var(--danger, #e11d48); }"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "chip-tag",
+      "description": "Accent-wash pill for tags and metadata; muted variant for neutral counts.",
+      "html": "<span class=\"ds-chip\">planning</span> <span class=\"ds-chip ds-chip-muted\">12</span>",
+      "css": ".ds-chip { font-size: 0.79rem; font-weight: 500; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--tag-border, #c4b5fd); background: var(--tag-bg, #ece6fb); color: var(--tag-fg, #6d28d9); display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; } .ds-chip-muted { background: var(--surface, #ffffff); color: var(--text-secondary, #4a4458); border-color: var(--border, #eae6f2); }"
+    },
+    {
+      "name": "Sync Badge",
+      "kind": "chip",
+      "refersTo": "chip-sync",
+      "description": "The local-first story in plain words — always visible at the foot of the sidebar, never a toast.",
+      "html": "<span class=\"ds-sync ds-sync-ok\">Synced</span> <span class=\"ds-sync ds-sync-warn\">Syncing\u2026</span> <span class=\"ds-sync ds-sync-err\">Sync error</span>",
+      "css": ".ds-sync { font-size: 0.82rem; color: var(--text-secondary, #4a4458); padding: 3px 6px; border-radius: 999px; background: var(--surface, #ffffff); border: 1px solid var(--border, #eae6f2); white-space: nowrap; } .ds-sync-ok { color: var(--success, #10b981); background: var(--success-bg, #d1fae5); border-color: var(--success-border, #6ee7b7); } .ds-sync-warn { color: var(--warning, #d97706); background: var(--warning-bg, #fef3c7); border-color: var(--warning-border, #fcd34d); } .ds-sync-err { color: var(--danger, #e11d48); background: var(--danger-bg, #ffe4e6); border-color: var(--danger-border, #fda4af); }"
+    },
+    {
+      "name": "Sidebar Row",
+      "kind": "nav",
+      "refersTo": "sidebar-row-active",
+      "description": "Area navigation row — transparent at rest, accent wash with Iris text when active, live count pill.",
+      "html": "<button class=\"ds-side-row\"><span class=\"ds-side-dot\"></span><span class=\"ds-side-name\">Health</span><span class=\"ds-side-count\">8</span></button><button class=\"ds-side-row ds-side-row-active\"><span class=\"ds-side-dot\"></span><span class=\"ds-side-name\">Work</span><span class=\"ds-side-count\">14</span></button>",
+      "css": ".ds-side-row { display: flex; align-items: center; gap: 4px; padding: 4px 6px; border-radius: 6px; font: inherit; font-size: 0.96rem; color: var(--text-h, #1f1b2e); background: transparent; border: 0; width: 100%; text-align: start; cursor: pointer; transition: background 0.1s ease; } .ds-side-row:hover { background: var(--surface-hover, #f1ecfa); } .ds-side-row:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; } .ds-side-row-active { background: var(--accent-bg, #ece6fb); color: var(--accent, #7c3aed); } .ds-side-dot { width: 8px; height: 8px; border-radius: 50%; background: #22a06b; flex-shrink: 0; } .ds-side-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; } .ds-side-count { font-size: 0.79rem; color: var(--text-muted, #9b96ae); background: var(--surface, #ffffff); padding: 1px 6px; border-radius: 999px; min-width: 20px; text-align: center; font-variant-numeric: tabular-nums; } .ds-side-row-active .ds-side-count { background: var(--accent-tint, #e9e3fa); color: var(--accent, #7c3aed); }"
+    },
+    {
+      "name": "Area Tab",
+      "kind": "nav",
+      "refersTo": "tab-area",
+      "description": "Underline tab on a hairline baseline — active turns Iris with a 2px underline and tinted count pill.",
+      "html": "<div class=\"ds-tabs\"><button class=\"ds-tab ds-tab-active\">Tasks <span class=\"ds-tab-count\">14</span></button><button class=\"ds-tab\">Notes <span class=\"ds-tab-count\">3</span></button></div>",
+      "css": ".ds-tabs { display: flex; align-items: center; gap: 0.57rem; border-bottom: 1px solid var(--border, #eae6f2); } .ds-tab { display: inline-flex; align-items: center; gap: 6px; padding: 10px 2px 12px; font: inherit; font-size: 1rem; font-weight: 500; color: var(--text-secondary, #4a4458); background: transparent; border: 0; border-bottom: 2px solid transparent; cursor: pointer; margin-bottom: -1px; transition: color 0.1s ease; } .ds-tab:hover { color: var(--text-h, #1f1b2e); } .ds-tab:focus-visible { outline: 2px solid var(--accent-border, #c4b5fd); outline-offset: 1px; } .ds-tab-active { color: var(--accent, #7c3aed); border-bottom-color: var(--accent, #7c3aed); } .ds-tab-count { font-size: 0.79rem; color: var(--text-muted, #9b96ae); background: var(--surface, #ffffff); padding: 1px 7px; border-radius: 999px; min-width: 18px; text-align: center; font-variant-numeric: tabular-nums; } .ds-tab-active .ds-tab-count { background: var(--accent-tint, #e9e3fa); color: var(--accent, #7c3aed); }"
+    },
+    {
+      "name": "Inline-Add Input",
+      "kind": "input",
+      "refersTo": "input-inline-add",
+      "description": "Signature creation affordance — a dashed invitation that solidifies into an Iris-bordered field on focus.",
+      "html": "<input class=\"ds-inline-add\" type=\"text\" placeholder=\"Add a task\u2026\" />",
+      "css": ".ds-inline-add { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 0.93rem; color: var(--text-h, #1f1b2e); background: transparent; border: 1px dashed var(--border, #eae6f2); border-radius: 6px; padding: 6px 10px; outline: none; transition: border-color 0.1s ease, background 0.1s ease; } .ds-inline-add::placeholder { color: var(--text-muted, #9b96ae); font-style: italic; } .ds-inline-add:hover { border-color: var(--text-muted, #9b96ae); } .ds-inline-add:focus { border-color: var(--accent, #7c3aed); border-style: solid; background: var(--surface, #ffffff); }"
+    },
+    {
+      "name": "Task Row",
+      "kind": "custom",
+      "refersTo": "row-task",
+      "description": "The atomic unit — accent checkbox, inline-editable title, hover-revealed actions; done rows strike through and dim.",
+      "html": "<div class=\"ds-task\"><input class=\"ds-task-check\" type=\"checkbox\" /><span class=\"ds-task-title\">Book the dentist appointment</span></div><div class=\"ds-task ds-task-done\"><input class=\"ds-task-check\" type=\"checkbox\" checked /><span class=\"ds-task-title\">Renew passport</span></div>",
+      "css": ".ds-task { display: flex; align-items: center; gap: 10px; padding: 4px 0; border-radius: 6px; } .ds-task-check { width: 14px; height: 14px; cursor: pointer; accent-color: var(--accent, #7c3aed); flex-shrink: 0; } .ds-task-title { flex: 1 1 auto; font-size: 0.96rem; line-height: 1.35; color: var(--text-h, #1f1b2e); padding: 2px 4px; border-radius: 6px; } .ds-task-done { opacity: 0.6; } .ds-task-done .ds-task-title { text-decoration: line-through; color: var(--text-muted, #9b96ae); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Instrument",
+    "overview": "LocalAction is a precision tool for a solo power user running their whole life through it. Like a well-made instrument, it is quiet at rest and exact in the hand: calm surfaces, one voice of color, type that stays out of the way — and the moment you touch it, it responds with energized momentum. The system is built on restraint. One accent (Iris) carries every moment of emphasis across both themes; everything else is a violet-tinted neutral ladder. Depth comes from tonal layering, not drop shadows. Chrome is minimal by doctrine — the product's depth is demonstrated through polish and discoverability, never through stacked UI. Local-first ownership is visible, not hidden: the sync badge states its status in plain language at all times. The system explicitly rejects legacy enterprise PM feature walls and side-stripe banners (Asana/Jira), consumer-cutesy gradients and over-rounded cards, Evernote-era information clutter, and soulless gray-spreadsheet utilitarianism.",
+    "keyCharacteristics": [
+      "One accent, used sparingly — Iris appears on ≤10% of any screen",
+      "Tonal layering over shadows; surfaces are flat at rest",
+      "Quiet controls that wake on hover and focus",
+      "Inline-first editing — titles, inputs, and dates edit in place, not in dialogs",
+      "Density as a user knob (compact / normal / cozy), not a breakpoint strategy"
+    ],
+    "rules": [
+      { "name": "The One Voice Rule", "body": "Iris is the only accent in the system, and it speaks on ≤10% of any given screen — one active row, one focused input, one primary action. Its rarity is the point. If two elements on a screen are competing in Iris, one of them is wrong.", "section": "colors" },
+      { "name": "The Single Hue Family Rule", "body": "Every neutral — canvas, surface, border, ink — is tinted toward ~293° violet. Never introduce warm grays or blue-grays; they read as dirt on this canvas.", "section": "colors" },
+      { "name": "The User's Hues Rule", "body": "Saturated non-violet hues exist only in the area palette, applied by the user, at dot scale. Never borrow them for system chrome.", "section": "colors" },
+      { "name": "The One Family Rule", "body": "Inter var everywhere. A second typeface in chrome is always a bug; alternate fonts ship only through the appearance menu.", "section": "typography" },
+      { "name": "The Small Display Rule", "body": "Display type caps at 1.43rem. Big hero type is for landing pages; this is a workspace. Emphasis comes from weight and the One Voice accent, never from shouting size.", "section": "typography" },
+      { "name": "The Flat-by-Default Rule", "body": "No shadow appears on a static surface — not on cards, rows, buttons, or inputs. Depth is tonal. If a surface needs to stand out, step it up the ladder or give it a hairline, never a drop shadow.", "section": "elevation" },
+      { "name": "The Lift-Only-in-Motion Rule", "body": "The 8px lift shadow exists only while dragging. When the drag ends, the shadow ends. Persistent lift is off-system.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep Iris on ≤10% of any screen (The One Voice Rule) — one active state, one primary action, one focused field.",
+      "Do express depth by stepping the neutral ladder (canvas → rail → surface → hover → active), never with shadows on static surfaces.",
+      "Do use tabular figures for any number that updates live — rollups, counts, progress.",
+      "Do make creation feel lightweight: dashed inline-add inputs at the point of work, not \"New…\" buttons that open dialogs.",
+      "Do keep the sync badge visible and plain-spoken — local-first ownership is a feature users can see.",
+      "Do preserve the 2px accent :focus-visible outline everywhere; the keyboard is a first-class surface.",
+      "Do size in rem so the density knob rescales everything."
+    ],
+    "donts": [
+      "Don't build legacy enterprise PM feature walls or side-stripe banners (Asana/Jira) — no colored left borders on rows or callouts, no stacked chrome to advertise capability.",
+      "Don't go consumer cutesy: no gradients (and no gradient text), no radii beyond 14px on containers, no mascots or playful illustration.",
+      "Don't recreate Evernote-era clutter — density comes from the user's content, never from competing chrome; every view keeps one clear hierarchy.",
+      "Don't ship gray-spreadsheet utilitarianism — flat #808080-family grays, default browser controls, and unstyled tables are all off-system; the violet tint is the personality.",
+      "Don't introduce a second accent hue into chrome; non-violet hues belong only to the user's area dots.",
+      "Don't put drop shadows on cards, rows, or buttons at rest (The Flat-by-Default Rule); lift exists only while dragging.",
+      "Don't hide controls behind ellipsis menus when a hover-revealed icon or inline edit would do — but never reveal on hover what a keyboard user cannot reach.",
+      "Don't use display type above 1.43rem in the app shell (The Small Display Rule); the workspace never shouts."
+    ]
+  }
+}

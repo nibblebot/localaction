@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createTask, useDataLayer } from '../data/index.ts';
+import { useFocusTrap } from './useFocusTrap.ts';
 
 /** True when focus is in an editable element, where Shift+A must type "A". */
 function isEditableTarget(target: EventTarget | null): boolean {
@@ -20,6 +21,8 @@ export default function QuickAddModal(): React.JSX.Element | null {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -51,13 +54,14 @@ export default function QuickAddModal(): React.JSX.Element | null {
   return (
     <div className="modal-backdrop" role="presentation" onClick={close}>
       <div
+        ref={dialogRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-add-title"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 id="quick-add-title">Quick Add Task</h3>
+        <h3 id="quick-add-title">Quick add</h3>
         <input
           ref={inputRef}
           type="text"

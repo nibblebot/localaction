@@ -7,6 +7,7 @@ import {
   areaColorHex,
 } from '../data/index.ts';
 import type { AreaColorId } from '../data/index.ts';
+import { useFocusTrap } from './useFocusTrap.ts';
 
 export interface AreaEditPopoverProps {
   /** Anchor for popover positioning. */
@@ -34,6 +35,8 @@ export default function AreaEditPopover({
   useStoreVersion(store);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(dialogRef, anchor !== null);
 
   // Re-seed the draft when the popover switches to a different area.
   // Adjust-during-render per the React docs; never fires while typing
@@ -77,6 +80,7 @@ export default function AreaEditPopover({
     <>
       <div className="person-picker-backdrop" onClick={onClose} />
       <div
+        ref={dialogRef}
         className="area-edit"
         role="dialog"
         aria-label="Edit area"

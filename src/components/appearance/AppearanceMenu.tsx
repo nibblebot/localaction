@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppearance } from './useAppearance.ts';
+import { useFocusTrap } from '../useFocusTrap.ts';
 import type { Density, FontFamily, ThemeMode } from './AppearanceProvider.tsx';
 interface SegmentedOption<T extends string> {
   id: T;
@@ -14,8 +15,8 @@ const THEME_OPTIONS: SegmentedOption<ThemeMode>[] = [
 
 const FONT_OPTIONS: SegmentedOption<FontFamily>[] = [
   { id: 'inter', label: 'Inter' },
-  { id: 'dejavu', label: 'DejaVu Sans' },
-  { id: 'liberation', label: 'Liberation Mono' },
+  { id: 'dejavu', label: 'DejaVu' },
+  { id: 'liberation', label: 'Liberation' },
 ];
 
 const DENSITY_OPTIONS: SegmentedOption<Density>[] = [
@@ -28,6 +29,8 @@ export default function AppearanceMenu(): React.JSX.Element {
   const { theme, font, density, setTheme, setFont, setDensity } = useAppearance();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(menuRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +65,7 @@ export default function AppearanceMenu(): React.JSX.Element {
         </svg>
       </button>
       {open && (
-        <div className="appearance-menu" role="dialog" aria-label="Appearance">
+        <div className="appearance-menu" role="dialog" aria-label="Appearance" ref={menuRef}>
           <Segmented
             label="Theme"
             options={THEME_OPTIONS}

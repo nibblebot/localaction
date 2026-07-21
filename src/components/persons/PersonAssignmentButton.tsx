@@ -38,18 +38,10 @@ export default function PersonAssignmentButton({
     <>
       <button
         type="button"
-        className="person-avatars"
+        className="person-avatars person-assignment-button"
         onClick={handleClick}
         title="Edit persons"
-        style={{
-          background: 'transparent',
-          border: 0,
-          padding: 0,
-          cursor: 'pointer',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-        }}
+        aria-label="Edit persons"
       >
         <PersonAvatarsRow personIds={people} small />
       </button>

@@ -46,10 +46,18 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 /**
+ * Self's fixed avatar color: a quiet violet-gray from the neutral
+ * ladder (light-theme `--text-muted`). Self is present on every row,
+ * so a name-derived saturated hue — especially one near the Iris
+ * accent — would compete with the One Voice accent. Self's
+ * "specialness" is structural, not chromatic.
+ */
+const SELF_COLOR = '#6c6783';
+
+/**
  * Name-derived default color: stable across reload and sync. Same
  * deterministic hue for the same name; the Slack/Discord default-
- * avatar pattern. Applies to Self (whose "specialness" is structural,
- * not chromatic).
+ * avatar pattern. Self is the one exception (see SELF_COLOR).
  */
 export function nameDerivedHue(name: string): string {
   const h = nameHash(name);
@@ -68,7 +76,8 @@ export function createPerson(
     trimmed === 'Self' && !store.hasRow(TABLES.persons, SELF_PERSON_ID)
       ? SELF_PERSON_ID
       : makePersonId();
-  const color = input.color?.trim() || nameDerivedHue(trimmed);
+  const color =
+    input.color?.trim() || (id === SELF_PERSON_ID ? SELF_COLOR : nameDerivedHue(trimmed));
   const ts = nowIso();
   store.setRow(
     TABLES.persons,
@@ -164,7 +173,7 @@ export function ensureSelfPerson(store: MergeableStore): void {
     SELF_PERSON_ID,
     row({
       [COLUMNS.persons.name]: 'Self',
-      [COLUMNS.persons.color]: nameDerivedHue('Self'),
+      [COLUMNS.persons.color]: SELF_COLOR,
       [COLUMNS.persons.createdAt]: ts,
       [COLUMNS.persons.updatedAt]: ts,
     }),

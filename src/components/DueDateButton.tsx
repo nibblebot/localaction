@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useFocusTrap } from './useFocusTrap.ts';
 
 interface Anchor {
   x: number;
@@ -69,7 +70,7 @@ export default function DueDateButton({
       <button
         type="button"
         className={`${className} due-date${dueDate ? ' due-date-set' : ''}`}
-        aria-label={dueDate ? `Due ${dueDate} — change` : 'Set due date'}
+        aria-label={dueDate ? `Due ${formatDueDate(dueDate)} — change` : 'Set due date'}
         title={dueDate ? `Due ${formatDueDate(dueDate)}` : 'Set due date'}
         onClick={(e) => {
           e.stopPropagation();
@@ -142,6 +143,7 @@ function DueDateCalendar({
   // Clamp to the viewport using the *rendered* size — the anchor-side
   // estimate can't know padding/border, so measuring avoids overflow.
   const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, true);
   const [pos, setPos] = useState({ top: anchor.y, left: anchor.x });
   useLayoutEffect(() => {
     const el = dialogRef.current;

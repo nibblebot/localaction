@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDataLayer, useStoreVersion, SELF_PERSON_ID } from '../../data/index.ts';
 import { deletePerson, getPerson, nameDerivedHue, updatePerson } from '../../data/persons.ts';
 import PersonAvatar from './PersonAvatar.tsx';
+import { useFocusTrap } from '../useFocusTrap.ts';
 
 export interface PersonEditPopoverProps {
   /** Anchor for popover positioning. */
@@ -38,6 +39,7 @@ export default function PersonEditPopover({
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? nameDerivedHue(initial?.name ?? ''));
   const rootRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(rootRef, anchor !== null);
   const isSelf = personId === SELF_PERSON_ID;
 
   // Re-seed the form when the popover switches to a different person

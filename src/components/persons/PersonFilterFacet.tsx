@@ -75,7 +75,7 @@ export default function PersonFilterFacet(): React.JSX.Element {
         />
       ) : null}
       {sorted.length === 0 ? (
-        <p className="person-filter-empty">No people yet.</p>
+        <p className="person-filter-empty">No people yet — add the first one.</p>
       ) : (
         <div className="person-filter-chips">
           {sorted.map((id) => (

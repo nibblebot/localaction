@@ -16,6 +16,7 @@ import {
 import { usePerson } from '../../data/persons.ts';
 import PersonAvatar from './PersonAvatar.tsx';
 import PersonEditPopover from './PersonEditPopover.tsx';
+import { useFocusTrap } from '../useFocusTrap.ts';
 export interface PersonAssignmentPopoverProps {
   /** Anchor for popover positioning. */
   anchor: { x: number; y: number } | null;
@@ -54,6 +55,7 @@ export default function PersonAssignmentPopover({
   const { store } = useDataLayer();
   const tables = useTables(store);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(rootRef, anchor !== null);
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
   // Anchor for the edit popover, placed next to the row that was clicked.
   const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(

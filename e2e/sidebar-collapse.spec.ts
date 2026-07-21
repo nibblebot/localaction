@@ -57,8 +57,9 @@ test.describe('Sidebar area collapse', () => {
     await createArea(page, parent);
     await createSubArea(page, child);
 
-    const label = page.getByRole('button', { name: `${parent} (drag to reorder)` });
-    const childLabel = page.getByRole('button', { name: `${child} (drag to reorder)` });
+    const sidebar = page.locator('.sidebar');
+    const label = sidebar.getByRole('button', { name: parent, exact: true });
+    const childLabel = sidebar.getByRole('button', { name: child, exact: true });
 
     // Collapse via the caret; the sub-area row disappears.
     await page.getByRole('button', { name: `Collapse ${parent}` }).click();

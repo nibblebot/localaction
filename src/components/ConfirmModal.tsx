@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useFocusTrap } from './useFocusTrap.ts';
 
 export interface ConfirmModalProps {
   open: boolean;
@@ -21,6 +22,8 @@ export default function ConfirmModal({
   onCancel,
 }: ConfirmModalProps): React.JSX.Element | null {
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   useEffect(() => {
     if (!open) return;
@@ -39,6 +42,7 @@ export default function ConfirmModal({
   return (
     <div className="modal-backdrop" role="presentation" onClick={onCancel}>
       <div
+        ref={dialogRef}
         className="modal"
         role="dialog"
         aria-modal="true"

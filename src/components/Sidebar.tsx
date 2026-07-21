@@ -15,7 +15,7 @@ import { formatRoute, INBOX } from '../router.ts';
 import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
-import type { AreaColorId } from '../data/colors.ts';
+import { areaColorHex, type AreaColorId } from '../data/colors.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableTreeNode } from './SortableTree.tsx';
 import PersonFilterFacet from './persons/PersonFilterFacet.tsx';
@@ -81,9 +81,15 @@ function SortableAreaRow({
   const count = taskCountOverride ?? node.count.taskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
   const collapsible = collapsed !== null && collapsed !== undefined;
+  // Empty areas (nothing inside them yet) recede to 40% opacity,
+  // recovering on hover — but never while the area is the active one.
+  const empty =
+    node.count.taskCount === 0 &&
+    node.count.projectCount === 0 &&
+    node.count.noteCount === 0;
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
-  if (dim) classes.push('sidebar-item-dim');
+  if ((dim || empty) && !isActive) classes.push('sidebar-item-dim');
   return (
     <li
       ref={handle.ref}
@@ -117,10 +123,8 @@ function SortableAreaRow({
         <button
           type="button"
           className={classes.join(' ')}
-          data-dim={dim ? 'true' : 'false'}
           aria-label={displayName}
           aria-current={isActive ? 'page' : undefined}
-          title="Drag to reorder"
           onClick={(e) => {
             if (handle.isDragging) return;
             e.preventDefault();
@@ -128,6 +132,11 @@ function SortableAreaRow({
           }}
           {...(handle.listeners ?? {})}
         >
+          <span
+            className="sidebar-item-dot"
+            style={{ background: areaColorHex(node.count.color) }}
+            aria-hidden="true"
+          />
           <span className="sidebar-item-name">{displayName}</span>
           {count > 0 ? <span className="sidebar-link-count">{count}</span> : null}
         </button>
@@ -225,7 +234,6 @@ export default function Sidebar(): React.JSX.Element {
     <aside className="sidebar" id="app-sidebar" aria-label="Sidebar">
       <div className="sidebar-section sidebar-app-name-row">
         <h1 className="sidebar-app-name">LocalAction</h1>
-        <SyncStatusBadge />
       </div>
       <PersonFilterFacet />
 
@@ -329,6 +337,9 @@ export default function Sidebar(): React.JSX.Element {
             onSubmit={createNew}
           />
         </div>
+      </div>
+      <div className="sidebar-footer">
+        <SyncStatusBadge />
       </div>
     </aside>
   );

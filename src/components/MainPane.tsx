@@ -137,7 +137,11 @@ export default function MainPane(): React.JSX.Element {
         <div className="main-body">
           <div className="main-empty">
             <h2>Welcome to LocalAction</h2>
-            <p>Pick an area from the sidebar to get started, or create a new one.</p>
+            <p>
+              {counts.length === 0
+                ? 'Create an area in the sidebar to get started.'
+                : 'Pick an area from the sidebar to get started.'}
+            </p>
           </div>
         </div>
       </main>
@@ -275,6 +279,11 @@ function AreaHeader({
           /
         </span>
       )}
+      <span
+        className="area-header-dot"
+        style={{ background: hex }}
+        aria-hidden="true"
+      />
       <h1 className="area-header-name">
         <button
           type="button"
@@ -512,16 +521,6 @@ function PaneTabs<T extends string>({
       {onToggleCompleted && (
         <CompletedToggle showCompleted={showCompleted ?? false} onToggle={onToggleCompleted} />
       )}
-      <button type="button" className="area-tab-action" aria-label="Search" title="Search (coming soon)" disabled>
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#search-icon" />
-        </svg>
-      </button>
-      <button type="button" className="area-tab-action" aria-label="Sort" title="Sort (coming soon)" disabled>
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#sort-icon" />
-        </svg>
-      </button>
     </div>
   );
 }
@@ -575,7 +574,7 @@ function ProjectsTab({
         ref={addInputRef}
         placeholder={
           inArea.length === 0
-            ? 'No projects yet — name this one to start.'
+            ? 'No projects yet — add the first one.'
             : 'New project…'
         }
         ariaLabel="New project"
@@ -638,7 +637,7 @@ function AreaProjectGroups({
   return (
     <>
       {active.length > 0 && (
-        <Group title="ACTIVE" count={active.length}>
+        <Group title="Active" count={active.length}>
           <SortableList
             itemIds={active.map((p) => p.projectId)}
             onReorder={onReorder}
@@ -662,7 +661,7 @@ function AreaProjectGroups({
         </Group>
       )}
       {done.length > 0 && (
-        <Group title="DONE" count={done.length}>
+        <Group title="Done" count={done.length}>
           {done.map((p) => (
             <ProjectRow
               key={p.projectId}
@@ -936,6 +935,7 @@ function SortableProjectRow({
           title="Rename"
           onClick={(e) => {
             e.stopPropagation();
+            setEditing(true);
           }}
         >
           <svg className="svg-icon" aria-hidden="true">
@@ -1050,7 +1050,7 @@ function TasksTab({
       {projects.length === 0 && (
         <InlineAddInput
           ref={addInputRef}
-          placeholder="No projects yet — name a task to spin one up."
+          placeholder="No tasks yet — add the first one."
           ariaLabel="New task"
           onSubmit={addTask}
         />
@@ -1166,7 +1166,7 @@ function NotesTab({
         ref={addInputRef}
         placeholder={
           allIds.length === 0
-            ? 'No notes yet — start one here.'
+            ? 'No notes yet — add the first one.'
             : 'New note…'
         }
         ariaLabel="New note"
@@ -1246,7 +1246,7 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
             setEditing(true);
           }}
         >
-          Click to write a note.
+          Add note text…
         </button>
       )}
       {editing && (
@@ -1519,7 +1519,7 @@ function ProjectNotesTab({
         ref={addInputRef}
         placeholder={
           noteIds.length === 0
-            ? 'No notes yet — start one here.'
+            ? 'No notes yet — add the first one.'
             : 'New note…'
         }
         ariaLabel="New note"
@@ -1590,7 +1590,7 @@ function InboxPane(): React.JSX.Element {
             ref={addInputRef}
             placeholder={
               allIds.length === 0
-                ? 'No inbox tasks — capture one here.'
+                ? 'No inbox tasks yet — add the first one.'
                 : 'New inbox task…'
             }
             ariaLabel="New inbox task"

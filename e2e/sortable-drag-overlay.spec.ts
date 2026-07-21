@@ -101,7 +101,7 @@ test.describe('Drag overlay preview', () => {
     await createArea(page, name);
     await createArea(page, `Bravo ${tok}`);
 
-    const handle = page.getByRole('button', { name: `${name} (drag to reorder)` });
+    const handle = page.getByRole('button', { name, exact: true });
     await dragHandle(page, handle, 40);
     await expect(page.locator('.drag-overlay')).toContainText(name);
     await page.mouse.up();

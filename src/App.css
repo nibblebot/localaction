@@ -406,6 +406,7 @@
   border-radius: var(--radius-md);
   padding: 6px 12px;
   min-width: 220px;
+  max-width: 100%;
   outline: none;
   font-family: inherit;
 }
@@ -793,6 +794,7 @@
   flex: 1 1 auto;
   font: inherit;
   font-size: 1rem;
+  font-weight: 500;
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--accent-border);
@@ -2412,7 +2414,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow);
-  width: 232px;
+  width: min(232px, calc(100vw - 16px));
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
@@ -2592,6 +2594,17 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* The progress cluster yields to the row title on narrow panes:
+     the tabular count carries the rollup (it's the precise half of
+     the readout); the approximate bar is what's expendable. */
+  .project-row-progress {
+    min-width: 0;
+  }
+
+  .project-row-progress-bar {
+    display: none;
+  }
 }
 
 /* ============================================================
@@ -2686,5 +2699,20 @@
   /* Calendar day cells reach ~44px on phones. */
   .due-calendar {
     width: min(320px, calc(100vw - 16px));
+  }
+}
+
+/* The drawer toggle is primary navigation on touch, not row-level
+   chrome — by the doctrine above it grows for real, and the lane
+   reserved above pane content grows with it. Combined query keeps
+   desktop (fine pointer) untouched. */
+@media (max-width: 767px) and (pointer: coarse) {
+  .drawer-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .main-body {
+    padding-top: calc(44px + var(--space-4));
   }
 }

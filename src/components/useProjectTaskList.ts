@@ -8,11 +8,13 @@
 import { useMemo } from 'react';
 import {
   useDataLayer,
+  useTableVersion,
   useTasksForProjectDeep,
   useHiddenCount,
   peopleForEntity,
   sortTaskIds,
   NOTE_ENTITY_TYPE,
+  TABLES,
 } from '../data/index.ts';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
 
@@ -29,7 +31,11 @@ export function useProjectTaskList(projectId: string): {
   const { selected: filter } = usePersonFilter();
   const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.task, taskIds, filter);
   const orderedIds = useMemo(() => sortTaskIds(store, taskIds), [store, taskIds]);
+  // person_links/persons changes must re-run the imperative
+  // peopleForEntity filter below — the token joins the memo deps.
+  const personsV = useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const visibleIds = useMemo(() => {
+    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
     if (filter.length === 0) return orderedIds;
     const set = new Set(filter);
     return orderedIds.filter((tid) => {
@@ -38,6 +44,6 @@ export function useProjectTaskList(projectId: string): {
       }
       return false;
     });
-  }, [store, orderedIds, filter]);
+  }, [store, orderedIds, filter, personsV]);
   return { taskIds, visibleIds, hiddenCount };
 }

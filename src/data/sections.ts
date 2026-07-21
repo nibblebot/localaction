@@ -1,7 +1,7 @@
-import { useRow, useRowIds, useTables } from 'tinybase/ui-react';
+import { useRow } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES } from './schema.ts';
-import { newId, nowIso, normalizeRelation, row } from './internal.ts';
+import { newId, nowIso, normalizeRelation, row, useTableVersion } from './internal.ts';
 import type { Section, SectionInput, SectionPatch } from './types.ts';
 import { readSiblingOrders } from './order.ts';
 
@@ -71,7 +71,6 @@ export function getSectionIdsForProject(
   store: MergeableStore,
   projectId: string,
   _version = 0,
-  _tables?: unknown,
 ): string[] {
   const out: { id: string; order: number }[] = [];
   for (const id of store.getRowIds(TABLES.sections)) {
@@ -89,12 +88,11 @@ export function getSectionIdsForProject(
 }
 
 export function useSectionIdsForProject(store: MergeableStore, projectId: string): string[] {
-  // Subscribe + dependency tokens so the React Compiler's memo cache
+  // Version token feeds the React Compiler's memo cache so the result
   // re-derives when the sections table changes (same pattern as
   // useInboxTaskIds).
-  const ids = useRowIds(TABLES.sections, store);
-  const tables = useTables(store);
-  return getSectionIdsForProject(store, projectId, ids.length, tables);
+  const v = useTableVersion(store, TABLES.sections);
+  return getSectionIdsForProject(store, projectId, v);
 }
 
 export function useSection(store: MergeableStore, id: string | undefined): Section | undefined {

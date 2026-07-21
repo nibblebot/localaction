@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useTables } from 'tinybase/ui-react';
 import {
   useDataLayer,
+  useTableVersion,
   createPerson,
   usePerson,
   SELF_PERSON_ID,
+  TABLES,
 } from '../../data/index.ts';
 import { sortPersonIds, usePresentPersonIds } from '../../data/personSelectors.ts';
 import { usePersonFilter } from './usePersonFilter.ts';
@@ -23,7 +24,7 @@ import PersonEditPopover from './PersonEditPopover.tsx';
  */
 export default function PersonFilterFacet(): React.JSX.Element {
   const { store } = useDataLayer();
-  const tables = useTables(store);
+  const personsV = useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const ids = usePresentPersonIds(store);
   const { toggle, has, clear, active } = usePersonFilter();
   const [creating, setCreating] = useState(false);
@@ -32,9 +33,9 @@ export default function PersonFilterFacet(): React.JSX.Element {
     null,
   );
 
-  // Self first, then by name (deterministic, sync-stable). `tables`
+  // Self first, then by name (deterministic, sync-stable). `personsV`
   // is the React Compiler dep token so a rename re-sorts.
-  const sorted = sortPersonIds(store, ids, tables);
+  const sorted = sortPersonIds(store, ids, personsV);
 
   return (
     <div className="sidebar-section">
@@ -83,6 +84,7 @@ export default function PersonFilterFacet(): React.JSX.Element {
               key={id}
               id={id}
               selected={has(id)}
+              editExpanded={editingId === id && editAnchor !== null}
               onToggle={() => toggle(id)}
               onEdit={(anchor) => {
                 setEditingId(id);
@@ -113,11 +115,13 @@ export default function PersonFilterFacet(): React.JSX.Element {
 function FilterChip({
   id,
   selected,
+  editExpanded,
   onToggle,
   onEdit,
 }: {
   id: string;
   selected: boolean;
+  editExpanded: boolean;
   onToggle: () => void;
   onEdit: (anchor: { x: number; y: number }) => void;
 }): React.JSX.Element {
@@ -143,6 +147,8 @@ function FilterChip({
         className="person-filter-chip-edit"
         title={`Edit ${name || 'person'}`}
         aria-label={`Edit ${name || 'person'}`}
+        aria-haspopup="dialog"
+        aria-expanded={editExpanded}
         onClick={(e) => {
           e.stopPropagation();
           const r = e.currentTarget
@@ -192,6 +198,7 @@ function NewPersonForm({
         className="inline-add-input inline-add-input-sm"
         value={name}
         placeholder="Person name"
+        aria-label="Person name"
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {

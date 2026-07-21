@@ -1,8 +1,9 @@
 import type { MergeableStore } from 'tinybase';
-import { useRowIds, useTables } from 'tinybase/ui-react';
+import { useRowIds } from 'tinybase/ui-react';
 import { COLUMNS, SELF_PERSON_ID, TABLES } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
 import { getEntityPersonIds } from './personLinks.ts';
+import { useTableVersion } from './internal.ts';
 
 /**
  * Person read-model:
@@ -34,15 +35,15 @@ function personName(store: MergeableStore, personId: string): string {
  * Shared by the sidebar facet, the assignment popover, and the
  * read-model derivations so every surface lists people identically.
  *
- * `_tables` is a React Compiler dependency token (see
- * `peopleForEntity`): callers inside components MUST pass the value
- * from `useTables(store)` so a rename re-sorts instead of serving a
- * memoised stale order.
+ * `_version` is a React Compiler dependency token (see
+ * `peopleForEntity`): callers inside components MUST pass a persons
+ * version token (from `useTablesVersion`) so a rename re-sorts
+ * instead of serving a memoised stale order.
  */
 export function sortPersonIds(
   store: MergeableStore,
   ids: readonly string[],
-  _tables?: unknown,
+  _version?: unknown,
 ): string[] {
   return [...ids].sort((a, b) => {
     // Self always first.
@@ -56,7 +57,7 @@ export function sortPersonIds(
  * The people of any entity (area, project, task): its stored links
  * filtered to present persons, unioned with {Self}. Always non-empty.
  *
- * `_version`/`_tables` are React Compiler dependency tokens (see
+ * `_version` is a React Compiler dependency token (see
  * `selectors.ts`): callers inside components MUST pass the values
  * from `usePeopleForEntity`, or the memoised result goes stale.
  */
@@ -65,11 +66,10 @@ export function peopleForEntity(
   entityType: NoteEntityType,
   entityId: string,
   _version = 0,
-  _tables?: unknown,
 ): string[] {
   const stored = getEntityPersonIds(store, entityType, entityId);
   const present = stored.filter((pid) => personPresent(store, pid));
-  return sortPersonIds(store, [...new Set([SELF_PERSON_ID, ...present])], _tables);
+  return sortPersonIds(store, [...new Set([SELF_PERSON_ID, ...present])], _version);
 }
 
 /**
@@ -85,9 +85,9 @@ export function presentPersonIds(store: MergeableStore): string[] {
 // --- React hooks ---------------------------------------------------------
 
 /**
- * Reactive: the people of an entity. Subscribes to the persons and
- * person_links tables (row adds/removes) plus useTables (cell
- * changes like renames); both feed the React Compiler cache key so
+ * Reactive: the people of an entity. The version token bumps on any
+ * change to the persons or person_links tables (row adds/removes AND
+ * cell changes like renames), feeding the React Compiler cache key so
  * the derived list can never go stale.
  */
 export function usePeopleForEntity(
@@ -95,10 +95,8 @@ export function usePeopleForEntity(
   entityType: NoteEntityType,
   entityId: string,
 ): string[] {
-  const p = useRowIds(TABLES.persons, store);
-  const l = useRowIds(TABLES.person_links, store);
-  const tables = useTables(store);
-  return peopleForEntity(store, entityType, entityId, p.length + l.length, tables);
+  const v = useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
+  return peopleForEntity(store, entityType, entityId, v);
 }
 
 /**

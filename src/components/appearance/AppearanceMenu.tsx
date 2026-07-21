@@ -65,7 +65,13 @@ export default function AppearanceMenu(): React.JSX.Element {
         </svg>
       </button>
       {open && (
-        <div className="appearance-menu" role="dialog" aria-label="Appearance" ref={menuRef}>
+        <div
+          className="appearance-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Appearance"
+          ref={menuRef}
+        >
           <Segmented
             label="Theme"
             options={THEME_OPTIONS}

@@ -289,6 +289,7 @@ function SortableTreeSlot<TId extends string>({
   return (
     <div
       className="sortable-item-slot"
+      role="listitem"
       style={depth > 0 ? { paddingLeft: depth * indentWidth } : undefined}
     >
       {render(handle, depth)}

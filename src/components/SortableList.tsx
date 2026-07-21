@@ -116,7 +116,10 @@ function SortableSlot<TId extends string>({
     isOver: isOver ?? false,
   };
   return (
-    <div className={`sortable-item-slot${className ? ` ${className}` : ''}`}>
+    <div
+      className={`sortable-item-slot${className ? ` ${className}` : ''}`}
+      role="listitem"
+    >
       {render(handle)}
     </div>
   );

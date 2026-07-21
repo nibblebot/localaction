@@ -1,7 +1,6 @@
 import { useMemo, useRef } from 'react';
 import {
   useDataLayer,
-  useStoreVersion,
   useAreaCounts,
   createArea,
   moveArea,
@@ -122,8 +121,9 @@ function SortableAreaRow({
           ))}
         <button
           type="button"
+          {...(handle.attributes ?? {})}
           className={classes.join(' ')}
-          aria-label={displayName}
+          aria-label={count > 0 ? `${displayName}, ${count}` : displayName}
           aria-current={isActive ? 'page' : undefined}
           onClick={(e) => {
             if (handle.isDragging) return;
@@ -145,9 +145,18 @@ function SortableAreaRow({
   );
 }
 
-export default function Sidebar(): React.JSX.Element {
+export default function Sidebar({
+  ref,
+  drawerOpen = false,
+}: {
+  /** Attached to the root <aside> so the app shell can trap focus while
+   * the mobile drawer is open (React 19 ref-as-prop). */
+  ref?: React.Ref<HTMLElement>;
+  /** True only while the sidebar is presented as the mobile drawer:
+   * the aside then behaves as a modal dialog instead of a landmark. */
+  drawerOpen?: boolean;
+}): React.JSX.Element {
   const { store } = useDataLayer();
-  useStoreVersion(store);
   const counts = useAreaCounts(store);
   const { selection, navigate } = useSelection();
   const newAreaInputRef = useRef<HTMLInputElement>(null);
@@ -231,7 +240,14 @@ export default function Sidebar(): React.JSX.Element {
   }
 
   return (
-    <aside className="sidebar" id="app-sidebar" aria-label="Sidebar">
+    <aside
+      ref={ref}
+      className="sidebar"
+      id="app-sidebar"
+      aria-label={drawerOpen ? 'Navigation' : 'Sidebar'}
+      role={drawerOpen ? 'dialog' : undefined}
+      aria-modal={drawerOpen ? true : undefined}
+    >
       <div className="sidebar-section sidebar-app-name-row">
         <h1 className="sidebar-app-name">LocalAction</h1>
       </div>
@@ -241,7 +257,7 @@ export default function Sidebar(): React.JSX.Element {
         <a
           href={formatRoute(INBOX)}
           className={`sidebar-item sidebar-item-top sidebar-inbox-link${selection.kind === 'inbox' ? ' sidebar-item-active' : ''}`}
-          aria-label="Inbox"
+          aria-label={inboxIds.length > 0 ? `Inbox, ${inboxIds.length}` : 'Inbox'}
           aria-current={selection.kind === 'inbox' ? 'page' : undefined}
         >
           <span className="sidebar-item-name">Inbox</span>

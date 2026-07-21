@@ -42,6 +42,8 @@ export default function PersonAssignmentButton({
         onClick={handleClick}
         title="Edit persons"
         aria-label="Edit persons"
+        aria-haspopup="dialog"
+        aria-expanded={anchor !== null}
       >
         <PersonAvatarsRow personIds={people} small />
       </button>

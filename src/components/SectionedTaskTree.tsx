@@ -109,6 +109,7 @@ function SectionRow({
       {handle && (
         <button
           type="button"
+          {...(handle.attributes ?? {})}
           className="task-line-drag-handle"
           aria-label="Drag to reorder section"
           title="Drag to reorder section"

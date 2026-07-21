@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useTables } from 'tinybase/ui-react';
 import {
   useDataLayer,
+  useTableVersion,
   SELF_PERSON_ID,
+  TABLES,
   type NoteEntityType,
 } from '../../data/index.ts';
 import {
@@ -53,7 +54,7 @@ export default function PersonAssignmentPopover({
   onClose,
 }: PersonAssignmentPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
-  const tables = useTables(store);
+  const personsV = useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const rootRef = useRef<HTMLDivElement | null>(null);
   useFocusTrap(rootRef, anchor !== null);
   const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
@@ -75,8 +76,8 @@ export default function PersonAssignmentPopover({
   }, [anchor, onClose]);
 
   const selectedSet = useMemo(() => new Set(current), [current]);
-  // `tables` is the React Compiler dep token so a rename re-sorts.
-  const everyone = sortPersonIds(store, usePresentPersonIds(store), tables);
+  // `personsV` is the React Compiler dep token so a rename re-sorts.
+  const everyone = sortPersonIds(store, usePresentPersonIds(store), personsV);
 
   if (!anchor) return null;
 
@@ -99,6 +100,7 @@ export default function PersonAssignmentPopover({
         ref={rootRef}
         className="person-picker"
         role="dialog"
+        aria-modal="true"
         aria-label="Assign persons"
         style={{ top: y, left: x }}
       >
@@ -111,6 +113,7 @@ export default function PersonAssignmentPopover({
             selected={pid === SELF_PERSON_ID || selectedSet.has(pid)}
             locked={pid === SELF_PERSON_ID}
             onToggle={() => toggle(pid)}
+            editExpanded={editingPersonId === pid && editAnchor !== null}
             onEdit={() => {
               setEditingPersonId(pid);
               const r = rootRef.current?.getBoundingClientRect();
@@ -136,6 +139,7 @@ function PersonRow({
   isSelf,
   selected,
   locked,
+  editExpanded,
   onToggle,
   onEdit,
 }: {
@@ -143,6 +147,7 @@ function PersonRow({
   isSelf: boolean;
   selected: boolean;
   locked: boolean;
+  editExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
 }): React.JSX.Element {
@@ -170,6 +175,8 @@ function PersonRow({
         className="person-picker-row-edit"
         title="Edit person"
         aria-label="Edit person"
+        aria-haspopup="dialog"
+        aria-expanded={editExpanded}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();

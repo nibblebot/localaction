@@ -72,6 +72,8 @@ export default function DueDateButton({
         className={`${className} due-date${dueDate ? ' due-date-set' : ''}`}
         aria-label={dueDate ? `Due ${formatDueDate(dueDate)} — change` : 'Set due date'}
         title={dueDate ? `Due ${formatDueDate(dueDate)}` : 'Set due date'}
+        aria-haspopup="dialog"
+        aria-expanded={anchor !== null}
         onClick={(e) => {
           e.stopPropagation();
           const rect = e.currentTarget.getBoundingClientRect();
@@ -169,6 +171,7 @@ function DueDateCalendar({
         ref={dialogRef}
         className="due-calendar"
         role="dialog"
+        aria-modal="true"
         aria-label="Pick due date"
         style={{ top: pos.top, left: pos.left }}
       >
@@ -183,7 +186,7 @@ function DueDateCalendar({
               <use href="/icons.svg#chevron-left-icon" />
             </svg>
           </button>
-          <span className="due-calendar-title" aria-live="polite">
+          <span className="due-calendar-title" id="due-calendar-title" aria-live="polite">
             {MONTH_NAMES[view.month]} {view.year}
           </span>
           <button
@@ -199,18 +202,23 @@ function DueDateCalendar({
         </div>
         <div className="due-calendar-grid" role="grid">
           {WEEKDAYS.map((d, i) => (
-            <span key={i} className="due-calendar-weekday">
+            <span key={i} className="due-calendar-weekday" role="columnheader">
               {d}
             </span>
           ))}
           {cells.map((day, i) =>
             day === null ? (
-              <span key={`blank-${i}`} className="due-calendar-blank" />
+              <span
+                key={`blank-${i}`}
+                className="due-calendar-blank"
+                aria-hidden="true"
+              />
             ) : (
               <button
                 key={day}
                 type="button"
                 role="gridcell"
+                aria-describedby="due-calendar-title"
                 className={`due-calendar-day${
                   toIso(view.year, view.month, day) === dueDate
                     ? ' due-calendar-day-selected'

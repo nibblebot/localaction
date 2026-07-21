@@ -1,9 +1,10 @@
 import { Provider } from 'tinybase/ui-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DataLayerProvider, getStore } from './data/index.ts';
 import SelectionProvider from './components/selection.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import MainPane from './components/MainPane.tsx';
+import { useFocusTrap } from './components/useFocusTrap.ts';
 import { Inspector } from 'tinybase/ui-react-inspector';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import AppearanceMenu from './components/appearance/AppearanceMenu.tsx';
@@ -17,8 +18,16 @@ function App(): React.JSX.Element {
   // Mobile drawer: the sidebar slides in over the main pane below 768px.
   // It closes on navigation (hash change), Escape, or backdrop tap.
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  // While open the drawer is a modal dialog: focus is contained inside
+  // the sidebar and returns to the toggle on close.
+  useFocusTrap(sidebarRef, drawerOpen);
   useEffect(() => {
     if (!drawerOpen) return;
+    // Move focus into the drawer so keyboard/AT users land in the dialog.
+    sidebarRef.current
+      ?.querySelector<HTMLElement>('a[href], button:not([disabled]), input:not([disabled])')
+      ?.focus();
     const close = (): void => setDrawerOpen(false);
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') close();
@@ -49,7 +58,7 @@ function App(): React.JSX.Element {
                     <use href="/icons.svg#menu-icon" />
                   </svg>
                 </button>
-                <Sidebar />
+                <Sidebar ref={sidebarRef} drawerOpen={drawerOpen} />
                 {drawerOpen ? (
                   <div
                     className="drawer-backdrop"

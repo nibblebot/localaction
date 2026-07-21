@@ -1,9 +1,9 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
-  useStoreVersion,
+  useTableVersion,
   useArea,
   useAreaCounts,
   useNote,
@@ -47,7 +47,6 @@ import AreaEditPopover from './AreaEditPopover.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
-import { renderMarkdown } from '../markdown/render.ts';
 import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
@@ -73,6 +72,10 @@ const PROJECT_TABS: { id: ProjectTab; label: string }[] = [
   { id: 'tasks', label: 'Tasks' },
   { id: 'notes', label: 'Notes' },
 ];
+
+// Lazy: carries markdown-it (~100KB min) out of the main chunk —
+// loaded on first note-preview render, never on task-only surfaces.
+const NoteMarkdown = lazy(() => import('./NoteMarkdown.tsx'));
 
 export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
@@ -226,7 +229,6 @@ function AreaHeader({
   onDeleteArea: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  useStoreVersion(store);
   const hex = areaColorHex(color);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
@@ -290,6 +292,8 @@ function AreaHeader({
           className="area-header-name-edit"
           onClick={openEditor}
           title="Edit area"
+          aria-haspopup="dialog"
+          aria-expanded={editAnchor !== null}
         >
           {name || 'Untitled'}
         </button>
@@ -301,6 +305,7 @@ function AreaHeader({
             type="text"
             className="area-header-add-input"
             placeholder="Sub-area name…"
+            aria-label="Sub-area name"
             value={draft}
             autoFocus
             onChange={(e) => setDraft(e.target.value)}
@@ -335,6 +340,8 @@ function AreaHeader({
         onClick={openEditor}
         aria-label="Edit area"
         title="Edit area"
+        aria-haspopup="dialog"
+        aria-expanded={editAnchor !== null}
       >
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#edit-icon" />
@@ -382,7 +389,6 @@ function AreaHeaderCast({
   cast: readonly string[];
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  useStoreVersion(store);
   const current = useEntityPersonIds(store, NOTE_ENTITY_TYPE.area, areaId);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -394,6 +400,7 @@ function AreaHeaderCast({
             key={pid}
             personId={pid}
             store={store}
+            expanded={anchor !== null}
             onEdit={() => {
               const r = containerRef.current?.getBoundingClientRect();
               setAnchor({ x: r ? r.left : 0, y: r ? r.bottom + 4 : 0 });
@@ -417,10 +424,12 @@ function AreaHeaderCast({
 function CastChip({
   personId,
   store,
+  expanded,
   onEdit,
 }: {
   personId: string;
   store: MergeableStore;
+  expanded: boolean;
   onEdit: () => void;
 }): React.JSX.Element | null {
   // usePerson subscribes to the row's name/color cells so the chip
@@ -433,6 +442,8 @@ function CastChip({
       className="area-header-cast-chip"
       onClick={onEdit}
       title="Edit cast"
+      aria-haspopup="dialog"
+      aria-expanded={expanded}
     >
       <PersonAvatar name={person.name} color={person.color} small />
       <span className="area-header-cast-chip-name">{person.name || 'Untitled'}</span>
@@ -508,6 +519,8 @@ function PaneTabs<T extends string>({
             key={t.id}
             type="button"
             role="tab"
+            id={`area-tab-${t.id}`}
+            aria-controls={`area-tabpanel-${t.id}`}
             aria-selected={active}
             className={`area-tab${active ? ' area-tab-active' : ''}`}
             onClick={() => onChange(t.id)}
@@ -560,7 +573,13 @@ function ProjectsTab({
   }, [isActive, inArea.length]);
 
   return (
-    <section className="projects-tab" aria-label="Projects">
+    <section
+      className="projects-tab"
+      aria-label="Projects"
+      role="tabpanel"
+      id="area-tabpanel-projects"
+      aria-labelledby="area-tab-projects"
+    >
       <AreaProjectGroups areaId={areaId} rollups={rollups} />
       {subAreas.map((sa) => (
         <SubAreaProjects
@@ -620,7 +639,12 @@ function AreaProjectGroups({
     projectIds,
     filter,
   );
+  // person_links/persons changes must re-run the imperative
+  // peopleForEntity filter below — the token joins the memo deps.
+  const personsV =
+    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const visible = useMemo(() => {
+    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
     if (filter.length === 0) return inArea;
     const set = new Set(filter);
     return inArea.filter((p) => {
@@ -629,7 +653,7 @@ function AreaProjectGroups({
       }
       return false;
     });
-  }, [store, inArea, filter]);
+  }, [store, inArea, filter, personsV]);
 
   const done = visible.filter((p) => p.total > 0 && p.done === p.total);
   const active = visible.filter((p) => p.total === 0 || p.done < p.total);
@@ -750,35 +774,35 @@ function ProjectRow({
   return (
     <li className={`project-row${doneGroup ? ' project-row-done' : ''}`}>
       <div className="project-row-line">
-        <button
-          type="button"
-          className="project-row-name"
-          title="Open project"
-          onClick={() => navigate({ kind: 'project', id: projectId })}
-        >
-          {editing ? (
-            <input
-              type="text"
-              className="project-row-name-input"
-              defaultValue={display}
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) => {
-                const next = e.currentTarget.value.trim() || 'Untitled';
-                if (next !== display) {
-                  store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
-                }
-                setEditing(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur();
-                else if (e.key === 'Escape') setEditing(false);
-              }}
-            />
-          ) : (
-            display
-          )}
-        </button>
+        {editing ? (
+          <input
+            type="text"
+            className="project-row-name-input"
+            aria-label="Project name"
+            defaultValue={display}
+            autoFocus
+            onBlur={(e) => {
+              const next = e.currentTarget.value.trim() || 'Untitled';
+              if (next !== display) {
+                store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
+              }
+              setEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              else if (e.key === 'Escape') setEditing(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="project-row-name"
+            title="Open project"
+            onClick={() => navigate({ kind: 'project', id: projectId })}
+          >
+            {display}
+          </button>
+        )}
         <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
           <div
             className={`project-row-progress-bar${
@@ -880,41 +904,42 @@ function SortableProjectRow({
           aria-label="Drag to reorder"
           title="Drag to reorder"
           onClick={(e) => e.preventDefault()}
+          {...(handle.attributes ?? {})}
           {...(handle.listeners ?? {})}
         >
           <svg className="svg-icon" aria-hidden="true">
             <use href="/icons.svg#drag-icon" />
           </svg>
         </button>
-        <button
-          type="button"
-          className="project-row-name"
-          title="Open project"
-          onClick={() => navigate({ kind: 'project', id: projectId })}
-        >
-          {editing ? (
-            <input
-              type="text"
-              className="project-row-name-input"
-              defaultValue={display}
-              autoFocus
-              onClick={(e) => e.stopPropagation()}
-              onBlur={(e) => {
-                const next = e.currentTarget.value.trim() || 'Untitled';
-                if (next !== display) {
-                  store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
-                }
-                setEditing(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur();
-                else if (e.key === 'Escape') setEditing(false);
-              }}
-            />
-          ) : (
-            display
-          )}
-        </button>
+        {editing ? (
+          <input
+            type="text"
+            className="project-row-name-input"
+            aria-label="Project name"
+            defaultValue={display}
+            autoFocus
+            onBlur={(e) => {
+              const next = e.currentTarget.value.trim() || 'Untitled';
+              if (next !== display) {
+                store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
+              }
+              setEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              else if (e.key === 'Escape') setEditing(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className="project-row-name"
+            title="Open project"
+            onClick={() => navigate({ kind: 'project', id: projectId })}
+          >
+            {display}
+          </button>
+        )}
         <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
           <div className="project-row-progress-bar">
             <div className="project-row-progress-fill" style={{ width: `${pct}%` }} />
@@ -1027,7 +1052,13 @@ function TasksTab({
   }, [isActive, projects.length]);
 
   return (
-    <section className="tasks-tab" aria-label="Tasks">
+    <section
+      className="tasks-tab"
+      aria-label="Tasks"
+      role="tabpanel"
+      id="area-tabpanel-tasks"
+      aria-labelledby="area-tab-tasks"
+    >
       <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
       {projects.map((p) => (
         <ProjectTaskList
@@ -1114,7 +1145,10 @@ function NotesTab({
   );
   const { selected: filter } = usePersonFilter();
   const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.area, allIds, filter);
+  const personsV =
+    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const visible = useMemo(() => {
+    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
     if (filter.length === 0) return allIds;
     const set = new Set(filter);
     return allIds.filter((nid) => {
@@ -1134,7 +1168,7 @@ function NotesTab({
       }
       return false;
     });
-  }, [store, allIds, filter]);
+  }, [store, allIds, filter, personsV]);
 
 
   function addNote(title: string): void {
@@ -1156,7 +1190,13 @@ function NotesTab({
   }, [isActive, allIds.length]);
 
   return (
-    <section className="notes-tab" aria-label="Notes">
+    <section
+      className="notes-tab"
+      aria-label="Notes"
+      role="tabpanel"
+      id="area-tabpanel-notes"
+      aria-labelledby="area-tab-notes"
+    >
       <ul className="notes-tab-list" role="list">
         {visible.map((nid) => (
           <NoteLine key={nid} noteId={nid} />
@@ -1187,6 +1227,12 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  // Keyboard users enter edit mode via the note title button; move
+  // focus into the textarea once it mounts.
+  useEffect(() => {
+    if (editing) bodyRef.current?.focus();
+  }, [editing]);
 
   if (!note) return <></>;
   const body = note.body ?? '';
@@ -1219,23 +1265,21 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
         </button>
       </div>
       {!editing && body.trim().length > 0 && (
-        <div
-          className="markdown-body note-line-rendered"
-          role="button"
-          tabIndex={0}
-          onClick={() => {
-            setDraft(body);
-            setEditing(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
+        <Suspense
+          fallback={
+            <div className="markdown-body note-line-rendered">
+              {stripPreview(body)}
+            </div>
+          }
+        >
+          <NoteMarkdown
+            body={body}
+            onClick={() => {
               setDraft(body);
               setEditing(true);
-            }
-          }}
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
-        />
+            }}
+          />
+        </Suspense>
       )}
       {!editing && body.trim().length === 0 && (
         <button
@@ -1251,7 +1295,9 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
       )}
       {editing && (
         <textarea
+          ref={bodyRef}
           className="note-line-body"
+          aria-label="Note body"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={Math.max(3, draft.split('\n').length)}
@@ -1431,7 +1477,13 @@ function ProjectTasksTab({
   showCompleted: boolean;
 }): React.JSX.Element {
   return (
-    <section className="tasks-tab" aria-label="Tasks">
+    <section
+      className="tasks-tab"
+      aria-label="Tasks"
+      role="tabpanel"
+      id="area-tabpanel-tasks"
+      aria-labelledby="area-tab-tasks"
+    >
       <ProjectTaskList
         projectId={projectId}
         projectName={projectName}
@@ -1475,7 +1527,10 @@ function ProjectNotesTab({
     noteIds,
     filter,
   );
+  const personsV =
+    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
   const visible = useMemo(() => {
+    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
     if (filter.length === 0) return noteIds;
     const set = new Set(filter);
     return noteIds.filter((nid) => {
@@ -1488,7 +1543,7 @@ function ProjectNotesTab({
       }
       return false;
     });
-  }, [store, noteIds, filter]);
+  }, [store, noteIds, filter, personsV]);
 
   function addNote(title: string): void {
     createNote(store, {
@@ -1509,7 +1564,13 @@ function ProjectNotesTab({
   }, [isActive, noteIds.length]);
 
   return (
-    <section className="notes-tab" aria-label="Notes">
+    <section
+      className="notes-tab"
+      aria-label="Notes"
+      role="tabpanel"
+      id="area-tabpanel-notes"
+      aria-labelledby="area-tab-notes"
+    >
       <ul className="notes-tab-list" role="list">
         {visible.map((nid) => (
           <NoteLine key={nid} noteId={nid} />
@@ -1536,8 +1597,6 @@ function ProjectNotesTab({
 
 function InboxPane(): React.JSX.Element {
   const { store } = useDataLayer();
-  // Subscribe so task cell changes (status, order) re-render the tree.
-  useStoreVersion(store);
   const topLevelIds = useInboxTaskIds(store);
   // TaskTreeByStatus builds the tree itself — feed it the flat deep
   // list (top-level + descendants), same as the project/area tabs.

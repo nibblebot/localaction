@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   useDataLayer,
-  useStoreVersion,
   updateArea,
   AREA_COLORS,
   areaColorHex,
@@ -32,7 +31,6 @@ export default function AreaEditPopover({
   onClose,
 }: AreaEditPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
-  useStoreVersion(store);
   const [draft, setDraft] = useState(name);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -83,6 +81,7 @@ export default function AreaEditPopover({
         ref={dialogRef}
         className="area-edit"
         role="dialog"
+        aria-modal="true"
         aria-label="Edit area"
         style={{ top: y, left: x }}
       >

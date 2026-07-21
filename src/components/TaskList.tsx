@@ -160,6 +160,7 @@ export function TaskRow({
       {handle && (
         <button
           type="button"
+          {...(handle.attributes ?? {})}
           className="task-line-drag-handle"
           aria-label="Drag to reorder"
           title="Drag to reorder"
@@ -178,7 +179,7 @@ export function TaskRow({
         onChange={() =>
           setTaskStatus(store, taskId, done ? TASK_STATUS.open : TASK_STATUS.done)
         }
-        aria-label={done ? 'Mark not done' : 'Mark done'}
+        aria-label={done ? `Mark “${task.title}” not done` : `Mark “${task.title}” done`}
       />
       {readOnly ? (
         <span className="task-line-title">{task.title}</span>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useDataLayer, useStoreVersion, SELF_PERSON_ID } from '../../data/index.ts';
+import { useDataLayer, useTableVersion, SELF_PERSON_ID, TABLES } from '../../data/index.ts';
 import { deletePerson, getPerson, nameDerivedHue, updatePerson } from '../../data/persons.ts';
 import PersonAvatar from './PersonAvatar.tsx';
 import { useFocusTrap } from '../useFocusTrap.ts';
@@ -34,7 +34,9 @@ export default function PersonEditPopover({
   onClose,
 }: PersonEditPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
-  useStoreVersion(store);
+  // Re-read the person row if it changes while the popover is open
+  // (e.g. a rename synced from another client).
+  useTableVersion(store, TABLES.persons);
   const initial = getPerson(store, personId);
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? nameDerivedHue(initial?.name ?? ''));
@@ -88,6 +90,7 @@ export default function PersonEditPopover({
         ref={rootRef}
         className="person-edit"
         role="dialog"
+        aria-modal="true"
         aria-label="Edit person"
         style={{ top: y, left: x }}
       >

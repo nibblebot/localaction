@@ -1,5 +1,5 @@
 import type { MergeableStore } from 'tinybase';
-import { useDataLayer, useStoreVersion } from '../../data/index.ts';
+import { useDataLayer } from '../../data/index.ts';
 import { usePerson } from '../../data/persons.ts';
 import PersonAvatar from './PersonAvatar.tsx';
 
@@ -26,7 +26,6 @@ export default function PersonAvatarsRow({
   className,
 }: PersonAvatarsRowProps): React.JSX.Element | null {
   const { store } = useDataLayer();
-  useStoreVersion(store);
   if (personIds.length === 0) return null;
   const classes = ['person-avatars', 'person-avatars-row'];
   if (className) classes.push(className);

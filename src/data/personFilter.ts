@@ -1,9 +1,9 @@
 import type { MergeableStore } from 'tinybase';
-import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
 import { peopleForEntity } from './personSelectors.ts';
 import { getRootPlacement } from './tasks.ts';
+import { useTableVersion } from './internal.ts';
 
 /**
  * Any-of (OR) match per the spec. An entity matches if any of its
@@ -166,13 +166,14 @@ export function useDimmedAreaIds(
   areaIds: readonly string[],
   filter: readonly string[],
 ): Set<string> {
-  useRowIds(TABLES.persons, store);
-  useRowIds(TABLES.person_links, store);
-  useRowIds(TABLES.areas, store);
-  useRowIds(TABLES.projects, store);
-  useRowIds(TABLES.tasks, store);
-  useRowIds(TABLES.notes, store);
-  void useTables(store);
+  const v =
+    useTableVersion(store, TABLES.persons) +
+    useTableVersion(store, TABLES.person_links) +
+    useTableVersion(store, TABLES.areas) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.notes);
+  void v;
   if (filter.length === 0) return new Set();
   const set = new Set(filter);
   const dimmed = new Set<string>();
@@ -193,13 +194,14 @@ export function useFilteredAreaCounts(
   areaIds: readonly string[],
   filter: readonly string[],
 ): Map<string, FilteredAreaCount> {
-  useRowIds(TABLES.persons, store);
-  useRowIds(TABLES.person_links, store);
-  useRowIds(TABLES.areas, store);
-  useRowIds(TABLES.projects, store);
-  useRowIds(TABLES.tasks, store);
-  useRowIds(TABLES.notes, store);
-  void useTables(store);
+  const v =
+    useTableVersion(store, TABLES.persons) +
+    useTableVersion(store, TABLES.person_links) +
+    useTableVersion(store, TABLES.areas) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.notes);
+  void v;
   if (filter.length === 0) return new Map();
   const set = new Set(filter);
   const out = new Map<string, FilteredAreaCount>();
@@ -220,9 +222,8 @@ export function useHiddenCount(
   rows: readonly string[],
   filter: readonly string[],
 ): number {
-  useRowIds(TABLES.persons, store);
-  useRowIds(TABLES.person_links, store);
-  void useTables(store);
+  const v = useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
+  void v;
   if (filter.length === 0) return 0;
   const set = new Set(filter);
   let n = 0;

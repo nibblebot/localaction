@@ -1,8 +1,8 @@
-import { useRow, useRowIds, useTables } from 'tinybase/ui-react';
+import { useRow } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import type { TaskStatus } from './schema.ts';
-import { newId, nowIso, normalizeRelation, row } from './internal.ts';
+import { newId, nowIso, normalizeRelation, row, useTableVersion } from './internal.ts';
 import type { Task, TaskInput, TaskPatch, TaskPlacement } from './types.ts';
 import { moveTask, readSiblingOrders } from './order.ts';
 import { getSectionIdsForProject } from './sections.ts';
@@ -155,7 +155,6 @@ export function getEffectiveTaskStatus(
   store: MergeableStore,
   id: string,
   _version = 0,
-  _tables?: unknown,
 ): TaskStatus | undefined {
   if (!store.hasRow(TABLES.tasks, id)) return undefined;
   return effectiveStatus(store, id);
@@ -336,7 +335,6 @@ export function getTasksForProjectDeep(
   store: MergeableStore,
   projectId: string,
   _version = 0,
-  _tables?: unknown,
 ): string[] {
   const out: string[] = [];
   for (const top of topLevelTaskIdsForPlacement(store, `project${PLACEMENT_SEP}${projectId}`)) {
@@ -355,12 +353,12 @@ export function getTasksForProjectDeep(
 }
 
 /** Non-reactive: top-level Inbox tasks (placement absent). */
-export function getInboxTaskIds(store: MergeableStore, _version = 0, _tables?: unknown): string[] {
+export function getInboxTaskIds(store: MergeableStore, _version = 0): string[] {
   return topLevelTaskIdsForPlacement(store, null);
 }
 
 /** Non-reactive: top-level Area-owned tasks for `areaId`. */
-export function getAreaTaskIds(store: MergeableStore, areaId: string, _version = 0, _tables?: unknown): string[] {
+export function getAreaTaskIds(store: MergeableStore, areaId: string, _version = 0): string[] {
   return topLevelTaskIdsForPlacement(store, `area${PLACEMENT_SEP}${areaId}`);
 }
 
@@ -383,40 +381,36 @@ function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
  * descendant change re-renders callers.
  */
 export function useTasksForProjectDeep(store: MergeableStore, projectId: string): string[] {
-  const ids = useRowIds(TABLES.tasks, store);
-  const tables = useTables(store);
-  return getTasksForProjectDeep(store, projectId, ids.length, tables);
+  // Reads tasks (rows + placement cells) and, via sections, the
+  // sections table — the version token covers both.
+  const v = useTableVersion(store, TABLES.tasks) + useTableVersion(store, TABLES.sections);
+  return getTasksForProjectDeep(store, projectId, v);
 }
 
 export function useInboxTaskIds(store: MergeableStore): string[] {
-  // Subscribe; the array identity also feeds the React Compiler's
-  // memo cache key so the result re-derives when the table changes.
-  // Without the dependency token below, the compiler caches on the
-  // singleton `store` reference alone and returns a stale list across
-  // re-renders (see useAreaCounts for the same pattern).
-  const ids = useRowIds(TABLES.tasks, store);
-  const tables = useTables(store);
-  return getInboxTaskIds(store, ids.length, tables);
+  // The version token feeds the React Compiler's memo cache key so the
+  // result re-derives when the table changes; without it the compiler
+  // caches on the singleton `store` reference alone and returns a stale
+  // list across re-renders (see useAreaCounts for the same pattern).
+  const v = useTableVersion(store, TABLES.tasks);
+  return getInboxTaskIds(store, v);
 }
 
 export function useAreaTaskIds(store: MergeableStore, areaId: string): string[] {
-  const ids = useRowIds(TABLES.tasks, store);
-  const tables = useTables(store);
-  return getAreaTaskIds(store, areaId, ids.length, tables);
+  const v = useTableVersion(store, TABLES.tasks);
+  return getAreaTaskIds(store, areaId, v);
 }
 
 export function useEffectiveTaskStatus(
   store: MergeableStore,
   id: string | undefined,
 ): TaskStatus | undefined {
-  // Subscribe + dependency tokens so the React Compiler's memo cache
-  // re-derives when the tasks table changes (same pattern as
-  // useInboxTaskIds — without them the singleton `store` reference
-  // alone leaves a stale status across re-renders).
-  const ids = useRowIds(TABLES.tasks, store);
-  const tables = useTables(store);
+  // Same version-token pattern as useInboxTaskIds — without it the
+  // singleton `store` reference alone leaves a stale status across
+  // re-renders.
+  const v = useTableVersion(store, TABLES.tasks);
   if (!id || !store.hasRow(TABLES.tasks, id)) return undefined;
-  return getEffectiveTaskStatus(store, id, ids.length, tables);
+  return getEffectiveTaskStatus(store, id, v);
 }
 
 export function useTask(store: MergeableStore, id: string | undefined): Task | undefined {

@@ -26,7 +26,7 @@ export type {
 
 export { getStore } from './store.ts';
 
-export { useStoreVersion } from './internal.ts';
+export { useTableVersion } from './internal.ts';
 
 export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
 export type { LocalActionDebug } from './DataLayerProvider.tsx';

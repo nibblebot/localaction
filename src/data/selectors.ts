@@ -1,8 +1,8 @@
 import type { MergeableStore } from 'tinybase';
-import { useRowIds, useTables } from 'tinybase/ui-react';
 import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
 import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus } from './tasks.ts';
+import { useTableVersion } from './internal.ts';
 import type { Area } from './types.ts';
 
 /**
@@ -35,10 +35,10 @@ export interface AreaCount {
  * `version` is a dependency token that React Compiler's optimizer
  * recognises as "used" by the body. Without it, the compiler inlines
  * `getAreaCounts` and elides the actual function call (returning only
- * the cached `useRowIds` results). The token has no semantic value —
- * its sole purpose is to keep the subscription hooks alive.
+ * the cached result). The token has no semantic value — its sole
+ * purpose is to invalidate the memoised derivation on table changes.
  */
-export function getAreaCounts(store: MergeableStore, _version = 0, _tables?: unknown): AreaCount[] {
+export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] {
   const projectIds = store.getRowIds(TABLES.projects);
   const taskIds = store.getRowIds(TABLES.tasks);
   const noteIds = store.getRowIds(TABLES.notes);
@@ -144,24 +144,22 @@ export function getAreaCounts(store: MergeableStore, _version = 0, _tables?: unk
 }
 
 export function useAreaCounts(store: MergeableStore): AreaCount[] {
-  // Subscribe via useRowIds (length changes) and useTables (cell changes).
-  // Both feed the cache key the React Compiler uses to decide whether
-  // to re-run the body; without useTables, a row whose `order` cell
-  // changes (e.g. via `moveArea`) does not invalidate the memoised
-  // result, so the sidebar tree keeps showing the stale order.
-  const d = useRowIds(TABLES.areas, store);
-  const p = useRowIds(TABLES.projects, store);
-  const t = useRowIds(TABLES.tasks, store);
-  const n = useRowIds(TABLES.notes, store);
-  const tables = useTables(store);
-  return getAreaCounts(store, d.length + p.length + t.length + n.length, tables);
+  // The version token bumps on any change to the four source tables,
+  // feeding the cache key the React Compiler uses to decide whether to
+  // re-run the derivation (row moves like `moveArea` only touch cells —
+  // a row-id subscription alone would serve the stale order).
+  const v =
+    useTableVersion(store, TABLES.areas) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.notes);
+  return getAreaCounts(store, v);
 }
 
 export function getNotesForAreaTree(
   store: MergeableStore,
   areaId: string,
   _version = 0,
-  _tables?: unknown,
 ): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
   const descendants = new Set<string>([areaId]);
   let added = true;
@@ -204,12 +202,12 @@ export function useNotesForAreaTree(
   store: MergeableStore,
   areaId: string,
 ): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
-  const d = useRowIds(TABLES.areas, store);
-  const p = useRowIds(TABLES.projects, store);
-  const t = useRowIds(TABLES.tasks, store);
-  const n = useRowIds(TABLES.notes, store);
-  const tables = useTables(store);
-  return getNotesForAreaTree(store, areaId, d.length + p.length + t.length + n.length, tables);
+  const v =
+    useTableVersion(store, TABLES.areas) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.notes);
+  return getNotesForAreaTree(store, areaId, v);
 }
 
 export interface ProjectRollup {
@@ -222,16 +220,18 @@ export interface ProjectRollup {
 }
 
 export function useProjectRollups(store: MergeableStore): ProjectRollup[] {
-  const p = useRowIds(TABLES.projects, store);
-  const t = useRowIds(TABLES.tasks, store);
-  const tables = useTables(store);
-  return getProjectRollups(store, p.length + t.length, tables);
+  // Rollups read projects + tasks (via getTasksForProjectDeep, which
+  // also walks sections) — the token watches all three.
+  const v =
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.sections);
+  return getProjectRollups(store, v);
 }
 
 export function getProjectRollups(
   store: MergeableStore,
   _version = 0,
-  _tables?: unknown,
 ): ProjectRollup[] {
   const projectIds = store.getRowIds(TABLES.projects);
   const projectArea = new Map<string, string | null>();

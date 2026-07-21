@@ -37,7 +37,7 @@ async function createArea(page: Page, name: string): Promise<void> {
 
 async function createSubArea(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'Add sub-area' }).click();
-  const input = page.getByRole('textbox', { name: 'Sub-area name…' });
+  const input = page.getByRole('textbox', { name: 'Sub-area name' });
   await input.fill(name);
   await input.press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(name);

@@ -7,14 +7,8 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  const input = page.locator('.projects-tab .inline-add-input');
+  const input = page.locator('.projects-tab > .inline-add-input');
   await input.fill(name);
-  await input.press('Enter');
-}
-
-async function createTask(page: Page, title: string): Promise<void> {
-  const input = page.locator('.tasks-tab .inline-add-input');
-  await input.fill(title);
   await input.press('Enter');
 }
 
@@ -46,7 +40,6 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-header-name')).toContainText('Work');
     await expect(page.locator('.area-tabs')).toBeVisible();
     await expect(page.locator('.area-tab', { hasText: 'Projects' })).toBeVisible();
-    await expect(page.locator('.area-tab', { hasText: 'Tasks' })).toBeVisible();
     await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
   });
 
@@ -55,29 +48,36 @@ test.describe('LocalAction shell', () => {
     // Create an area so we have something to render.
     await createArea(page, 'Health');
     await expect(page.locator('.projects-tab')).toBeVisible();
-    await expect(page.locator('.projects-tab .inline-add-input')).toBeVisible();
+    await expect(page.locator('.projects-tab > .inline-add-input')).toBeVisible();
   });
 
-  test('clicking a project opens its pane with Tasks and Notes tabs', async ({ page }) => {
+  test('clicking a project name toggles its card; the note icon opens its notes pane', async ({ page }) => {
     await page.goto('/#/');
     await createArea(page, 'Family');
-    // Projects tab: add a project.
+    // Projects tab: add a project; its card is expanded by default.
     await createProject(page, 'Plan trip');
-    await expect(page.locator('.project-row-name', { hasText: 'Plan trip' })).toBeVisible();
-    // Clicking the project navigates to the project pane (no inline expand).
-    await page.locator('.project-row-name', { hasText: 'Plan trip' }).click();
-    await expect(page).toHaveURL(/#\/p\//);
+    const card = page.locator('li.project-row', { hasText: 'Plan trip' });
+    await expect(card.locator('.project-row-tasks')).toBeVisible();
+    // Add a task via the card's footer input.
+    const footer = card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input');
+    await footer.fill('Book flights');
+    await footer.press('Enter');
+    await expect(card.locator('.task-line-title').first()).toHaveValue('Book flights');
+    // Clicking the project name collapses the card; again expands it.
+    await card.locator('.project-row-name').click();
+    await expect(card.locator('.project-row-tasks')).toHaveCount(0);
+    await card.locator('.project-row-name').click();
+    await expect(card.locator('.project-row-tasks')).toBeVisible();
+    // The note icon opens the project's notes pane.
+    await card.locator('button[aria-label="Open notes for Plan trip"]').click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+\/notes$/);
     await expect(page.locator('.area-header-name')).toContainText('Plan trip');
-    // Project pane has Tasks + Notes tabs but no Projects tab.
-    await expect(page.locator('.area-tab', { hasText: 'Projects' })).toHaveCount(0);
-    await expect(page.locator('.area-tab', { hasText: 'Tasks' })).toBeVisible();
-    await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
-    // Default tab is Tasks; add a task scoped to this project.
-    await createTask(page, 'Book flights');
-    await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
+    await page.locator('.notes-tab .inline-add-input').fill('Passports');
+    await page.locator('.notes-tab .inline-add-input').press('Enter');
+    await expect(page.locator('.note-line')).toHaveCount(1);
   });
 
-  test('a project under a sub-area shows the full area hierarchy in its pane', async ({ page }) => {
+  test('a project under a sub-area shows the full area hierarchy in its notes pane', async ({ page }) => {
     const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const root = `Root ${uniq()}`;
     const sub = `Sub ${uniq()}`;
@@ -94,8 +94,9 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-header-name')).toContainText(sub);
     // Now we're on the sub-area pane. Add a project.
     await createProject(page, projectName);
-    await page.locator('.project-row-name', { hasText: projectName }).click();
-    // The project pane header shows a list-based document icon next to the name.
+    // The note icon opens the project's notes pane, whose header shows
+    // a list-based document icon next to the name.
+    await page.locator(`button[aria-label="Open notes for ${projectName}"]`).click();
     const projectIcon = page.locator('.area-header-project-icon');
     await expect(projectIcon).toBeVisible();
     await expect(projectIcon).toHaveAttribute('aria-hidden', 'true');

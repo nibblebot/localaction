@@ -30,7 +30,7 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(page.locator('.area-header-name')).toContainText(child);
     // Add a project inside the sub-area.
     await page.locator('.area-tab', { hasText: 'Projects' }).click();
-    const input = page.locator('.projects-tab .inline-add-input');
+    const input = page.locator('.projects-tab > .inline-add-input');
     await input.fill(project);
     await input.press('Enter');
     await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
@@ -44,26 +44,29 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(page.locator('.area-header-name')).toContainText(child);
   });
 
-  test('parent Tasks tab lists sub-area tasks grouped by their project', async ({
+  test('parent Projects tab lists sub-area tasks inside their project card', async ({
     page,
   }) => {
     const parent = `Work ${uniq()}`;
     const child = `Team ${uniq()}`;
+    const project = `General ${uniq()}`;
     const task = `Prep deck ${uniq()}`;
     await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill(child);
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(child);
-    // Add a task inside the sub-area (spins up a "General" project).
-    await page.locator('.area-tab', { hasText: 'Tasks' }).click();
-    const input = page.locator('.tasks-tab .inline-add-input');
-    await input.fill(task);
-    await input.press('Enter');
-    await expect(page.locator('.tasks-tab .task-line-title').last()).toHaveValue(task);
-    // Back on the parent: the sub-area task rolls up under a header.
+    // Add a project inside the sub-area, then a task via the project
+    // card's footer input (cards are expanded by default).
+    await page.locator('.projects-tab > .inline-add-input').fill(project);
+    await page.locator('.projects-tab > .inline-add-input').press('Enter');
+    const card = page.locator('li.project-row', { hasText: project });
+    await card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').fill(task);
+    await card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').press('Enter');
+    await expect(card.locator('.task-line-title').last()).toHaveValue(task);
+    // Back on the parent (default Projects tab): the sub-area task
+    // rolls up under a header, inside its project card.
     await page.locator('.area-header-crumb', { hasText: parent }).click();
-    await page.locator('.area-tab', { hasText: 'Tasks' }).click();
     await expect(page.locator('.subarea-header-name', { hasText: child })).toBeVisible();
     await expect(
       page.locator('.subarea-section .task-line-title').last(),

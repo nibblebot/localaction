@@ -14,7 +14,7 @@ flowchart TB
   subgraph Shell["app-shell"]
     direction LR
     Side["Sidebar\n(area tree, counts,\ndrag-to-reorder, sync badge)"]
-    Main["MainPane\n(area / project views)"]
+    Main["MainPane\n(area / project-notes views)"]
   end
   Insp["TinyBase Inspector\n(dev-only overlay)"]
   Menu["AppearanceMenu\n(floating)"]
@@ -28,7 +28,7 @@ flowchart TB
   A `SyncStatusBadge` at the foot reports connection state: *Local only* →
   *Syncing…* → *Synced* (or *Retry #n…* / *Sync error*).
 - **MainPane** (`MainPane.tsx`) — the working area. Renders an area view, a
-  project view, or the welcome screen depending on the current selection.
+  project-notes pane, or the welcome screen depending on the current selection.
 - **Inspector** — TinyBase's `ui-react-inspector`, a dev-only overlay for
   inspecting store tables/cells.
 - **AppearanceMenu** — floating controls for theme, font, and density.
@@ -37,13 +37,14 @@ flowchart TB
 
 There is no router library — `src/router.ts` is a tiny hash router.
 
-- Routes: `#/` (home), `#/a/<id>` (area), `#/p/<id>` (project).
+- Routes: `#/` (home), `#/a/<id>` (area), `#/p/<id>/notes` (project notes).
 - `SelectionProvider` holds the current `Selection` and a `navigate()` helper.
   It seeds from `window.location.hash` and listens for `hashchange`, so the
   back/forward buttons and deep links both work. `navigate()` writes the hash;
   the provider re-derives selection from it.
-- Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) collapse to
-  **home** so stale links fall back to the welcome screen gracefully.
+- Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) and the
+  retired project-pane links (`#/p/<id>`) collapse to **home** so stale links
+  fall back to the welcome screen gracefully.
 
 ## The area tree (sidebar)
 
@@ -69,47 +70,39 @@ sidebar to get started, or create a new one."*
 ### Area view
 
 A `AreaHeader` (name, colour, and a breadcrumb of the parent chain) sits above
-three **tabs**, each carrying a live count and an add action. Clicking the name
+two **tabs**, each carrying a live count and an add action. Clicking the name
 (or the pencil button) opens an `AreaEditPopover` to rename the area inline and
 pick a palette colour; delete stays in the header behind a confirm modal:
 
-- **Projects** — project rows with a done/total rollup; drag-to-reorder within
-  the area. Each row carries a due-date affordance (calendar icon, or `MM/DD`
-  once set) that opens a monthly calendar popover to pick or clear the date.
-  Projects from every sub-area (recursively) roll up into this tab
-  under a clickable sub-area heading.
-- **Tasks** — tasks grouped by their project, with nested sub-tasks, an
-  open/done toggle, and drag-to-reorder. Each project group is the same
-  task list as the project view's Tasks tab (one shared `ProjectTaskList`
-  component): sections render and edit inline, and every group carries
-  its own new-task input and add-section action under a project-name
-  header with a live count. With no projects yet, a single tab-level
-  input spins up a "General" project on first task. Every task and
-  sub-task row carries the same due-date affordance as project rows
-  (calendar icon, or `MM/DD` once set; popover to pick or clear).
-  Sub-area tasks and projects roll up the same way, each under its own
-  sub-area heading.
+- **Projects** — the combined project list. Area-rooted tasks come first,
+  then sortable project rows with a done/total rollup meter, drag-to-reorder
+  within the area, and Active/Done grouping. Each row expands (caret, or
+  clicking the project name — most of the row is the toggle) to reveal the
+  project's full task tree inline: sections render and edit in place, every
+  task with sub-tasks carries its own done/total meter, and the card footer
+  holds a new-task input and add-section action (one shared `ProjectTaskList`
+  component). One flattened drag surface spans the unsectioned group and every
+  section: tasks drag within/between groups (and nest as sub-tasks), sections
+  drag to reorder, and sections always follow the unsectioned group. A tab-bar
+  button collapses/expands all cards at once; per-card
+  collapse state persists per device. Each row also carries a due-date
+  affordance (calendar icon, or `MM/DD` once set) and a note icon that opens
+  the project's notes pane. Projects from every sub-area (recursively) roll
+  up into this tab under a clickable sub-area heading, each sub-area's
+  area-rooted tasks included.
 - **Notes** — notes attached to this area or any area in its subtree (or their
   projects/tasks), each shown as a line with a markdown body preview.
 
-All three tab counts include the full sub-area subtree.
+Both tab counts include the full sub-area subtree.
 
 Tabs remember their last selection per area.
 
-### Project view
+### Project notes pane
 
-Selecting a project (`#/p/<id>`) opens `ProjectPane`: a project header with a
-breadcrumb back to its area, and two tabs:
-
-- **Tasks** — the project's task tree (nested tasks, status toggle, reorder),
-  optionally grouped into **Sections**. The `+` icon next to the new-task
-  input adds a section; a section header carries an inline-editable name, an
-  add-task action, and a delete action (which deletes the section's tasks,
-  after confirmation). One flattened drag surface spans the unsectioned group
-  and every section: tasks drag within/between groups (and nest as sub-tasks),
-  and sections drag to reorder — sections always stay at the top level of the
-  project and always follow the unsectioned group.
-- **Notes** — notes attached to this project.
+The note icon on a project row (`#/p/<id>/notes`) opens a notes-only pane: a
+project header with a breadcrumb back to its area, and the project's notes
+with an add input. This is the only place project-scoped notes are created —
+the area view's Notes tab rolls them up for display only.
 
 ## Notes & markdown
 

@@ -40,15 +40,15 @@ async function createArea(page: Page, name: string): Promise<void> {
 
 async function createProject(page: Page, name: string): Promise<void> {
   await page.locator('.area-tab', { hasText: 'Projects' }).click();
-  const input = page.locator('.projects-tab .inline-add-input');
+  const input = page.locator('.projects-tab > .inline-add-input');
   await input.fill(name);
   await input.press('Enter');
   await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  await page.locator('.area-tab', { hasText: 'Tasks' }).click();
-  const input = page.locator('.tasks-tab .inline-add-input');
+  // Single-project contexts: the one project card's footer add input.
+  const input = page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').first();
   await input.fill(title);
   await input.press('Enter');
 }
@@ -120,7 +120,7 @@ test.describe('Reorder rendering', () => {
     // textareas expose their text via the value property, never the
     // attribute, so match by position + toHaveValue.)
     await expect(
-      page.locator('.tasks-tab .task-line-title').last(),
+      page.locator('.project-row-tasks .task-line-title').last(),
     ).toHaveValue(`Task three ${tok}`);
     const order = await taskOrder(page, tok);
     expect(order).toEqual([

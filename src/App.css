@@ -760,6 +760,38 @@
   padding: 10px 14px;
 }
 
+.project-row-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.project-row-caret:hover {
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+.project-row-caret svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Expanded task tree, kept inside the card (the row clips it to the
+   card radius via overflow: hidden). */
+.project-row-tasks {
+  border-top: 1px solid var(--border);
+  padding: var(--space-2) 14px 10px;
+}
+
 .project-row-name {
   flex: 1 1 auto;
   font: inherit;
@@ -2616,6 +2648,7 @@
   .task-line-check,
   .person-avatar,
   .sidebar-area-caret,
+  .project-row-caret,
   .sidebar-section-title-action,
   .area-header-add,
   .area-header-edit,
@@ -2640,7 +2673,8 @@
   .project-row-drag-handle::after,
   .task-line-check::after,
   .person-avatar::after,
-  .sidebar-area-caret::after {
+  .sidebar-area-caret::after,
+  .project-row-caret::after {
     content: '';
     position: absolute;
     inset: -11px; /* 22px control + 2×11px → 44px hit area */

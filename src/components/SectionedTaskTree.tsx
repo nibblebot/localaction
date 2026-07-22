@@ -186,6 +186,7 @@ export function SectionedTaskTree({
   showCompleted = false,
   focusSectionId,
   ariaLabel,
+  taskProgress,
 }: {
   projectId: string;
   /** Deep list of visible task ids (top-level + descendants). */
@@ -195,6 +196,8 @@ export function SectionedTaskTree({
   /** Section whose name input should grab focus (just created). */
   focusSectionId?: string | null;
   ariaLabel?: string;
+  /** Per-ancestor subtask progress rendered as a meter on each row. */
+  taskProgress?: ReadonlyMap<string, { done: number; total: number }>;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const sectionIds = useSectionIdsForProject(store, projectId);
@@ -268,7 +271,7 @@ export function SectionedTaskTree({
             />
           );
         }
-        return <TaskRow handle={handle} taskId={id} />;
+        return <TaskRow handle={handle} taskId={id} progress={taskProgress?.get(id)} />;
       }}
     </SortableTree>
   );

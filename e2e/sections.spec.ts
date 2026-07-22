@@ -32,7 +32,7 @@ async function cleanOpfs(page: Page): Promise<void> {
  * headers, `T:title` for tasks. */
 async function treeRows(page: Page, token: string): Promise<string[]> {
   const rows = await page
-    .locator('.tasks-tab .sortable-list .section-row, .tasks-tab .sortable-list .task-line')
+    .locator('.project-row-tasks .sortable-list .section-row, .project-row-tasks .sortable-list .task-line')
     .evaluateAll((els: HTMLElement[]) =>
       els.map((el) =>
         el.classList.contains('section-row')
@@ -47,11 +47,10 @@ async function openProject(page: Page, areaName: string, projectName: string): P
   await page.locator('.sidebar-section-add .inline-add-input').fill(areaName);
   await page.locator('.sidebar-section-add .inline-add-input').press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(areaName);
-  await page.locator('.area-tab', { hasText: 'Projects' }).click();
-  await page.locator('.projects-tab .inline-add-input').fill(projectName);
-  await page.locator('.projects-tab .inline-add-input').press('Enter');
-  await page.locator('.project-row-name', { hasText: projectName }).click();
-  await expect(page.locator('.tasks-tab')).toBeVisible();
+  await page.locator('.projects-tab > .inline-add-input').fill(projectName);
+  await page.locator('.projects-tab > .inline-add-input').press('Enter');
+  // The project card is expanded by default — its task tree is ready.
+  await expect(page.locator('.project-row-tasks')).toBeVisible();
 }
 
 async function addSection(page: Page, name: string): Promise<void> {
@@ -73,8 +72,8 @@ test.describe('Project sections', () => {
   test('add section via icon, fill it with a task, order persists after reload', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
-    await page.locator('.tasks-tab .inline-add-input').fill(`Top task ${tok}`);
-    await page.locator('.tasks-tab .inline-add-input').press('Enter');
+    await page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').fill(`Top task ${tok}`);
+    await page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').press('Enter');
 
     await addSection(page, `Phase ${tok}`);
 
@@ -93,7 +92,7 @@ test.describe('Project sections', () => {
     ]);
 
     await page.reload();
-    await expect(page.locator('.tasks-tab')).toBeVisible();
+    await expect(page.locator('.project-row-tasks')).toBeVisible();
     expect(await treeRows(page, tok)).toEqual([
       `T:Top task ${tok}`,
       `S:Phase ${tok}`,
@@ -127,16 +126,14 @@ test.describe('Project sections', () => {
       .toEqual([`S:Second ${tok}`, `S:First ${tok}`]);
   });
 
-  test('empty sections show in the area Tasks rollup, fully editable', async ({ page }) => {
+  test('empty sections show in the area view, fully editable', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
     await addSection(page, `Empty ${tok}`);
 
-    // Back to the area view, Tasks tab: the section header is the same
-    // editable row as in the project view — rename input plus add-task
-    // and delete actions (the project has no other sections).
-    await page.locator('.area-header-crumb', { hasText: `Area ${tok}` }).click();
-    await page.locator('.area-tab', { hasText: 'Tasks' }).click();
+    // The section header lives inside the expanded project card — the
+    // same editable row everywhere: rename input plus add-task and
+    // delete actions (the project has no other sections).
     const header = page.locator('.section-row');
     await expect(header).toHaveCount(1);
     await expect(header.locator('.editable-title')).toHaveValue(`Empty ${tok}`);

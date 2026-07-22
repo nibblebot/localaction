@@ -8,10 +8,8 @@ import {
   useAreaCounts,
   useNote,
   useProject,
-  useTasksForProjectDeep,
   useProjectRollups,
   useNotesForAreaTree,
-  useNoteIdsForEntity,
   createProject,
   createTask,
   createNote,
@@ -62,17 +60,11 @@ import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
 import PersonAvatar from './persons/PersonAvatar.tsx';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
 import { useShowCompleted } from './useShowCompleted.ts';
+import { useCollapsedProjects } from './useCollapsedProjects.ts';
 
-type Tab = 'projects' | 'tasks' | 'notes';
-type ProjectTab = 'tasks' | 'notes';
+type Tab = 'projects' | 'notes';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'projects', label: 'Projects' },
-  { id: 'tasks', label: 'Tasks' },
-  { id: 'notes', label: 'Notes' },
-];
-
-const PROJECT_TABS: { id: ProjectTab; label: string }[] = [
-  { id: 'tasks', label: 'Tasks' },
   { id: 'notes', label: 'Notes' },
 ];
 
@@ -96,6 +88,7 @@ export default function MainPane(): React.JSX.Element {
     setTabByArea((prev) => ({ ...prev, [areaId]: next }));
   };
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
+  const collapsedProjects = useCollapsedProjects();
 
   const parentChain = useMemo<readonly Area[]>(() => {
     if (!areaId) return [];
@@ -129,8 +122,8 @@ export default function MainPane(): React.JSX.Element {
     return out;
   }, [counts, areaId]);
 
-   if (selection.kind === 'project') {
-     return <ProjectPane projectId={selection.id} />;
+   if (selection.kind === 'project-notes') {
+     return <ProjectNotesPane projectId={selection.id} />;
    }
 
   if (selection.kind === 'inbox') {
@@ -155,7 +148,6 @@ export default function MainPane(): React.JSX.Element {
   }
 
   const projectCount = counts.find((c) => c.id === areaId)?.projectCount ?? 0;
-  const taskCount = counts.find((c) => c.id === areaId)?.taskCount ?? 0;
   const noteCount = counts.find((c) => c.id === areaId)?.noteCount ?? 0;
 
   const isTopLevel = parentChain.length === 0;
@@ -194,15 +186,27 @@ export default function MainPane(): React.JSX.Element {
           tabs={TABS}
           tab={tab}
           onChange={setTab}
-          counts={{ projects: projectCount, tasks: taskCount, notes: noteCount }}
+          counts={{ projects: projectCount, notes: noteCount }}
           showCompleted={showCompleted}
           onToggleCompleted={toggleCompleted}
+          trailing={
+            <ProjectCollapseAllButton
+              areaId={areaId}
+              subAreas={subAreas}
+              collapsed={collapsedProjects.collapsed}
+              replace={collapsedProjects.replace}
+            />
+          }
         />
         {tab === 'projects' && (
-          <ProjectsTab areaId={areaId} subAreas={subAreas} isActive />
-        )}
-        {tab === 'tasks' && (
-          <TasksTab areaId={areaId} subAreas={subAreas} isActive showCompleted={showCompleted} />
+          <ProjectsTab
+            areaId={areaId}
+            subAreas={subAreas}
+            isActive
+            showCompleted={showCompleted}
+            collapsed={collapsedProjects.collapsed}
+            onToggleCollapse={collapsedProjects.toggle}
+          />
         )}
         {tab === 'notes' && (
           <NotesTab areaId={areaId} isActive />
@@ -484,6 +488,8 @@ interface PaneTabsProps<T extends string> {
   /** Completed-task visibility toggle (task tabs only). */
   showCompleted?: boolean;
   onToggleCompleted?: () => void;
+  /** Extra action rendered after the completed toggle. */
+  trailing?: React.ReactNode;
 }
 
 /**
@@ -521,6 +527,7 @@ function PaneTabs<T extends string>({
   counts,
   showCompleted,
   onToggleCompleted,
+  trailing,
 }: PaneTabsProps<T>): React.JSX.Element {
   return (
     <div className="area-tabs" role="tablist">
@@ -546,6 +553,7 @@ function PaneTabs<T extends string>({
       {onToggleCompleted && (
         <CompletedToggle showCompleted={showCompleted ?? false} onToggle={onToggleCompleted} />
       )}
+      {trailing}
     </div>
   );
 }
@@ -555,14 +563,59 @@ interface SubAreaRef {
   name: string;
 }
 
+/**
+ * Collapse-all / expand-all for the combined Projects tab. Operates on
+ * every project rolled into the view (the area plus its sub-areas);
+ * hidden by the person filter ids are harmless to include.
+ */
+function ProjectCollapseAllButton({
+  areaId,
+  subAreas,
+  collapsed,
+  replace,
+}: {
+  areaId: string;
+  subAreas: readonly SubAreaRef[];
+  collapsed: ReadonlySet<string>;
+  replace: (ids: Iterable<string>) => void;
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const rollups = useProjectRollups(store);
+  const ids = useMemo(() => {
+    const areaIds = new Set([areaId, ...subAreas.map((sa) => sa.id)]);
+    return rollups.filter((r) => r.areaId !== null && areaIds.has(r.areaId)).map((r) => r.projectId);
+  }, [rollups, areaId, subAreas]);
+  if (ids.length === 0) return null;
+  const allCollapsed = ids.every((id) => collapsed.has(id));
+  return (
+    <button
+      type="button"
+      className="area-tab-action"
+      aria-label={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
+      title={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
+      onClick={() => replace(allCollapsed ? [] : ids)}
+    >
+      <svg className="svg-icon" aria-hidden="true">
+        <use href={`/icons.svg#${allCollapsed ? 'expand-all-icon' : 'collapse-all-icon'}`} />
+      </svg>
+    </button>
+  );
+}
+
 function ProjectsTab({
   areaId,
   subAreas,
   isActive,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
 }: {
   areaId: string;
   subAreas: readonly SubAreaRef[];
   isActive: boolean;
+  showCompleted: boolean;
+  collapsed: ReadonlySet<string>;
+  onToggleCollapse: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -592,13 +645,23 @@ function ProjectsTab({
       id="area-tabpanel-projects"
       aria-labelledby="area-tab-projects"
     >
-      <AreaProjectGroups areaId={areaId} rollups={rollups} />
+      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
+      <AreaProjectGroups
+        areaId={areaId}
+        rollups={rollups}
+        showCompleted={showCompleted}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
+      />
       {subAreas.map((sa) => (
         <SubAreaProjects
           key={sa.id}
           areaId={sa.id}
           name={sa.name}
           rollups={rollups}
+          showCompleted={showCompleted}
+          collapsed={collapsed}
+          onToggleCollapse={onToggleCollapse}
         />
       ))}
       <InlineAddInput
@@ -623,9 +686,15 @@ function ProjectsTab({
 function AreaProjectGroups({
   areaId,
   rollups,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
 }: {
   areaId: string;
   rollups: ProjectRollup[];
+  showCompleted: boolean;
+  collapsed: ReadonlySet<string>;
+  onToggleCollapse: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const inArea = useMemo(
@@ -690,6 +759,9 @@ function AreaProjectGroups({
                   name={p.projectName}
                   done={p.done}
                   total={p.total}
+                  showCompleted={showCompleted}
+                  collapsed={collapsed.has(p.projectId)}
+                  onToggleCollapse={() => onToggleCollapse(p.projectId)}
                 />
               );
             }}
@@ -706,6 +778,9 @@ function AreaProjectGroups({
               done={p.done}
               total={p.total}
               doneGroup
+              showCompleted={showCompleted}
+              collapsed={collapsed.has(p.projectId)}
+              onToggleCollapse={() => onToggleCollapse(p.projectId)}
             />
           ))}
         </Group>
@@ -719,21 +794,37 @@ function AreaProjectGroups({
   );
 }
 
-/** A sub-area's projects rolled into the parent area view. */
+/** A sub-area's area-rooted tasks and project groups, rolled into the
+ * parent area's combined Projects tab. */
 function SubAreaProjects({
   areaId,
   name,
   rollups,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
 }: {
   areaId: string;
   name: string;
   rollups: ProjectRollup[];
+  showCompleted: boolean;
+  collapsed: ReadonlySet<string>;
+  onToggleCollapse: (id: string) => void;
 }): React.JSX.Element | null {
-  if (!rollups.some((r) => r.areaId === areaId)) return null;
+  const { store } = useDataLayer();
+  const areaTaskIds = useAreaTaskIds(store, areaId);
+  if (!rollups.some((r) => r.areaId === areaId) && areaTaskIds.length === 0) return null;
   return (
     <div className="subarea-section">
       <SubAreaHeader areaId={areaId} name={name} />
-      <AreaProjectGroups areaId={areaId} rollups={rollups} />
+      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
+      <AreaProjectGroups
+        areaId={areaId}
+        rollups={rollups}
+        showCompleted={showCompleted}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
+      />
     </div>
   );
 }
@@ -767,12 +858,18 @@ function ProjectRow({
   done,
   total,
   doneGroup,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
 }: {
   projectId: string;
   name: string;
   done: number;
   total: number;
   doneGroup?: boolean;
+  showCompleted: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
@@ -787,6 +884,21 @@ function ProjectRow({
   return (
     <li className={`project-row${doneGroup ? ' project-row-done' : ''}`}>
       <div className="project-row-line">
+        <button
+          type="button"
+          className="project-row-caret"
+          aria-label={collapsed ? `Expand ${display}` : `Collapse ${display}`}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse();
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+          </svg>
+        </button>
         {editing ? (
           <input
             type="text"
@@ -810,8 +922,9 @@ function ProjectRow({
           <button
             type="button"
             className="project-row-name"
-            title="Open project"
-            onClick={() => navigate({ kind: 'project', id: projectId })}
+            title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+            aria-expanded={!collapsed}
+            onClick={onToggleCollapse}
           >
             {display}
           </button>
@@ -833,6 +946,20 @@ function ProjectRow({
           entityType={NOTE_ENTITY_TYPE.project}
           entityId={projectId}
         />
+        <button
+          type="button"
+          className="project-row-action"
+          aria-label={`Open notes for ${display}`}
+          title="Notes"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate({ kind: 'project-notes', id: projectId });
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#notes-icon" />
+          </svg>
+        </button>
         <button
           type="button"
           className="project-row-action"
@@ -862,6 +989,11 @@ function ProjectRow({
           </svg>
         </button>
         </div>
+      {!collapsed && (
+        <div className="project-row-tasks">
+          <ProjectTaskList projectId={projectId} projectName={display} showCompleted={showCompleted} />
+        </div>
+      )}
       <ConfirmModal
         open={confirmDelete}
         title="Delete project?"
@@ -875,7 +1007,6 @@ function ProjectRow({
             label: `Deleted project “${display}”`,
             onUndo: () => {
               restoreSubtree(store, snapshot);
-              navigate({ kind: 'project', id: projectId });
             },
           });
         }}
@@ -891,12 +1022,18 @@ function SortableProjectRow({
   name,
   done,
   total,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
 }: {
   handle: SortableHandleProps;
   projectId: string;
   name: string;
   done: number;
   total: number;
+  showCompleted: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
@@ -933,6 +1070,21 @@ function SortableProjectRow({
             <use href="/icons.svg#drag-icon" />
           </svg>
         </button>
+        <button
+          type="button"
+          className="project-row-caret"
+          aria-label={collapsed ? `Expand ${display}` : `Collapse ${display}`}
+          aria-expanded={!collapsed}
+          title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleCollapse();
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+          </svg>
+        </button>
         {editing ? (
           <input
             type="text"
@@ -956,8 +1108,9 @@ function SortableProjectRow({
           <button
             type="button"
             className="project-row-name"
-            title="Open project"
-            onClick={() => navigate({ kind: 'project', id: projectId })}
+            title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+            aria-expanded={!collapsed}
+            onClick={onToggleCollapse}
           >
             {display}
           </button>
@@ -975,6 +1128,20 @@ function SortableProjectRow({
           entityType={NOTE_ENTITY_TYPE.project}
           entityId={projectId}
         />
+        <button
+          type="button"
+          className="project-row-action"
+          aria-label={`Open notes for ${display}`}
+          title="Notes"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate({ kind: 'project-notes', id: projectId });
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#notes-icon" />
+          </svg>
+        </button>
         <button
           type="button"
           className="project-row-action"
@@ -1004,6 +1171,11 @@ function SortableProjectRow({
           </svg>
         </button>
       </div>
+      {!collapsed && (
+        <div className="project-row-tasks">
+          <ProjectTaskList projectId={projectId} projectName={display} showCompleted={showCompleted} />
+        </div>
+      )}
       <ConfirmModal
         open={confirmDelete}
         title="Delete project?"
@@ -1017,143 +1189,12 @@ function SortableProjectRow({
             label: `Deleted project “${display}”`,
             onUndo: () => {
               restoreSubtree(store, snapshot);
-              navigate({ kind: 'project', id: projectId });
             },
           });
         }}
         onCancel={() => setConfirmDelete(false)}
       />
     </li>
-  );
-}
-
-interface TasksTabProject {
-  id: string;
-  name: string;
-  order: number;
-}
-
-function projectsForArea(
-  rollups: ProjectRollup[],
-  areaId: string,
-): TasksTabProject[] {
-  return rollups
-    .filter((r) => r.areaId === areaId)
-    .map((r) => ({ id: r.projectId, name: r.projectName, order: r.order }))
-    .sort((a, b) => {
-      if (a.order !== b.order) return a.order - b.order;
-      return a.name.localeCompare(b.name);
-    });
-}
-
-function TasksTab({
-  areaId,
-  subAreas,
-  isActive,
-  showCompleted,
-}: {
-  areaId: string;
-  subAreas: readonly SubAreaRef[];
-  isActive: boolean;
-  showCompleted: boolean;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const rollups = useProjectRollups(store);
-  const projects: TasksTabProject[] = useMemo(
-    () => projectsForArea(rollups, areaId),
-    [rollups, areaId],
-  );
-
-  // With no projects yet, a single tab-level input spins up a
-  // "General" project on first task. Once projects exist, each
-  // project group's own ProjectTaskList carries the add-task input.
-  function addTask(title: string): void {
-    const newId = createProject(store, { name: 'General', areaId });
-    createTask(store, { title, placement: { kind: 'project', id: newId } });
-  }
-
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(projects.length === 0);
-  useEffect(() => {
-    if (!isActive) return;
-    const empty = projects.length === 0;
-    if (empty || wasEmpty.current) addInputRef.current?.focus();
-    wasEmpty.current = empty;
-  }, [isActive, projects.length]);
-
-  return (
-    <section
-      className="tasks-tab"
-      aria-label="Tasks"
-      role="tabpanel"
-      id="area-tabpanel-tasks"
-      aria-labelledby="area-tab-tasks"
-    >
-      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
-      {projects.map((p) => (
-        <ProjectTaskList
-          key={p.id}
-          projectId={p.id}
-          projectName={p.name}
-          showCompleted={showCompleted}
-          showHeader
-        />
-      ))}
-      {subAreas.map((sa) => (
-        <SubAreaTasks
-          key={sa.id}
-          areaId={sa.id}
-          name={sa.name}
-          rollups={rollups}
-          showCompleted={showCompleted}
-        />
-      ))}
-      {projects.length === 0 && (
-        <InlineAddInput
-          ref={addInputRef}
-          placeholder="No tasks yet — add the first one."
-          ariaLabel="New task"
-          onSubmit={addTask}
-        />
-      )}
-    </section>
-  );
-}
-
-/** A sub-area's area-rooted tasks and project groups, rolled into the
- * parent area's Tasks tab. */
-function SubAreaTasks({
-  areaId,
-  name,
-  rollups,
-  showCompleted,
-}: {
-  areaId: string;
-  name: string;
-  rollups: ProjectRollup[];
-  showCompleted: boolean;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const areaTaskIds = useAreaTaskIds(store, areaId);
-  const projects = useMemo(
-    () => projectsForArea(rollups, areaId),
-    [rollups, areaId],
-  );
-  if (projects.length === 0 && areaTaskIds.length === 0) return null;
-  return (
-    <div className="subarea-section">
-      <SubAreaHeader areaId={areaId} name={name} />
-      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
-      {projects.map((p) => (
-        <ProjectTaskList
-          key={p.id}
-          projectId={p.id}
-          projectName={p.name}
-          showCompleted={showCompleted}
-          showHeader
-        />
-      ))}
-    </div>
   );
 }
 
@@ -1374,68 +1415,6 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
   );
 }
 
-function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
-  const { store } = useDataLayer();
-  const project = useProject(store, projectId);
-  const taskIds = useTasksForProjectDeep(store, projectId);
-  const noteIds = useNoteIdsForEntity(store, NOTE_ENTITY_TYPE.project, projectId);
-  const [tabByProject, setTabByProject] = useState<Record<string, ProjectTab>>({});
-  const tab: ProjectTab = tabByProject[projectId] ?? 'tasks';
-  const setTab = (next: ProjectTab): void => {
-    setTabByProject((prev) => ({ ...prev, [projectId]: next }));
-  };
-  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
-
-  if (!project) {
-    return (
-      <main className="main" aria-label="Editor">
-        <div className="main-body">
-          <div className="main-empty">
-            <h2>Welcome to LocalAction</h2>
-            <p>This project no longer exists.</p>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const projectName = project.name || 'Untitled';
-
-  return (
-    <main className="main" aria-label="Editor">
-      <div className="main-body">
-        <ProjectPaneHeader
-          areaId={project.areaId}
-          projectId={projectId}
-          name={projectName}
-        />
-        <PaneTabs
-          tabs={PROJECT_TABS}
-          tab={tab}
-          onChange={setTab}
-          counts={{ tasks: taskIds.length, notes: noteIds.length }}
-          showCompleted={showCompleted}
-          onToggleCompleted={toggleCompleted}
-        />
-        {tab === 'tasks' && (
-          <ProjectTasksTab
-            projectId={projectId}
-            projectName={projectName}
-            isActive
-            showCompleted={showCompleted}
-          />
-        )}
-        {tab === 'notes' && (
-          <ProjectNotesTab
-            projectId={projectId}
-            isActive
-          />
-        )}
-      </div>
-    </main>
-  );
-}
-
 function ProjectPaneHeader({
   areaId,
   projectId,
@@ -1495,43 +1474,14 @@ function ProjectPaneHeader({
   );
 }
 
-function ProjectTasksTab({
-  projectId,
-  projectName,
-  isActive,
-  showCompleted,
-}: {
-  projectId: string;
-  projectName: string;
-  isActive: boolean;
-  showCompleted: boolean;
-}): React.JSX.Element {
-  return (
-    <section
-      className="tasks-tab"
-      aria-label="Tasks"
-      role="tabpanel"
-      id="area-tabpanel-tasks"
-      aria-labelledby="area-tab-tasks"
-    >
-      <ProjectTaskList
-        projectId={projectId}
-        projectName={projectName}
-        showCompleted={showCompleted}
-        autoFocusAddInput={isActive}
-      />
-    </section>
-  );
-}
-
-function ProjectNotesTab({
-  projectId,
-  isActive,
-}: {
-  projectId: string;
-  isActive: boolean;
-}): React.JSX.Element {
+/**
+ * Notes-only pane for a single project — reached via the note icon on
+ * a project row. This is where project-scoped notes are created; the
+ * area view's Notes tab only rolls them up for display.
+ */
+function ProjectNotesPane({ projectId }: { projectId: string }): React.JSX.Element {
   const { store } = useDataLayer();
+  const project = useProject(store, projectId);
   const [noteIds, setNoteIds] = useState<string[]>(() => {
     const ids: string[] = [];
     collectNoteIds(store, projectId, ids);
@@ -1587,41 +1537,57 @@ function ProjectNotesTab({
   const addInputRef = useRef<HTMLInputElement>(null);
   const wasEmpty = useRef(noteIds.length === 0);
   useEffect(() => {
-    if (!isActive) return;
     const empty = noteIds.length === 0;
     if (empty || wasEmpty.current) addInputRef.current?.focus();
     wasEmpty.current = empty;
-  }, [isActive, noteIds.length]);
+  }, [noteIds.length]);
+
+  if (!project) {
+    return (
+      <main className="main" aria-label="Editor">
+        <div className="main-body">
+          <div className="main-empty">
+            <h2>Welcome to LocalAction</h2>
+            <p>This project no longer exists.</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <section
-      className="notes-tab"
-      aria-label="Notes"
-      role="tabpanel"
-      id="area-tabpanel-notes"
-      aria-labelledby="area-tab-notes"
-    >
-      <ul className="notes-tab-list" role="list">
-        {visible.map((nid) => (
-          <NoteLine key={nid} noteId={nid} />
-        ))}
-      </ul>
-      <InlineAddInput
-        ref={addInputRef}
-        placeholder={
-          noteIds.length === 0
-            ? 'No notes yet — add the first one.'
-            : 'New note…'
-        }
-        ariaLabel="New note"
-        onSubmit={addNote}
-      />
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
-        </p>
-      )}
-    </section>
+    <main className="main" aria-label="Editor">
+      <div className="main-body">
+        <ProjectPaneHeader
+          areaId={project.areaId}
+          projectId={projectId}
+          name={project.name || 'Untitled'}
+        />
+        <PersonFilterBanner />
+        <section className="notes-tab" aria-label="Notes">
+          <ul className="notes-tab-list" role="list">
+            {visible.map((nid) => (
+              <NoteLine key={nid} noteId={nid} />
+            ))}
+          </ul>
+          <InlineAddInput
+            ref={addInputRef}
+            placeholder={
+              noteIds.length === 0
+                ? 'No notes yet — add the first one.'
+                : 'New note…'
+            }
+            ariaLabel="New note"
+            onSubmit={addNote}
+          />
+          {hiddenCount > 0 && (
+            <p className="hidden-stub">
+              {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
+            </p>
+          )}
+        </section>
+      </div>
+    </main>
   );
 }
 

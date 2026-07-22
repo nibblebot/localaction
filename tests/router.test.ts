@@ -18,11 +18,15 @@ describe('parseRoute', () => {
     expect(parseRoute('#/inbox')).toEqual<Selection>({ kind: 'inbox' });
   });
 
-  it('parses a project route', () => {
-    expect(parseRoute('#/p/proj1')).toEqual<Selection>({
-      kind: 'project',
+  it('parses a project-notes route', () => {
+    expect(parseRoute('#/p/proj1/notes')).toEqual<Selection>({
+      kind: 'project-notes',
       id: 'proj1',
     });
+  });
+
+  it('collapses legacy project-pane deep links to home', () => {
+    expect(parseRoute('#/p/proj1')).toEqual<Selection>({ kind: 'home' });
   });
 
   it('returns a home selection for empty / unknown hashes', () => {
@@ -44,7 +48,7 @@ describe('formatRoute', () => {
     expect(formatRoute({ kind: 'home' })).toBe('#/');
     expect(formatRoute({ kind: 'inbox' })).toBe('#/inbox');
     expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
-    expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
+    expect(formatRoute({ kind: 'project-notes', id: 'p1' })).toBe('#/p/p1/notes');
   });
 });
 
@@ -56,10 +60,10 @@ describe('routeEquals', () => {
     expect(routeEquals(a, { kind: 'home' })).toBe(false);
   });
 
-  it('treats project selections with the same id as equal', () => {
-    const a: Selection = { kind: 'project', id: 'p1' };
-    expect(routeEquals(a, { kind: 'project', id: 'p1' })).toBe(true);
-    expect(routeEquals(a, { kind: 'project', id: 'p2' })).toBe(false);
+  it('treats project-notes selections with the same id as equal', () => {
+    const a: Selection = { kind: 'project-notes', id: 'p1' };
+    expect(routeEquals(a, { kind: 'project-notes', id: 'p1' })).toBe(true);
+    expect(routeEquals(a, { kind: 'project-notes', id: 'p2' })).toBe(false);
     expect(routeEquals(a, { kind: 'area', id: 'p1' })).toBe(false);
   });
 

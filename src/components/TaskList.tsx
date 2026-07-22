@@ -12,6 +12,9 @@
  * - `showCompleted`   — TaskTreeByStatus only: render done tasks in
  *                       place (checked + strikethrough) instead of
  *                       pruning their subtrees from the tree.
+ * - `progress`        — optional subtask progress meter (done/total
+ *                       over all transitive descendants) rendered
+ *                       after the title.
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
@@ -25,14 +28,12 @@ import {
   deleteTask,
   captureSubtree,
   restoreSubtree,
-  getRootPlacement,
   buildTaskTree,
   pruneDoneTasks,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
-import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
@@ -129,6 +130,8 @@ export interface TaskRowProps {
   effectiveStatus?: boolean;
   /** Sortable handle — presence enables the drag handle and chrome. */
   handle?: SortableHandleProps;
+  /** Subtask progress meter (all transitive descendants, effective status). */
+  progress?: { done: number; total: number };
 }
 
 export function TaskRow({
@@ -136,11 +139,11 @@ export function TaskRow({
   readOnly,
   effectiveStatus,
   handle,
+  progress,
 }: TaskRowProps): React.JSX.Element | null {
   const { store } = useDataLayer();
   const task = useTask(store, taskId);
   const effective = useEffectiveTaskStatus(store, taskId);
-  const { navigate } = useSelection();
   const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (!task || (effectiveStatus && !effective)) return null;
@@ -198,6 +201,24 @@ export function TaskRow({
       ) : (
         <TaskTitleInput taskId={taskId} title={task.title} />
       )}
+      {progress !== undefined && progress.total > 0 && (
+        <div
+          className="project-row-progress"
+          aria-label={`${progress.done} of ${progress.total} subtasks done`}
+        >
+          <div className="project-row-progress-bar">
+            <div
+              className="project-row-progress-fill"
+              style={{
+                transform: `scaleX(${Math.round((progress.done / progress.total) * 100) / 100})`,
+              }}
+            />
+          </div>
+          <span className="project-row-progress-count">
+            {progress.done} / {progress.total}
+          </span>
+        </div>
+      )}
       {!readOnly && (
         <>
           <TaskDueDateButton taskId={taskId} />
@@ -216,9 +237,6 @@ export function TaskRow({
                 placement: { kind: 'task', id: taskId },
               });
               queueTaskTitleFocus(childId);
-              const root = getRootPlacement(store, taskId);
-              if (root.kind === 'project') navigate({ kind: 'project', id: root.id });
-              else if (root.kind === 'area') navigate({ kind: 'area', id: root.id });
             }}
           >
             <svg className="svg-icon" aria-hidden="true">

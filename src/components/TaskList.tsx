@@ -23,6 +23,8 @@ import {
   updateTask,
   setTaskStatus,
   deleteTask,
+  captureSubtree,
+  restoreSubtree,
   getRootPlacement,
   buildTaskTree,
   pruneDoneTasks,
@@ -31,6 +33,7 @@ import {
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
+import { useUndo } from './useUndo.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { consumeTaskTitleFocus, queueTaskTitleFocus } from './taskTitleFocus.ts';
@@ -138,6 +141,7 @@ export function TaskRow({
   const task = useTask(store, taskId);
   const effective = useEffectiveTaskStatus(store, taskId);
   const { navigate } = useSelection();
+  const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (!task || (effectiveStatus && !effective)) return null;
   const done = effectiveStatus
@@ -176,9 +180,17 @@ export function TaskRow({
         type="checkbox"
         className="task-line-check"
         checked={done}
-        onChange={() =>
-          setTaskStatus(store, taskId, done ? TASK_STATUS.open : TASK_STATUS.done)
-        }
+        onChange={() => {
+          if (done) {
+            setTaskStatus(store, taskId, TASK_STATUS.open);
+            return;
+          }
+          setTaskStatus(store, taskId, TASK_STATUS.done);
+          offerUndo({
+            label: `Completed “${task.title || 'Untitled'}”`,
+            onUndo: () => setTaskStatus(store, taskId, TASK_STATUS.open),
+          });
+        }}
         aria-label={done ? `Mark “${task.title}” not done` : `Mark “${task.title}” done`}
       />
       {readOnly ? (
@@ -230,8 +242,13 @@ export function TaskRow({
             message={`"${task.title || 'Untitled'}" will be deleted.`}
             confirmLabel="Delete"
             onConfirm={() => {
+              const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.task, taskId);
               deleteTask(store, taskId);
               setConfirmDelete(false);
+              offerUndo({
+                label: `Deleted “${task.title || 'Untitled'}”`,
+                onUndo: () => restoreSubtree(store, snapshot),
+              });
             }}
             onCancel={() => setConfirmDelete(false)}
           />

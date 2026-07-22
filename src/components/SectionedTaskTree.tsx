@@ -32,6 +32,8 @@ import {
   createTask,
   updateSection,
   deleteSection,
+  captureSubtree,
+  restoreSubtree,
   moveSection,
   moveTask,
   buildTaskTree,
@@ -40,6 +42,7 @@ import {
   encodePlacement,
   PLACEMENT_SEP,
   TABLES,
+  TOMBSTONE_ENTITY_TYPE,
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
 import { SortableTree } from './SortableTree.tsx';
@@ -47,6 +50,7 @@ import type { SortableTreeNode } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskRow } from './TaskList.tsx';
 import { queueTaskTitleFocus } from './taskTitleFocus.ts';
+import { useUndo } from './useUndo.ts';
 import EditableTitle from './EditableTitle.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
 
@@ -91,6 +95,7 @@ function SectionRow({
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const section = useSection(store, sectionId);
+  const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
   if (!section) return null;
 
@@ -161,8 +166,13 @@ function SectionRow({
         message={`"${section.name || 'Untitled section'}" and its tasks will be deleted.`}
         confirmLabel="Delete"
         onConfirm={() => {
+          const snapshot = captureSubtree(store, TOMBSTONE_ENTITY_TYPE.section, sectionId);
           deleteSection(store, sectionId);
           setConfirmDelete(false);
+          offerUndo({
+            label: `Deleted section “${section.name || 'Untitled section'}”`,
+            onUndo: () => restoreSubtree(store, snapshot),
+          });
         }}
         onCancel={() => setConfirmDelete(false)}
       />

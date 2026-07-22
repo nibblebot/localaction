@@ -145,6 +145,9 @@ export {
   installTombstoneReconciler,
 } from './deletion.ts';
 
+export { captureSubtree, restoreSubtree } from './undo.ts';
+export type { SubtreeSnapshot } from './undo.ts';
+
 export {
   tombstoneId,
   writeTombstone,

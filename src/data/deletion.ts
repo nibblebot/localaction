@@ -21,11 +21,24 @@ import { writeTombstone } from './tombstones.ts';
  * — the tombstone already arrived). `entityType`/`entityId` name the root
  * of the subtree to remove; nothing outside that subtree is touched.
  */
-export function cascadeDeleteSubtree(
+export interface DoomedSets {
+  areas: Set<string>;
+  projects: Set<string>;
+  sections: Set<string>;
+  tasks: Set<string>;
+}
+
+/**
+ * Compute the full containment subtree rooted at `entityType`/`entityId`
+ * without touching the store. Shared by the cascade (which deletes the
+ * sets) and the undo snapshotter (which copies them first) so both always
+ * agree on exactly which rows a deletion removes.
+ */
+export function collectDoomedSets(
   store: MergeableStore,
   entityType: TombstoneEntityType,
   entityId: string,
-): boolean {
+): DoomedSets {
   const doomedAreas = new Set<string>();
   const doomedProjects = new Set<string>();
   const doomedSections = new Set<string>();
@@ -69,6 +82,29 @@ export function cascadeDeleteSubtree(
     for (const d of descendantTaskIds(store, tid)) doomedTasks.add(d);
   }
 
+  return { areas: doomedAreas, projects: doomedProjects, sections: doomedSections, tasks: doomedTasks };
+}
+
+/** Ids of note / person-link rows attached to any entity in `sets`. */
+export function attachedRowIds(
+  store: MergeableStore,
+  table: typeof TABLES.notes | typeof TABLES.person_links,
+  sets: DoomedSets,
+): string[] {
+  const out: string[] = [];
+  for (const rid of store.getRowIds(table)) {
+    if (isAttached(store, table, rid, sets.areas, sets.projects, sets.tasks)) out.push(rid);
+  }
+  return out;
+}
+
+export function cascadeDeleteSubtree(
+  store: MergeableStore,
+  entityType: TombstoneEntityType,
+  entityId: string,
+): boolean {
+  const doomed = collectDoomedSets(store, entityType, entityId);
+
   let changed = false;
   const deleteIfPresent = (table: string, id: string): void => {
     if (store.hasRow(table, id)) {
@@ -77,21 +113,17 @@ export function cascadeDeleteSubtree(
     }
   };
 
-  for (const tid of doomedTasks) deleteIfPresent(TABLES.tasks, tid);
-  for (const sid of doomedSections) deleteIfPresent(TABLES.sections, sid);
-  for (const pid of doomedProjects) deleteIfPresent(TABLES.projects, pid);
-  for (const aid of doomedAreas) deleteIfPresent(TABLES.areas, aid);
+  for (const tid of doomed.tasks) deleteIfPresent(TABLES.tasks, tid);
+  for (const sid of doomed.sections) deleteIfPresent(TABLES.sections, sid);
+  for (const pid of doomed.projects) deleteIfPresent(TABLES.projects, pid);
+  for (const aid of doomed.areas) deleteIfPresent(TABLES.areas, aid);
 
   // Strip attachments (notes + person links) for every doomed entity.
-  for (const nid of store.getRowIds(TABLES.notes)) {
-    if (isAttached(store, TABLES.notes, nid, doomedAreas, doomedProjects, doomedTasks)) {
-      deleteIfPresent(TABLES.notes, nid);
-    }
+  for (const nid of attachedRowIds(store, TABLES.notes, doomed)) {
+    deleteIfPresent(TABLES.notes, nid);
   }
-  for (const lid of store.getRowIds(TABLES.person_links)) {
-    if (isAttached(store, TABLES.person_links, lid, doomedAreas, doomedProjects, doomedTasks)) {
-      deleteIfPresent(TABLES.person_links, lid);
-    }
+  for (const lid of attachedRowIds(store, TABLES.person_links, doomed)) {
+    deleteIfPresent(TABLES.person_links, lid);
   }
   return changed;
 }

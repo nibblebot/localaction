@@ -152,7 +152,7 @@ A violet-tinted neutral ladder with a single vivid accent; the whole system sits
 ### Semantic
 - **Success** (#047857 · dark #4caf50): Completed progress fills, *Synced* badge. Deepened from #10b981 so badge text meets AA on the success tint.
 - **Warning** (#ab4c08 · dark #d4a72c): *Syncing… / Retry* badge states. Deepened from #d97706 for AA on the warning tint.
-- **Danger** (#be123c · dark #ef5350): Destructive actions, armed-confirm buttons, *Sync error* badge. Deepened from #e11d48 for AA on the danger tint.
+- **Danger** (#be123c · dark #f2635f): Destructive actions, *Sync error* badge. Deepened from #e11d48 for AA on the danger tint. The armed two-step confirm fills with `--danger-armed` (#be123c · dark #d32f2f), which holds white text at AA where the text-grade danger cannot.
 
 ### Area palette (user-facing hue carriers)
 Areas are the user's own color dimension — the only place hues other than violet appear by design: **Purple** (#7c5cff), **Blue** (#3b82f6), **Green** (#22a06b), **Pink** (#ec4899), **Amber** (#f59e0b), **Gray** (#9aa3ad). Rendered as sidebar dots and header markers only; an unknown id falls back to Gray.
@@ -196,7 +196,7 @@ The root font-size is the density knob: 12px compact / 14px normal / 16px cozy. 
 Elevation-by-tone, not by shadow. Surfaces are flat at rest; layering is expressed by stepping through the neutral ladder — canvas → rail → surface → surface-hover → surface-active. Borders are 1px hairlines from the same violet family. The system ships exactly two shadows: a whisper at rest (0 1px 2px, 6% black) reserved for modals, and a lift shadow (0 8px 24px, 18% black) under the drag overlay — the one moment an object physically leaves the surface. Dark theme keeps the same doctrine with darker ambient values.
 
 ### Shadow Vocabulary
-- **Rest** (`0 1px 2px rgba(43,34,24,0.06)` · dark `rgba(0,0,0,0.4)`): Modals and popovers only. Barely there — a separation cue, not an elevation statement.
+- **Rest** (`0 1px 2px rgba(31,27,46,0.06)` · dark `rgba(0,0,0,0.4)`): Modals and popovers only. Barely there — a separation cue, not an elevation statement. Tinted toward the violet ink family, never warm.
 - **Lift** (`0 8px 24px rgba(15,17,21,0.18)`): The drag-overlay preview exclusively. An object in the hand casts a shadow; an object at rest does not.
 
 ### Named Rules
@@ -237,6 +237,9 @@ Underline tabs on a hairline baseline: 1rem/500, secondary ink, 2px transparent 
 
 ### Modals
 A surface card at 14px radius with the Rest shadow, centered over a 50% black backdrop, max-width 420px. Title (headline), message (secondary ink), actions right-aligned in a row. Confirmation for destructive actions always goes through a modal or an armed two-step button — never an instant delete.
+
+### Undo toast
+Every completion and every cascade delete offers a 6-second undo window: a quiet surface pill pinned bottom-center (strong hairline, Rest shadow, above the modal layer in the z-scale), a plain past-tense label — *Completed “Draft themes”*, *Deleted area “Work”* — and a single accent-text Undo action. The toast is a `role="status"` live region, so the action is announced without stealing focus; its timer pauses while the pointer or keyboard focus is inside. One toast at a time — the latest action replaces the last. Restoring an area or project navigates back to it; once the window expires the deletion stands (the tombstone is permanent).
 
 ### Navigation
 The sidebar is the instrument panel: Rail surface, section titles in small caps-weight labels, area rows with user-colored dots and live count pills, the sync badge pinned at the foot. The main pane holds the working view — area or project — with a breadcrumb chain for parent context. There is no top-level chrome beyond this: no app bar, no toolbar strip.

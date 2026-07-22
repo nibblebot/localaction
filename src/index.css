@@ -47,6 +47,8 @@
   --danger: #be123c;
   --danger-bg: #ffe4e6;
   --danger-border: #fda4af;
+  /* Solid fill for the armed two-step confirm — must hold white text at AA. */
+  --danger-armed: #be123c;
   /* Success — deep emerald (badge text meets AA on --success-bg; matches progress bars) */
   --success: #047857;
   --success-bg: #d1fae5;
@@ -58,16 +60,17 @@
   --warning-border: #fcd34d;
 
 
-  /* Shadow — barely there, elevation-by-tone preferred.
+  /* Shadow — barely there, elevation-by-tone preferred. Tinted toward the
+     violet ink family (Single Hue Family Rule), never warm.
      Rest: modals and popovers only. Lift: the drag overlay only. */
-  --shadow: 0 1px 2px rgba(43, 34, 24, 0.06);
+  --shadow: 0 1px 2px rgba(31, 27, 46, 0.06);
   --shadow-lift: 0 8px 24px rgba(15, 17, 21, 0.18);
 
   /* Modal / drawer scrim */
   --backdrop: rgba(0, 0, 0, 0.5);
 
   /* Z-index scale — low → high: drawer toggle, popover scrim, FAB,
-     popover, drawer scrim, drawer, modal. */
+     popover, drawer scrim, drawer, modal, toast. */
   --z-drawer-toggle: 45;
   --z-popover-backdrop: 49;
   --z-fab: 50;
@@ -75,6 +78,7 @@
   --z-drawer-backdrop: 65;
   --z-drawer: 70;
   --z-modal: 100;
+  --z-toast: 110;
 
   /* Radius */
   --radius-sm: 6px;
@@ -150,9 +154,10 @@
   --warning-bg: rgba(212, 167, 44, 0.14);
   --warning-border: rgba(212, 167, 44, 0.40);
 
-  --danger: #ef5350;
-  --danger-bg: rgba(239, 83, 80, 0.10);
-  --danger-border: rgba(239, 83, 80, 0.36);
+  --danger: #f2635f;
+  --danger-bg: rgba(242, 99, 95, 0.08);
+  --danger-border: rgba(242, 99, 95, 0.36);
+  --danger-armed: #d32f2f;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.5);

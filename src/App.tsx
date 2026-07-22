@@ -2,6 +2,7 @@ import { Provider } from 'tinybase/ui-react';
 import { useEffect, useRef, useState } from 'react';
 import { DataLayerProvider, getStore } from './data/index.ts';
 import SelectionProvider from './components/selection.tsx';
+import UndoProvider from './components/undo.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import MainPane from './components/MainPane.tsx';
 import { useFocusTrap } from './components/useFocusTrap.ts';
@@ -45,31 +46,33 @@ function App(): React.JSX.Element {
         <PersonFilterProvider>
           <DataLayerProvider>
             <SelectionProvider>
-              <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
-                <button
-                  type="button"
-                  className="drawer-toggle"
-                  aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
-                  aria-expanded={drawerOpen}
-                  aria-controls="app-sidebar"
-                  onClick={() => setDrawerOpen((v) => !v)}
-                >
-                  <svg className="svg-icon" aria-hidden="true">
-                    <use href="/icons.svg#menu-icon" />
-                  </svg>
-                </button>
-                <Sidebar ref={sidebarRef} drawerOpen={drawerOpen} />
-                {drawerOpen ? (
-                  <div
-                    className="drawer-backdrop"
-                    onClick={() => setDrawerOpen(false)}
-                  />
-                ) : null}
-                <MainPane />
-                {import.meta.env.DEV ? <Inspector /> : null}
-                <AppearanceMenu />
-                <QuickAddModal />
-              </div>
+              <UndoProvider>
+                <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="drawer-toggle"
+                    aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
+                    aria-expanded={drawerOpen}
+                    aria-controls="app-sidebar"
+                    onClick={() => setDrawerOpen((v) => !v)}
+                  >
+                    <svg className="svg-icon" aria-hidden="true">
+                      <use href="/icons.svg#menu-icon" />
+                    </svg>
+                  </button>
+                  <Sidebar ref={sidebarRef} drawerOpen={drawerOpen} />
+                  {drawerOpen ? (
+                    <div
+                      className="drawer-backdrop"
+                      onClick={() => setDrawerOpen(false)}
+                    />
+                  ) : null}
+                  <MainPane />
+                  {import.meta.env.DEV ? <Inspector /> : null}
+                  <AppearanceMenu />
+                  <QuickAddModal />
+                </div>
+              </UndoProvider>
             </SelectionProvider>
           </DataLayerProvider>
         </PersonFilterProvider>

@@ -20,6 +20,8 @@ import {
   deleteProject,
   deleteArea,
   deleteNote,
+  captureSubtree,
+  restoreSubtree,
   reorderProject,
   moveTask,
   PLACEMENT_SEP,
@@ -41,6 +43,7 @@ import {
 import type { Area, NoteEntityType, ProjectRollup } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
+import { useUndo } from './useUndo.ts';
 import { INBOX } from '../router.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import AreaEditPopover from './AreaEditPopover.tsx';
@@ -235,6 +238,7 @@ function AreaHeader({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(null);
   const cast = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
+  const { offerUndo } = useUndo();
 
   function openEditor(e: MouseEvent<HTMLElement>): void {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -371,9 +375,17 @@ function AreaHeader({
         message={`"${name || 'Untitled'}" will be deleted along with every sub-area, project, task, and note inside it.`}
         confirmLabel="Delete"
         onConfirm={() => {
+          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.area, areaId);
           deleteArea(store, areaId);
           setConfirmDelete(false);
           onDeleteArea();
+          offerUndo({
+            label: `Deleted area “${name || 'Untitled'}”`,
+            onUndo: () => {
+              restoreSubtree(store, snapshot);
+              onNavigate(areaId);
+            },
+          });
         }}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -765,6 +777,7 @@ function ProjectRow({
   const { store } = useDataLayer();
   const { navigate } = useSelection();
   const project = useProject(store, projectId);
+  const { offerUndo } = useUndo();
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -809,7 +822,7 @@ function ProjectRow({
               doneGroup ? ' project-row-progress-done' : ''
             }`}
           >
-            <div className="project-row-progress-fill" style={{ width: `${pct}%` }} />
+            <div className="project-row-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
           </div>
           <span className="project-row-progress-count">
             {done} / {total}
@@ -852,11 +865,19 @@ function ProjectRow({
       <ConfirmModal
         open={confirmDelete}
         title="Delete project?"
-        message={`"${display}" will be deleted. Tasks and notes attached to it will become orphans.`}
+        message={`"${display}" will be deleted along with its tasks and notes.`}
         confirmLabel="Delete"
         onConfirm={() => {
+          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
           deleteProject(store, projectId);
           setConfirmDelete(false);
+          offerUndo({
+            label: `Deleted project “${display}”`,
+            onUndo: () => {
+              restoreSubtree(store, snapshot);
+              navigate({ kind: 'project', id: projectId });
+            },
+          });
         }}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -882,6 +903,7 @@ function SortableProjectRow({
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { navigate } = useSelection();
+  const { offerUndo } = useUndo();
 
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const display = (project?.name ?? '') || name || 'Untitled';
@@ -942,7 +964,7 @@ function SortableProjectRow({
         )}
         <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
           <div className="project-row-progress-bar">
-            <div className="project-row-progress-fill" style={{ width: `${pct}%` }} />
+            <div className="project-row-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
           </div>
           <span className="project-row-progress-count">
             {done} / {total}
@@ -985,11 +1007,19 @@ function SortableProjectRow({
       <ConfirmModal
         open={confirmDelete}
         title="Delete project?"
-        message={`"${display}" will be deleted. Tasks and notes attached to it will become orphans.`}
+        message={`"${display}" will be deleted along with its tasks and notes.`}
         confirmLabel="Delete"
         onConfirm={() => {
+          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
           deleteProject(store, projectId);
           setConfirmDelete(false);
+          offerUndo({
+            label: `Deleted project “${display}”`,
+            onUndo: () => {
+              restoreSubtree(store, snapshot);
+              navigate({ kind: 'project', id: projectId });
+            },
+          });
         }}
         onCancel={() => setConfirmDelete(false)}
       />

@@ -678,15 +678,6 @@
   color: var(--text-h);
 }
 
-/* Placeholder actions (Search/Sort) — visibly inert until implemented. */
-.area-tab-action:disabled,
-.area-tab-action:disabled:hover {
-  background: transparent;
-  color: var(--text-muted);
-  opacity: 0.5;
-  cursor: default;
-}
-
 /* Completed-tasks toggle in the "show in place" mode. */
 .area-tab-action-active {
   background: var(--accent-tint);
@@ -826,8 +817,11 @@
 
 .project-row-progress-fill {
   height: 100%;
+  width: 100%;
   background: var(--accent);
-  transition: width 0.15s ease;
+  /* scaleX (not width) keeps the fill animation on the compositor. */
+  transform-origin: left;
+  transition: transform 0.15s ease;
 }
 
 .project-row-progress-done .project-row-progress-fill {
@@ -1322,9 +1316,9 @@
 }
 
 .btn-danger-armed {
-  background: var(--danger);
+  background: var(--danger-armed);
   color: var(--text-on-accent);
-  border-color: var(--danger);
+  border-color: var(--danger-armed);
 }
 
 .btn-icon {
@@ -2714,5 +2708,63 @@
 
   .main-body {
     padding-top: calc(44px + var(--space-4));
+  }
+}
+
+/* ============================================================
+   Undo toast — a quiet pill announcing a reversible action
+   ============================================================ */
+
+.undo-toast {
+  position: fixed;
+  bottom: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 6px 6px 6px var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  animation: undo-toast-in 0.18s ease-out;
+}
+
+.undo-toast-label {
+  font-size: 0.93rem;
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.undo-toast-action {
+  flex: 0 0 auto;
+  font: inherit;
+  font-size: 0.93rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.undo-toast-action:hover {
+  background: var(--accent-bg);
+}
+
+@keyframes undo-toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 }

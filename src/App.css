@@ -1056,7 +1056,7 @@
   flex-wrap: wrap;
   align-items: center;
   align-content: flex-start;
-  gap: 10px;
+  gap: 6px;
   padding: 4px 0;
   border-radius: var(--radius-sm);
 }
@@ -1870,7 +1870,9 @@
   cursor: grab;
   padding: 0;
   flex-shrink: 0;
-  margin-right: 6px;
+  /* Negative margin absorbs the grip icon's dead space inside the
+     22px box so the handle→caret gap matches caret→name. */
+  margin-right: -4px;
   touch-action: none;
 }
 
@@ -1912,7 +1914,9 @@
   cursor: grab;
   padding: 0;
   flex-shrink: 0;
-  margin-right: 2px;
+  /* Negative margin absorbs the grip icon's dead space inside the
+     24px box so the handle→checkbox gap matches checkbox→title. */
+  margin-right: -2px;
   touch-action: none;
 }
 
@@ -1944,7 +1948,7 @@
 .section-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   padding: 4px 0;
   margin-top: var(--space-2);
   border-radius: var(--radius-sm);

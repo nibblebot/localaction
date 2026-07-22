@@ -55,7 +55,7 @@ async function createProject(page: Page, name: string): Promise<void> {
 
 async function createTask(page: Page, title: string): Promise<void> {
   // Single-project contexts: the one project card's footer add input.
-  const input = page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').first();
+  const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').first();
   await input.fill(title);
   await input.press('Enter');
 }

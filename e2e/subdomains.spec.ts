@@ -61,8 +61,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await page.locator('.projects-tab > .inline-add-input').fill(project);
     await page.locator('.projects-tab > .inline-add-input').press('Enter');
     const card = page.locator('li.project-row', { hasText: project });
-    await card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').fill(task);
-    await card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').press('Enter');
+    await card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').fill(task);
+    await card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').press('Enter');
     await expect(card.locator('.task-line-title').last()).toHaveValue(task);
     // Back on the parent (default Projects tab): the sub-area task
     // rolls up under a header, inside its project card.

@@ -19,7 +19,7 @@ async function createProject(page: Page, name: string): Promise<void> {
 
 async function addCardTask(page: Page, project: string, title: string): Promise<void> {
   const card = page.locator('li.project-row', { hasText: project });
-  const input = card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input');
+  const input = card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]');
   await input.fill(title);
   await input.press('Enter');
 }

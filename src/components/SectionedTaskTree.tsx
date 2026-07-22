@@ -87,11 +87,9 @@ function topLevelPlacementKey(store: MergeableStore, id: string): string | null 
 function SectionRow({
   sectionId,
   handle,
-  autoFocusName,
 }: {
   sectionId: string;
   handle?: SortableHandleProps;
-  autoFocusName?: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const section = useSection(store, sectionId);
@@ -129,7 +127,6 @@ function SectionRow({
       <EditableTitle
         value={section.name}
         placeholder="Untitled section"
-        autoFocusOnCreate={autoFocusName}
         onCommit={(next) => updateSection(store, sectionId, { name: next })}
       />
       <button
@@ -184,7 +181,6 @@ export function SectionedTaskTree({
   projectId,
   ids,
   showCompleted = false,
-  focusSectionId,
   ariaLabel,
   taskProgress,
 }: {
@@ -193,8 +189,6 @@ export function SectionedTaskTree({
   ids: readonly string[];
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted?: boolean;
-  /** Section whose name input should grab focus (just created). */
-  focusSectionId?: string | null;
   ariaLabel?: string;
   /** Per-ancestor subtask progress rendered as a meter on each row. */
   taskProgress?: ReadonlyMap<string, { done: number; total: number }>;
@@ -267,7 +261,6 @@ export function SectionedTaskTree({
             <SectionRow
               sectionId={sid}
               handle={handle}
-              autoFocusName={focusSectionId === sid}
             />
           );
         }

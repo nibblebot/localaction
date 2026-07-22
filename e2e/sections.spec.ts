@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // Journey: project sections. A section groups top-level tasks inside a
-// project; the user adds one via the icon button next to the new-task
-// input, renames it inline, drags it to reorder, and deletes it (with
-// its tasks) after confirmation. See reorder.spec.ts for the shared
+// project; the user adds one via the new-section input under the
+// new-task input in the card footer, renames it inline, drags it to
+// reorder, and deletes it (with its tasks) after confirmation. See
+// reorder.spec.ts for the shared
 // OPFS-cleaning / unique-token conventions.
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -54,11 +55,9 @@ async function openProject(page: Page, areaName: string, projectName: string): P
 }
 
 async function addSection(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add section"]').click();
-  // The new section's name input is autofocused on creation.
-  await expect(page.locator('.section-row .editable-title:focus')).toBeVisible();
-  await page.keyboard.type(name);
-  await page.keyboard.press('Enter');
+  const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New section"]');
+  await input.fill(name);
+  await input.press('Enter');
   // New sections append at the end.
   await expect(page.locator('.section-row .editable-title').last()).toHaveValue(name);
 }
@@ -69,11 +68,11 @@ test.describe('Project sections', () => {
     await page.goto('/#/');
   });
 
-  test('add section via icon, fill it with a task, order persists after reload', async ({ page }) => {
+  test('add section, fill it with a task, order persists after reload', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
-    await page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').fill(`Top task ${tok}`);
-    await page.locator('.project-row-tasks .tasks-tab-footer .inline-add-input').press('Enter');
+    await page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').fill(`Top task ${tok}`);
+    await page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').press('Enter');
 
     await addSection(page, `Phase ${tok}`);
 

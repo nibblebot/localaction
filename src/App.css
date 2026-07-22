@@ -1940,44 +1940,13 @@
   opacity: 1;
 }
 
-/* Footer row under the project task tree: the new-task input plus the
-   add-section icon button. */
+/* Footer under the project task tree: the new-task and new-section
+   inputs, one per row. */
 .tasks-tab-footer {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--space-2);
-}
-
-.tasks-tab-footer .inline-add-input {
-  flex: 1 1 auto;
-}
-
-.tasks-tab-add-section {
-  width: 26px;
-  height: 26px;
-  margin-top: 6px;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  border: 1px dashed var(--border-strong);
-  color: var(--text-muted);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  flex-shrink: 0;
-  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
-}
-
-.tasks-tab-add-section:hover {
-  border-color: var(--text-muted);
-  color: var(--text-h);
-  background: var(--surface-hover);
-}
-
-.tasks-tab-add-section svg {
-  width: 12px;
-  height: 12px;
 }
 
 /* ============================================================
@@ -2653,7 +2622,6 @@
   .area-header-add,
   .area-header-edit,
   .area-header-delete,
-  .tasks-tab-add-section,
   .appearance-fab-trigger,
   .due-calendar-nav {
     position: relative;
@@ -2687,7 +2655,6 @@
     inset: -12px;
   }
 
-  .tasks-tab-add-section::after,
   .due-calendar-nav::after {
     content: '';
     position: absolute;

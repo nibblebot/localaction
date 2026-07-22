@@ -59,7 +59,7 @@ test.describe('LocalAction shell', () => {
     const card = page.locator('li.project-row', { hasText: 'Plan trip' });
     await expect(card.locator('.project-row-tasks')).toBeVisible();
     // Add a task via the card's footer input.
-    const footer = card.locator('.project-row-tasks .tasks-tab-footer .inline-add-input');
+    const footer = card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]');
     await footer.fill('Book flights');
     await footer.press('Enter');
     await expect(card.locator('.task-line-title').first()).toHaveValue('Book flights');

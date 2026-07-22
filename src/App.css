@@ -92,8 +92,8 @@
 }
 
 .sidebar-section-title-action svg {
-  width: 12px;
-  height: 12px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 .sidebar-section-body {
@@ -145,8 +145,8 @@
 }
 
 .sidebar-area-caret svg {
-  width: 10px;
-  height: 10px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 /* Keeps top-level names aligned when an area has no caret. */
@@ -392,8 +392,8 @@
 }
 
 .area-header-add svg {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-md);
+  height: var(--icon-md);
 }
 
 .area-header-add-input {
@@ -439,8 +439,8 @@
 }
 
 .area-header-delete svg {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-md);
+  height: var(--icon-md);
 }
 
 .area-header-edit {
@@ -468,8 +468,8 @@
 }
 
 .area-header-edit svg {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-md);
+  height: var(--icon-md);
 }
 
 /* ============================================================
@@ -629,8 +629,8 @@
 }
 
 .area-header .area-header-project-icon {
-  width: 24px;
-  height: 24px;
+  width: var(--icon-lg);
+  height: var(--icon-lg);
   color: var(--text-h);
   flex-shrink: 0;
 }
@@ -731,8 +731,8 @@
 }
 
 .area-tab-action svg {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
 }
 
 /* ============================================================
@@ -822,8 +822,8 @@
 }
 
 .project-row-caret svg {
-  width: 10px;
-  height: 10px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 /* Expanded task tree, kept inside the card (the row clips it to the
@@ -944,8 +944,8 @@
 }
 
 .project-row-action svg {
-  width: 13px;
-  height: 13px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 .project-tasks {
@@ -1140,8 +1140,8 @@
 }
 
 .task-line-action svg {
-  width: 12px;
-  height: 12px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 /* ============================================================
@@ -1259,8 +1259,8 @@
 }
 
 .note-line-action svg {
-  width: 12px;
-  height: 12px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 .note-line-body {
@@ -1614,8 +1614,8 @@
    ============================================================ */
 
 .svg-icon {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
   fill: currentColor;
   stroke: currentColor;
   flex-shrink: 0;
@@ -1659,8 +1659,8 @@
 }
 
 .appearance-fab-icon {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-md);
+  height: var(--icon-md);
 }
 
 .appearance-menu {
@@ -1884,8 +1884,8 @@
 }
 
 .project-row-drag-handle svg {
-  width: 14px;
-  height: 14px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
 }
 
 /* When the user is actively dragging a project row, hide the
@@ -1926,8 +1926,8 @@
 }
 
 .task-line-drag-handle svg {
-  width: 24px;
-  height: 24px;
+  width: var(--icon-sm);
+  height: var(--icon-sm);
 }
 
 .task-line.sortable-row-active {
@@ -2114,8 +2114,8 @@
 }
 
 .person-filter-chip-edit .svg-icon {
-  width: 10px;
-  height: 10px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 .person-filter-chip-wrap:hover .person-filter-chip-edit,
@@ -2501,8 +2501,8 @@
 }
 
 .due-calendar-nav svg {
-  width: 12px;
-  height: 12px;
+  width: var(--icon-xs);
+  height: var(--icon-xs);
 }
 
 .due-calendar-grid {
@@ -2592,8 +2592,8 @@
   }
 
   .drawer-toggle svg {
-    width: 18px;
-    height: 18px;
+    width: var(--icon-md);
+    height: var(--icon-md);
   }
 
   /* Sidebar becomes an off-canvas drawer. */

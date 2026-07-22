@@ -247,6 +247,9 @@ The sidebar is the instrument panel: Rail surface, section titles in small caps-
 ### Person avatars
 22px circles (18px small) with 10px 600-weight initials in the person's own color, a barely-there inset ring. Users' people, at chip scale — they annotate rows and areas without competing with the One Voice accent.
 
+### Icons
+One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12px — carets, row-level actions), `--icon-sm` (14px — default chrome and drag grips), `--icon-md` (18px — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.
+
 ## 6. Do's and Don'ts
 
 ### Do:
@@ -257,6 +260,7 @@ The sidebar is the instrument panel: Rail surface, section titles in small caps-
 - **Do** keep the sync badge visible and plain-spoken — local-first ownership is a feature users can see.
 - **Do** preserve the 2px accent `:focus-visible` outline everywhere; the keyboard is a first-class surface.
 - **Do** size in rem so the density knob rescales everything.
+- **Do** size icons with the four `--icon-*` tokens; a new size outside the scale needs a new token, not a one-off px.
 
 ### Don't:
 - **Don't** build legacy enterprise PM feature walls or side-stripe banners (Asana/Jira) — no colored left borders on rows or callouts, no stacked chrome to advertise capability.

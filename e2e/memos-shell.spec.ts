@@ -7,7 +7,8 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  const input = page.locator('.projects-tab > .inline-add-input');
+  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+  const input = page.locator('.projects-tab .inline-add-input');
   await input.fill(name);
   await input.press('Enter');
 }
@@ -48,7 +49,7 @@ test.describe('LocalAction shell', () => {
     // Create an area so we have something to render.
     await createArea(page, 'Health');
     await expect(page.locator('.projects-tab')).toBeVisible();
-    await expect(page.locator('.projects-tab > .inline-add-input')).toBeVisible();
+    await expect(page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]')).toBeVisible();
   });
 
   test('clicking a project name toggles its card; the note icon opens its notes pane', async ({ page }) => {
@@ -58,7 +59,8 @@ test.describe('LocalAction shell', () => {
     await createProject(page, 'Plan trip');
     const card = page.locator('li.project-row', { hasText: 'Plan trip' });
     await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // Add a task via the card's footer input.
+    // Add a task via the card's footer add button.
+    await card.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
     const footer = card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]');
     await footer.fill('Book flights');
     await footer.press('Enter');

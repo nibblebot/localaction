@@ -1,13 +1,13 @@
 /**
  * Project task list — the single implementation behind every expanded
  * project card in the area view's combined Projects tab: a sectioned
- * SortableTree with fully editable sections, new-task and new-section
- * inputs, and the person-filter "N tasks hidden" stub.
+ * SortableTree with fully editable sections, add-task and add-section
+ * buttons, and the person-filter "N tasks hidden" stub.
  */
 import { useDataLayer, createTask, createSection } from '../data/index.ts';
 import { useProjectTaskList } from './useProjectTaskList.ts';
 import { SectionedTaskTree } from './SectionedTaskTree.tsx';
-import InlineAddInput from './InlineAddInput.tsx';
+import InlineAddButton from './InlineAddButton.tsx';
 
 export default function ProjectTaskList({
   projectId,
@@ -40,18 +40,20 @@ export default function ProjectTaskList({
         taskProgress={subtaskProgress}
       />
       <div className="tasks-tab-footer">
-        <InlineAddInput
+        <InlineAddButton
+          label="Add task"
           placeholder={
             taskIds.length === 0
               ? 'No tasks yet — add the first one.'
               : 'New task…'
           }
-          ariaLabel="New task"
+          inputAriaLabel="New task"
           onSubmit={addTask}
         />
-        <InlineAddInput
+        <InlineAddButton
+          label="Add section"
           placeholder="New section…"
-          ariaLabel="New section"
+          inputAriaLabel="New section"
           onSubmit={addSection}
         />
       </div>

@@ -7,14 +7,16 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  const input = page.locator('.projects-tab > .inline-add-input');
+  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+  const input = page.locator('.projects-tab .inline-add-input');
   await input.fill(name);
   await input.press('Enter');
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  // Each expanded project card carries its own footer add input; the
+  // Each expanded project card carries its own footer add button; the
   // first card's matches the old tab-level default target.
+  await page.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').first().click();
   const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').first();
   await input.fill(title);
   await input.press('Enter');

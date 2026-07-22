@@ -46,6 +46,7 @@ import { INBOX } from '../router.ts';
 import ConfirmModal from './ConfirmModal.tsx';
 import AreaEditPopover from './AreaEditPopover.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
+import InlineAddButton from './InlineAddButton.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
 import { SortableList } from './SortableList.tsx';
@@ -202,7 +203,6 @@ export default function MainPane(): React.JSX.Element {
           <ProjectsTab
             areaId={areaId}
             subAreas={subAreas}
-            isActive
             showCompleted={showCompleted}
             collapsed={collapsedProjects.collapsed}
             onToggleCollapse={collapsedProjects.toggle}
@@ -605,14 +605,12 @@ function ProjectCollapseAllButton({
 function ProjectsTab({
   areaId,
   subAreas,
-  isActive,
   showCompleted,
   collapsed,
   onToggleCollapse,
 }: {
   areaId: string;
   subAreas: readonly SubAreaRef[];
-  isActive: boolean;
   showCompleted: boolean;
   collapsed: ReadonlySet<string>;
   onToggleCollapse: (id: string) => void;
@@ -627,15 +625,6 @@ function ProjectsTab({
   function addProject(name: string): void {
     createProject(store, { name, areaId });
   }
-
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(inArea.length === 0);
-  useEffect(() => {
-    if (!isActive) return;
-    const empty = inArea.length === 0;
-    if (empty || wasEmpty.current) addInputRef.current?.focus();
-    wasEmpty.current = empty;
-  }, [isActive, inArea.length]);
 
   return (
     <section
@@ -664,14 +653,14 @@ function ProjectsTab({
           onToggleCollapse={onToggleCollapse}
         />
       ))}
-      <InlineAddInput
-        ref={addInputRef}
+      <InlineAddButton
+        label="Add project"
         placeholder={
           inArea.length === 0
             ? 'No projects yet — add the first one.'
             : 'New project…'
         }
-        ariaLabel="New project"
+        inputAriaLabel="New project"
         onSubmit={addProject}
       />
     </section>

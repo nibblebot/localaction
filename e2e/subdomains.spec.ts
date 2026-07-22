@@ -30,7 +30,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(page.locator('.area-header-name')).toContainText(child);
     // Add a project inside the sub-area.
     await page.locator('.area-tab', { hasText: 'Projects' }).click();
-    const input = page.locator('.projects-tab > .inline-add-input');
+    await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+    const input = page.locator('.projects-tab .inline-add-input');
     await input.fill(project);
     await input.press('Enter');
     await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
@@ -58,9 +59,11 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(page.locator('.area-header-name')).toContainText(child);
     // Add a project inside the sub-area, then a task via the project
     // card's footer input (cards are expanded by default).
-    await page.locator('.projects-tab > .inline-add-input').fill(project);
-    await page.locator('.projects-tab > .inline-add-input').press('Enter');
+    await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+    await page.locator('.projects-tab .inline-add-input').fill(project);
+    await page.locator('.projects-tab .inline-add-input').press('Enter');
     const card = page.locator('li.project-row', { hasText: project });
+    await card.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
     await card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').fill(task);
     await card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').press('Enter');
     await expect(card.locator('.task-line-title').last()).toHaveValue(task);

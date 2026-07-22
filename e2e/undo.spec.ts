@@ -7,13 +7,15 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  const input = page.locator('.projects-tab > .inline-add-input');
+  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+  const input = page.locator('.projects-tab .inline-add-input');
   await input.fill(name);
   await input.press('Enter');
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  // Single-project contexts: the one project card's footer add input.
+  // Single-project contexts: the one project card's footer add button.
+  await page.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').first().click();
   const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').first();
   await input.fill(title);
   await input.press('Enter');

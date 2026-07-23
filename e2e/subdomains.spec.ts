@@ -125,20 +125,37 @@ test.describe('Sub-areas (inline create)', () => {
     await expect(page.locator('.area-header-name')).toContainText(parent);
   });
 
-  test('a sub-area pane has no add-sub-area button (one level deep only)', async ({ page }) => {
+  test('a sub-area pane keeps the root marker and can add another sub-area', async ({ page }) => {
     const parent = `Family ${uniq()}`;
     const child = `Daughter ${uniq()}`;
+    const grandchild = `School ${uniq()}`;
     await createArea(page, parent);
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill(child);
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(child);
-    // Sub-area pane: no add button, no list of sub-sub-areas here.
-    await expect(page.locator('.area-header-add')).toHaveCount(0);
-    await expect(page.locator('.subarea-row')).toHaveCount(0);
-    // Crumb font-size matches the heading.
-    const crumb = page.locator('.area-header-crumb', { hasText: parent });
-    const crumbSize = await crumb.evaluate((el) => getComputedStyle(el).fontSize);
+
+    const rootCrumb = page.locator('.area-header-crumb', { hasText: parent });
+    await expect(rootCrumb).toBeVisible();
+    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toBeVisible();
+    await expect(page.locator('.area-header-add', { hasTitle: 'Add sub-area' })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByText('Synced', { exact: true })).toBeVisible();
+    await expect(rootCrumb).toBeVisible();
+    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toBeVisible();
+    await expect(page.locator('.area-header-add', { hasTitle: 'Add sub-area' })).toBeVisible();
+
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(grandchild);
+    await page.locator('.area-header-add-input').press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(grandchild);
+    await expect(page.locator('.area-header-crumb', { hasText: parent })).toBeVisible();
+    await expect(page.locator('.area-header-crumb', { hasText: child })).toBeVisible();
+
+    const crumbSize = await page
+      .locator('.area-header-crumb', { hasText: parent })
+      .evaluate((el) => getComputedStyle(el).fontSize);
     const headingSize = await page
       .locator('.area-header-name')
       .evaluate((el) => getComputedStyle(el).fontSize);

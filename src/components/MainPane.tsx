@@ -38,7 +38,7 @@ import {
   useEntityPersonIds,
   usePerson,
 } from '../data/index.ts';
-import type { Area, NoteEntityType, ProjectRollup } from '../data/index.ts';
+import type { Area, AreaCount, NoteEntityType, ProjectRollup } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
@@ -77,7 +77,6 @@ export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
   const { selection, navigate } = useSelection();
   const counts = useAreaCounts(store);
-  const areaRowIds = useRowIds(TABLES.areas, store);
 
   const areaId = selection.kind === 'area' ? selection.id : null;
   const area = useArea(store, areaId ?? undefined);
@@ -91,11 +90,10 @@ export default function MainPane(): React.JSX.Element {
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
   const collapsedProjects = useCollapsedProjects();
 
-  const parentChain = useMemo<readonly Area[]>(() => {
+  const parentChain = useMemo<readonly HeaderArea[]>(() => {
     if (!areaId) return [];
-    void areaRowIds.length;
-    return buildParentChain(store, areaId);
-  }, [store, areaId, areaRowIds]);
+    return buildParentChainFromCounts(counts, areaId);
+  }, [counts, areaId]);
 
   // Depth-first list of every descendant area (sub-areas, recursively),
   // so the tabs below can roll their content into this view.
@@ -151,7 +149,6 @@ export default function MainPane(): React.JSX.Element {
   const projectCount = counts.find((c) => c.id === areaId)?.projectCount ?? 0;
   const noteCount = counts.find((c) => c.id === areaId)?.noteCount ?? 0;
 
-  const isTopLevel = parentChain.length === 0;
 
   const goToArea = (id: string): void => {
     navigate({ kind: 'area', id });
@@ -177,9 +174,8 @@ export default function MainPane(): React.JSX.Element {
           name={area.name}
           color={area.color}
           parentChain={parentChain}
-          showAddSubArea={isTopLevel}
           onNavigate={goToArea}
-          onCreateSubArea={isTopLevel ? addSubArea : null}
+          onCreateSubArea={addSubArea}
           onDeleteArea={goToInbox}
         />
         <PersonFilterBanner />
@@ -221,18 +217,16 @@ function AreaHeader({
   name,
   color,
   parentChain,
-  showAddSubArea,
   onNavigate,
   onCreateSubArea,
   onDeleteArea,
 }: {
   areaId: string;
+  parentChain: readonly HeaderArea[];
   name: string;
   color: AreaColorId;
-  parentChain: readonly Area[];
-  showAddSubArea: boolean;
   onNavigate: (id: string) => void;
-  onCreateSubArea: ((name: string) => void) | null;
+  onCreateSubArea: (name: string) => void;
   onDeleteArea: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -256,7 +250,7 @@ function AreaHeader({
       setDraft('');
       return;
     }
-    onCreateSubArea?.(trimmed);
+    onCreateSubArea(trimmed);
     setAdding(false);
     setDraft('');
   }
@@ -280,7 +274,14 @@ function AreaHeader({
             className="area-header-crumb"
             onClick={() => onNavigate(p.id)}
           >
-            {p.name || 'Untitled'}
+            {i === 0 && (
+              <span
+                className="area-header-name-edit-dot"
+                style={{ background: areaColorHex(p.color) }}
+                aria-hidden="true"
+              />
+            )}
+            <span>{p.name || 'Untitled'}</span>
           </button>
         </Fragment>
       ))}
@@ -307,40 +308,38 @@ function AreaHeader({
         </button>
       </h1>
       <AreaHeaderCast areaId={areaId} cast={cast} />
-      {showAddSubArea && onCreateSubArea && (
-        adding ? (
-          <input
-            type="text"
-            className="area-header-add-input"
-            placeholder="Sub-area name…"
-            aria-label="Sub-area name"
-            value={draft}
-            autoFocus
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                commit();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                cancel();
-              }
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="area-header-add"
-            onClick={() => setAdding(true)}
-            aria-label="Add sub-area"
-            title="Add sub-area"
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#add-icon" />
-            </svg>
-          </button>
-        )
+      {adding ? (
+        <input
+          type="text"
+          className="area-header-add-input"
+          placeholder="Sub-area name…"
+          aria-label="Sub-area name"
+          value={draft}
+          autoFocus
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              commit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="area-header-add"
+          onClick={() => setAdding(true)}
+          aria-label="Add sub-area"
+          title="Add sub-area"
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#add-icon" />
+          </svg>
+        </button>
       )}
 
       <button
@@ -454,16 +453,36 @@ function CastChip({
     </button>
   );
 }
- function buildParentChain(store: MergeableStore, areaId: string): Area[] {
+type HeaderArea = Pick<Area, 'id' | 'name' | 'color'>;
+
+function buildParentChainFromCounts(
+  counts: readonly AreaCount[],
+  areaId: string,
+): HeaderArea[] {
+  const byId = new Map(counts.map((area) => [area.id, area]));
+  const chain: HeaderArea[] = [];
+  const seen = new Set<string>([areaId]);
+  let current = byId.get(areaId);
+  while (current?.parentId && !seen.has(current.parentId)) {
+    const parent = byId.get(current.parentId);
+    if (!parent) break;
+    chain.push({ id: parent.id, name: parent.name, color: parent.color });
+    seen.add(parent.id);
+    current = parent;
+  }
+  return chain.reverse();
+}
+
+function buildParentChain(store: MergeableStore, areaId: string): Area[] {
   const chain: Area[] = [];
   const seen = new Set<string>([areaId]);
-  let cur = getArea(store, areaId);
-  while (cur && cur.parentId && !seen.has(cur.parentId)) {
-    const parent = getArea(store, cur.parentId);
+  let current = getArea(store, areaId);
+  while (current?.parentId && !seen.has(current.parentId)) {
+    const parent = getArea(store, current.parentId);
     if (!parent) break;
     chain.push(parent);
     seen.add(parent.id);
-    cur = parent;
+    current = parent;
   }
   return chain.reverse();
 }

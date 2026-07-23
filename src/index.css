@@ -107,7 +107,9 @@
   --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
-  /* Layout */
+  /* Layout — sidebar width is driven by useSidebarWidth (clamped 200–260,
+     persisted per-device in localStorage). The default below is the
+     first-paint value before the hook mounts. */
   --sidebar-w: 200px;
 
   --topbar-h: 52px;

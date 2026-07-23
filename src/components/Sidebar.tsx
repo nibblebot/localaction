@@ -15,6 +15,7 @@ import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
 import AppearanceMenu from './appearance/AppearanceMenu.tsx';
+import SidebarResizer from './SidebarResizer.tsx';
 import { areaColorHex, type AreaColorId } from '../data/colors.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableTreeNode } from './SortableTree.tsx';
@@ -359,6 +360,7 @@ export default function Sidebar({
         <SyncStatusBadge />
         <AppearanceMenu />
       </div>
+      <SidebarResizer />
     </aside>
   );
 }

@@ -1,6 +1,6 @@
 /* ============================================================
    App shell — 2-zone layout
-   sidebar (200px) | main (1fr)
+   sidebar (--sidebar-w, default 200px, user-resizable 200–260px) | main (1fr)
    ============================================================ */
 
 .app-shell {
@@ -23,6 +23,58 @@
   background: var(--bg-elevated);
   border-inline-end: 1px solid var(--border);
   min-height: 0;
+  position: relative;
+}
+
+/* Sidebar resize handle — sits on the inline-end edge of the
+   sidebar. The visual is a 1px line that wakes on hover, focus, or
+   while dragging; the hit area is wider (6px) so the cursor does not
+   have to land exactly on the line. Dragged width is written to
+   `--sidebar-w` on the document root by the SidebarResizer component
+   so the existing grid template picks it up without re-rendering. */
+.sidebar-resizer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -3px;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+  touch-action: none;
+  z-index: 1;
+}
+
+/* A 1px stripe lives along the inline-end edge of the handle. It is
+   transparent at rest (the sidebar's own border-inline-end is the
+   visible edge), and lights up on hover / focus / drag. The accent
+   tint is the same one used for the active row, so a focused resizer
+   reads as the same gesture family. */
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 2px;
+  width: 1px;
+  background: transparent;
+  transition: background-color 0.12s ease-out;
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer:focus-visible::after,
+body.sidebar-resizing .sidebar-resizer::after {
+  background: var(--accent-border);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: none;
+}
+
+/* While a drag is in flight, lock the col-resize cursor and stop
+   text selection so the sidebar does not pick up highlighted text as
+   the cursor sweeps across. The class is set on <body> by the
+   SidebarResizer component. */
+body.sidebar-resizing {
+  cursor: col-resize !important;
+  user-select: none;
 }
 
 .sidebar-section {
@@ -2701,6 +2753,12 @@
 
   .app-shell.drawer-open .sidebar {
     transform: translateX(0);
+  }
+
+  /* No resize handle in the drawer — the sidebar is a fixed-width
+     overlay here, not a grid column. */
+  .sidebar-resizer {
+    display: none;
   }
 
   .app-shell.drawer-open .drawer-backdrop {

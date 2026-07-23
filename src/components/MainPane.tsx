@@ -62,12 +62,7 @@ import PersonAvatar from './persons/PersonAvatar.tsx';
 import { usePersonFilter } from './persons/usePersonFilter.ts';
 import { useShowCompleted } from './useShowCompleted.ts';
 import { useCollapsedProjects } from './useCollapsedProjects.ts';
-
-type Tab = 'projects' | 'notes';
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'projects', label: 'Projects' },
-  { id: 'notes', label: 'Notes' },
-];
+import { useCollapsedSections } from './useCollapsedSections.ts';
 
 // Lazy: carries markdown-it (~100KB min) out of the main chunk —
 // loaded on first note-preview render, never on task-only surfaces.
@@ -81,14 +76,9 @@ export default function MainPane(): React.JSX.Element {
   const areaId = selection.kind === 'area' ? selection.id : null;
   const area = useArea(store, areaId ?? undefined);
 
-  const [tabByArea, setTabByArea] = useState<Record<string, Tab>>({});
-  const tab: Tab = (areaId ? tabByArea[areaId] : undefined) ?? 'projects';
-  const setTab = (next: Tab): void => {
-    if (!areaId) return;
-    setTabByArea((prev) => ({ ...prev, [areaId]: next }));
-  };
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
   const collapsedProjects = useCollapsedProjects();
+  const collapsedSections = useCollapsedSections();
 
   const parentChain = useMemo<readonly HeaderArea[]>(() => {
     if (!areaId) return [];
@@ -179,13 +169,20 @@ export default function MainPane(): React.JSX.Element {
           onDeleteArea={goToInbox}
         />
         <PersonFilterBanner />
-        <PaneTabs
-          tabs={TABS}
-          tab={tab}
-          onChange={setTab}
-          counts={{ projects: projectCount, notes: noteCount }}
+        <div className="area-toolbar">
+          <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
+        </div>
+        <AreaTasksSection
+          areaId={areaId}
           showCompleted={showCompleted}
-          onToggleCompleted={toggleCompleted}
+          collapsed={collapsedSections.collapsed.has('tasks')}
+          onToggleCollapse={() => collapsedSections.toggle('tasks')}
+        />
+        <CollapsibleSection
+          title="Projects"
+          count={projectCount}
+          collapsed={collapsedSections.collapsed.has('projects')}
+          onToggleCollapse={() => collapsedSections.toggle('projects')}
           trailing={
             <ProjectCollapseAllButton
               areaId={areaId}
@@ -194,19 +191,23 @@ export default function MainPane(): React.JSX.Element {
               replace={collapsedProjects.replace}
             />
           }
-        />
-        {tab === 'projects' && (
-          <ProjectsTab
+        >
+          <ProjectsSection
             areaId={areaId}
             subAreas={subAreas}
             showCompleted={showCompleted}
             collapsed={collapsedProjects.collapsed}
             onToggleCollapse={collapsedProjects.toggle}
           />
-        )}
-        {tab === 'notes' && (
-          <NotesTab areaId={areaId} isActive />
-        )}
+        </CollapsibleSection>
+        <CollapsibleSection
+          title="Notes"
+          count={noteCount}
+          collapsed={collapsedSections.collapsed.has('notes')}
+          onToggleCollapse={() => collapsedSections.toggle('notes')}
+        >
+          <NotesSection areaId={areaId} />
+        </CollapsibleSection>
       </div>
     </main>
   );
@@ -487,20 +488,8 @@ function buildParentChain(store: MergeableStore, areaId: string): Area[] {
   return chain.reverse();
 }
 
-interface PaneTabsProps<T extends string> {
-  tabs: readonly { id: T; label: string }[];
-  tab: T;
-  onChange: (tab: T) => void;
-  counts: Record<T, number>;
-  /** Completed-task visibility toggle (task tabs only). */
-  showCompleted?: boolean;
-  onToggleCompleted?: () => void;
-  /** Extra action rendered after the completed toggle. */
-  trailing?: React.ReactNode;
-}
-
 /**
- * Completed-task visibility toggle, shared by the pane tab bars and the
+ * Completed-task visibility toggle, shared by the area toolbar and the
  * inbox header. Renders active (accent tint) while done tasks show in
  * place.
  */
@@ -527,41 +516,48 @@ function CompletedToggle({
   );
 }
 
-function PaneTabs<T extends string>({
-  tabs,
-  tab,
-  onChange,
-  counts,
-  showCompleted,
-  onToggleCompleted,
+/**
+ * Top-level area-view section (Area tasks / Projects / Notes) with a
+ * collapsible header. Header chrome reuses the `.tab-group-*` label
+ * styles so sections read like the inner ACTIVE / DONE groups, one
+ * register up.
+ */
+function CollapsibleSection({
+  title,
+  count,
+  collapsed,
+  onToggleCollapse,
   trailing,
-}: PaneTabsProps<T>): React.JSX.Element {
+  children,
+}: {
+  title: string;
+  count: number;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+  /** Extra action pinned to the header's right edge. */
+  trailing?: React.ReactNode;
+  children: React.ReactNode;
+}): React.JSX.Element {
   return (
-    <div className="area-tabs" role="tablist">
-      {tabs.map((t) => {
-        const active = tab === t.id;
-        return (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            id={`area-tab-${t.id}`}
-            aria-controls={`area-tabpanel-${t.id}`}
-            aria-selected={active}
-            className={`area-tab${active ? ' area-tab-active' : ''}`}
-            onClick={() => onChange(t.id)}
-          >
-            <span className="area-tab-label">{t.label}</span>
-            <span className="area-tab-count">{counts[t.id]}</span>
-          </button>
-        );
-      })}
-      <div className="area-tabs-spacer" />
-      {onToggleCompleted && (
-        <CompletedToggle showCompleted={showCompleted ?? false} onToggle={onToggleCompleted} />
-      )}
-      {trailing}
-    </div>
+    <section className="pane-section" aria-label={title}>
+      <div className="pane-section-head">
+        <button
+          type="button"
+          className="pane-section-toggle"
+          aria-expanded={!collapsed}
+          title={collapsed ? `Expand ${title}` : `Collapse ${title}`}
+          onClick={onToggleCollapse}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+          </svg>
+          <span className="pane-section-title">{title}</span>
+          <span className="tab-group-count">· {count}</span>
+        </button>
+        {trailing}
+      </div>
+      {!collapsed && children}
+    </section>
   );
 }
 
@@ -609,7 +605,7 @@ function ProjectCollapseAllButton({
   );
 }
 
-function ProjectsTab({
+function ProjectsSection({
   areaId,
   subAreas,
   showCompleted,
@@ -634,14 +630,7 @@ function ProjectsTab({
   }
 
   return (
-    <section
-      className="projects-tab"
-      aria-label="Projects"
-      role="tabpanel"
-      id="area-tabpanel-projects"
-      aria-labelledby="area-tab-projects"
-    >
-      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
+    <section className="projects-tab" aria-label="Projects">
       <AreaProjectGroups
         areaId={areaId}
         rollups={rollups}
@@ -791,7 +780,7 @@ function AreaProjectGroups({
 }
 
 /** A sub-area's area-rooted tasks and project groups, rolled into the
- * parent area's combined Projects tab. */
+ * parent area's combined Projects section. */
 function SubAreaProjects({
   areaId,
   name,
@@ -813,7 +802,7 @@ function SubAreaProjects({
   return (
     <div className="subarea-section">
       <SubAreaHeader areaId={areaId} name={name} />
-      <AreaTasksSection areaId={areaId} showCompleted={showCompleted} />
+      <SubAreaTasksRollup areaId={areaId} showCompleted={showCompleted} />
       <AreaProjectGroups
         areaId={areaId}
         rollups={rollups}
@@ -1240,12 +1229,10 @@ function SortableProjectRow({
   );
 }
 
-function NotesTab({
+function NotesSection({
   areaId,
-  isActive,
 }: {
   areaId: string;
-  isActive: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { areaNotes, projectNotes, taskNotes } = useNotesForAreaTree(
@@ -1293,30 +1280,14 @@ function NotesTab({
     });
   }
 
-  const addInputRef = useRef<HTMLInputElement>(null);
-  const wasEmpty = useRef(allIds.length === 0);
-  useEffect(() => {
-    if (!isActive) return;
-    const empty = allIds.length === 0;
-    if (empty || wasEmpty.current) addInputRef.current?.focus();
-    wasEmpty.current = empty;
-  }, [isActive, allIds.length]);
-
   return (
-    <section
-      className="notes-tab"
-      aria-label="Notes"
-      role="tabpanel"
-      id="area-tabpanel-notes"
-      aria-labelledby="area-tab-notes"
-    >
+    <section className="notes-tab" aria-label="Notes">
       <ul className="notes-tab-list" role="list">
         {visible.map((nid) => (
           <NoteLine key={nid} noteId={nid} />
         ))}
       </ul>
       <InlineAddInput
-        ref={addInputRef}
         placeholder={
           allIds.length === 0
             ? 'No notes yet — add the first one.'
@@ -1699,7 +1670,89 @@ function InboxPane(): React.JSX.Element {
   );
 }
 
-function AreaTasksSection({ areaId, showCompleted }: { areaId: string; showCompleted: boolean }): React.JSX.Element {
+/**
+ * The selected area's own task band — the area-level "ungrouped" inbox.
+ * Writable: tasks are created with `placement: area:<id>`, edited,
+ * checked off, and drag-reordered in place. Rendered through
+ * TaskTreeByStatus so sub-tasks nest correctly and `onMove` can
+ * re-parent within the band (root drop maps back to the area).
+ */
+function AreaTasksSection({
+  areaId,
+  showCompleted,
+  collapsed,
+  onToggleCollapse,
+}: {
+  areaId: string;
+  showCompleted: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const topLevelIds = useAreaTaskIds(store, areaId);
+  // TaskTreeByStatus builds the tree itself — feed it the flat deep
+  // list (top-level + descendants), same as the inbox.
+  const allIds = useMemo(() => {
+    const out: string[] = [];
+    for (const t of topLevelIds) {
+      out.push(t);
+      collectChildIds(store, t, out);
+    }
+    return out;
+  }, [topLevelIds, store]);
+  function addTask(title: string): void {
+    createTask(store, { title, placement: { kind: 'area', id: areaId } });
+  }
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId ? `task${PLACEMENT_SEP}${parentId}` : `area${PLACEMENT_SEP}${areaId}`,
+      beforeId,
+    );
+  }
+  const visibleTopLevel = showCompleted
+    ? topLevelIds.length
+    : topLevelIds.filter(
+        (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
+      ).length;
+  return (
+    <CollapsibleSection
+      title="Area tasks"
+      count={visibleTopLevel}
+      collapsed={collapsed}
+      onToggleCollapse={onToggleCollapse}
+    >
+      <TaskTreeByStatus
+        ids={allIds}
+        onMove={onMove}
+        ariaLabel="Area tasks"
+        showCompleted={showCompleted}
+      />
+      <InlineAddButton
+        label="Add task"
+        placeholder={
+          topLevelIds.length === 0
+            ? 'No area tasks yet — add the first one.'
+            : 'New area task…'
+        }
+        inputAriaLabel="New area task"
+        onSubmit={addTask}
+      />
+    </CollapsibleSection>
+  );
+}
+
+/**
+ * Read-only area-task rollup shown inside a rolled-in sub-area section
+ * of the combined Projects view. Flat and non-interactive: creation
+ * and editing happen on the sub-area's own view. Hidden when empty.
+ */
+function SubAreaTasksRollup({ areaId, showCompleted }: { areaId: string; showCompleted: boolean }): React.JSX.Element {
   const { store } = useDataLayer();
   const topLevelIds = useAreaTaskIds(store, areaId);
   const allIds = useMemo(() => {

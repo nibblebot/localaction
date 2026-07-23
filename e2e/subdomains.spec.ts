@@ -29,7 +29,6 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(child);
     // Add a project inside the sub-area.
-    await page.locator('.area-tab', { hasText: 'Projects' }).click();
     await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
     const input = page.locator('.projects-tab .inline-add-input');
     await input.fill(project);

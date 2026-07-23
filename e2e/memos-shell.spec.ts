@@ -34,14 +34,14 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.main-empty')).toContainText('Welcome to LocalAction');
   });
 
-  test('creating an area navigates to its main pane with the tab strip', async ({ page }) => {
+  test('creating an area navigates to its main pane with the three sections', async ({ page }) => {
     await page.goto('/#/');
     await createArea(page, 'Work');
     await expect(page).toHaveURL(/#\/a\//);
     await expect(page.locator('.area-header-name')).toContainText('Work');
-    await expect(page.locator('.area-tabs')).toBeVisible();
-    await expect(page.locator('.area-tab', { hasText: 'Projects' })).toBeVisible();
-    await expect(page.locator('.area-tab', { hasText: 'Notes' })).toBeVisible();
+    await expect(page.locator('.pane-section-toggle', { hasText: 'Area tasks' })).toBeVisible();
+    await expect(page.locator('.pane-section-toggle', { hasText: 'Projects' })).toBeVisible();
+    await expect(page.locator('.pane-section-toggle', { hasText: 'Notes' })).toBeVisible();
   });
 
   test('projects tab renders an inline add input', async ({ page }) => {
@@ -164,10 +164,9 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-header-name')).toContainText(root);
   });
 
-  test('notes tab renders an inline add input', async ({ page }) => {
+  test('notes section renders an inline add input', async ({ page }) => {
     await page.goto('/#/');
     await createArea(page, 'Personal');
-    await page.locator('.area-tab', { hasText: 'Notes' }).click();
     await expect(page.locator('.notes-tab .inline-add-input')).toBeVisible();
     await createNote(page, 'Quick thought');
     await expect(page.locator('.note-line-title', { hasText: 'Quick thought' })).toBeVisible();

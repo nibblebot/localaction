@@ -1,5 +1,40 @@
 import { test, expect, type Page } from '@playwright/test';
 
+// Unique tokens keep state synced from other specs (the e2e server DB is
+// shared for the whole run) from breaking count/position assertions.
+const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+/** Current inbox sidebar count; the badge is absent at zero. */
+async function inboxCount(page: Page): Promise<number> {
+  const badge = page.locator('.sidebar-inbox-link .sidebar-link-count');
+  if ((await badge.count()) === 0) return 0;
+  return Number.parseInt((await badge.textContent()) ?? '0', 10) || 0;
+}
+
+/**
+ * Baseline inbox count, read once it stops changing: state synced from
+ * the shared e2e server lands asynchronously after page load, and a
+ * push arriving between the baseline read and the assertion would
+ * otherwise skip the expected `before + 1`.
+ */
+async function stableInboxCount(page: Page): Promise<number> {
+  let prev = -1;
+  let curr = await inboxCount(page);
+  while (curr !== prev) {
+    await page.waitForTimeout(300);
+    prev = curr;
+    curr = await inboxCount(page);
+  }
+  return curr;
+}
+
+/** Visible inbox task titles, in render order (textareas: read .value). */
+async function inboxTitles(page: Page): Promise<string[]> {
+  return page
+    .locator('main[aria-label="Inbox"] .task-line-title')
+    .evaluateAll((els) => els.map((el) => (el as HTMLTextAreaElement).value ?? el.textContent ?? ''));
+}
+
 // Regression for "inbox tasks don't show up immediately / after reload".
 //
 // The bug: React Compiler memoizes hooks based on argument identity. The
@@ -74,47 +109,60 @@ test.describe('inbox visibility', () => {
     await openInbox(page);
     await expect(page.locator('main[aria-label="Inbox"] .inline-add-input')).toBeVisible();
 
-    await createInboxTask(page, 'Fresh inbox task');
+    const title = `Fresh inbox task ${uniq()}`;
+    const before = await stableInboxCount(page);
+    await createInboxTask(page, title);
 
     // Sidebar count + body must reflect the new task without any extra clicks.
-    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
-    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveValue('Fresh inbox task');
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText(
+      String(before + 1),
+    );
+    await expect.poll(() => inboxTitles(page)).toContain(title);
   });
 
   test('inbox tasks survive a page reload', async ({ page }) => {
+    const title = `Persisted inbox task ${uniq()}`;
     await openInbox(page);
-    await createInboxTask(page, 'Persisted inbox task');
-    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
-    await waitForOpfsSave(page, 'Persisted inbox task');
+    const before = await stableInboxCount(page);
+    await createInboxTask(page, title);
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText(
+      String(before + 1),
+    );
+    await waitForOpfsSave(page, title);
 
     await page.reload();
     await page.waitForSelector('.sidebar-inbox-link');
     await openInbox(page);
 
-    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText('1');
-    await expect(page.locator('main[aria-label="Inbox"] .task-line-title')).toHaveValue('Persisted inbox task');
+    await expect.poll(() => inboxTitles(page)).toContain(title);
   });
 
   test('Shift+Enter in a task title saves it and opens a focused empty sibling below', async ({ page }) => {
+    const tok = uniq();
+    const alpha = `Alpha ${tok}`;
+    const beta = `Beta ${tok}`;
     await openInbox(page);
-    await createInboxTask(page, 'Alpha');
-    await createInboxTask(page, 'Beta');
+    await createInboxTask(page, alpha);
+    await createInboxTask(page, beta);
 
     const titles = page.locator('main[aria-label="Inbox"] .task-line-title');
-    await titles.first().click();
+    // New tasks append to the end; whatever synced in from other specs
+    // sits above them, so the last two rows are Alpha and Beta.
+    const total = await titles.count();
+    await titles.nth(total - 2).click();
     await page.keyboard.press('Shift+Enter');
 
     // New empty row sits directly under the current one, focused for
     // quick entry; the untouched sibling stays put.
-    await expect(titles).toHaveCount(3);
-    await expect(titles.nth(0)).toHaveValue('Alpha');
-    await expect(titles.nth(1)).toHaveValue('');
-    await expect(titles.nth(2)).toHaveValue('Beta');
-    await expect(titles.nth(1)).toBeFocused();
+    await expect(titles).toHaveCount(total + 1);
+    await expect(titles.nth(total - 2)).toHaveValue(alpha);
+    await expect(titles.nth(total - 1)).toHaveValue('');
+    await expect(titles.nth(total)).toHaveValue(beta);
+    await expect(titles.nth(total - 1)).toBeFocused();
 
     // The focused row is a real editable task: typing + Enter commits it.
     await page.keyboard.type('Middle');
     await page.keyboard.press('Enter');
-    await expect(titles.nth(1)).toHaveValue('Middle');
+    await expect(titles.nth(total - 1)).toHaveValue('Middle');
   });
 });

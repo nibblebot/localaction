@@ -55,7 +55,6 @@ async function createPerson(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.area-tab', { hasText: 'Projects' }).click();
   await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
   const input = page.locator('.projects-tab .inline-add-input');
   await input.fill(name);
@@ -110,7 +109,6 @@ async function assignProjectPerson(
     .check();
   await page.keyboard.press('Escape');
   await page.locator('.area-header-crumb').first().click();
-  await page.locator('.area-tab', { hasText: 'Projects' }).click();
 }
 
 test.describe('Person-assignment row chrome', () => {
@@ -189,7 +187,6 @@ test.describe('Person-assignment row chrome', () => {
     await expect(popover.locator('.person-picker-row', { hasText: person })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await page.locator('.area-header-crumb').first().click();
-    await page.locator('.area-tab', { hasText: 'Projects' }).click();
 
     // Add the person to the area; the project popover now offers them.
     await assignAreaPerson(page, person);

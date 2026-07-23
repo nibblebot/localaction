@@ -622,62 +622,64 @@
 }
 
 /* ============================================================
-   Tabs (Projects / Tasks / Notes)
+   Area toolbar + collapsible sections (Area tasks / Projects / Notes)
    ============================================================ */
 
-.area-tabs {
+.area-toolbar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: var(--space-2);
-  border-bottom: 1px solid var(--border);
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: var(--space-2);
+}
+
+.pane-section {
   margin-bottom: var(--space-4);
 }
 
-.area-tab {
+.pane-section-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding-inline: 4px;
+}
+
+.pane-section-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 2px 12px;
   font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--text-secondary);
   background: transparent;
   border: 0;
-  border-bottom: 2px solid transparent;
+  padding: 2px 0;
   cursor: pointer;
-  margin-bottom: -1px;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease;
 }
 
-.area-tab:hover {
+.pane-section-toggle:hover {
   color: var(--text-h);
 }
 
-.area-tab-active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
+.pane-section-toggle svg {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex-shrink: 0;
 }
 
-.area-tab-count {
+.pane-section-title {
   font-size: 0.79rem;
-  color: var(--text-muted);
-  background: var(--surface);
-  padding: 1px 7px;
-  border-radius: var(--radius-pill);
-  min-width: 18px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
-.area-tab-active .area-tab-count {
-  background: var(--accent-tint);
-  color: var(--accent);
-}
-
-.area-tabs-spacer {
-  flex: 1 1 auto;
+/* Header trailing actions (e.g. collapse-all) pin to the right edge. */
+.pane-section-head > :last-child:not(.pane-section-toggle) {
+  margin-left: auto;
 }
 
 /* ============================================================

@@ -46,7 +46,6 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.area-tab', { hasText: 'Projects' }).click();
   await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
   const input = page.locator('.projects-tab .inline-add-input');
   await input.fill(name);

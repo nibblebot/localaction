@@ -25,7 +25,7 @@ test.describe('People', () => {
     await page.goto('/#/');
     await createPerson(page, name);
     // The new person appears as a filter chip.
-    await expect(page.locator('.person-filter-chip', { hasText: name })).toBeVisible();
+    await expect(page.locator(`.person-filter-chip[aria-label="${name}"]`)).toBeVisible();
   });
 
   test('a sidebar-created person is assignable from any entity popover', async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe('People', () => {
     await input.fill('Ghost');
     await input.press('Escape');
     await expect(page.locator('.person-filter-new-form')).toHaveCount(0);
-    await expect(page.locator('.person-filter-chip', { hasText: 'Ghost' })).toHaveCount(0);
+    await expect(page.locator(`.person-filter-chip[aria-label="Ghost"]`)).toHaveCount(0);
   });
 
   test('Self can be renamed from the sidebar and stays the canonical default', async ({ page }) => {
@@ -61,7 +61,7 @@ test.describe('People', () => {
     await page.goto('/#/');
 
     // Edit affordance lives on the chip (hover reveals it).
-    const selfChip = page.locator('.person-filter-chip-wrap', { hasText: 'Self' });
+    const selfChip = page.locator(`.person-filter-chip-wrap:has(.person-filter-chip[aria-label="Self"])`);
     await selfChip.hover();
     await selfChip.getByRole('button', { name: 'Edit Self' }).click();
     const editor = page.locator('.person-edit');
@@ -72,9 +72,9 @@ test.describe('People', () => {
     await editor.getByRole('button', { name: 'Done' }).click();
 
     // The chip shows the new display name, still first in canonical order.
-    const renamedChip = page.locator('.person-filter-chip-wrap', { hasText: newName });
+    const renamedChip = page.locator(`.person-filter-chip-wrap:has(.person-filter-chip[aria-label="${newName}"])`);
     await expect(renamedChip).toBeVisible();
-    await expect(page.locator('.person-filter-chip-wrap').first()).toHaveText(new RegExp(newName));
+    await expect(page.locator('.person-filter-chip').first()).toHaveAttribute('aria-label', newName);
 
     // In the assignment popover the renamed Self is still locked-on
     // and tagged "default".
@@ -93,6 +93,6 @@ test.describe('People', () => {
     await renamedChip.getByRole('button', { name: `Edit ${newName}` }).click();
     await editor.locator('.person-edit-name').fill('Self');
     await editor.getByRole('button', { name: 'Done' }).click();
-    await expect(page.locator('.person-filter-chip-wrap', { hasText: 'Self' })).toBeVisible();
+    await expect(page.locator(`.person-filter-chip-wrap:has(.person-filter-chip[aria-label="Self"])`)).toBeVisible();
   });
 });

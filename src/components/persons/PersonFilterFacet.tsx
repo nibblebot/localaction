@@ -137,10 +137,10 @@ function FilterChip({
         data-on={selected ? 'true' : 'false'}
         onClick={onToggle}
         title={name}
+        aria-label={name}
         aria-pressed={selected}
       >
         <PersonAvatar name={name} color={color} small />
-        <span className="person-filter-chip-name">{name || 'Untitled'}</span>
       </button>
       <button
         type="button"

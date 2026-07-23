@@ -2230,11 +2230,6 @@ body.sidebar-resizing {
   border-color: var(--accent-border);
   color: var(--accent);
 }
-
-.person-filter-chip-name {
-  line-height: 1.5;
-}
-
 /* Chip wrapper: positions the hover/focus edit badge without
    shifting the chip layout. */
 .person-filter-chip-wrap {

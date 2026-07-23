@@ -9,6 +9,13 @@ export interface InlineAddButtonProps {
   /** aria-label of the revealed input, e.g. "New task". */
   inputAriaLabel: string;
   onSubmit: (value: string) => void;
+  /**
+   * Hide the whole control (used when a sibling inline-add is open,
+   * so only one footer input shows at a time).
+   */
+  hidden?: boolean;
+  /** Notified whenever the input opens or collapses. */
+  onOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -22,13 +29,22 @@ export default function InlineAddButton({
   placeholder,
   inputAriaLabel,
   onSubmit,
-}: InlineAddButtonProps): React.JSX.Element {
-  const [open, setOpen] = useState(false);
+  hidden = false,
+  onOpenChange,
+}: InlineAddButtonProps): React.JSX.Element | null {
+  const [open, setOpenState] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  function setOpen(next: boolean): void {
+    setOpenState(next);
+    onOpenChange?.(next);
+  }
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  if (hidden) return null;
 
   if (!open) {
     return (

@@ -4,6 +4,7 @@
  * SortableTree with fully editable sections, add-task and add-section
  * buttons, and the person-filter "N tasks hidden" stub.
  */
+import { useState } from 'react';
 import { useDataLayer, createTask, createSection } from '../data/index.ts';
 import { useProjectTaskList } from './useProjectTaskList.ts';
 import { SectionedTaskTree } from './SectionedTaskTree.tsx';
@@ -21,6 +22,8 @@ export default function ProjectTaskList({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { taskIds, visibleIds, hiddenCount, subtaskProgress } = useProjectTaskList(projectId);
+  /** Which footer inline-add is open; the other button hides meanwhile. */
+  const [openAdd, setOpenAdd] = useState<'task' | 'section' | null>(null);
 
   function addTask(title: string): void {
     createTask(store, { title, placement: { kind: 'project', id: projectId } });
@@ -49,12 +52,16 @@ export default function ProjectTaskList({
           }
           inputAriaLabel="New task"
           onSubmit={addTask}
+          hidden={openAdd === 'section'}
+          onOpenChange={(open) => setOpenAdd(open ? 'task' : null)}
         />
         <InlineAddButton
           label="Add section"
           placeholder="New section…"
           inputAriaLabel="New section"
           onSubmit={addSection}
+          hidden={openAdd === 'task'}
+          onOpenChange={(open) => setOpenAdd(open ? 'section' : null)}
         />
       </div>
       {hiddenCount > 0 && (

@@ -43,7 +43,7 @@ test.describe('People', () => {
     await expect(popover.getByText('+ New person')).toHaveCount(0);
     // Checking the person assigns them; their chip joins the header cast.
     await popover.locator('.person-picker-row', { hasText: name }).click();
-    await expect(page.locator('.area-header-cast-chip', { hasText: name })).toBeVisible();
+    await expect(page.locator(`.area-header-cast .person-avatar[title="${name}"]`)).toBeVisible();
   });
 
   test('escape cancels the inline create form without adding a person', async ({ page }) => {

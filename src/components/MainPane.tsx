@@ -311,7 +311,6 @@ function AreaHeader({
           <span className="area-header-name-edit-text">{name || 'Untitled'}</span>
         </button>
       </h1>
-      <AreaHeaderCast areaId={areaId} cast={cast} />
       {adding ? (
         <input
           type="text"
@@ -346,6 +345,7 @@ function AreaHeader({
         </button>
       )}
       <div className="area-header-actions">
+        <AreaHeaderCast areaId={areaId} cast={cast} />
         <CompletedToggle showCompleted={showCompleted} onToggle={onToggleCompleted} />
       </div>
 
@@ -439,17 +439,18 @@ function CastChip({
   // re-renders on rename/recolor.
   const person = usePerson(store, personId);
   if (!person) return null;
+  const label = `Edit cast: ${person.name || 'Untitled'}`;
   return (
     <button
       type="button"
       className="area-header-cast-chip"
       onClick={onEdit}
-      title="Edit cast"
+      title={label}
+      aria-label={label}
       aria-haspopup="dialog"
       aria-expanded={expanded}
     >
       <PersonAvatar name={person.name} color={person.color} small />
-      <span className="area-header-cast-chip-name">{person.name || 'Untitled'}</span>
     </button>
   );
 }

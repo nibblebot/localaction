@@ -315,6 +315,17 @@
   margin-bottom: var(--space-5);
 }
 
+/* Area-wide action slot (e.g. show/hide completed). Pinned to the
+   right edge of the header so additional area-wide toggles can sit
+   beside the existing one without crowding the title. */
+.area-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 /* Area color marker — the same user hue as the sidebar dot, at
    header scale. Rendered inside the title button so dot and title
    form a single click target. */
@@ -629,17 +640,8 @@
 }
 
 /* ============================================================
-   Area toolbar + collapsible sections (Area tasks / Projects / Notes)
+   Collapsible sections (Area tasks / Projects / Notes)
    ============================================================ */
-
-.area-toolbar {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-  margin-bottom: var(--space-2);
-}
 
 .pane-section {
   margin-bottom: var(--space-4);

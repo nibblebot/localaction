@@ -164,14 +164,13 @@ export default function MainPane(): React.JSX.Element {
           name={area.name}
           color={area.color}
           parentChain={parentChain}
+          showCompleted={showCompleted}
+          onToggleCompleted={toggleCompleted}
           onNavigate={goToArea}
           onCreateSubArea={addSubArea}
           onDeleteArea={goToInbox}
         />
         <PersonFilterBanner />
-        <div className="area-toolbar">
-          <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
-        </div>
         <AreaTasksSection
           areaId={areaId}
           showCompleted={showCompleted}
@@ -208,16 +207,18 @@ export default function MainPane(): React.JSX.Element {
         >
           <NotesSection areaId={areaId} />
         </CollapsibleSection>
-      </div>
-    </main>
-  );
-}
+       </div>
+     </main>
+   );
+ }
 
 function AreaHeader({
   areaId,
   name,
   color,
   parentChain,
+  showCompleted,
+  onToggleCompleted,
   onNavigate,
   onCreateSubArea,
   onDeleteArea,
@@ -226,6 +227,8 @@ function AreaHeader({
   parentChain: readonly HeaderArea[];
   name: string;
   color: AreaColorId;
+  showCompleted: boolean;
+  onToggleCompleted: () => void;
   onNavigate: (id: string) => void;
   onCreateSubArea: (name: string) => void;
   onDeleteArea: () => void;
@@ -342,6 +345,9 @@ function AreaHeader({
           </svg>
         </button>
       )}
+      <div className="area-header-actions">
+        <CompletedToggle showCompleted={showCompleted} onToggle={onToggleCompleted} />
+      </div>
 
       <AreaEditPopover
         anchor={editAnchor}

@@ -54,8 +54,8 @@ test('area tasks: add, nest, complete, and persist across reload', async ({ page
   await expect(section.locator('.task-line', { hasText: `Task one ${tok}` })).toHaveCount(0);
   await expect(section.locator('.pane-section-toggle')).toContainText('· 1');
 
-  // The show-completed toolbar toggle brings it back in place.
-  await page.locator('.area-toolbar button[aria-label="Show completed tasks"]').click();
+  // The area-wide show-completed toggle (in the area header) brings it back.
+  await page.locator('.area-header-actions button[aria-label="Show completed tasks"]').click();
   await expect(section.locator('.task-line', { hasText: `Task one ${tok}` })).toBeVisible();
 
   // Tasks survive a reload (OPFS persistence round-trip).

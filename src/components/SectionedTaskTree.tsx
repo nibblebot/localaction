@@ -248,7 +248,7 @@ export function SectionedTaskTree({
       nodes={nodes}
       onMove={onMove}
       ariaLabel={ariaLabel ?? 'Tasks'}
-      className="sortable-list"
+      className="sortable-list project-task-tree"
       indentWidth={22}
       maxDepthOf={(id) =>
         decodeSectionNodeId(id) !== null ? 0 : Number.POSITIVE_INFINITY

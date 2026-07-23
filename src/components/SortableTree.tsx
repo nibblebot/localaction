@@ -111,8 +111,18 @@ interface FlattenedItem<TId extends string> {
   id: TId;
   parentId: TId | null;
   depth: number;
+  /**
+   * Ancestor columns painted as full-height verticals on this row.
+   * The row's own column (`depth`) is NOT in this set — the
+   * dedicated `.tree-branch` span paints it with full or half
+   * height depending on `isLastSibling`.
+   */
+  continues: readonly number[];
+  /** Column for the row's own branch connector. -1 at depth 0. */
+  parentCol: number;
+  /** True when this row is the last sibling under its parent. */
+  isLastSibling: boolean;
 }
-
 function flattenTree<TId extends string>(
   nodes: readonly SortableTreeNode<TId>[],
 ): FlattenedItem<TId>[] {
@@ -121,13 +131,33 @@ function flattenTree<TId extends string>(
     ns: readonly SortableTreeNode<TId>[],
     parentId: TId | null,
     depth: number,
+    /** Ancestor columns still descending through the parent. */
+    inherited: readonly number[],
   ): void => {
-    for (const n of ns) {
-      out.push({ id: n.id, parentId, depth });
-      walk(n.children, n.id, depth + 1);
+    for (let i = 0; i < ns.length; i += 1) {
+      const n = ns[i]!;
+      const isLast = i === ns.length - 1;
+      const parentCol = depth > 0 ? depth - 1 : -1;
+      const continues = inherited;
+      // Descendants see this row's own column iff the row has a
+      // sibling below it. Depth-0 sections never push (no parent
+      // column), so the section's gutter terminates at the last
+      // task inside it.
+      const passDown = !isLast && parentCol >= 0
+        ? [...inherited, parentCol]
+        : inherited;
+      out.push({
+        id: n.id,
+        parentId,
+        depth,
+        continues,
+        parentCol,
+        isLastSibling: depth > 0 && isLast,
+      });
+      walk(n.children, n.id, depth + 1, passDown);
     }
   };
-  walk(nodes, null, 0);
+  walk(nodes, null, 0, []);
   return out;
 }
 
@@ -250,11 +280,16 @@ function currentPosition<TId extends string>(
   }
   return { parentId: activeItem.parentId, beforeId };
 }
-
 interface SortableTreeSlotProps<TId extends string> {
   id: TId;
   depth: number;
   indentWidth: number;
+  /** Ancestor columns painted full-height on this row's gutter. */
+  continues: readonly number[];
+  /** Column for the row's own branch connector. -1 at depth 0. */
+  parentCol: number;
+  /** True when the row's own branch is the last-sibling (top-half). */
+  isLastSibling: boolean;
   children: (handleProps: SortableHandleProps, depth: number) => ReactNode;
 }
 
@@ -262,6 +297,9 @@ function SortableTreeSlot<TId extends string>({
   id,
   depth,
   indentWidth,
+  continues,
+  parentCol,
+  isLastSibling,
   children: render,
 }: SortableTreeSlotProps<TId>): ReactElement {
   const {
@@ -290,8 +328,33 @@ function SortableTreeSlot<TId extends string>({
     <div
       className="sortable-item-slot"
       role="listitem"
-      style={depth > 0 ? { paddingLeft: depth * indentWidth } : undefined}
+      data-depth={depth}
+      data-last-sibling={isLastSibling ? 'true' : undefined}
+      style={
+        depth > 0
+          ? ({
+              paddingLeft: depth * indentWidth,
+              '--tree-gutter-width': `${depth * indentWidth}px`,
+              '--tree-indent-width': `${indentWidth}px`,
+            } as CSSProperties)
+          : undefined
+      }
     >
+      {continues.map((col) => (
+        <span
+          key={`c${col}`}
+          className="tree-line"
+          style={{ '--tree-column': col } as CSSProperties}
+          aria-hidden="true"
+        />
+      ))}
+      {parentCol >= 0 && (
+        <span
+          className={`tree-branch${isLastSibling ? ' tree-branch-last' : ''}`}
+          style={{ '--tree-column': parentCol } as CSSProperties}
+          aria-hidden="true"
+        />
+      )}
       {render(handle, depth)}
     </div>
   );
@@ -439,6 +502,9 @@ export function SortableTree<TId extends string>({
               id={item.id}
               depth={item.depth}
               indentWidth={indentWidth}
+              continues={item.continues}
+              parentCol={item.parentCol}
+              isLastSibling={item.isLastSibling}
             >
               {(handle, depth) => children(item.id, handle, depth)}
             </SortableTreeSlot>

@@ -171,12 +171,6 @@ export default function MainPane(): React.JSX.Element {
           onDeleteArea={goToInbox}
         />
         <PersonFilterBanner />
-        <AreaTasksSection
-          areaId={areaId}
-          showCompleted={showCompleted}
-          collapsed={collapsedSections.collapsed.has('tasks')}
-          onToggleCollapse={() => collapsedSections.toggle('tasks')}
-        />
         <CollapsibleSection
           title="Projects"
           count={projectCount}
@@ -199,6 +193,12 @@ export default function MainPane(): React.JSX.Element {
             onToggleCollapse={collapsedProjects.toggle}
           />
         </CollapsibleSection>
+        <AreaTasksSection
+          areaId={areaId}
+          showCompleted={showCompleted}
+          collapsed={collapsedSections.collapsed.has('tasks')}
+          onToggleCollapse={() => collapsedSections.toggle('tasks')}
+        />
         <CollapsibleSection
           title="Notes"
           count={noteCount}

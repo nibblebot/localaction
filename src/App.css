@@ -1974,8 +1974,9 @@
 }
 
 .section-row .editable-title {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 0 1 auto;
+  field-sizing: content;
+  min-width: 3ch;
   font: inherit;
   font-size: 0.96rem;
   font-weight: 600;

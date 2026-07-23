@@ -15,20 +15,29 @@ export interface AreaEditPopoverProps {
   name: string;
   color: AreaColorId;
   onClose: () => void;
+  /**
+   * Click handler for the in-popover delete button. The header owns
+   * the confirm modal, snapshot, and undo wiring; the popover only
+   * asks for a delete.
+   */
+  onRequestDelete: () => void;
 }
 
 /**
  * Tiny popover for renaming and recoloring an area (or sub-area),
  * opened from the main-pane area header. The name commits on
- * blur/Enter; a color swatch commits immediately. Delete stays in
- * the header (it needs the confirm modal).
+ * blur/Enter; a color swatch commits immediately. Delete lives in
+ * the popover too; the header still owns the confirm modal that
+ * gates it.
  */
+
 export default function AreaEditPopover({
   anchor,
   areaId,
   name,
   color,
   onClose,
+  onRequestDelete,
 }: AreaEditPopoverProps): React.JSX.Element | null {
   const { store } = useDataLayer();
   const [draft, setDraft] = useState(name);
@@ -122,6 +131,19 @@ export default function AreaEditPopover({
               aria-label={`Use color ${c.label}`}
             />
           ))}
+        </div>
+        <div className="area-edit-footer">
+          <button
+            type="button"
+            className="area-edit-delete"
+            onClick={onRequestDelete}
+            aria-label="Delete area"
+            title="Delete area"
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
         </div>
       </div>
     </>

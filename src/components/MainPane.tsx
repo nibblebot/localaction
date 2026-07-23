@@ -343,23 +343,16 @@ function AreaHeader({
         </button>
       )}
 
-      <button
-        type="button"
-        className="area-header-delete"
-        onClick={() => setConfirmDelete(true)}
-        aria-label="Delete area"
-        title="Delete area"
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#trash-icon" />
-        </svg>
-      </button>
       <AreaEditPopover
         anchor={editAnchor}
         areaId={areaId}
         name={name}
         color={color}
         onClose={() => setEditAnchor(null)}
+        onRequestDelete={() => {
+          setEditAnchor(null);
+          setConfirmDelete(true);
+        }}
       />
       <ConfirmModal
         open={confirmDelete}

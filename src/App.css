@@ -1094,6 +1094,118 @@ body.sidebar-resizing {
   text-decoration: underline;
 }
 
+/* Static weekday + day label rendered inside a read-only task row
+   to label which day each item falls on (Week view). */
+.task-line-due-date {
+  margin-left: auto;
+  font-size: 0.79rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ============================================================
+   Today pane — due-today items grouped by area → project
+   ============================================================ */
+
+.today-date {
+  font-size: 0.93rem;
+  color: var(--text-muted);
+}
+
+.today-empty {
+  color: var(--text-muted);
+  padding-inline: 4px;
+}
+
+.today-group {
+  margin-top: var(--space-4);
+}
+
+.today-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 var(--space-2);
+  padding-inline: 4px;
+  font-size: 1.07rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.today-project-title {
+  margin: var(--space-3) 0 var(--space-1);
+  padding-inline: 4px;
+  font-size: 0.93rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Row for a project that is itself due today: icon + name + badge,
+   click-through to the owning area. */
+.today-project-due {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: var(--space-2) var(--space-2);
+  font: inherit;
+  color: var(--text-h);
+  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+}
+
+.today-project-due:hover {
+  background: var(--surface-hover);
+}
+
+.today-project-due-name {
+  flex: 1 1 auto;
+  font-weight: 500;
+}
+
+.today-due-badge {
+  font-size: 0.79rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  background: var(--accent-tint);
+  border-radius: var(--radius-pill);
+  padding: 1px 8px;
+}
+
+/* Done section: collapsed by default via localStorage state; the whole
+   header row is the toggle. */
+.today-done-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0 4px;
+  font: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.today-done-toggle .today-group-title {
+  margin: 0;
+  padding-inline: 0;
+  color: inherit;
+}
+
+.today-done-toggle .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.today-done .task-list {
+  opacity: 0.6;
+}
+
 /* Flat task list (inbox / area tasks) — same vertical rhythm as
    `.sortable-list`; each <li> is a transparent wrapper, the row
    inside carries the chrome. */

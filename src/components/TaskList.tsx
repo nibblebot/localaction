@@ -5,6 +5,10 @@
  *
  * - `readOnly`        — area flat list: span title, no row
  *                       actions (person, add sub-task, delete).
+ * - `showDueDate`     — optional static date label after the title
+ *                       (e.g. "Mon · 7/20"); surfaces calendar days
+ *                       in cross-day views without exposing the
+ *                       editable DueDateButton actions.
  * - `effectiveStatus` — flat lists show ancestor-aware effective
  *                       status; trees use the task's own status.
  * - `handle`          — SortableList/SortableTree handle; presence
@@ -45,6 +49,7 @@ import { consumeTaskTitleFocus, queueTaskTitleFocus } from './taskTitleFocus.ts'
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import TaskDueDateButton from './TaskDueDateButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
+import { weekdayWithDate } from './dates.ts';
 
 function TaskTitleInput({
   taskId,
@@ -125,11 +130,12 @@ function TaskTitleInput({
     />
   );
 }
-
 export interface TaskRowProps {
   taskId: string;
   /** Inbox/area flat lists: read-only title, no row actions. */
   readOnly?: boolean;
+  /** Render the task's due date as a static label after the title. */
+  showDueDate?: boolean;
   /** Use ancestor-aware effective status for the checkbox and dimming. */
   effectiveStatus?: boolean;
   /** Sortable handle — presence enables the drag handle and chrome. */
@@ -204,6 +210,7 @@ function TaskRowPersonAssignment({
 export function TaskRow({
   taskId,
   readOnly,
+  showDueDate,
   effectiveStatus,
   handle,
   progress,
@@ -267,6 +274,11 @@ export function TaskRow({
         <span className="task-line-title">{task.title}</span>
       ) : (
         <TaskTitleInput taskId={taskId} title={task.title} />
+      )}
+      {showDueDate && task.dueDate && (
+        <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
+          {weekdayWithDate(task.dueDate)}
+        </span>
       )}
       {progress !== undefined && progress.total > 0 && (
         <div
@@ -349,17 +361,19 @@ export function TaskRow({
 export function TaskList({
   ids,
   readOnly,
+  showDueDate,
   effectiveStatus,
 }: {
   ids: readonly string[];
   readOnly?: boolean;
+  showDueDate?: boolean;
   effectiveStatus?: boolean;
 }): React.JSX.Element {
   return (
     <ul className="task-list">
       {ids.map((tid) => (
         <li key={tid}>
-          <TaskRow taskId={tid} readOnly={readOnly} effectiveStatus={effectiveStatus} />
+          <TaskRow taskId={tid} readOnly={readOnly} showDueDate={showDueDate} effectiveStatus={effectiveStatus} />
         </li>
       ))}
     </ul>

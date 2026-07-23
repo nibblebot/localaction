@@ -7,10 +7,12 @@ import {
   useInboxTaskIds,
   useDimmedAreaIds,
   useFilteredAreaCounts,
+  useDueItems,
   type AreaCount,
 } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
-import { formatRoute, INBOX } from '../router.ts';
+import { formatRoute, INBOX, TODAY, WEEK } from '../router.ts';
+import { todayIso, weekBoundsIso } from './dates.ts';
 import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
@@ -203,14 +205,20 @@ export default function Sidebar({
   }, [selection, counts]);
 
   const inboxIds = useInboxTaskIds(store);
+  const todayItems = useDueItems(store, todayIso(), todayIso());
+  const todayOpenCount = todayItems.filter((i) => !i.done).length;
 
   const selectedId = selection.kind === 'area' ? selection.id : null;
 
-  // Only areas with rendered children are collapsible.
+  const week = weekBoundsIso();
+  const weekItems = useDueItems(store, week.from, week.to);
+  const weekOpenCount = weekItems.filter((i) => !i.done).length;
+
   const collapsibleIds = useMemo<string[]>(
     () => tree.filter((n) => n.children.length > 0).map((n) => n.count.id),
     [tree],
   );
+
   const allCollapsed =
     collapsibleIds.length > 0 && collapsibleIds.every((id) => collapsed.has(id));
 
@@ -266,6 +274,32 @@ export default function Sidebar({
           {inboxIds.length > 0 ? (
             <span className="sidebar-link-count" aria-label="Inbox task count">
               {inboxIds.length}
+            </span>
+          ) : null}
+        </a>
+        <a
+          href={formatRoute(TODAY)}
+          className={`sidebar-item sidebar-item-top sidebar-today-link${selection.kind === 'today' ? ' sidebar-item-active' : ''}`}
+          aria-label={todayOpenCount > 0 ? `Today, ${todayOpenCount}` : 'Today'}
+          aria-current={selection.kind === 'today' ? 'page' : undefined}
+        >
+          <span className="sidebar-item-name">Today</span>
+          {todayOpenCount > 0 ? (
+            <span className="sidebar-link-count" aria-label="Today due count">
+              {todayOpenCount}
+            </span>
+          ) : null}
+        </a>
+        <a
+          href={formatRoute(WEEK)}
+          className={`sidebar-item sidebar-item-top sidebar-week-link${selection.kind === 'week' ? ' sidebar-item-active' : ''}`}
+          aria-label={weekOpenCount > 0 ? `Week, ${weekOpenCount}` : 'Week'}
+          aria-current={selection.kind === 'week' ? 'page' : undefined}
+        >
+          <span className="sidebar-item-name">Week</span>
+          {weekOpenCount > 0 ? (
+            <span className="sidebar-link-count" aria-label="Week due count">
+              {weekOpenCount}
             </span>
           ) : null}
         </a>

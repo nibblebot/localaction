@@ -14,6 +14,22 @@ describe('parseRoute', () => {
     expect(parseRoute('/a/are1')).toEqual<Selection>({ kind: 'area', id: 'are1' });
   });
 
+  it('parses a today route', () => {
+    expect(parseRoute('#/today')).toEqual<Selection>({ kind: 'today' });
+  });
+
+  it('parses a today route without the leading hash', () => {
+    expect(parseRoute('/today')).toEqual<Selection>({ kind: 'today' });
+  });
+
+  it('parses a week route', () => {
+    expect(parseRoute('#/week')).toEqual<Selection>({ kind: 'week' });
+  });
+
+  it('parses a week route without the leading hash', () => {
+    expect(parseRoute('/week')).toEqual<Selection>({ kind: 'week' });
+  });
+
   it('parses an inbox route', () => {
     expect(parseRoute('#/inbox')).toEqual<Selection>({ kind: 'inbox' });
   });
@@ -47,6 +63,8 @@ describe('formatRoute', () => {
   it('formats each selection kind', () => {
     expect(formatRoute({ kind: 'home' })).toBe('#/');
     expect(formatRoute({ kind: 'inbox' })).toBe('#/inbox');
+    expect(formatRoute({ kind: 'today' })).toBe('#/today');
+    expect(formatRoute({ kind: 'week' })).toBe('#/week');
     expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
     expect(formatRoute({ kind: 'project-notes', id: 'p1' })).toBe('#/p/p1/notes');
   });
@@ -65,6 +83,18 @@ describe('routeEquals', () => {
     expect(routeEquals(a, { kind: 'project-notes', id: 'p1' })).toBe(true);
     expect(routeEquals(a, { kind: 'project-notes', id: 'p2' })).toBe(false);
     expect(routeEquals(a, { kind: 'area', id: 'p1' })).toBe(false);
+  });
+
+  it('treats two today selections as equal', () => {
+    expect(routeEquals({ kind: 'today' }, { kind: 'today' })).toBe(true);
+    expect(routeEquals({ kind: 'today' }, { kind: 'inbox' })).toBe(false);
+    expect(routeEquals({ kind: 'today' }, { kind: 'home' })).toBe(false);
+  });
+
+  it('treats two week selections as equal', () => {
+    expect(routeEquals({ kind: 'week' }, { kind: 'week' })).toBe(true);
+    expect(routeEquals({ kind: 'week' }, { kind: 'today' })).toBe(false);
+    expect(routeEquals({ kind: 'week' }, { kind: 'inbox' })).toBe(false);
   });
 
   it('treats two inbox selections as equal', () => {

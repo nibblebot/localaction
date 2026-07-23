@@ -259,3 +259,100 @@ export function getProjectRollups(
   }
   return projectRollups;
 }
+
+export interface DueItem {
+  kind: 'task' | 'project';
+  id: string;
+  /** The matched due date (`YYYY-MM-DD`, local calendar day). */
+  dueDate: string;
+  /** Owning area id (resolved through the placement chain), or null for Inbox-rooted items. */
+  areaId: string | null;
+  /** Owning project id, or null for Inbox / area-rooted tasks. */
+  projectId: string | null;
+  /**
+   * Effective completion state. Always false for projects (they have no
+   * status cell); tasks use the read-time derivation so a stored-done
+   * parent with open children still reads open.
+   */
+  done: boolean;
+}
+
+/**
+ * Every task and project due in the inclusive local-date range
+ * [`from`, `to`] (`YYYY-MM-DD` strings), across ALL placements — Inbox
+ * roots, area roots, projects, sections, and nested sub-tasks. String
+ * comparison on the date-only ISO cell is an exact calendar-day match:
+ * no timestamps, no timezone math. Today is the degenerate range
+ * `from === to`. Items are ordered by due date, then their sibling
+ * `order` cell within each kind.
+ */
+export function getDueItems(
+  store: MergeableStore,
+  from: string,
+  to: string,
+  _version = 0,
+): DueItem[] {
+  const items: DueItem[] = [];
+  for (const pid of store.getRowIds(TABLES.projects)) {
+    const due = store.getCell(TABLES.projects, pid, COLUMNS.projects.dueDate);
+    if (typeof due !== 'string' || due < from || due > to) continue;
+    const areaRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId);
+    items.push({
+      kind: 'project',
+      id: pid,
+      dueDate: due,
+      areaId: typeof areaRaw === 'string' ? areaRaw : null,
+      projectId: pid,
+      done: false,
+    });
+  }
+  for (const tid of store.getRowIds(TABLES.tasks)) {
+    const due = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.dueDate);
+    if (typeof due !== 'string' || due < from || due > to) continue;
+    const root = getRootPlacement(store, tid);
+    let areaId: string | null = null;
+    let projectId: string | null = null;
+    if (root.kind === 'area') {
+      areaId = root.id;
+    } else if (root.kind === 'project') {
+      projectId = root.id;
+      const areaRaw = store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId);
+      areaId = typeof areaRaw === 'string' ? areaRaw : null;
+    }
+    items.push({
+      kind: 'task',
+      id: tid,
+      dueDate: due,
+      areaId,
+      projectId,
+      done: getEffectiveTaskStatus(store, tid) === TASK_STATUS.done,
+    });
+  }
+  const orderOf = (item: DueItem): number =>
+    Number(
+      store.getCell(
+        item.kind === 'task' ? TABLES.tasks : TABLES.projects,
+        item.id,
+        item.kind === 'task' ? COLUMNS.tasks.order : COLUMNS.projects.order,
+      ) ?? 0,
+    );
+  return items.sort((a, b) => {
+    if (a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
+    const oa = orderOf(a);
+    const ob = orderOf(b);
+    return oa !== ob ? oa - ob : a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Reactive counterpart of `getDueItems`. Watches tasks (due dates,
+ * statuses, placements), projects (due dates, area links), and sections
+ * (section-rooted tasks resolve their project through the section row).
+ */
+export function useDueItems(store: MergeableStore, from: string, to: string): DueItem[] {
+  const v =
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.sections);
+  return getDueItems(store, from, to, v);
+}

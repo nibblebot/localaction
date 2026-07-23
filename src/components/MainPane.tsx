@@ -43,6 +43,8 @@ import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
 import { INBOX } from '../router.ts';
+import TodayPane from './TodayPane.tsx';
+import WeekPane from './WeekPane.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
 import AreaEditPopover from './AreaEditPopover.tsx';
 import InlineAddInput from './InlineAddInput.tsx';
@@ -117,6 +119,14 @@ export default function MainPane(): React.JSX.Element {
 
   if (selection.kind === 'inbox') {
     return <InboxPane />;
+  }
+
+  if (selection.kind === 'today') {
+    return <TodayPane />;
+  }
+
+  if (selection.kind === 'week') {
+    return <WeekPane />;
   }
 
   if (!areaId || !area) {

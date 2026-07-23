@@ -206,5 +206,7 @@ export {
   getProjectRollups,
   useAreaCounts,
   useProjectRollups,
+  getDueItems,
+  useDueItems,
 } from './selectors.ts';
-export type { AreaCount, ProjectRollup } from './selectors.ts';
+export type { AreaCount, ProjectRollup, DueItem } from './selectors.ts';

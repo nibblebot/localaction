@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useFocusTrap } from './useFocusTrap.ts';
+import { toIso, todayIso } from './dates.ts';
 
 interface Anchor {
   x: number;
@@ -16,17 +17,6 @@ const MONTH_NAMES = [
 function formatDueDate(iso: string): string {
   const [, mm, dd] = iso.split('-');
   return `${mm}/${dd}`;
-}
-
-function toIso(year: number, month: number, day: number): string {
-  const mm = String(month + 1).padStart(2, '0');
-  const dd = String(day).padStart(2, '0');
-  return `${year}-${mm}-${dd}`;
-}
-
-function todayIso(): string {
-  const now = new Date();
-  return toIso(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 function parseIso(iso: string | null): { year: number; month: number; day: number } | null {

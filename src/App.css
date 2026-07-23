@@ -39,12 +39,21 @@
   gap: var(--space-2);
 }
 
-/* Sync badge — pinned at the foot of the sidebar (DESIGN.md
-   Navigation: local-first status is always visible, never a toast). */
+/* Sync badge + appearance trigger — pinned at the foot of the sidebar
+   (DESIGN.md Navigation: local-first status is always visible, never a toast).
+   Badge anchors left and grows; the appearance trigger anchors right. */
 .sidebar-footer {
   margin-top: auto;
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sidebar-footer > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .sidebar-app-name {
@@ -260,15 +269,12 @@
   padding: var(--space-5) var(--space-6);
 }
 
-/* Flat-pane header (Inbox): title left, pane actions right. The
-   inline-end margin keeps header actions clear of the fixed
-   `.appearance-fab` (40px + its inset) floating at the top-right. */
+/* Flat-pane header (Inbox): title left, pane actions right. */
 .main-pane-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-inline-end: calc(40px + var(--space-2));
 }
 
 .main-pane-title {
@@ -310,13 +316,14 @@
 }
 
 /* Area color marker — the same user hue as the sidebar dot, at
-   header scale. */
-.area-header-dot {
+   header scale. Rendered inside the title button so dot and title
+   form a single click target. */
+.area-header-name-edit-dot {
+  display: inline-block;
   width: 12px;
   height: 12px;
   border-radius: var(--radius-pill);
   flex-shrink: 0;
-  margin-inline-end: 2px;
 }
 
 .area-header-slash {
@@ -344,9 +351,12 @@
   margin: 0;
   cursor: pointer;
   text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.area-header-name-edit:hover {
+.area-header-name-edit:hover .area-header-name-edit-text {
   text-decoration: underline;
 }
 
@@ -429,6 +439,7 @@
   padding: 0;
   font-family: inherit;
   flex-shrink: 0;
+  margin-left: auto;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -443,34 +454,6 @@
   height: var(--icon-md);
 }
 
-.area-header-edit {
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-  flex-shrink: 0;
-  margin-left: auto;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-}
-
-.area-header-edit:hover {
-  color: var(--text-h);
-  background: var(--surface-hover);
-  border-color: var(--text-muted);
-}
-
-.area-header-edit svg {
-  width: var(--icon-md);
-  height: var(--icon-md);
-}
 
 /* ============================================================
    Area edit popover (rename + recolor from the area header)
@@ -1624,14 +1607,14 @@
 }
 
 /* ============================================================
-   Appearance FAB + popover menu
+   Appearance trigger + popover menu (sidebar footer)
    ============================================================ */
 
 .appearance-fab {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + var(--space-3));
-  inset-inline-end: calc(env(safe-area-inset-right, 0px) + var(--space-3));
+  position: relative;
   z-index: var(--z-fab);
+  flex: 0 0 auto;
+  margin-inline-start: auto;
 }
 
 .appearance-fab-trigger {
@@ -1665,8 +1648,8 @@
 
 .appearance-menu {
   position: absolute;
-  top: calc(100% + 8px);
-  inset-inline-end: 0;
+  bottom: calc(100% + 8px);
+  inset-inline-start: 0;
   width: 280px;
   background: var(--surface);
   color: var(--text-h);
@@ -2675,9 +2658,7 @@
   .person-avatar,
   .sidebar-area-caret,
   .project-row-caret,
-  .sidebar-section-title-action,
   .area-header-add,
-  .area-header-edit,
   .area-header-delete,
   .appearance-fab-trigger,
   .due-calendar-nav {
@@ -2719,7 +2700,6 @@
   }
 
   .area-header-add::after,
-  .area-header-edit::after,
   .area-header-delete::after {
     content: '';
     position: absolute;

@@ -51,7 +51,7 @@ test.describe('Area header editing', () => {
     const name = `Work ${uniq()}`;
     await createArea(page, name);
 
-    await page.locator('.area-header-edit', { hasTitle: 'Edit area' }).click();
+    await page.locator('.area-header-name-edit').click();
     const blue = page.locator('.area-edit-color-swatch[title="Blue"]');
     await blue.click();
     await expect(blue).toHaveAttribute('data-active', 'true');
@@ -60,7 +60,7 @@ test.describe('Area header editing', () => {
     await expect(page.locator('.area-edit')).toHaveCount(0);
 
     // Reopening shows the persisted color as active.
-    await page.locator('.area-header-edit', { hasTitle: 'Edit area' }).click();
+    await page.locator('.area-header-name-edit').click();
     await expect(
       page.locator('.area-edit-color-swatch[title="Blue"]'),
     ).toHaveAttribute('data-active', 'true');

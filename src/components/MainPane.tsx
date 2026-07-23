@@ -289,11 +289,6 @@ function AreaHeader({
           /
         </span>
       )}
-      <span
-        className="area-header-dot"
-        style={{ background: hex }}
-        aria-hidden="true"
-      />
       <h1 className="area-header-name">
         <button
           type="button"
@@ -303,7 +298,12 @@ function AreaHeader({
           aria-haspopup="dialog"
           aria-expanded={editAnchor !== null}
         >
-          {name || 'Untitled'}
+          <span
+            className="area-header-name-edit-dot"
+            style={{ background: hex }}
+            aria-hidden="true"
+          />
+          <span className="area-header-name-edit-text">{name || 'Untitled'}</span>
         </button>
       </h1>
       <AreaHeaderCast areaId={areaId} cast={cast} />
@@ -342,19 +342,7 @@ function AreaHeader({
           </button>
         )
       )}
-      <button
-        type="button"
-        className="area-header-edit"
-        onClick={openEditor}
-        aria-label="Edit area"
-        title="Edit area"
-        aria-haspopup="dialog"
-        aria-expanded={editAnchor !== null}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#edit-icon" />
-        </svg>
-      </button>
+
       <button
         type="button"
         className="area-header-delete"

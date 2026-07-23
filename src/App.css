@@ -361,6 +361,9 @@
 }
 
 .area-header-crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.43rem;
   font-weight: 500;
   color: var(--text-muted);

@@ -14,6 +14,7 @@ import { formatRoute, INBOX } from '../router.ts';
 import { useCollapsedAreas } from './useCollapsedAreas.ts';
 import InlineAddInput from './InlineAddInput.tsx';
 import SyncStatusBadge from './SyncStatusBadge.tsx';
+import AppearanceMenu from './appearance/AppearanceMenu.tsx';
 import { areaColorHex, type AreaColorId } from '../data/colors.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableTreeNode } from './SortableTree.tsx';
@@ -356,6 +357,7 @@ export default function Sidebar({
       </div>
       <div className="sidebar-footer">
         <SyncStatusBadge />
+        <AppearanceMenu />
       </div>
     </aside>
   );

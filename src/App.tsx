@@ -8,7 +8,6 @@ import MainPane from './components/MainPane.tsx';
 import { useFocusTrap } from './components/useFocusTrap.ts';
 import { Inspector } from 'tinybase/ui-react-inspector';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
-import AppearanceMenu from './components/appearance/AppearanceMenu.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
 import PersonFilterProvider from './components/persons/PersonFilterContext.tsx';
 import './App.css';
@@ -69,7 +68,6 @@ function App(): React.JSX.Element {
                   ) : null}
                   <MainPane />
                   {import.meta.env.DEV ? <Inspector /> : null}
-                  <AppearanceMenu />
                   <QuickAddModal />
                 </div>
               </UndoProvider>

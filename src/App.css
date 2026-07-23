@@ -787,6 +787,17 @@
   padding: 10px 14px;
 }
 
+/* Right-aligned action cluster on project rows (DueDate, Person,
+   Notes, Rename, Trash). One wrapper so the cluster shifts together
+   when items are added/hidden, and only one auto-margin slot
+   consumes the flex space. */
+.project-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
 .project-row-caret {
   display: inline-flex;
   align-items: center;
@@ -1054,6 +1065,17 @@
 .task-line-done .task-line-title {
   text-decoration: line-through;
   color: var(--text-muted);
+}
+
+/* Right-aligned action cluster on task rows (DueDate, Person,
+   AddSubtask, Trash). One wrapper so the cluster shifts together
+   when items are added/hidden, and only one auto-margin slot
+   consumes the flex space. */
+.task-line-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
 }
 
 .task-line-check {

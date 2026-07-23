@@ -12,6 +12,7 @@ import {
 } from '../../data/personLinks.ts';
 import {
   sortPersonIds,
+  useEntityAllowedPersons,
   usePresentPersonIds,
 } from '../../data/personSelectors.ts';
 import { usePerson } from '../../data/persons.ts';
@@ -77,7 +78,19 @@ export default function PersonAssignmentPopover({
 
   const selectedSet = useMemo(() => new Set(current), [current]);
   // `personsV` is the React Compiler dep token so a rename re-sorts.
-  const everyone = sortPersonIds(store, usePresentPersonIds(store), personsV);
+  // Candidate set: the parent's allowed people, unioned with anyone
+  // already assigned to this entity (kept present). This enforces the
+  // subset rule — a child can only *add* members from its parent —
+  // while a now-disallowed assignee (pre-existing, peer-assigned via
+  // sync, or dropped after the parent set shrank) stays visible and
+  // removable until explicitly removed.
+  const allowed = useEntityAllowedPersons(store, entityType, entityId);
+  const present = new Set(usePresentPersonIds(store));
+  const everyone = sortPersonIds(
+    store,
+    [...new Set([...allowed, ...current])].filter((id) => present.has(id)),
+    personsV,
+  );
 
   if (!anchor) return null;
 

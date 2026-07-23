@@ -848,6 +848,54 @@ function SubAreaHeader({
   );
 }
 
+/**
+ * The person-assignment icon for a project row, suppressed when the
+ * project's containing area has a single-person resolved set (just
+ * Self). The button still edits this project; only the visibility
+ * test reads the area.
+ *
+ * `ProjectRowPersonAssignment` (without `ForArea`) is the parent's
+ * branch selector: when no containing area exists (`areaId === null`,
+ * i.e. a project rooted in the Inbox) it always renders the button;
+ * otherwise it delegates to the gate, which only exists in the
+ * project-with-area branch so the `usePeopleForEntity` hook is
+ * unconditional.
+ */
+function ProjectRowPersonAssignmentForArea({
+  projectId,
+  areaId,
+}: {
+  projectId: string;
+  areaId: string;
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const areaPeople = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
+  if (areaPeople.length <= 1) return null;
+  return (
+    <PersonAssignmentButton
+      entityType={NOTE_ENTITY_TYPE.project}
+      entityId={projectId}
+    />
+  );
+}
+
+function ProjectRowPersonAssignment({
+  projectId,
+  areaId,
+}: {
+  projectId: string;
+  areaId: string | null;
+}): React.JSX.Element | null {
+  if (areaId === null) {
+    return (
+      <PersonAssignmentButton
+        entityType={NOTE_ENTITY_TYPE.project}
+        entityId={projectId}
+      />
+    );
+  }
+  return <ProjectRowPersonAssignmentForArea projectId={projectId} areaId={areaId} />;
+}
 function ProjectRow({
   projectId,
   name,
@@ -937,54 +985,53 @@ function ProjectRow({
             {done} / {total}
           </span>
         </div>
-        <ProjectDueDateButton projectId={projectId} />
-        <PersonAssignmentButton
-          entityType={NOTE_ENTITY_TYPE.project}
-          entityId={projectId}
-        />
-        <button
-          type="button"
-          className="project-row-action"
-          aria-label={`Open notes for ${display}`}
-          title="Notes"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate({ kind: 'project-notes', id: projectId });
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#notes-icon" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="project-row-action"
-          aria-label="Rename project"
-          title="Rename"
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditing(true);
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#edit-icon" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="project-row-action project-row-action-danger"
-          aria-label="Delete project"
-          title="Delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            setConfirmDelete(true);
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#trash-icon" />
-          </svg>
-        </button>
+        <div className="project-row-actions">
+          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
         </div>
+      </div>
       {!collapsed && (
         <div className="project-row-tasks">
           <ProjectTaskList projectId={projectId} projectName={display} showCompleted={showCompleted} />
@@ -1119,53 +1166,52 @@ function SortableProjectRow({
             {done} / {total}
           </span>
         </div>
-        <ProjectDueDateButton projectId={projectId} />
-        <PersonAssignmentButton
-          entityType={NOTE_ENTITY_TYPE.project}
-          entityId={projectId}
-        />
-        <button
-          type="button"
-          className="project-row-action"
-          aria-label={`Open notes for ${display}`}
-          title="Notes"
-          onClick={(e) => {
-            e.stopPropagation();
-            navigate({ kind: 'project-notes', id: projectId });
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#notes-icon" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="project-row-action"
-          aria-label="Rename project"
-          title="Rename"
-          onClick={(e) => {
-            e.stopPropagation();
-            setEditing(true);
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#edit-icon" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="project-row-action project-row-action-danger"
-          aria-label="Delete project"
-          title="Delete"
-          onClick={(e) => {
-            e.stopPropagation();
-            setConfirmDelete(true);
-          }}
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#trash-icon" />
-          </svg>
-        </button>
+        <div className="project-row-actions">
+          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+        </div>
       </div>
       {!collapsed && (
         <div className="project-row-tasks">

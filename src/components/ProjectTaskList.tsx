@@ -14,11 +14,14 @@ export default function ProjectTaskList({
   projectId,
   projectName,
   showCompleted,
+  hideEmptySections = false,
 }: {
   projectId: string;
   projectName: string;
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted: boolean;
+  /** Skip section headers with no visible tasks under them. */
+  hideEmptySections?: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { taskIds, visibleIds, hiddenCount, subtaskProgress } = useProjectTaskList(projectId);
@@ -39,6 +42,7 @@ export default function ProjectTaskList({
         projectId={projectId}
         ids={visibleIds}
         showCompleted={showCompleted}
+        hideEmptySections={hideEmptySections}
         ariaLabel={`Tasks for ${projectName}`}
         taskProgress={subtaskProgress}
       />

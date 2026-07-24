@@ -1292,6 +1292,19 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
+/* Due-project row with a collapse caret (Today): the caret sits
+   before the link row, which keeps its full-width hover surface. */
+.today-project-due-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.today-project-due-row .today-project-due {
+  flex: 1 1 auto;
+  width: auto;
+}
+
 /* Row for a project that is itself due today: icon + name + badge,
    click-through to the owning area. */
 .today-project-due {

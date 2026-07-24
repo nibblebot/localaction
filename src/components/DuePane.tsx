@@ -10,6 +10,7 @@ import type { DueItem } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import { useCollapsedSet } from './useCollapsedSet.ts';
 import { TaskList } from './TaskList.tsx';
+import ProjectTaskList from './ProjectTaskList.tsx';
 import type { AreaColorId } from '../data/colors.ts';
 
 interface DueProjectGroup {
@@ -89,18 +90,26 @@ function groupDueItems(
   return sorted;
 }
 
-/** A project that is due in the current range — a link row into its area. */
+/** A project that is due in the current range — a link row into its
+ * area. When `onToggleCollapse` is given (the Today view, where the
+ * project's task tree renders below), a caret toggles that tree. */
 function ProjectDueRow({
   areaId,
   name,
   badgeLabel,
+  collapsed,
+  onToggleCollapse,
 }: {
   areaId: string | null;
   name: string;
   badgeLabel: string;
+  /** Tree-collapsed state; required with `onToggleCollapse`. */
+  collapsed?: boolean;
+  /** When set, the row gains a caret that toggles the task tree. */
+  onToggleCollapse?: () => void;
 }): React.JSX.Element {
   const { navigate } = useSelection();
-  return (
+  const link = (
     <button
       type="button"
       className="today-project-due"
@@ -114,13 +123,34 @@ function ProjectDueRow({
       <span className="today-due-badge">{badgeLabel}</span>
     </button>
   );
+  if (!onToggleCollapse) return link;
+  return (
+    <div className="today-project-due-row">
+      <button
+        type="button"
+        className="project-row-caret"
+        aria-label={collapsed ? `Expand ${name}` : `Collapse ${name}`}
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+        onClick={onToggleCollapse}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+        </svg>
+      </button>
+      {link}
+    </div>
+  );
 }
 
 /**
  * Shared body for the Today and Week views. The range filtering and
  * header differ — `from === to` is the single-day Today view (the
- * title-bar badge collapses to "Due today"); a wider range shows one
- * cross-cutting project-due row per project and per-row weekday labels.
+ * title-bar badge collapses to "Due today"): there, a project whose
+ * own due date falls in range expands its full task tree in place via
+ * the same `ProjectTaskList` the project detail pane uses. A wider
+ * range shows one cross-cutting project-due link row per project and
+ * per-row weekday labels.
  */
 export default function DuePane({
   title,
@@ -134,7 +164,7 @@ export default function DuePane({
   from: string;
   /** Inclusive local-date ISO (`YYYY-MM-DD`) range end. */
   to: string;
-  /** LocalStorage key for the Done section's collapse state. */
+  /** LocalStorage key for collapse state (Done section, due-project trees). */
   storageKey: string;
   /** Label rendered on project-due rows (e.g. "Due today" or "Due this week"). */
   projectBadgeLabel: string;
@@ -159,6 +189,8 @@ export default function DuePane({
 
   const doneCollapsed = collapsed.has('done');
   const showRowDates = from !== to;
+  /** Single-day Today view: due projects expand their full task tree. */
+  const expandDueProjects = from === to;
 
   return (
     <main className="main" aria-label={title}>
@@ -185,28 +217,51 @@ export default function DuePane({
                 )}
                 {area.name}
               </h3>
-              {area.projects.map((project) => (
-                <div key={project.projectId ?? 'area-tasks'} className="today-project">
-                  {project.projectId !== null && !project.projectDue && (
+              {area.projects.map((project) => {
+                const projectId = project.projectId;
+                return (
+                <div key={projectId ?? 'area-tasks'} className="today-project">
+                  {projectId !== null && !project.projectDue && (
                     <h4 className="today-project-title">{project.projectName}</h4>
                   )}
-                  {project.projectDue && project.projectId !== null && (
+                  {project.projectDue && projectId !== null && (
                     <ProjectDueRow
                       areaId={area.areaId}
                       name={project.projectName}
                       badgeLabel={projectBadgeLabel}
+                      collapsed={collapsed.has(projectId)}
+                      onToggleCollapse={
+                        expandDueProjects ? () => toggle(projectId) : undefined
+                      }
                     />
                   )}
-                  {project.taskIds.length > 0 && (
-                    <TaskList
-                      ids={project.taskIds}
-                      readOnly
-                      effectiveStatus
-                      showDueDate={showRowDates}
-                    />
+                  {project.projectDue &&
+                  projectId !== null &&
+                  expandDueProjects &&
+                  !collapsed.has(projectId) ? (
+                    // Today: the full editable tree (same as the project
+                    // detail pane) supersedes the read-only due-task rows.
+                    <div className="project-row-tasks">
+                      <ProjectTaskList
+                        projectId={projectId}
+                        projectName={project.projectName}
+                        showCompleted={false}
+                        hideEmptySections
+                      />
+                    </div>
+                  ) : (
+                    project.taskIds.length > 0 && (
+                      <TaskList
+                        ids={project.taskIds}
+                        readOnly
+                        effectiveStatus
+                        showDueDate={showRowDates}
+                      />
+                    )
                   )}
                 </div>
-              ))}
+                );
+              })}
             </section>
           ))
         )}

@@ -21,7 +21,8 @@
  *   block makes the dragged section the first section.
  *
  * Every section renders — empty ones included — so the area rollup
- * matches the project view.
+ * matches the project view, unless `hideEmptySections` is set (the
+ * Today view), which skips sections with no visible tasks.
  */
 import { useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -181,6 +182,7 @@ export function SectionedTaskTree({
   projectId,
   ids,
   showCompleted = false,
+  hideEmptySections = false,
   ariaLabel,
   taskProgress,
 }: {
@@ -189,6 +191,8 @@ export function SectionedTaskTree({
   ids: readonly string[];
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted?: boolean;
+  /** Skip section headers with no visible tasks under them. */
+  hideEmptySections?: boolean;
   ariaLabel?: string;
   /** Per-ancestor subtask progress rendered as a meter on each row. */
   taskProgress?: ReadonlyMap<string, { done: number; total: number }>;
@@ -211,7 +215,9 @@ export function SectionedTaskTree({
   };
   nodes.push(...buildGroup(projectKey));
   for (const sid of sectionIds) {
-    nodes.push({ id: sectionNodeId(sid), children: buildGroup(sectionNodeId(sid)) });
+    const children = buildGroup(sectionNodeId(sid));
+    if (hideEmptySections && children.length === 0) continue;
+    nodes.push({ id: sectionNodeId(sid), children });
   }
 
   if (nodes.length === 0) return null;

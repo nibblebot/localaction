@@ -61,6 +61,7 @@
 - Icons: prefer adding a new `<symbol id="x-icon">` to `public/icons.svg` and referencing it with `<use href="/icons.svg#x-icon" />` from the appropriate component (never inline an `<svg>` for an existing icon).
 - Styles: `src/index.css` (global tokens, light/dark, density, fonts) and `src/App.css` (shell + every component's scoped rules — `.app-shell`, `.sidebar*`, `.main*`, `.modal*`, `.sortable-*`, `.appearance-*`, etc.).
 - Lint rules in force: `react/rules-of-hooks` (error), `react/only-export-components` (warn, allows constant exports). Type-aware mode is **not** enabled (`oxlint-tsgolint` not installed).
+- Commit messages follow Conventional Commits: use `type(scope): concise imperative description` (for example, `feat(projects): add collapsible project cards`). Use a lowercase, focused scope naming the affected area or subsystem; keep the subject brief and specific. Common types in this repository include `feat`, `fix`, `refactor`, `test`, `style`, `docs`, and `chore`.
 
 ## Verification order for changes
 1. `pnpm lint`

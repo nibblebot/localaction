@@ -65,13 +65,23 @@ async function createTask(page: Page, title: string): Promise<void> {
 // sensor doesn't compose with these focused buttons, so drags are
 // simulated with raw mouse events.
 async function dragHandle(page: Page, locator: Locator, dy: number): Promise<void> {
-  const box = await locator.boundingBox();
-  if (!box) throw new Error('drag handle not visible');
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // The handle is `opacity: 0` until self-hovered (so the row
+  // doesn't show chrome at rest). Playwright's `locator.hover()`
+  // waits for `isVisible()` and treats `opacity: 0` as not
+  // visible, so it retries forever. Read the geometry from the
+  // DOM directly (`opacity: 0` keeps a non-null rect) and drive
+  // `page.mouse.move` onto the center — that fires the real
+  // `mouseover` whose CSS `:hover` rule flips opacity to 1 and
+  // lights the dnd-kit sensor.
+  const center = await locator.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  });
+  await page.mouse.move(center.x, center.y);
   await page.mouse.down();
   // PointerSensor activationConstraint is { distance: 4 } — a stepped
   // move past that starts the drag.
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + dy, { steps: 5 });
+  await page.mouse.move(center.x, center.y + dy, { steps: 5 });
 }
 
 test.describe('Drag overlay preview', () => {

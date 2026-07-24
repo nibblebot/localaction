@@ -834,7 +834,7 @@ body.sidebar-resizing {
 
 .project-row {
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   overflow: hidden;
 }
@@ -904,7 +904,7 @@ body.sidebar-resizing {
   cursor: pointer;
   padding: 0;
   min-width: 0;
-  font-weight: 500;
+  font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2115,6 +2115,16 @@ body.sidebar-resizing {
      22px box so the handle→caret gap matches caret→name. */
   margin-right: -4px;
   touch-action: none;
+  /* Hidden until the grip itself is hovered / focused / the row
+     is being dragged. We use `opacity` (not `visibility: hidden`)
+     so the button still occupies its grid cell and `:hover` fires
+     when the mouse crosses into the handle area — visibility:
+     hidden would swallow the cursor and leave the grip
+     un-grabbable from the row surface. `pointer-events: auto`
+     stays on at rest so the :hover transition can trigger; the
+     handle reserves its 22×22 hit area but is visually absent. */
+  opacity: 0;
+  transition: opacity 0.12s ease;
 }
 
 .project-row-drag-handle:active {
@@ -2129,6 +2139,16 @@ body.sidebar-resizing {
 .project-row-drag-handle svg {
   width: var(--icon-sm);
   height: var(--icon-sm);
+}
+
+/* Reveal only when the handle is directly hovered, has keyboard
+   focus, or its row is being dragged — not when any other part of
+   the row is hovered. The grip is an explicit, optional drag
+   target; the row's `cursor: grab` is the discoverable default. */
+.project-row-drag-handle:hover,
+.project-row-drag-handle:focus-visible,
+.sortable-row-active .project-row-drag-handle {
+  opacity: 1;
 }
 
 /* When the user is actively dragging a project row, hide the
@@ -2159,6 +2179,9 @@ body.sidebar-resizing {
      24px box so the handle→checkbox gap matches checkbox→title. */
   margin-right: -2px;
   touch-action: none;
+  /* Hidden until the row is hovered / focused / being dragged —
+     keeps the grip chrome off the resting state. */
+  visibility: hidden;
 }
 
 .task-line-drag-handle:active {
@@ -2175,8 +2198,13 @@ body.sidebar-resizing {
   height: var(--icon-sm);
 }
 
-.task-line.sortable-row-active {
-  outline: 1px solid var(--accent-border);
+.task-line:hover .task-line-drag-handle,
+.task-line:focus-within .task-line-drag-handle,
+.section-row:hover .task-line-drag-handle,
+.section-row:focus-within .task-line-drag-handle,
+.task-line-drag-handle:focus-visible,
+.sortable-row-active .task-line-drag-handle {
+  visibility: visible;
 }
 
 /* ============================================================
@@ -2213,7 +2241,7 @@ body.sidebar-resizing {
   min-width: 3ch;
   font: inherit;
   font-size: 0.96rem;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -2932,13 +2960,17 @@ body.sidebar-resizing {
     position: relative;
   }
 
-  /* Touch has no hover — row actions stay revealed. */
+  /* Touch has no hover — row actions and grip handles stay revealed. */
   .task-line-action,
   .note-line-action,
   .project-row-action {
     opacity: 1;
   }
 
+  .task-line-drag-handle,
+  .project-row-drag-handle {
+    visibility: visible;
+  }
   .task-line-action::after,
   .note-line-action::after,
   .project-row-action::after,

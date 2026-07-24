@@ -14,9 +14,11 @@ const THEME_OPTIONS: SegmentedOption<ThemeMode>[] = [
 ];
 
 const FONT_OPTIONS: SegmentedOption<FontFamily>[] = [
-  { id: 'inter', label: 'Inter' },
-  { id: 'dejavu', label: 'DejaVu' },
-  { id: 'liberation', label: 'Liberation' },
+  { id: 'jakarta', label: 'Jakarta' },
+  { id: 'plex', label: 'IBM Plex' },
+  { id: 'general', label: 'General Sans' },
+  { id: 'manrope', label: 'Manrope' },
+  { id: 'dm', label: 'DM Sans' },
 ];
 
 const DENSITY_OPTIONS: SegmentedOption<Density>[] = [

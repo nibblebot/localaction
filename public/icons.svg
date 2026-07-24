@@ -136,7 +136,7 @@
     <circle cx="7.5" cy="14" r="0.9" fill="currentColor"/>
     <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M10 14 H13.5"/>
   </symbol>
-  <!-- Brand wordmark (Inter-style) -->
+  <!-- Brand wordmark -->
   <symbol id="memos-mark-icon" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="10" fill="currentColor"/>
     <path fill="var(--bg, #f6efe5)" d="M8 8 H10 V12.5 L14 8 H16.5 L12 12.5 L17 17 H14.2 L10 13.2 V17 H8 Z"/>

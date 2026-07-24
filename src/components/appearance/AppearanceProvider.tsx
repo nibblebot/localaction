@@ -8,7 +8,7 @@ import {
 import { AppearanceContext } from './context.ts';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type FontFamily = 'inter' | 'dejavu' | 'liberation';
+export type FontFamily = 'jakarta' | 'plex' | 'general' | 'manrope' | 'dm';
 export type Density = 'compact' | 'normal' | 'cozy';
 
 export interface AppearanceState {
@@ -27,7 +27,7 @@ const DENSITY_ATTR = 'data-la-density';
 
 const DEFAULT: { theme: ThemeMode; font: FontFamily; density: Density } = {
   theme: 'system',
-  font: 'inter',
+  font: 'dm',
   density: 'normal',
 };
 
@@ -41,7 +41,7 @@ function isThemeMode(v: unknown): v is ThemeMode {
   return v === 'light' || v === 'dark' || v === 'system';
 }
 function isFont(v: unknown): v is FontFamily {
-  return v === 'inter' || v === 'dejavu' || v === 'liberation';
+  return v === 'jakarta' || v === 'plex' || v === 'general' || v === 'manrope' || v === 'dm';
 }
 function isDensity(v: unknown): v is Density {
   return v === 'compact' || v === 'normal' || v === 'cozy';

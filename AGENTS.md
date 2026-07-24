@@ -73,7 +73,7 @@ Tests should exercise **external behavior**, not implementation. The data layer 
 
 ## Design context
 
-`PRODUCT.md` (root) — register (`product`), platform (`web`), users, positioning, brand personality ("calm precision", reference: Things), anti-references. `DESIGN.md` (root) — the visual system: "The Quiet Instrument" north star, Iris accent (#7c3aed, ≤10% per screen), violet-tinted neutral ladder, tonal elevation (no shadows at rest), Inter var, density-as-user-knob. `.impeccable/design.json` — machine-readable sidecar (tonal ramps, component snippets). Consult these before UI work; they are normative for design decisions.
+`PRODUCT.md` (root) — register (`product`), platform (`web`), users, positioning, brand personality ("calm precision", reference: Things), anti-references. `DESIGN.md` (root) — the visual system: "The Quiet Instrument" north star, Iris accent (#7c3aed, ≤10% per screen), violet-tinted neutral ladder, tonal elevation (no shadows at rest), Plus Jakarta Sans, density-as-user-knob. `.impeccable/design.json` — machine-readable sidecar (tonal ramps, component snippets). Consult these before UI work; they are normative for design decisions.
 
 ## Agent skills
 

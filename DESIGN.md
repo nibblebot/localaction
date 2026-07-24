@@ -32,33 +32,32 @@ colors:
   area-gray: "#9aa3ad"
 typography:
   display:
-    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "1.43rem"
-    fontWeight: 600
-    letterSpacing: "-0.005em"
-  headline:
-    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
-    fontSize: "1.21rem"
+    fontFamily: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontSize: "1.36rem"
     fontWeight: 600
     letterSpacing: "-0.005em"
   title:
-    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontFamily: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "1.07rem"
     fontWeight: 600
     letterSpacing: "-0.005em"
   body:
-    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontFamily: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    fontFamily: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "0.79rem"
     fontWeight: 500
   mono:
     fontFamily: "ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace"
     fontSize: "0.89rem"
     fontWeight: 400
+    # Container-driven exceptions (NOT part of the ramp):
+    # - .person-avatar 22x22 circle, 2-char initials at 0.71rem
+    # - .person-avatar-sm 18x18 circle at 0.64rem
+    # These sizes are dictated by the badge geometry, not hierarchy.
 rounded:
   sm: "6px"
   md: "10px"
@@ -169,27 +168,27 @@ The dark theme is a true inversion, not a tint: near-black canvas (#0f1115), sur
 
 ## 3. Typography
 
-**Display Font:** Inter var (self-hosted variable woff2, weights 100–900, `font-display: swap`), falling back to system-ui
-**Body Font:** Inter var (same stack)
+**Display Font:** DM Sans (self-hosted variable woff2, weights 100–1000, `font-display: swap`), falling back to system-ui. The appearance menu lets the user pick any of five self-hosted grotesques (Plus Jakarta Sans, IBM Plex Sans, General Sans, Manrope, DM Sans) — DM Sans is the default.
+**Body Font:** Same as Display — the active family plays for everything.
 **Label/Mono Font:** ui-monospace stack (`ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace`) for code, counters, and numeric readouts
 
-**Character:** One family, many weights. Inter's calm grotesque neutrality is the instrument body; hierarchy comes from weight and size, never from a second face. DejaVu Sans and Liberation Mono exist only as user-selectable alternates in the appearance menu — they are preferences, not design tools.
+**Character:** One family, many weights. Hierarchy comes from weight and the four sans sizes below, never from a second face. The user picks which family plays, but only one plays at a time.
 
 ### Hierarchy
-- **Display** (600, 1.43rem, -0.005em): Page-level headings — area and project headers. Small by marketing standards; this is a tool, and its largest text is a working title.
-- **Headline** (600, 1.21rem, -0.005em): Section and modal headings.
-- **Title** (600, 1.07rem, -0.005em): Group headers — project names inside the Tasks tab, sub-area headings.
-- **Body** (400, 1rem, 1.5): Default reading text. Rows and titles typically run at 0.96rem.
-- **Label** (500, 0.79rem): Count pills, tag chips, badges. Tabular figures (`font-variant-numeric: tabular-nums`) anywhere a number updates live, so counts never jitter.
-- **Mono** (400, 0.89rem): Code spans, counters, machine-facing values.
+The sans ramp is **four sizes**, not six — kept tight on purpose. Anything that needed its own size (0.93 buttons, 0.96 rows, 0.71 / 0.64 avatar initials) was folded into the nearest tier. Two exceptions survive: `.person-avatar` and `.person-avatar-sm` are container-driven (a 22×22 / 18×18 circle dictates the text size, not the type ramp).
+
+- **Display** (600, 1.36rem, -0.005em): Page-level headings — area and project headers. The largest text in the app, kept small by design.
+- **Title** (600, 1.07rem, -0.005em): Section and modal headings, project names inside the Tasks tab, sub-area headings, sidebar app name.
+- **Body** (400, 1rem, 1.5): Default reading text. Buttons, inputs, row content, placeholders, undo toast.
+- **Label** (500, 0.79rem, often 600 for headings): Section titles (uppercase, tracked), count pills, tag chips, badges, segmented controls, *-sm button variants, inline-add inputs in compact rows.
+- **Mono** (400, 0.89rem, separate family): Code spans, fenced code blocks, markdown tags.
 
 ### Density
-The root font-size is the density knob: 12px compact / 14px normal / 16px cozy. Every component sizes in rem, so one attribute rescales the whole app. Never hardcode px text sizes in components; never add breakpoint-based type changes — density is the user's choice, not the viewport's.
+The root font-size is the density knob: **13px compact / 15px normal / 17px cozy**. Every component sizes in rem, so one attribute rescales the whole app. Never hardcode px text sizes in components; never add breakpoint-based type changes — density is the user's choice, not the viewport's.
 
 ### Named Rules
-**The One Family Rule.** Inter var everywhere. A second typeface in chrome is always a bug; alternate fonts ship only through the appearance menu.
-
-**The Small Display Rule.** Display type caps at 1.43rem. Big hero type is for landing pages; this is a workspace. Emphasis comes from weight and the One Voice accent, never from shouting size.
+**The One Family Rule.** One of five self-hosted grotesques — Plus Jakarta Sans, IBM Plex Sans, General Sans, Manrope, DM Sans — plays at any moment; the choice is the user's via the appearance menu. A second typeface in chrome is always a bug.
+**The Small Display Rule.** Display type caps at 1.36rem. Big hero type is for landing pages; this is a workspace. Emphasis comes from weight and the One Voice accent, never from shouting size.
 
 ## 4. Elevation
 

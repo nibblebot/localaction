@@ -1,9 +1,37 @@
 @font-face {
-  font-family: 'Inter var';
+  font-family: 'IBM Plex Sans';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 100 700;
   font-display: swap;
-  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
+  src: url('/fonts/IBMPlexSans-Variable.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'General Sans Variable';
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url('/fonts/GeneralSans-Variable.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/Manrope-Variable.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'DM Sans';
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url('/fonts/DMSans-Variable.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-Variable.woff2') format('woff2-variations');
 }
 
 :root {
@@ -104,7 +132,7 @@
   --icon-lg: 24px;
 
   /* Type */
-  --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
   /* Layout — sidebar width is driven by useSidebarWidth (clamped 200–260,
@@ -224,20 +252,26 @@
 }
 
 /* Font family — overrides --font-sans for the whole app. */
-:root[data-la-font="inter"] {
-  --font-sans: 'Inter var', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+:root[data-la-font="jakarta"] {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="dejavu"] {
-  --font-sans: 'DejaVu Sans', 'Bitstream Vera Sans', Verdana, sans-serif;
+:root[data-la-font="plex"] {
+  --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="liberation"] {
-  --font-sans: 'Liberation Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+:root[data-la-font="general"] {
+  --font-sans: 'General Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root[data-la-font="manrope"] {
+  --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root[data-la-font="dm"] {
+  --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Density — scales the root font-size so every rem-derived size shifts together. */
-:root[data-la-density="compact"] { font-size: 12px; }
-:root[data-la-density="normal"]  { font-size: 14px; }
-:root[data-la-density="cozy"]    { font-size: 16px; }
+:root[data-la-density="compact"] { font-size: 13px; }
+:root[data-la-density="normal"]  { font-size: 15px; }
+:root[data-la-density="cozy"]    { font-size: 17px; }
 
 
 
@@ -254,10 +288,10 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.005em;
 }
 
-h1 { font-size: 1.43rem; font-weight: 600; }
-h2 { font-size: 1.21rem; font-weight: 600; }
+h1 { font-size: 1.36rem; font-weight: 600; }
+h2 { font-size: 1.07rem; font-weight: 600; }
 h3 { font-size: 1.07rem; font-weight: 600; }
-h4 { font-size: 0.93rem; font-weight: 600; }
+h4 { font-size: 0.79rem; font-weight: 600; }
 
 p { margin: 0; }
 

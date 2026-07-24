@@ -167,7 +167,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-empty {
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text-muted);
   padding: 6px 10px;
   line-height: 1.5;
@@ -223,7 +223,7 @@ body.sidebar-resizing {
   gap: 4px;
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 0.96rem;
+  font-size: 1rem;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -331,7 +331,7 @@ body.sidebar-resizing {
 
 .main-pane-title {
   margin: 0;
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   font-weight: 600;
   color: var(--text-h);
 }
@@ -346,7 +346,7 @@ body.sidebar-resizing {
 }
 
 .main-empty h2 {
-  font-size: 1.21rem;
+  font-size: 1.07rem;
   font-weight: 600;
   color: var(--text-h);
   margin-bottom: var(--space-2);
@@ -390,14 +390,14 @@ body.sidebar-resizing {
 }
 
 .area-header-slash {
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   font-weight: 600;
   font-family: var(--font-sans);
   line-height: 1;
 }
 
 .area-header-name {
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   font-weight: 600;
   color: var(--text-h);
   margin: 0;
@@ -427,7 +427,7 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   font-weight: 500;
   color: var(--text-muted);
   background: none;
@@ -474,7 +474,7 @@ body.sidebar-resizing {
 
 .area-header-add-input {
   font: inherit;
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   font-weight: 600;
   color: var(--text-h);
   background: var(--surface);
@@ -606,7 +606,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 0.93rem;
+  font-size: 1rem;
   color: var(--text-h);
   background: transparent;
   border: 1px dashed var(--border-strong);
@@ -634,7 +634,7 @@ body.sidebar-resizing {
 }
 
 .inline-add-input-sm {
-  font-size: 0.89rem;
+  font-size: 0.79rem;
   padding: 4px 8px;
   margin: 4px 0 0;
 }
@@ -650,7 +650,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 0.93rem;
+  font-size: 1rem;
   font-style: italic;
   color: var(--text-muted);
   background: transparent;
@@ -827,7 +827,7 @@ body.sidebar-resizing {
 
 .area-header-crumb-sep {
   color: var(--text-muted);
-  font-size: 1.43rem;
+  font-size: 1.36rem;
   line-height: 1;
   user-select: none;
 }
@@ -962,7 +962,7 @@ body.sidebar-resizing {
 }
 
 .project-row-progress-count {
-  font-size: 0.89rem;
+  font-size: 0.79rem;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   min-width: 44px;
@@ -1021,13 +1021,13 @@ body.sidebar-resizing {
 
 .project-tasks-add {
   align-self: flex-start;
-  font-size: 0.89rem;
+  font-size: 1rem;
   padding: 2px 8px;
   margin-top: var(--space-2);
 }
 
 .placeholder-sm {
-  font-size: 0.89rem;
+  font-size: 0.79rem;
   padding: 2px 0;
   color: var(--text-muted);
 }
@@ -1109,7 +1109,7 @@ body.sidebar-resizing {
    ============================================================ */
 
 .today-date {
-  font-size: 0.93rem;
+  font-size: 1rem;
   color: var(--text-muted);
 }
 
@@ -1136,7 +1136,7 @@ body.sidebar-resizing {
 .today-project-title {
   margin: var(--space-3) 0 var(--space-1);
   padding-inline: 4px;
-  font-size: 0.93rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -1264,7 +1264,7 @@ body.sidebar-resizing {
 .task-line-title {
   flex: 1 1 auto;
   font: inherit;
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.35;
   color: var(--text-h);
   background: transparent;
@@ -1364,7 +1364,7 @@ body.sidebar-resizing {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font: inherit;
-  font-size: 0.93rem;
+  font-size: 1rem;
   color: var(--text-muted);
   cursor: text;
   text-align: start;
@@ -1401,7 +1401,7 @@ body.sidebar-resizing {
 
 .note-line-preview {
   flex: 1 1 auto;
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1450,7 +1450,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text-h);
   background: var(--bg);
@@ -1507,7 +1507,7 @@ body.sidebar-resizing {
 
 .btn {
   font: inherit;
-  font-size: 0.93rem;
+  font-size: 1rem;
   line-height: 1;
   padding: 6px 12px;
   border-radius: var(--radius-md);
@@ -1584,7 +1584,7 @@ body.sidebar-resizing {
 }
 
 .btn-sm {
-  font-size: 0.89rem;
+  font-size: 0.79rem;
   padding: 4px 8px;
 }
 
@@ -1660,14 +1660,14 @@ body.sidebar-resizing {
 
 .modal h3 {
   margin: 0 0 var(--space-2);
-  font-size: 1.21rem;
+  font-size: 1.07rem;
   font-weight: 600;
   color: var(--text-h);
 }
 
 .modal-message {
   margin: 0 0 var(--space-4);
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--text-secondary);
 }
@@ -1677,7 +1677,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 0.96rem;
+  font-size: 1rem;
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1721,8 +1721,8 @@ body.sidebar-resizing {
   color: var(--text-h);
 }
 
-.markdown-body h1 { font-size: 1.43rem; }
-.markdown-body h2 { font-size: 1.21rem; }
+.markdown-body h1 { font-size: 1.36rem; }
+.markdown-body h2 { font-size: 1.07rem; }
 .markdown-body h3 { font-size: 1.07rem; }
 
 .markdown-body p {
@@ -1783,7 +1783,7 @@ body.sidebar-resizing {
 
 .placeholder {
   color: var(--text-secondary);
-  font-size: 0.96rem;
+  font-size: 1rem;
   line-height: 1.5;
   padding: var(--space-3) 0;
 }
@@ -1878,8 +1878,8 @@ body.sidebar-resizing {
 }
 
 .appearance-segment-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1889,16 +1889,18 @@ body.sidebar-resizing {
 
 .appearance-segment-option {
   font: inherit;
-  font-size: 0.89rem;
+  font-size: 0.79rem;
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
   border: 0;
   border-radius: calc(var(--radius-md) - 4px);
-  padding: 6px 8px;
+  padding: 6px 10px;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -2240,7 +2242,7 @@ body.sidebar-resizing {
   field-sizing: content;
   min-width: 3ch;
   font: inherit;
-  font-size: 0.96rem;
+  font-size: 1rem;
   font-weight: 500;
   color: var(--text-h);
   background: transparent;
@@ -2355,7 +2357,7 @@ body.sidebar-resizing {
   border-radius: var(--radius-pill);
   background: var(--surface);
   border: 1px solid var(--border);
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text);
   cursor: pointer;
   font-family: inherit;
@@ -2410,7 +2412,7 @@ body.sidebar-resizing {
 }
 
 .person-filter-empty {
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text-muted);
   padding: 4px 0;
 }
@@ -2440,7 +2442,7 @@ body.sidebar-resizing {
   border: 1px solid var(--accent-border);
   border-radius: var(--radius-md);
   color: var(--accent);
-  font-size: 0.93rem;
+  font-size: 1rem;
 }
 
 .person-filter-banner-text {
@@ -2466,7 +2468,7 @@ body.sidebar-resizing {
 /* Hidden-stub (variant C of filter prototype) */
 
 .hidden-stub {
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text-muted);
   font-style: italic;
   padding: 4px 0 8px;
@@ -2491,7 +2493,7 @@ body.sidebar-resizing {
   border-radius: var(--radius-pill);
   background: var(--surface);
   border: 1px solid var(--border);
-  font-size: 0.89rem;
+  font-size: 1rem;
   cursor: pointer;
   color: var(--text);
   font-family: inherit;
@@ -2504,7 +2506,7 @@ body.sidebar-resizing {
 
 
 .area-header-cast-empty {
-  font-size: 0.89rem;
+  font-size: 1rem;
   color: var(--text-muted);
   font-style: italic;
   margin-inline-start: var(--space-3);
@@ -2545,7 +2547,7 @@ body.sidebar-resizing {
   padding: 4px 6px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 0.93rem;
+  font-size: 1rem;
 }
 
 .person-picker-row:hover {
@@ -2683,7 +2685,7 @@ body.sidebar-resizing {
   cursor: pointer;
   padding: 4px 6px;
   font: inherit;
-  font-size: 0.89rem;
+  font-size: 1rem;
   border-radius: var(--radius-sm);
 }
 
@@ -2753,7 +2755,7 @@ body.sidebar-resizing {
 }
 
 .due-calendar-title {
-  font-size: 0.89rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--text-h);
 }
@@ -3070,7 +3072,7 @@ body.sidebar-resizing {
 }
 
 .undo-toast-label {
-  font-size: 0.93rem;
+  font-size: 1rem;
   color: var(--text-h);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3080,7 +3082,7 @@ body.sidebar-resizing {
 .undo-toast-action {
   flex: 0 0 auto;
   font: inherit;
-  font-size: 0.93rem;
+  font-size: 1rem;
   font-weight: 600;
   color: var(--accent);
   background: transparent;

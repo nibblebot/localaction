@@ -733,11 +733,16 @@ function AreaProjectGroups({
 
   const done = visible.filter((p) => p.total > 0 && p.done === p.total);
   const active = visible.filter((p) => p.total === 0 || p.done < p.total);
+  // When only one status scope is non-empty the partition label adds
+  // nothing — a redundant "Active" line stacked under "Projects · 1"
+  // reads as clutter, not a partition. Both non-empty → labels are
+  // meaningful and worth keeping.
+  const partitioned = active.length > 0 && done.length > 0;
 
   return (
     <>
       {active.length > 0 && (
-        <Group title="Active" count={active.length}>
+        <Group title={partitioned ? 'Active' : undefined} count={active.length}>
           <SortableList
             itemIds={active.map((p) => p.projectId)}
             onReorder={onReorder}
@@ -764,7 +769,7 @@ function AreaProjectGroups({
         </Group>
       )}
       {done.length > 0 && (
-        <Group title="Done" count={done.length}>
+        <Group title={partitioned ? 'Done' : undefined} count={done.length}>
           {done.map((p) => (
             <ProjectRow
               key={p.projectId}

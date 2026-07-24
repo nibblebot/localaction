@@ -737,16 +737,29 @@ body.sidebar-resizing {
 }
 
 .pane-section-title {
-  font-size: 0.79rem;
+  /* One register up from the inner status-group labels (.tab-group-title
+     is 0.79rem) so the section header reads as the parent, not a peer.
+     Uppercase + tracking stay aligned with the other section eyebrows
+     (sidebar, appearance, person picker). */
+  font-size: 0.93rem;
   font-weight: 600;
   text-transform: uppercase;
   /* Same tracking as .sidebar-section-title and the appearance
      / person-picker eyebrows — every uppercase label reads with
      one consistent voice. */
   letter-spacing: 0.06em;
+  color: var(--text-secondary);
 }
 .pane-section-head > :last-child:not(.pane-section-toggle) {
   margin-left: auto;
+}
+
+/* Section bodies (rows, lists, add inputs) indent past the disclosure
+   chevron so content aligns under the section-title text. Without this
+   the cards sit flush with the page gutter, the same register as the
+   section header, and the parent → child relationship is invisible. */
+.pane-section > :not(.pane-section-head) {
+  margin-inline-start: calc(var(--space-2) + var(--icon-sm) + 6px);
 }
 
 /* ============================================================

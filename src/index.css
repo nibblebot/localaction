@@ -286,26 +286,31 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-h);
   margin: 0;
   letter-spacing: -0.005em;
+  /* Display + Title tiers sit at 1.2 leading so headings breathe
+     tighter than body (22.5px at 15px root). h4 is a label-tier
+     size and stays at the default 1.5 leading. */
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 h1 { font-size: 1.36rem; font-weight: 600; }
 h2 { font-size: 1.07rem; font-weight: 600; }
 h3 { font-size: 1.07rem; font-weight: 600; }
-h4 { font-size: 0.79rem; font-weight: 600; }
+h4 { font-size: 0.79rem; font-weight: 600; line-height: 1.5; text-wrap: wrap; }
 
 p { margin: 0; }
 
-code, pre, .counter {
+code, pre {
   font-family: var(--font-mono);
   color: var(--text-h);
 }
-
 code {
   font-size: 0.89rem;
   padding: 1px 5px;
   border-radius: var(--radius-sm);
   background: var(--code-bg);
 }
+
 
 #root {
   width: 100%;

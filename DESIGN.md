@@ -170,18 +170,15 @@ The dark theme is a true inversion, not a tint: near-black canvas (#0f1115), sur
 
 **Display Font:** DM Sans (self-hosted variable woff2, weights 100–1000, `font-display: swap`), falling back to system-ui. The appearance menu lets the user pick any of five self-hosted grotesques (Plus Jakarta Sans, IBM Plex Sans, General Sans, Manrope, DM Sans) — DM Sans is the default.
 **Body Font:** Same as Display — the active family plays for everything.
-**Label/Mono Font:** ui-monospace stack (`ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace`) for code, counters, and numeric readouts
-
+**Label/Mono Font:** ui-monospace stack (`ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace`) for code, including markdown code spans and fenced blocks. Numeric readouts are the active sans with `font-variant-numeric: tabular-nums` — mono is reserved for code, never for live counts.
 **Character:** One family, many weights. Hierarchy comes from weight and the four sans sizes below, never from a second face. The user picks which family plays, but only one plays at a time.
-
-### Hierarchy
-The sans ramp is **four sizes**, not six — kept tight on purpose. Anything that needed its own size (0.93 buttons, 0.96 rows, 0.71 / 0.64 avatar initials) was folded into the nearest tier. Two exceptions survive: `.person-avatar` and `.person-avatar-sm` are container-driven (a 22×22 / 18×18 circle dictates the text size, not the type ramp).
-
-- **Display** (600, 1.36rem, -0.005em): Page-level headings — area and project headers. The largest text in the app, kept small by design.
-- **Title** (600, 1.07rem, -0.005em): Section and modal headings, project names inside the Tasks tab, sub-area headings, sidebar app name.
-- **Body** (400, 1rem, 1.5): Default reading text. Buttons, inputs, row content, placeholders, undo toast.
-- **Label** (500, 0.79rem, often 600 for headings): Section titles (uppercase, tracked), count pills, tag chips, badges, segmented controls, *-sm button variants, inline-add inputs in compact rows.
+- **Display** (600, 1.36rem, -0.005em, line-height 1.2, text-wrap balance): Page-level headings — area and project headers. The largest text in the app, kept small by design.
+- **Title** (600, 1.07rem, -0.005em, line-height 1.2, text-wrap balance): Section and modal headings, project name inside the Projects tab (the project card) and Tasks tab, sub-area headings, sidebar app name.
+- **Body** (400, 1rem, line-height 1.5): Default reading text. Buttons, inputs, row content, placeholders, undo toast.
+- **Label** (500, 0.79rem, often 600 for headings, uppercase + 0.06em tracking on eyebrows): Section titles (uppercase, tracked), count pills, tag chips, badges, segmented controls, *-sm button variants, inline-add inputs in compact rows. The sync badge in the sidebar footer sits at 500 weight.
 - **Mono** (400, 0.89rem, separate family): Code spans, fenced code blocks, markdown tags.
+
+Every heading-tier element (Display + Title) uses `line-height: 1.2` and `text-wrap: balance` — heading rows breathe tighter than body and wrap evenly when long. Body keeps the 1.5 default. Nested row titles (section rows inside a project card) stay at body size with 500 weight so the project header retains the heaviest title until the card expands.
 
 ### Density
 The root font-size is the density knob: **13px compact / 15px normal / 17px cozy**. Every component sizes in rem, so one attribute rescales the whole app. Never hardcode px text sizes in components; never add breakpoint-based type changes — density is the user's choice, not the viewport's.

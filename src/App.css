@@ -332,6 +332,8 @@ body.sidebar-resizing {
   margin: 0;
   font-size: 1.36rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
   color: var(--text-h);
 }
 
@@ -345,6 +347,8 @@ body.sidebar-resizing {
 .main-empty h2 {
   font-size: 1.07rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
   color: var(--text-h);
   margin-bottom: var(--space-2);
 }
@@ -389,11 +393,14 @@ body.sidebar-resizing {
 .area-header-slash {
   font-size: 1.36rem;
   font-weight: 600;
+  line-height: 1.2;
   font-family: var(--font-sans);
 }
 .area-header-name {
   font-size: 1.36rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
   color: var(--text-h);
   margin: 0;
   letter-spacing: -0.005em;
@@ -425,6 +432,7 @@ body.sidebar-resizing {
   font: inherit;
   font-size: 1.36rem;
   font-weight: 500;
+  line-height: 1.2;
   color: var(--text-muted);
   background: none;
   border: none;
@@ -470,6 +478,7 @@ body.sidebar-resizing {
   font: inherit;
   font-size: 1.36rem;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--text-h);
   background: var(--surface);
   border: 1px solid var(--accent);
@@ -480,7 +489,6 @@ body.sidebar-resizing {
   outline: none;
   font-family: inherit;
 }
-
 .area-header-add-input::placeholder {
   color: var(--text-muted);
 }
@@ -504,6 +512,7 @@ body.sidebar-resizing {
   flex-direction: column;
   gap: var(--space-2);
 }
+
 
 .area-edit-row {
   display: flex;
@@ -731,10 +740,11 @@ body.sidebar-resizing {
   font-size: 0.79rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  /* Same tracking as .sidebar-section-title and the appearance
+     / person-picker eyebrows — every uppercase label reads with
+     one consistent voice. */
+  letter-spacing: 0.06em;
 }
-
-/* Header trailing actions (e.g. collapse-all) pin to the right edge. */
 .pane-section-head > :last-child:not(.pane-section-toggle) {
   margin-left: auto;
 }
@@ -840,6 +850,7 @@ body.sidebar-resizing {
 .area-header-crumb-sep {
   color: var(--text-muted);
   font-size: 1.36rem;
+  line-height: 1.2;
   user-select: none;
 }
 
@@ -911,7 +922,8 @@ body.sidebar-resizing {
 .project-row-name {
   flex: 1 1 auto;
   font: inherit;
-  font-size: 1rem;
+  font-size: 1.07rem;
+  font-weight: 600;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -919,7 +931,10 @@ body.sidebar-resizing {
   cursor: pointer;
   padding: 0;
   min-width: 0;
-  font-weight: 700;
+  /* Heading role: tighter than body so the card name reads as a
+     title, not a body row. -0.005em matches the h1–h6 ramp. */
+  line-height: 1.2;
+  letter-spacing: -0.005em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1076,6 +1091,7 @@ body.sidebar-resizing {
 .project-header-name {
   font-size: 1.07rem;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--text-h);
 }
 
@@ -1117,6 +1133,8 @@ body.sidebar-resizing {
   font: inherit;
   font-size: 1.07rem;
   font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
   color: var(--text-h);
   background: none;
   border: none;
@@ -1164,6 +1182,7 @@ body.sidebar-resizing {
   padding-inline: 4px;
   font-size: 1.07rem;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--text-h);
 }
 
@@ -1505,6 +1524,7 @@ body.sidebar-resizing {
 
 .sync-status {
   font-size: 0.79rem;
+  font-weight: 500;
   color: var(--text-secondary);
   align-self: center;
   padding: 3px 6px;
@@ -2806,9 +2826,10 @@ body.sidebar-resizing {
 .due-calendar-title {
   font-size: 1rem;
   font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
   color: var(--text-h);
 }
-
 .due-calendar-nav {
   width: 24px;
   height: 24px;

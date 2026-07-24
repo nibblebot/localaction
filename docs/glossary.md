@@ -61,3 +61,77 @@ The Persons an entity actually resolves to at read time:
 ## Person Link
 
 A row in the `person_links` table expressing that a non-Self Person is associated with a specific `(entityType, entityId)` target. Self is **never** stored as a link — it is force-unioned at read time.
+
+---
+
+# UI Structure
+
+The canonical names for the shell's regions and their contents. Use these in issues, ADRs, and reviews instead of ad-hoc descriptions ("the left panel", "the expanded project thing"). Component names in `src/components/` mirror these terms.
+
+## App Shell
+
+The two-pane workspace (`.app-shell`): [Sidebar](#sidebar) on the left, [Main Pane](#main-pane) on the right. Below 768px the Sidebar becomes a modal **drawer** that slides over the Main Pane behind a backdrop.
+
+## Sidebar
+
+The left-hand navigation column (`Sidebar.tsx`). From top to bottom: the app-name row (the "LocalAction" title), the [Person Filter](#person-filter), the quick links (Inbox, Today, Week — each with a live count), the Areas section, and the [Sidebar footer](#sidebar-footer). A resizer on its trailing edge drags to set its width.
+
+## Person Filter
+
+The Sidebar's people section (`PersonFilterFacet`): the list of [Persons](#person) that filters every view by assignment. Selecting a Person dims or prunes non-matching entities app-wide; it is a filter facet, not a navigation destination.
+
+## Areas Section
+
+The Sidebar section titled "Areas": the **Area tree** (a flattened drag surface where vertical movement reorders and horizontal movement nests/unnests, clamped to one level of sub-areas) plus the new-area input. Each **area row** shows a colour dot, the area name, and the recursive open-task count across its subtree; top-level rows with children carry a collapse caret.
+
+## Sidebar Footer
+
+The strip pinned to the bottom of the Sidebar holding the two app-wide status/settings controls: the **Sync Status Badge** (connection state: *Local only* → *Syncing…* → *Synced*, or *Retry #n…* / *Sync error*) and the **Appearance Menu** (theme, font, and density).
+
+## Main Pane
+
+The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a time based on the current selection: the Welcome screen, an [Area view](#area-view), a [Project notes pane](#project-notes-pane), or the Inbox / Today / Week panes.
+
+## Area View
+
+The Main Pane view for a selected Area: an [Area header](#area-header) above three collapsible sections — [Area tasks](#area-tasks-section), [Projects](#projects-section), and [Notes](#notes-section). Sub-areas roll up into the Projects section; both section counts include the full sub-area subtree.
+
+## Area Header
+
+The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a breadcrumb of the parent chain, the **cast chips** (the Area's [Cast](#cast), editable in place), the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
+
+## Area Tasks Section
+
+The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an *Add task* affordance.
+
+## Projects Section
+
+The Area view section listing every Project owned by the Area, grouped **Active** / **Done**, drag-to-reorder within the Area. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**, each preceded by that sub-area's read-only area-task rollup. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
+
+## Notes Section
+
+The Area view section rolling up every [Note](#note) attached to the Area, its subtree, or their Projects/Tasks — each rendered as a **note line** with a markdown body preview. Display-only; project-scoped Notes are created in the [Project notes pane](#project-notes-pane).
+
+## Project Row
+
+A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, a note icon (opens the [Project notes pane](#project-notes-pane)), and a person-assignment action. Most of the row is the expand toggle.
+
+## Project Card
+
+A [Project row](#project-row) plus its expanded inline body — the [Project task list](#project-task-list). "Expand a project" means opening its card. Per-card collapse state persists per device.
+
+## Project Task List
+
+The body of an expanded [Project card](#project-card) (`ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons) and, when the [Person Filter](#person-filter) prunes rows, the **hidden-tasks stub** ("N tasks hidden").
+
+## Section Row
+
+A [Section's](#section) header inside the Project task list: a drag handle, the inline-editable section name, and delete (containment cascade, behind a confirm). Section rows are pinned to the top level — they can reorder but never nest — and always render after the Project's unsectioned Tasks.
+
+## Task Row
+
+A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — person assignment, due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes and in sub-area task rollups.
+
+## Project Notes Pane
+
+The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project header with a breadcrumb back to its Area, plus the Project's Notes with an add input. The only place project-scoped Notes are created.

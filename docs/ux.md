@@ -3,7 +3,8 @@
 A high-level tour of the LocalAction user experience: the shell, navigation,
 views, and appearance controls. For the system that powers it (store, sync,
 persistence), see [`architecture.md`](./architecture.md). For terminology, see
-[`glossary.md`](./glossary.md).
+[`glossary.md`](./glossary.md) — its *UI Structure* section names every region
+referenced here (Sidebar, Main Pane, Area view, Project card, …).
 
 ## The shell
 
@@ -13,31 +14,31 @@ The app is a two-pane workspace:
 flowchart TB
   subgraph Shell["app-shell"]
     direction LR
-    Side["Sidebar\n(area tree, counts,\ndrag-to-reorder, sync badge)"]
-    Main["MainPane\n(area / project-notes views)"]
+    Side["Sidebar\napp name · person filter\nInbox / Today / Week · area tree\nsync badge + appearance menu"]
+    Main["MainPane\nwelcome · area view · project notes\ninbox · today · week"]
   end
   Insp["TinyBase Inspector\n(dev-only overlay)"]
-  Menu["AppearanceMenu\n(floating)"]
   Shell --- Insp
-  Shell --- Menu
 ```
 
-- **Sidebar** (`Sidebar.tsx`) — the area tree, the primary way to navigate.
-  Each row shows a coloured dot, the area name, and the total number of tasks
-  across that area tree, including tasks in descendant areas and recursive sub-tasks.
-  A `SyncStatusBadge` at the foot reports connection state: *Local only* →
-  *Syncing…* → *Synced* (or *Retry #n…* / *Sync error*).
-- **MainPane** (`MainPane.tsx`) — the working area. Renders an area view, a
-  project-notes pane, or the welcome screen depending on the current selection.
+- **Sidebar** (`Sidebar.tsx`) — the navigation column. Top to bottom: the
+  app-name row, the person filter, the Inbox / Today / Week quick links, the
+  Areas section, and the footer holding the sync status badge and the
+  appearance menu. A resizer on its trailing edge drags to set its width
+  (persisted per device). Below 768px the sidebar becomes a modal drawer —
+  hamburger toggle, backdrop tap or Escape to close, focus trapped while open.
+- **MainPane** (`MainPane.tsx`) — the working area. Renders the welcome
+  screen, an area view, a project-notes pane, the Inbox, or the Today / Week
+  due panes, depending on the current selection.
 - **Inspector** — TinyBase's `ui-react-inspector`, a dev-only overlay for
   inspecting store tables/cells.
-- **AppearanceMenu** — floating controls for theme, font, and density.
 
 ## Navigation
 
 There is no router library — `src/router.ts` is a tiny hash router.
 
-- Routes: `#/` (home), `#/a/<id>` (area), `#/p/<id>/notes` (project notes).
+- Routes: `#/` (home), `#/inbox`, `#/today`, `#/week`, `#/a/<id>` (area),
+  `#/p/<id>/notes` (project notes).
 - `SelectionProvider` holds the current `Selection` and a `navigate()` helper.
   It seeds from `window.location.hash` and listens for `hashchange`, so the
   back/forward buttons and deep links both work. `navigate()` writes the hash;
@@ -45,64 +46,123 @@ There is no router library — `src/router.ts` is a tiny hash router.
 - Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) and the
   retired project-pane links (`#/p/<id>`) collapse to **home** so stale links
   fall back to the welcome screen gracefully.
+- **Quick add** — `Shift+A` (when no input is focused) opens a modal with a
+  single field; Enter commits a new Inbox task, Esc or the backdrop cancels.
 
-## The area tree (sidebar)
+## The sidebar
+
+### Person filter
+
+One chip per present person (`PersonFilterFacet`), avatar + name. Clicking a
+chip toggles its presence in the filter; an empty selection means no filter.
+The section's **+** button is the only place people are created; each chip
+carries a hover/focus edit affordance (rename, recolour, delete — Self is
+renamed there too; its canonical identity is the fixed row id). While a
+filter is active: a banner over the MainPane names the selected people and
+offers one-click *Clear*; sidebar areas with no matching work dim and show
+their filtered count; task and note lists prune non-matching rows and show a
+"N hidden" stub. The selection persists per device.
+
+### Quick links
+
+**Inbox**, **Today**, and **Week**, each with a live count (unassociated
+tasks; tasks due today; tasks due this week) and `aria-current` on the
+active one.
+
+### The area tree
 
 Areas are top-level containers; each may hold one level of **sub-areas**
 (same semantics, nested under a parent).
 
-- Each row: colour dot, name, counts.
+- Each row: colour dot, name, and the recursive open-task count across its
+  subtree (descendant areas and recursive sub-tasks included). Top-level
+  rows with children carry a collapse caret; the section header offers
+  collapse-all / expand-all (keeping the selected area's chain expanded)
+  and a new-area shortcut.
 - **Drag-to-move** across the whole tree via `SortableTree` (dnd-kit's
   flattened-tree pattern — one drag context spans every level). Vertical
   movement picks the insertion row; dragging right nests the row under
   the row above, dragging left unnests it. Nesting is clamped to one
   level of sub-areas; a row's subtree always moves with it.
-- Add a top-level area or, from a top-level area view, add a sub-area.
-- Selecting an area drives the MainPane's area view.
+- A new-area input sits at the foot of the section; from a top-level area
+  view, the header adds a sub-area.
+- Selecting an area drives the MainPane's area view (and expands the row).
+
+### Footer
+
+- **SyncStatusBadge** — connection state: *Local only* → *Syncing…* →
+  *Synced* (or *Retry #n…* / *Sync error*).
+- **AppearanceMenu** — theme, font, and density controls (see
+  [Appearance](#appearance)).
 
 ## MainPane views
 
 ### Welcome (home)
 
 When nothing is selected: a centred empty state — *"Pick an area from the
-sidebar to get started, or create a new one."*
+sidebar to get started."* (or *"Create an area…"* when none exist).
 
 ### Area view
 
-A `AreaHeader` (name, colour, and a breadcrumb of the parent chain) sits above
-two **tabs**, each carrying a live count and an add action. Clicking the name
-(or the pencil button) opens an `AreaEditPopover` to rename the area inline and
-pick a palette colour; delete stays in the header behind a confirm modal:
+An `AreaHeader` above three collapsible sections — **Projects**, **Area
+tasks**, **Notes** — each with a live count and a caret; section collapse
+state persists per device.
 
-- **Projects** — the combined project list. Area-rooted tasks come first,
-  then sortable project rows with a done/total rollup meter, drag-to-reorder
-  within the area, and Active/Done grouping. Each row expands (caret, or
-  clicking the project name — most of the row is the toggle) to reveal the
-  project's full task tree inline: sections render and edit in place, every
-  task with sub-tasks carries its own done/total meter, and the card footer
-  holds a new-task input and add-section action (one shared `ProjectTaskList`
-  component). One flattened drag surface spans the unsectioned group and every
-  section: tasks drag within/between groups (and nest as sub-tasks), sections
-  drag to reorder, and sections always follow the unsectioned group. A tab-bar
-  button collapses/expands all cards at once; per-card
-  collapse state persists per device. Each row also carries a due-date
-  affordance (calendar icon, or `MM/DD` once set) and a note icon that opens
-  the project's notes pane. Projects from every sub-area (recursively) roll
-  up into this tab under a clickable sub-area heading, each sub-area's
-  area-rooted tasks included.
-- **Notes** — notes attached to this area or any area in its subtree (or their
-  projects/tasks), each shown as a line with a markdown body preview.
+The header: a breadcrumb of the parent chain (each crumb navigates), the
+area name with its colour dot. Clicking the name opens an `AreaEditPopover`
+— rename (commits on blur/Enter), palette swatch (commits immediately), and
+delete (gated by a confirm modal the header owns, with undo). An inline
+add-sub-area button sits beside the name. The header's action row holds the
+**cast chips** (the area's people, edited in place) and the **Completed
+toggle** (show/hide done tasks in place — device-wide, persisted).
 
-Both tab counts include the full sub-area subtree.
+- **Projects** — every project owned by the area, grouped **Active** /
+  **Done**, drag-to-reorder within the area. Each project row shows an
+  expand caret, the name, a done/total progress meter, a due-date
+  affordance (calendar icon, or the date once set), a person-assignment
+  action, and a note icon that opens the project's notes pane. The row
+  expands (caret, or clicking the name — most of the row is the toggle)
+  into the full **project card**: one flattened drag surface spans the
+  unsectioned tasks and every section — tasks drag within/between groups
+  and nest as sub-tasks; section rows (inline-renamable, deletable) drag
+  to reorder, never nest, and always follow the unsectioned group. The
+  card footer holds *Add task* / *Add section* inline-add buttons. A
+  collapse-all / expand-all button in the section header operates on every
+  card at once; per-card collapse state persists per device.
+- Sub-areas (recursively) roll into the Projects section under a clickable
+  sub-area heading, each preceded by that sub-area's read-only area-task
+  rollup. An *Add project* button closes the section.
+- **Area tasks** — the area-rooted task tree (draggable, sub-tasks nest)
+  with an *Add task* button.
+- **Notes** — notes attached to this area or anywhere in its subtree (or
+  their projects/tasks), each a line with title and markdown body preview,
+  inline-editable, deletable behind a confirm. The add input creates an
+  area-scoped note; project-scoped notes are created in the project notes
+  pane.
 
-Tabs remember their last selection per area.
+Both the Projects and Notes counts include the full sub-area subtree.
+
+### Inbox
+
+The unassociated-task pane: a header with the Completed toggle, the
+draggable task tree, and an add input. Quick-add (`Shift+A`) lands here.
+
+### Today / Week
+
+One shared `DuePane` with different ranges — Today is the single day; Week
+titles itself *"Week · \<range\>"*. Open items due in range group under
+area headings (colour dot + name) and their projects; a project whose own
+due date falls in range renders as a single link row into its area with a
+*Due today* / *Due this week* badge. In the Week view each task row shows
+its weekday label. Done tasks collect in a collapsible *Done* section
+(state persisted per device). Empty state: *"Nothing in this view."*
 
 ### Project notes pane
 
 The note icon on a project row (`#/p/<id>/notes`) opens a notes-only pane: a
 project header with a breadcrumb back to its area, and the project's notes
 with an add input. This is the only place project-scoped notes are created —
-the area view's Notes tab rolls them up for display only.
+the area view's Notes section rolls them up for display only.
 
 ## Notes & markdown
 
@@ -116,12 +176,13 @@ addressed by a URL-safe **slug** derived from its title.
 
 `AppearanceProvider` controls three dimensions, each applied as a `data-*`
 attribute on the document root and persisted to `localStorage`
-(`localaction.appearance.v1`):
+(`localaction.appearance.v1`). The controls live in the sidebar footer's
+appearance menu:
 
 | Dimension | Attribute | Options |
 | --- | --- | --- |
 | Theme | `data-la-theme` | `light` · `dark` · `system` |
-| Font | `data-la-font` | `inter` · `dejavu` · `liberation` |
+| Font | `data-la-font` | `jakarta` · `plex` · `general` · `manrope` · `dm` |
 | Density | `data-la-density` | `compact` · `normal` · `cozy` |
 
 - `system` theme resolves against the OS `prefers-color-scheme` media query
@@ -139,16 +200,25 @@ attribute on the document root and persisted to `localStorage`
 - **`SortableTree`** — the flattened-tree drag surface (dnd-kit) for the
   sidebar area tree and task trees; vertical position + horizontal
   nest/unnest intent resolve to a reparenting move. A per-row `maxDepthOf`
-  override pins certain rows to a fixed level (project section headers can
+  override pins certain rows to a fixed level (project section rows can
   never nest).
-- **`PromptModal`** — modal used for create flows (new area / project / task /
-  note).
-- **`ConfirmModal` / `ConfirmButton`** — confirmation for destructive actions
-  (delete).
-- **`EditableTitle`** — inline rename of an entity's title.
+- **`InlineAddInput` / `InlineAddButton`** — the add affordances everywhere:
+  new area, project, task, section, or note.
+- **`EditableTitle`** — inline rename of an entity's title (section names).
+- **Popovers** — `AreaEditPopover` (rename / recolour / delete an area),
+  `PersonEditPopover` (rename / recolour / delete a person),
+  `PersonAssignmentPopover` (set an entity's people), and the due-date
+  pickers behind the task / project due-date buttons.
+- **`ConfirmModal`** — confirmation for destructive actions (delete).
+- **`UndoToast`** — completing a task offers a timed undo.
+- **`QuickAddModal`** — global `Shift+A` quick-add to the Inbox.
+- **Device-local view state** — collapse sets, the Completed toggle, the
+  person filter, the sidebar width, and appearance all persist to
+  `localStorage` and never sync: they are per-screen preferences, not data.
 
 ## Colour system
 
 Areas carry a palette colour (`src/data/colors.ts`, `AREA_COLORS`): purple,
 blue, green, pink, amber, gray. The chosen id is stored on the area and
 rendered as its sidebar dot / header marker; an unknown id falls back to gray.
+Persons likewise carry a colour, rendered on their avatars and chips.

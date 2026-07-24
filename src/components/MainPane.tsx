@@ -9,6 +9,7 @@ import {
   useNote,
   useProject,
   useProjectRollups,
+  useTasksForProjectDeep,
   useNotesForAreaTree,
   createProject,
   createTask,
@@ -112,6 +113,10 @@ export default function MainPane(): React.JSX.Element {
     walk(areaId);
     return out;
   }, [counts, areaId]);
+
+   if (selection.kind === 'project') {
+     return <ProjectPane projectId={selection.id} />;
+   }
 
    if (selection.kind === 'project-notes') {
      return <ProjectNotesPane projectId={selection.id} />;
@@ -929,9 +934,13 @@ function ProjectRow({
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const display = (project?.name ?? '') || name || 'Untitled';
 
+  const openProject = (): void => {
+    navigate({ kind: 'project', id: projectId });
+  };
+
   return (
     <li className={`project-row${doneGroup ? ' project-row-done' : ''}`}>
-      <div className="project-row-line">
+      <div className="project-row-line" onClick={openProject}>
         <button
           type="button"
           className="project-row-caret"
@@ -954,6 +963,7 @@ function ProjectRow({
             aria-label="Project name"
             defaultValue={display}
             autoFocus
+            onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {
               const next = e.currentTarget.value.trim() || 'Untitled';
               if (next !== display) {
@@ -970,9 +980,11 @@ function ProjectRow({
           <button
             type="button"
             className="project-row-name"
-            title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
-            aria-expanded={!collapsed}
-            onClick={onToggleCollapse}
+            title="Open project"
+            onClick={(e) => {
+              e.stopPropagation();
+              openProject();
+            }}
           >
             {display}
           </button>
@@ -1096,6 +1108,10 @@ function SortableProjectRow({
   if (handle.isDragging) classes.push('sortable-row-active');
   if (handle.isOver) classes.push('sortable-row-over');
 
+  const openProject = (): void => {
+    navigate({ kind: 'project', id: projectId });
+  };
+
   return (
     <li
       ref={handle.ref}
@@ -1103,13 +1119,16 @@ function SortableProjectRow({
       className={classes.join(' ')}
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
-      <div className="project-row-line">
+      <div className="project-row-line" onClick={openProject}>
         <button
           type="button"
           className="project-row-drag-handle"
           aria-label="Drag to reorder"
           title="Drag to reorder"
-          onClick={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
           {...(handle.attributes ?? {})}
           {...(handle.listeners ?? {})}
         >
@@ -1139,6 +1158,7 @@ function SortableProjectRow({
             aria-label="Project name"
             defaultValue={display}
             autoFocus
+            onClick={(e) => e.stopPropagation()}
             onBlur={(e) => {
               const next = e.currentTarget.value.trim() || 'Untitled';
               if (next !== display) {
@@ -1155,9 +1175,11 @@ function SortableProjectRow({
           <button
             type="button"
             className="project-row-name"
-            title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
-            aria-expanded={!collapsed}
-            onClick={onToggleCollapse}
+            title="Open project"
+            onClick={(e) => {
+              e.stopPropagation();
+              openProject();
+            }}
           >
             {display}
           </button>
@@ -1447,10 +1469,13 @@ function ProjectPaneHeader({
   areaId,
   projectId,
   name,
+  trailing,
 }: {
   areaId: string | null;
   projectId: string;
   name: string;
+  /** Extra actions pinned to the header's right edge. */
+  trailing?: React.ReactNode;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
@@ -1498,7 +1523,68 @@ function ProjectPaneHeader({
         entityType={NOTE_ENTITY_TYPE.project}
         entityId={projectId}
       />
+      {trailing && <div className="area-header-actions">{trailing}</div>}
     </div>
+  );
+}
+
+/**
+ * Project detail pane — the standalone form of an expanded project card
+ * in the area view (`#/p/<id>`, reached by clicking a project row). The
+ * header carries the area breadcrumb; the body is the same sectioned
+ * `ProjectTaskList` the card expands into, with the shared Completed
+ * toggle in the header. Project-scoped notes stay in the notes pane.
+ */
+function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
+  const { store } = useDataLayer();
+  const project = useProject(store, projectId);
+  const taskCount = useTasksForProjectDeep(store, projectId).length;
+  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
+
+  if (!project) {
+    return (
+      <main className="main" aria-label="Editor">
+        <div className="main-body">
+          <div className="main-empty">
+            <h2>Welcome to LocalAction</h2>
+            <p>This project no longer exists.</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const projectName = project.name || 'Untitled';
+
+  return (
+    <main className="main" aria-label="Editor">
+      <div className="main-body">
+        <ProjectPaneHeader
+          areaId={project.areaId}
+          projectId={projectId}
+          name={projectName}
+          trailing={
+            <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
+          }
+        />
+        <PersonFilterBanner />
+        <section className="pane-section pane-section-static" aria-label="Tasks">
+          <div className="pane-section-head">
+            <span className="pane-section-static-label">
+              <span className="pane-section-title">Tasks</span>
+              <span className="tab-group-count">· {taskCount}</span>
+            </span>
+          </div>
+          <div className="tasks-tab project-pane-tasks">
+            <ProjectTaskList
+              projectId={projectId}
+              projectName={projectName}
+              showCompleted={showCompleted}
+            />
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }
 

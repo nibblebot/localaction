@@ -156,7 +156,16 @@ function DueDateCalendar({
 
   return (
     <>
-      <div className="due-calendar-backdrop" onClick={onClose} />
+      <div
+        className="due-calendar-backdrop"
+        onClick={(e) => {
+          // The popover renders inline inside clickable rows (project
+          // row → detail pane) — keep backdrop/dialog clicks from
+          // bubbling into the row's own click target.
+          e.stopPropagation();
+          onClose();
+        }}
+      />
       <div
         ref={dialogRef}
         className="due-calendar"
@@ -164,6 +173,7 @@ function DueDateCalendar({
         aria-modal="true"
         aria-label="Pick due date"
         style={{ top: pos.top, left: pos.left }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="due-calendar-header">
           <button

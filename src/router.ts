@@ -4,6 +4,7 @@ export type Selection =
   | { kind: 'today' }
   | { kind: 'week' }
   | { kind: 'area'; id: string }
+  | { kind: 'project'; id: string }
   | { kind: 'project-notes'; id: string };
 
 export const HOME: Selection = { kind: 'home' };
@@ -13,11 +14,10 @@ export const WEEK: Selection = { kind: 'week' };
 
 /**
  * Recognises `#/inbox` (Inbox), `#/today` (Today), `#/week` (Week),
- * `#/a/<id>` (area), and
+ * `#/a/<id>` (area), `#/p/<id>` (project detail), and
  * `#/p/<id>/notes` (project notes) deep links. Anything else —
- * including legacy task / note / tag shapes and the retired
- * `#/p/<id>` project-pane links — collapses to `home` so stale
- * links fall back to the welcome screen.
+ * including legacy task / note / tag shapes — collapses to `home`
+ * so stale links fall back to the welcome screen.
  */
 export function parseRoute(raw: string): Selection {
   if (!raw) return HOME;
@@ -30,6 +30,8 @@ export function parseRoute(raw: string): Selection {
   if (m && m[1]) return { kind: 'area', id: decodeURIComponent(m[1]) };
   m = hash.match(/^#\/p\/([^/?#]+)\/notes$/);
   if (m && m[1]) return { kind: 'project-notes', id: decodeURIComponent(m[1]) };
+  m = hash.match(/^#\/p\/([^/?#]+)$/);
+  if (m && m[1]) return { kind: 'project', id: decodeURIComponent(m[1]) };
   return HOME;
 }
 
@@ -39,6 +41,7 @@ export function formatRoute(sel: Selection): string {
   if (sel.kind === 'today') return '#/today';
   if (sel.kind === 'week') return '#/week';
   if (sel.kind === 'area') return `#/a/${encodeURIComponent(sel.id)}`;
+  if (sel.kind === 'project') return `#/p/${encodeURIComponent(sel.id)}`;
   return `#/p/${encodeURIComponent(sel.id)}/notes`;
 }
 
@@ -49,5 +52,6 @@ export function routeEquals(a: Selection, b: Selection): boolean {
   if (a.kind === 'today' && b.kind === 'today') return true;
   if (a.kind === 'week' && b.kind === 'week') return true;
   if (a.kind === 'area' && b.kind === 'area') return a.id === b.id;
+  if (a.kind === 'project' && b.kind === 'project') return a.id === b.id;
   return a.kind === 'project-notes' && b.kind === 'project-notes' && a.id === b.id;
 }

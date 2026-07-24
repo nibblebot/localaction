@@ -52,7 +52,7 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]')).toBeVisible();
   });
 
-  test('clicking a project name toggles its card; the note icon opens its notes pane', async ({ page }) => {
+  test('caret toggles a project card; clicking the row opens the project detail pane', async ({ page }) => {
     await page.goto('/#/');
     await createArea(page, 'Family');
     // Projects tab: add a project; its card is expanded by default.
@@ -65,10 +65,21 @@ test.describe('LocalAction shell', () => {
     await footer.fill('Book flights');
     await footer.press('Enter');
     await expect(card.locator('.task-line-title').first()).toHaveValue('Book flights');
-    // Clicking the project name collapses the card; again expands it.
+    // Clicking the project name navigates to the detail pane — it does
+    // NOT collapse the card.
     await card.locator('.project-row-name').click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+    await expect(page.locator('.area-header-name')).toContainText('Plan trip');
+    // The detail pane shows the same task surface as the expanded card.
+    await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
+    // The breadcrumb returns to the area, where the card stayed expanded.
+    await page.locator('.area-header-crumb', { hasText: 'Family' }).click();
+    await expect(page).toHaveURL(/#\/a\/[^/]+$/);
+    await expect(card.locator('.project-row-tasks')).toBeVisible();
+    // Only the caret toggles the card; again expands it.
+    await card.locator('button[aria-label="Collapse Plan trip"]').click();
     await expect(card.locator('.project-row-tasks')).toHaveCount(0);
-    await card.locator('.project-row-name').click();
+    await card.locator('button[aria-label="Expand Plan trip"]').click();
     await expect(card.locator('.project-row-tasks')).toBeVisible();
     // The note icon opens the project's notes pane.
     await card.locator('button[aria-label="Open notes for Plan trip"]').click();

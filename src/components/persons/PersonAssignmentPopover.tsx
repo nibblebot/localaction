@@ -108,7 +108,16 @@ export default function PersonAssignmentPopover({
 
   return (
     <>
-      <div className="person-picker-backdrop" onClick={onClose} />
+      <div
+        className="person-picker-backdrop"
+        onClick={(e) => {
+          // Rendered inline inside clickable rows (project row →
+          // detail pane) — don't let backdrop/dialog clicks bubble
+          // into the row's own click target.
+          e.stopPropagation();
+          onClose();
+        }}
+      />
       <div
         ref={rootRef}
         className="person-picker"
@@ -116,6 +125,7 @@ export default function PersonAssignmentPopover({
         aria-modal="true"
         aria-label="Assign persons"
         style={{ top: y, left: x }}
+        onClick={(e) => e.stopPropagation()}
       >
         {title && <div className="person-picker-title">{title}</div>}
         {everyone.map((pid) => (

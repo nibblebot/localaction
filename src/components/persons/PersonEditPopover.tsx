@@ -85,7 +85,13 @@ export default function PersonEditPopover({
 
   return (
     <>
-      <div className="person-picker-backdrop" onClick={onClose} />
+      <div
+        className="person-picker-backdrop"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+      />
       <div
         ref={rootRef}
         className="person-edit"
@@ -93,6 +99,7 @@ export default function PersonEditPopover({
         aria-modal="true"
         aria-label="Edit person"
         style={{ top: y, left: x }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="person-edit-row">
           <PersonAvatar name={name || '?'} color={color} small />

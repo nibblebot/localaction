@@ -15,7 +15,7 @@ flowchart TB
   subgraph Shell["app-shell"]
     direction LR
     Side["Sidebar\napp name · person filter\nInbox / Today / Week · area tree\nsync badge + appearance menu"]
-    Main["MainPane\nwelcome · area view · project notes\ninbox · today · week"]
+    Main["MainPane\nwelcome · area view · project detail / notes\ninbox · today · week"]
   end
   Insp["TinyBase Inspector\n(dev-only overlay)"]
   Shell --- Insp
@@ -28,8 +28,8 @@ flowchart TB
   (persisted per device). Below 768px the sidebar becomes a modal drawer —
   hamburger toggle, backdrop tap or Escape to close, focus trapped while open.
 - **MainPane** (`MainPane.tsx`) — the working area. Renders the welcome
-  screen, an area view, a project-notes pane, the Inbox, or the Today / Week
-  due panes, depending on the current selection.
+  screen, an area view, a project detail pane, a project-notes pane, the
+  Inbox, or the Today / Week due panes, depending on the current selection.
 - **Inspector** — TinyBase's `ui-react-inspector`, a dev-only overlay for
   inspecting store tables/cells.
 
@@ -38,14 +38,13 @@ flowchart TB
 There is no router library — `src/router.ts` is a tiny hash router.
 
 - Routes: `#/` (home), `#/inbox`, `#/today`, `#/week`, `#/a/<id>` (area),
-  `#/p/<id>/notes` (project notes).
+  `#/p/<id>` (project detail), `#/p/<id>/notes` (project notes).
 - `SelectionProvider` holds the current `Selection` and a `navigate()` helper.
   It seeds from `window.location.hash` and listens for `hashchange`, so the
   back/forward buttons and deep links both work. `navigate()` writes the hash;
   the provider re-derives selection from it.
-- Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) and the
-  retired project-pane links (`#/p/<id>`) collapse to **home** so stale links
-  fall back to the welcome screen gracefully.
+- Legacy task / note / tag deep links (`#/t/…`, `#/n/…`, `#/g/…`) collapse
+  to **home** so stale links fall back to the welcome screen gracefully.
 - **Quick add** — `Shift+A` (when no input is focused) opens a modal with a
   single field; Enter commits a new Inbox task, Esc or the backdrop cancels.
 
@@ -120,9 +119,10 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   **Done**, drag-to-reorder within the area. Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), a person-assignment
-  action, and a note icon that opens the project's notes pane. The row
-  expands (caret, or clicking the name — most of the row is the toggle)
-  into the full **project card**: one flattened drag surface spans the
+  action, and a note icon that opens the project's notes pane. Only the
+  caret expands the card in place; clicking anywhere else on the row
+  (name, meter, dead space) opens the **project detail pane**. The card
+  expands into one flattened drag surface spanning the
   unsectioned tasks and every section — tasks drag within/between groups
   and nest as sub-tasks; section rows (inline-renamable, deletable) drag
   to reorder, never nest, and always follow the unsectioned group. The
@@ -156,6 +156,13 @@ due date falls in range renders as a single link row into its area with a
 *Due today* / *Due this week* badge. In the Week view each task row shows
 its weekday label. Done tasks collect in a collapsible *Done* section
 (state persisted per device). Empty state: *"Nothing in this view."*
+
+### Project detail pane
+
+Clicking a project row (`#/p/<id>`) opens the standalone form of an
+expanded project card: the project header (area breadcrumb, person
+assignment, Completed toggle) above the same sectioned task tree the
+card expands into, with *Add task* / *Add section* inline-add buttons.
 
 ### Project notes pane
 

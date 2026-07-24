@@ -750,8 +750,16 @@ body.sidebar-resizing {
   letter-spacing: 0.06em;
   color: var(--text-secondary);
 }
-.pane-section-head > :last-child:not(.pane-section-toggle) {
+.pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label) {
   margin-left: auto;
+}
+
+/* Static (non-collapsible) section label — same inline rhythm as the
+   toggle (title + count), without being a button. */
+.pane-section-static-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* Section bodies (rows, lists, add inputs) indent past the disclosure
@@ -760,6 +768,14 @@ body.sidebar-resizing {
    section header, and the parent → child relationship is invisible. */
 .pane-section > :not(.pane-section-head) {
   margin-inline-start: calc(var(--space-2) + var(--icon-sm) + 6px);
+}
+
+/* Static (non-collapsible) section header — the project detail pane's
+   Tasks header. Same chrome as the collapsible sections but with no
+   disclosure chevron, so the body stays flush with the page gutter
+   instead of indenting past a caret that isn't there. */
+.pane-section-static > :not(.pane-section-head) {
+  margin-inline-start: 0;
 }
 
 /* ============================================================
@@ -885,6 +901,9 @@ body.sidebar-resizing {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
+  /* The whole line opens the project detail pane; only the caret
+     expands the card in place. */
+  cursor: pointer;
 }
 
 /* Right-aligned action cluster on project rows (DueDate, Person,
@@ -1085,6 +1104,13 @@ body.sidebar-resizing {
   background: var(--surface);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-2);
+}
+
+/* Project detail pane: the same elevated sheet the area view's
+   expanded project card sits on, instead of the white document. */
+.project-pane-tasks {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
 }
 
 .project-header {

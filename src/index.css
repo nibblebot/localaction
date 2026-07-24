@@ -302,7 +302,6 @@ code, pre, .counter {
 
 code {
   font-size: 0.89rem;
-  line-height: 1.4;
   padding: 1px 5px;
   border-radius: var(--radius-sm);
   background: var(--code-bg);

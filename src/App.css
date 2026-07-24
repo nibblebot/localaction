@@ -170,7 +170,6 @@ body.sidebar-resizing {
   font-size: 1rem;
   color: var(--text-muted);
   padding: 6px 10px;
-  line-height: 1.5;
 }
 
 /* Sidebar list rows (AreaTreeItem) */
@@ -342,9 +341,7 @@ body.sidebar-resizing {
   text-align: center;
   color: var(--text-secondary);
   font-size: 1rem;
-  line-height: 1.5;
 }
-
 .main-empty h2 {
   font-size: 1.07rem;
   font-weight: 600;
@@ -393,9 +390,7 @@ body.sidebar-resizing {
   font-size: 1.36rem;
   font-weight: 600;
   font-family: var(--font-sans);
-  line-height: 1;
 }
-
 .area-header-name {
   font-size: 1.36rem;
   font-weight: 600;
@@ -427,6 +422,7 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font: inherit;
   font-size: 1.36rem;
   font-weight: 500;
   color: var(--text-muted);
@@ -434,8 +430,6 @@ body.sidebar-resizing {
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: var(--font-sans);
-  line-height: 1;
 }
 
 .area-header-crumb:hover {
@@ -828,7 +822,6 @@ body.sidebar-resizing {
 .area-header-crumb-sep {
   color: var(--text-muted);
   font-size: 1.36rem;
-  line-height: 1;
   user-select: none;
 }
 
@@ -1265,7 +1258,6 @@ body.sidebar-resizing {
   flex: 1 1 auto;
   font: inherit;
   font-size: 1rem;
-  line-height: 1.35;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -1451,7 +1443,6 @@ body.sidebar-resizing {
   box-sizing: border-box;
   font: inherit;
   font-size: 1rem;
-  line-height: 1.5;
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--accent-border);
@@ -1508,7 +1499,6 @@ body.sidebar-resizing {
 .btn {
   font: inherit;
   font-size: 1rem;
-  line-height: 1;
   padding: 6px 12px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
@@ -1668,7 +1658,6 @@ body.sidebar-resizing {
 .modal-message {
   margin: 0 0 var(--space-4);
   font-size: 1rem;
-  line-height: 1.5;
   color: var(--text-secondary);
 }
 
@@ -1711,7 +1700,6 @@ body.sidebar-resizing {
 .markdown-body {
   color: var(--text-h);
   font-size: 1rem;
-  line-height: 1.5;
 }
 
 .markdown-body h1,
@@ -1784,7 +1772,6 @@ body.sidebar-resizing {
 .placeholder {
   color: var(--text-secondary);
   font-size: 1rem;
-  line-height: 1.5;
   padding: var(--space-3) 0;
 }
 

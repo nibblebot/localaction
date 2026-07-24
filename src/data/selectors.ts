@@ -1,5 +1,6 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
+import { COLUMNS, PROJECT_STATUS, TABLES, TASK_STATUS } from './schema.ts';
+import type { ProjectStatus } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
 import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus } from './tasks.ts';
 import { useTableVersion } from './internal.ts';
@@ -214,6 +215,8 @@ export interface ProjectRollup {
   projectId: string;
   areaId: string | null;
   projectName: string;
+  /** Stored status — `active` when the cell is absent, else `backlog`. */
+  status: ProjectStatus;
   order: number;
   done: number;
   total: number;
@@ -249,13 +252,17 @@ export function getProjectRollups(
     const areaId = typeof areaIdRaw === 'string' ? areaIdRaw : null;
     const name = String(store.getCell(TABLES.projects, pid, COLUMNS.projects.name) ?? '');
     const order = Number(store.getCell(TABLES.projects, pid, COLUMNS.projects.order) ?? 0);
+    const status: ProjectStatus =
+      store.getCell(TABLES.projects, pid, COLUMNS.projects.status) === PROJECT_STATUS.backlog
+        ? PROJECT_STATUS.backlog
+        : PROJECT_STATUS.active;
     let done = 0;
     let total = 0;
     for (const tid of getTasksForProjectDeep(store, pid)) {
       total += 1;
       if (getEffectiveTaskStatus(store, tid) === TASK_STATUS.done) done += 1;
     }
-    projectRollups.push({ projectId: pid, areaId, projectName: name, order, done, total });
+    projectRollups.push({ projectId: pid, areaId, projectName: name, status, order, done, total });
   }
   return projectRollups;
 }

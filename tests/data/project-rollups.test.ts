@@ -2,10 +2,10 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { getProjectRollups } from '../../src/data/selectors.ts';
-import { createProject } from '../../src/data/projects.ts';
+import { createProject, updateProject } from '../../src/data/projects.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createTask, setTaskStatus } from '../../src/data/tasks.ts';
-import { TASK_STATUS } from '../../src/data/schema.ts';
+import { PROJECT_STATUS, TASK_STATUS } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -43,5 +43,17 @@ describe('getProjectRollups', () => {
     const rollup = getProjectRollups(store).find((r) => r.projectId === p);
     expect(rollup?.total).toBe(2);
     expect(rollup?.done).toBe(0);
+  });
+
+  it('surfaces the stored backlog status, defaulting to active', () => {
+    const a = createArea(store, { name: 'A' });
+    const p = createProject(store, { name: 'P', areaId: a });
+    expect(getProjectRollups(store).find((r) => r.projectId === p)?.status).toBe(
+      PROJECT_STATUS.active,
+    );
+    updateProject(store, p, { status: PROJECT_STATUS.backlog });
+    expect(getProjectRollups(store).find((r) => r.projectId === p)?.status).toBe(
+      PROJECT_STATUS.backlog,
+    );
   });
 });

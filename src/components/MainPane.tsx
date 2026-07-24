@@ -21,13 +21,13 @@ import {
   deleteNote,
   captureSubtree,
   restoreSubtree,
-  reorderProject,
   moveTask,
   PLACEMENT_SEP,
   getEffectiveTaskStatus,
   sortTaskIds,
   TABLES,
   TASK_STATUS,
+  PROJECT_STATUS,
   NOTE_ENTITY_TYPE,
   COLUMNS,
   getPlacement,
@@ -52,10 +52,10 @@ import InlineAddInput from './InlineAddInput.tsx';
 import InlineAddButton from './InlineAddButton.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
-import { SortableList } from './SortableList.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
 import ProjectTaskList from './ProjectTaskList.tsx';
+import ProjectStatusGroups from './ProjectStatusGroups.tsx';
 import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
@@ -66,6 +66,7 @@ import { usePersonFilter } from './persons/usePersonFilter.ts';
 import { useShowCompleted } from './useShowCompleted.ts';
 import { useCollapsedProjects } from './useCollapsedProjects.ts';
 import { useCollapsedSections } from './useCollapsedSections.ts';
+import { useCollapsedProjectGroups } from './useCollapsedProjectGroups.ts';
 
 // Lazy: carries markdown-it (~100KB min) out of the main chunk —
 // loaded on first note-preview render, never on task-only surfaces.
@@ -82,6 +83,7 @@ export default function MainPane(): React.JSX.Element {
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
   const collapsedProjects = useCollapsedProjects();
   const collapsedSections = useCollapsedSections();
+  const collapsedProjectGroups = useCollapsedProjectGroups();
 
   const parentChain = useMemo<readonly HeaderArea[]>(() => {
     if (!areaId) return [];
@@ -206,6 +208,8 @@ export default function MainPane(): React.JSX.Element {
             showCompleted={showCompleted}
             collapsed={collapsedProjects.collapsed}
             onToggleCollapse={collapsedProjects.toggle}
+            collapsedGroups={collapsedProjectGroups.collapsed}
+            onToggleGroup={collapsedProjectGroups.toggle}
           />
         </CollapsibleSection>
         <AreaTasksSection
@@ -626,12 +630,16 @@ function ProjectsSection({
   showCompleted,
   collapsed,
   onToggleCollapse,
+  collapsedGroups,
+  onToggleGroup,
 }: {
   areaId: string;
   subAreas: readonly SubAreaRef[];
   showCompleted: boolean;
   collapsed: ReadonlySet<string>;
   onToggleCollapse: (id: string) => void;
+  collapsedGroups: ReadonlySet<string>;
+  onToggleGroup: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -652,6 +660,8 @@ function ProjectsSection({
         showCompleted={showCompleted}
         collapsed={collapsed}
         onToggleCollapse={onToggleCollapse}
+        collapsedGroups={collapsedGroups}
+        onToggleGroup={onToggleGroup}
       />
       {subAreas.map((sa) => (
         <SubAreaProjects
@@ -662,6 +672,8 @@ function ProjectsSection({
           showCompleted={showCompleted}
           collapsed={collapsed}
           onToggleCollapse={onToggleCollapse}
+          collapsedGroups={collapsedGroups}
+          onToggleGroup={onToggleGroup}
         />
       ))}
       <InlineAddButton
@@ -679,9 +691,9 @@ function ProjectsSection({
 }
 
 /**
- * ACTIVE / DONE project groups for a single area, with the person filter
- * applied. Reused for the area itself and for each sub-area rolled into
- * the view.
+ * ACTIVE / BACKLOG / DONE project groups for a single area, with the
+ * person filter applied. Reused for the area itself and for each
+ * sub-area rolled into the view.
  */
 function AreaProjectGroups({
   areaId,
@@ -689,12 +701,16 @@ function AreaProjectGroups({
   showCompleted,
   collapsed,
   onToggleCollapse,
+  collapsedGroups,
+  onToggleGroup,
 }: {
   areaId: string;
   rollups: ProjectRollup[];
   showCompleted: boolean;
   collapsed: ReadonlySet<string>;
   onToggleCollapse: (id: string) => void;
+  collapsedGroups: ReadonlySet<string>;
+  onToggleGroup: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const inArea = useMemo(
@@ -707,10 +723,6 @@ function AreaProjectGroups({
         }),
     [rollups, areaId],
   );
-
-  function onReorder(activeId: string, beforeId: string | undefined): void {
-    reorderProject(store, activeId, beforeId);
-  }
 
   const { selected: filter } = usePersonFilter();
   const projectIds = inArea.map((p) => p.projectId);
@@ -736,60 +748,50 @@ function AreaProjectGroups({
     });
   }, [store, inArea, filter, personsV]);
 
-  const done = visible.filter((p) => p.total > 0 && p.done === p.total);
-  const active = visible.filter((p) => p.total === 0 || p.done < p.total);
-  // When only one status scope is non-empty the partition label adds
-  // nothing — a redundant "Active" line stacked under "Projects · 1"
-  // reads as clutter, not a partition. Both non-empty → labels are
-  // meaningful and worth keeping.
-  const partitioned = active.length > 0 && done.length > 0;
+  // Backlog is a stored status and wins over the derived done state —
+  // a shelved project stays shelved even when its tasks complete.
+  const backlog = visible.filter((p) => p.status === PROJECT_STATUS.backlog);
+  const done = visible.filter(
+    (p) => p.status !== PROJECT_STATUS.backlog && p.total > 0 && p.done === p.total,
+  );
+  const active = visible.filter(
+    (p) => p.status !== PROJECT_STATUS.backlog && (p.total === 0 || p.done < p.total),
+  );
 
   return (
     <>
-      {active.length > 0 && (
-        <Group title={partitioned ? 'Active' : undefined} count={active.length}>
-          <SortableList
-            itemIds={active.map((p) => p.projectId)}
-            onReorder={onReorder}
-            ariaLabel="Active projects"
-            className="sortable-list"
-          >
-            {(projectId, handle) => {
-              const p = active.find((x) => x.projectId === projectId);
-              if (!p) return <></>;
-              return (
-                <SortableProjectRow
-                  handle={handle}
-                  projectId={p.projectId}
-                  name={p.projectName}
-                  done={p.done}
-                  total={p.total}
-                  showCompleted={showCompleted}
-                  collapsed={collapsed.has(p.projectId)}
-                  onToggleCollapse={() => onToggleCollapse(p.projectId)}
-                />
-              );
-            }}
-          </SortableList>
-        </Group>
-      )}
-      {done.length > 0 && (
-        <Group title={partitioned ? 'Done' : undefined} count={done.length}>
-          {done.map((p) => (
-            <ProjectRow
-              key={p.projectId}
-              projectId={p.projectId}
-              name={p.projectName}
-              done={p.done}
-              total={p.total}
-              doneGroup
-              showCompleted={showCompleted}
-              collapsed={collapsed.has(p.projectId)}
-              onToggleCollapse={() => onToggleCollapse(p.projectId)}
-            />
-          ))}
-        </Group>
-      )}
+      <ProjectStatusGroups
+        active={active}
+        backlog={backlog}
+        done={done}
+        collapsedGroups={collapsedGroups}
+        onToggleGroup={onToggleGroup}
+        renderSortableRow={(p, handle) => (
+          <SortableProjectRow
+            handle={handle}
+            projectId={p.projectId}
+            name={p.projectName}
+            done={p.done}
+            total={p.total}
+            showCompleted={showCompleted}
+            collapsed={collapsed.has(p.projectId)}
+            onToggleCollapse={() => onToggleCollapse(p.projectId)}
+          />
+        )}
+        renderRow={(p) => (
+          <ProjectRow
+            key={p.projectId}
+            projectId={p.projectId}
+            name={p.projectName}
+            done={p.done}
+            total={p.total}
+            doneGroup
+            showCompleted={showCompleted}
+            collapsed={collapsed.has(p.projectId)}
+            onToggleCollapse={() => onToggleCollapse(p.projectId)}
+          />
+        )}
+      />
       {hiddenCount > 0 && (
         <p className="hidden-stub">
           {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
@@ -808,6 +810,8 @@ function SubAreaProjects({
   showCompleted,
   collapsed,
   onToggleCollapse,
+  collapsedGroups,
+  onToggleGroup,
 }: {
   areaId: string;
   name: string;
@@ -815,6 +819,8 @@ function SubAreaProjects({
   showCompleted: boolean;
   collapsed: ReadonlySet<string>;
   onToggleCollapse: (id: string) => void;
+  collapsedGroups: ReadonlySet<string>;
+  onToggleGroup: (id: string) => void;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const areaTaskIds = useAreaTaskIds(store, areaId);
@@ -829,6 +835,8 @@ function SubAreaProjects({
         showCompleted={showCompleted}
         collapsed={collapsed}
         onToggleCollapse={onToggleCollapse}
+        collapsedGroups={collapsedGroups}
+        onToggleGroup={onToggleGroup}
       />
     </div>
   );

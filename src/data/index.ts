@@ -2,6 +2,7 @@ export {
   TABLES,
   COLUMNS,
   TASK_STATUS,
+  PROJECT_STATUS,
   NOTE_ENTITY_TYPE,
   TOMBSTONE_ENTITY_TYPE,
   SELF_PERSON_ID,
@@ -17,6 +18,7 @@ export type {
   SectionColumn,
   TaskColumn,
   TaskStatus,
+  ProjectStatus,
   NoteEntityType,
   TombstoneEntityType,
   TombstoneColumn,
@@ -122,6 +124,7 @@ export {
   moveTask,
   moveSection,
   reorderProject,
+  moveProjectToStatus,
   backfillOrder,
   readSiblingOrders,
 } from './order.ts';

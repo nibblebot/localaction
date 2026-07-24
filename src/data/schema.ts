@@ -47,6 +47,12 @@ export const COLUMNS = {
      * Absent (cell deleted) means no due date — null is never stored.
      */
     dueDate: 'dueDate',
+    /**
+     * Optional persisted status. Absent (cell deleted) means
+     * `active` — only `backlog` is ever stored. `done` is not a
+     * stored status: it stays derived from task completion.
+     */
+    status: 'status',
     order: 'order',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
@@ -127,6 +133,19 @@ export const TASK_STATUS = {
 } as const;
 
 export type TaskStatus = (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
+
+/**
+ * A Project's stored status. `active` is the default (stored as an
+ * absent cell); `backlog` shelves the project out of the Active group
+ * without touching its tasks. A Project reads **Done** only when every
+ * task in it is done — that state is derived, never stored here.
+ */
+export const PROJECT_STATUS = {
+  active: 'active',
+  backlog: 'backlog',
+} as const;
+
+export type ProjectStatus = (typeof PROJECT_STATUS)[keyof typeof PROJECT_STATUS];
 
 export const NOTE_ENTITY_TYPE = {
   area: 'area',

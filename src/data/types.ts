@@ -1,4 +1,4 @@
-import type { TaskStatus, NoteEntityType, TombstoneEntityType } from './schema.ts';
+import type { TaskStatus, ProjectStatus, NoteEntityType, TombstoneEntityType } from './schema.ts';
 import type { AreaColorId } from './colors.ts';
 
 /**
@@ -33,6 +33,8 @@ export interface Project {
   areaId: string | null;
   /** Date-only ISO string (`YYYY-MM-DD`), or null when no due date. */
   dueDate: string | null;
+  /** Stored status (`active` when unset). Done stays derived from tasks. */
+  status: ProjectStatus;
   order: number;
   createdAt: string;
   updatedAt: string;
@@ -124,6 +126,7 @@ export interface ProjectPatch {
   areaId?: string | null;
   /** Set a date-only ISO string, or null to clear the due date. */
   dueDate?: string | null;
+  status?: ProjectStatus;
 }
 
 export interface TaskInput {

@@ -7,7 +7,7 @@ import {
 } from '../../src/data/projects.ts';
 import { deleteProject } from '../../src/data/deletion.ts';
 import { createArea } from '../../src/data/areas.ts';
-import { COLUMNS, TABLES } from '../../src/data/schema.ts';
+import { COLUMNS, PROJECT_STATUS, TABLES } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -58,6 +58,17 @@ describe('projects', () => {
     expect(store.getCell(TABLES.projects, p, COLUMNS.projects.dueDate)).toBe('2026-08-14');
     updateProject(store, p, { dueDate: null });
     expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.dueDate)).toBe(false);
+  });
+
+  it('updateProject shelves and restores the backlog status', () => {
+    const d = createArea(store, { name: 'Family' });
+    const p = createProject(store, { name: 'P', areaId: d });
+    // New projects are active by default — stored as an absent cell.
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
+    updateProject(store, p, { status: PROJECT_STATUS.backlog });
+    expect(store.getCell(TABLES.projects, p, COLUMNS.projects.status)).toBe('backlog');
+    updateProject(store, p, { status: PROJECT_STATUS.active });
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
   });
 
   it('deleteProject removes the row', () => {

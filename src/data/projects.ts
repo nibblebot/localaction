@@ -1,6 +1,6 @@
 import { useRow } from 'tinybase/ui-react';
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES } from './schema.ts';
+import { COLUMNS, PROJECT_STATUS, TABLES } from './schema.ts';
 import { newId, nowIso, normalizeRelation, row } from './internal.ts';
 import type { Project, ProjectInput, ProjectPatch } from './types.ts';
 import { readSiblingOrders } from './order.ts';
@@ -53,6 +53,12 @@ export function updateProject(
   } else if (patch.dueDate !== undefined) {
     next[COLUMNS.projects.dueDate] = patch.dueDate;
   }
+  if (patch.status === PROJECT_STATUS.active) {
+    // Active is the default — stored as an absent cell.
+    store.delCell(TABLES.projects, id, COLUMNS.projects.status);
+  } else if (patch.status !== undefined) {
+    next[COLUMNS.projects.status] = patch.status;
+  }
   store.setPartialRow(TABLES.projects, id, row(next));
 }
 
@@ -65,6 +71,10 @@ export function useProject(store: MergeableStore, id: string | undefined): Proje
     name: String(row[COLUMNS.projects.name] ?? ''),
     areaId: normalizeRelation(row[COLUMNS.projects.areaId]),
     dueDate: normalizeRelation(row[COLUMNS.projects.dueDate]),
+    status:
+      row[COLUMNS.projects.status] === PROJECT_STATUS.backlog
+        ? PROJECT_STATUS.backlog
+        : PROJECT_STATUS.active,
     order: Number(row[COLUMNS.projects.order] ?? 0),
     createdAt: String(row[COLUMNS.projects.createdAt] ?? ''),
     updatedAt: String(row[COLUMNS.projects.updatedAt] ?? ''),

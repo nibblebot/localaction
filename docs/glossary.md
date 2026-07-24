@@ -14,6 +14,8 @@ A nested Area. Same semantics as Area — ongoing, container — but lives under
 
 A bounded effort with a clear end state, owned by an Area (or sub-Area). Projects have tasks that, when completed, mean the project is done. NOT used for ongoing concerns; use an Area (or sub-Area) for those.
 
+A Project has three presentation states in the [Projects section](#projects-section): **Backlog** (a stored status — the project is shelved out of the active list without touching its tasks), **Active** (the default; any project not in Backlog whose tasks are not all done), and **Done** (derived — every task in the project is done; never stored). Only Backlog persists; dragging a project between the Active and Backlog groups writes the status and the new position in one transaction.
+
 ## Section
 
 A named group of top-level Tasks inside a Project (e.g. "Phase 1", "Backlog"). Sections exist only at the top level of a Project — they never nest, belong to exactly one Project, and hold Tasks only (no Notes, no Persons). A Task joins a Section through its `section:<id>` placement; its owning Project resolves through the Section row. Sections are ordered by drag within their Project and always render after the Project's unsectioned Tasks. Deleting a Section deletes its Tasks (containment cascade, with a typed tombstone).
@@ -106,7 +108,7 @@ The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-t
 
 ## Projects Section
 
-The Area view section listing every Project owned by the Area, grouped **Active** / **Done**, drag-to-reorder within the Area. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**, each preceded by that sub-area's read-only area-task rollup. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
+The Area view section listing every Project owned by the Area, grouped **Active** / **Backlog** / **Done**, drag-to-reorder within the Area. Active and Backlog are both standing drop zones — each renders while the Area has any project in either group, even while empty — so shelving or restoring a project is always a visible drag away (the Done group is derived and not a drop target). Each group header collapses its rows; group collapse state persists per device. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**, each preceded by that sub-area's read-only area-task rollup. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
 
 ## Notes Section
 

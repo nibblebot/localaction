@@ -9,9 +9,11 @@ import {
   moveArea,
   moveTask,
   reorderProject,
+  moveProjectToStatus,
   backfillOrder,
   readSiblingOrders,
 } from '../../src/data/order.ts';
+import { PROJECT_STATUS } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -181,6 +183,41 @@ describe('reorderProject', () => {
     const pB = createProject(store, { name: 'pB', areaId: b });
     reorderProject(store, pA, pB);
     expect(store.getCell(TABLES.projects, pA, COLUMNS.projects.areaId)).toBe(a);
+  });
+});
+
+describe('moveProjectToStatus', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('stores the backlog status and lands at the given position in one write', () => {
+    const d = createArea(store, { name: 'D' });
+    const p1 = createProject(store, { name: 'P1', areaId: d });
+    const p2 = createProject(store, { name: 'P2', areaId: d });
+    const p3 = createProject(store, { name: 'P3', areaId: d });
+    moveProjectToStatus(store, p1, PROJECT_STATUS.backlog, p3);
+    expect(store.getCell(TABLES.projects, p1, COLUMNS.projects.status)).toBe('backlog');
+    const siblings = readSiblingOrders(store, TABLES.projects, COLUMNS.projects.areaId, d);
+    expect(siblings.map((s) => s.id)).toEqual([p2, p1, p3]);
+  });
+
+  it('restoring to active clears the status cell back to absent', () => {
+    const d = createArea(store, { name: 'D' });
+    const p = createProject(store, { name: 'P', areaId: d });
+    moveProjectToStatus(store, p, PROJECT_STATUS.backlog, undefined);
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(true);
+    moveProjectToStatus(store, p, PROJECT_STATUS.active, undefined);
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
+  });
+
+  it('refuses a missing project or a beforeId outside the store', () => {
+    const d = createArea(store, { name: 'D' });
+    const p = createProject(store, { name: 'P', areaId: d });
+    moveProjectToStatus(store, 'missing', PROJECT_STATUS.backlog, undefined);
+    moveProjectToStatus(store, p, PROJECT_STATUS.backlog, 'missing');
+    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
   });
 });
 

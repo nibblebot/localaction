@@ -823,7 +823,8 @@ body.sidebar-resizing {
    Groups (ACTIVE / DONE) + project rows
    ============================================================ */
 
-/* Groups (Active / Done / Area tasks) inside the pane sections. The
+/* Groups (Active / Backlog / Done / Area tasks) inside the pane
+   sections. The
    top margin is generous — a new status scope after the previous one
    — and the bottom is zero so the next sibling owns its own leading
    space instead of stacking ours. */
@@ -850,6 +851,64 @@ body.sidebar-resizing {
 .tab-group-title {
   font-size: 0.79rem;
   font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Collapsible status-group header (Active / Backlog / Done). Mirrors
+   .pane-section-toggle one register down: quiet until hovered, chevron
+   carries the expand state. */
+.tab-group-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  margin-inline-start: calc(-1 * var(--space-2));
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.tab-group-toggle:hover {
+  color: var(--text-h);
+}
+
+.tab-group-toggle:hover .tab-group-title {
+  color: inherit;
+}
+
+.tab-group-toggle svg {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+  flex-shrink: 0;
+}
+
+/* Droppable wrapper around a sortable status group. The default state
+   is invisible — only an in-flight drag paints the affordance. */
+.tab-group-droppable {
+  border-radius: var(--radius-md);
+}
+
+/* Empty destination group (Backlog with no shelved projects): a
+   standing drop zone — dashed outline plus a quiet hint — so shelving
+   a project never requires discovering a target that only exists
+   mid-drag. */
+.tab-group-empty-zone {
+  min-height: calc(var(--space-6) + var(--space-4));
+  outline: 1px dashed var(--border);
+  outline-offset: 2px;
+}
+
+.tab-group-drop-over {
+  outline: 1px dashed var(--border-strong);
+  outline-offset: 2px;
+}
+
+.tab-group-empty-hint {
+  margin: 0;
+  padding: var(--space-1) var(--space-2) var(--space-2);
+  font-size: 0.79rem;
   color: var(--text-muted);
 }
 

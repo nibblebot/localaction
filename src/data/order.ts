@@ -1,5 +1,6 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES } from './schema.ts';
+import { COLUMNS, PROJECT_STATUS, TABLES } from './schema.ts';
+import type { ProjectStatus } from './schema.ts';
 import { normalizeRelation, nowIso, row } from './internal.ts';
 
 /**
@@ -283,6 +284,47 @@ export function reorderProject(
     projectId,
     beforeId,
   );
+}
+
+/**
+ * Set a project's stored status and land it at a new position in one
+ * transaction — the cross-group drag (Active ⇄ Backlog) writes both,
+ * and subscribers must see a single change. `beforeId` names the row
+ * the project now sits before within its area's sibling order
+ * (`undefined` = end of the target group).
+ */
+export function moveProjectToStatus(
+  store: MergeableStore,
+  projectId: string,
+  status: ProjectStatus,
+  beforeId: string | undefined,
+): void {
+  if (!store.hasRow(TABLES.projects, projectId)) return;
+  if (beforeId !== undefined && !store.hasRow(TABLES.projects, beforeId)) return;
+  if (beforeId === projectId) return;
+  const areaId = normalizeRelation(
+    store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId),
+  );
+  const columns = ORDER_COLUMNS[TABLES.projects];
+  const siblings = readSiblingOrders(store, columns.table, columns.parent, areaId);
+  const newOrder = computeInsertOrder(store, columns.table, siblings, projectId, beforeId);
+  store.transaction(() => {
+    // Active is the default — stored as an absent cell; only backlog
+    // is ever written.
+    if (status === PROJECT_STATUS.active) {
+      store.delCell(TABLES.projects, projectId, COLUMNS.projects.status);
+    }
+    store.setPartialRow(
+      TABLES.projects,
+      projectId,
+      row({
+        [COLUMNS.projects.status]:
+          status === PROJECT_STATUS.active ? undefined : status,
+        [columns.order]: newOrder,
+        [columns.updatedAt]: nowIso(),
+      }),
+    );
+  });
 }
 
 /**

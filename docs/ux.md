@@ -116,7 +116,13 @@ add-sub-area button sits beside the name. The header's action row holds the
 toggle** (show/hide done tasks in place — device-wide, persisted).
 
 - **Projects** — every project owned by the area, grouped **Active** /
-  **Done**, drag-to-reorder within the area. Each project row shows an
+  **Backlog** / **Done**, drag-to-reorder within the area. Dragging a
+  project into **Backlog** shelves it (a stored status) and dragging it
+  back restores it; **Done** is derived from task completion and is not
+  a drop target. Active and Backlog are both standing drop zones —
+  visible even while empty, whenever the area has a project in either
+  group. Group headers collapse their rows (state persisted per
+  device). Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), a person-assignment
   action, and a note icon that opens the project's notes pane. Only the

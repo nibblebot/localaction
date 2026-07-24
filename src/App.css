@@ -690,15 +690,17 @@ body.sidebar-resizing {
    ============================================================ */
 
 .pane-section {
-  margin-bottom: var(--space-4);
+  /* Top-level rhythm: Projects / Area tasks / Notes read as distinct
+     scopes of the subarea pane, not adjacent paragraphs. Generous. */
+  margin-bottom: var(--space-6);
 }
 
 .pane-section-head {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  padding-inline: 4px;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  padding-inline: var(--space-2);
 }
 
 .pane-section-toggle {
@@ -782,16 +784,28 @@ body.sidebar-resizing {
    Groups (ACTIVE / DONE) + project rows
    ============================================================ */
 
+/* Groups (Active / Done / Area tasks) inside the pane sections. The
+   top margin is generous — a new status scope after the previous one
+   — and the bottom is zero so the next sibling owns its own leading
+   space instead of stacking ours. */
 .tab-group {
-  margin-bottom: var(--space-4);
+  margin-top: var(--space-5);
+  margin-bottom: 0;
+}
+
+/* First group under any pane section: skip the generous top margin
+   (the section head already gave us that air). */
+.pane-section > :first-child,
+.projects-tab > :first-child {
+  margin-top: 0;
 }
 
 .tab-group-head {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-bottom: 6px;
-  padding-inline: 4px;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  padding-inline: var(--space-2);
 }
 
 .tab-group-title {
@@ -806,13 +820,17 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
+/* Project cards stacked in a single column. The cards already have
+   their own 1px borders + radius; the gap between them is the air
+   the cards need to read as distinct objects rather than as one
+   shape with horizontal rules. */
 .tab-group-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: var(--space-2);
 }
 
 /* ============================================================
@@ -835,12 +853,14 @@ body.sidebar-resizing {
 .project-row-done {
   opacity: 0.7;
 }
-
+/* Card header row: caret · name · progress · actions. The horizontal
+   padding sits on rem so the density knob rescales the card chrome
+   alongside row content. */
 .project-row-line {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: 10px 14px;
+  padding: var(--space-2) var(--space-3);
 }
 
 /* Right-aligned action cluster on project rows (DueDate, Person,
@@ -880,10 +900,12 @@ body.sidebar-resizing {
 }
 
 /* Expanded task tree, kept inside the card (the row clips it to the
-   card radius via overflow: hidden). */
+   card radius via overflow: hidden). Top padding is generous — the
+   first row needs to breathe off the hairline divider that splits
+   the card header from its task body. */
 .project-row-tasks {
   border-top: 1px solid var(--border);
-  padding: var(--space-2) 14px 10px;
+  padding: var(--space-3) var(--space-3) var(--space-2);
 }
 
 .project-row-name {
@@ -1063,13 +1085,32 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-/* Rolled-in sub-area section header (area view projects/tasks tabs). */
+/* Rolled-in sub-area scope inside the parent area's Projects pane.
+   A different area is being inherited here — the hairline + generous
+   top air mark that boundary so the rolled-in content doesn't blur
+   into the parent's own Active / Done groups. The container is the
+   `.subarea-section` wrapper; the header sits inside it. */
+.subarea-section {
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/* First sub-area after the parent area's own groups: still gets a
+   generous top air, but no extra top hairline (the pane-section
+   separator already did the work). */
+.projects-tab > .subarea-section:first-child {
+  margin-top: var(--space-5);
+  padding-top: 0;
+  border-top: 0;
+}
+
 .subarea-header {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin: var(--space-4) 0 var(--space-2);
-  padding-inline: 4px;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding-inline: var(--space-2);
 }
 
 .subarea-header-name {
@@ -1215,14 +1256,17 @@ body.sidebar-resizing {
    document on the white `.tasks-tab` sheet. Rows are flush with the
    sheet's content edges on both sides (drag handle on the left,
    action icons on the right). Only transient states (drag-over
-   outline, drag-active shadow, overlay preview) draw a box. */
+   outline, drag-active shadow, overlay preview) draw a box.
+   `flex-start` alignment keeps the checkbox pinned to the first
+   line of a wrapping title instead of floating at the row's
+   vertical centre. */
 .task-line {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   align-content: flex-start;
-  gap: 6px;
-  padding: 4px 0;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
   border-radius: var(--radius-sm);
 }
 
@@ -2203,13 +2247,27 @@ body.sidebar-resizing {
    hover-revealed actions like task rows.
    ============================================================ */
 
+/* Section header inside a project card's task tree. A hairline top
+   border separates it from the preceding task group / unsectioned
+   block; the breathing room above matches the .tab-group spacing so
+   the rhythm stays even whether the divider is across sections,
+   groups, or pane-sections. */
 .section-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 0;
-  margin-top: var(--space-2);
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-1);
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+
+/* First section in a project card: skip the top divider — the card
+   header already separates it from the row above. */
+.project-row-tasks .section-row:first-child {
+  margin-top: var(--space-2);
+  border-top: 0;
+  padding-top: var(--space-1);
 }
 
 /* A quiet, layout-stable border wakes up around project section and task
@@ -2257,12 +2315,16 @@ body.sidebar-resizing {
 }
 
 /* Footer under the project task tree: the add-task and add-section
-   buttons (or their revealed inputs) side by side on one row. */
+   buttons (or their revealed inputs) side by side on one row. A
+   generous top margin separates the footer from the last task
+   row, so the dashed invitations read as a deliberate footer
+   gesture rather than as a missing row. */
 .tasks-tab-footer {
   display: flex;
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 
 .tasks-tab-footer .inline-add-input {
@@ -2922,10 +2984,34 @@ body.sidebar-resizing {
     min-width: 0;
   }
 
+  .project-row-progress-count {
+    min-width: 0;
+  }
+
   .project-row-progress-bar {
     display: none;
   }
-}
+
+  /* On phone widths the project name is the primary task path —
+     squeeze the row title cluster's hard `flex: 0 0 auto` minimums
+     so the title keeps room to wrap instead of being ellipsised
+     to "Website redes…". The progress count still carries the
+     precise rollup. */
+  .project-row-actions {
+    gap: var(--space-2);
+  }
+
+  .project-row-line {
+    gap: var(--space-2);
+  }
+
+  /* Section headers and task rows in a project card also tighten
+     their gutters at phone widths so deep hierarchies don't push
+     the title off-screen. */
+  .project-row-tasks {
+    padding-inline: var(--space-2);
+  }
+ }
 
 /* ============================================================
    Coarse pointer (touch) — 44px hit areas

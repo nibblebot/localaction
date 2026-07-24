@@ -120,7 +120,7 @@ function SectionRow({
           {...(handle.listeners ?? {})}
         >
           <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#drag-icon" />
+            <use href="/icons.svg#section-drag-icon" />
           </svg>
         </button>
       )}

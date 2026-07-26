@@ -162,4 +162,53 @@ test.describe('Project sections', () => {
     await expect(page.locator('.section-row')).toHaveCount(0);
     expect(await treeRows(page, tok)).toEqual([]);
   });
+
+  test('project row icon toggles empty-section visibility, persists after reload', async ({ page }) => {
+    const tok = uniq();
+    await openProject(page, `Area ${tok}`, `Project ${tok}`);
+    await addSection(page, `Empty ${tok}`);
+    await addSection(page, `Full ${tok}`);
+    await page
+      .locator('.section-row')
+      .nth(1)
+      .locator('button[aria-label="Add task to section"]')
+      .click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Section task ${tok}`);
+    await page.keyboard.press('Enter');
+
+    // Default: every section header renders, empty ones included.
+    expect(await treeRows(page, tok)).toEqual([
+      `S:Empty ${tok}`,
+      `S:Full ${tok}`,
+      `T:Section task ${tok}`,
+    ]);
+
+    const toggle = page.getByRole('button', { name: /empty sections in/ });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await toggle.click();
+
+    // Hidden: the empty header is pruned, the filled section stays.
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(await treeRows(page, tok)).toEqual([
+      `S:Full ${tok}`,
+      `T:Section task ${tok}`,
+    ]);
+
+    // The per-project flag survives a reload (device-local state).
+    await page.reload();
+    await expect(page.locator('.project-row-tasks')).toBeVisible();
+    expect(await treeRows(page, tok)).toEqual([
+      `S:Full ${tok}`,
+      `T:Section task ${tok}`,
+    ]);
+
+    // Toggling back restores the empty header.
+    await toggle.click();
+    expect(await treeRows(page, tok)).toEqual([
+      `S:Empty ${tok}`,
+      `S:Full ${tok}`,
+      `T:Section task ${tok}`,
+    ]);
+  });
 });

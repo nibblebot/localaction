@@ -1124,6 +1124,15 @@ body.sidebar-resizing {
   background: var(--danger-bg);
 }
 
+/* Empty-sections toggle in the "hide empty" mode: a set state, so it
+   stays visible at rest and takes the accent, like `.due-date-set`. */
+.project-row-action.project-row-action-active,
+.project-row-action.project-row-action-active:hover {
+  background: var(--accent-tint);
+  color: var(--accent);
+  opacity: 1;
+}
+
 .project-row-action svg {
   width: var(--icon-xs);
   height: var(--icon-xs);

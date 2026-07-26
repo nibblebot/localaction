@@ -116,7 +116,7 @@ The Area view section rolling up every [Note](#note) attached to the Area, its s
 
 ## Project Row
 
-A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, a note icon (opens the [Project notes pane](#project-notes-pane)), and a person-assignment action. Most of the row is the expand toggle.
+A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (hides [Section](#section) headers with no visible tasks in the expanded card; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), and a person-assignment action. Most of the row is the expand toggle.
 
 ## Project Card
 

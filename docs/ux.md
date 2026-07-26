@@ -124,7 +124,9 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   group. Group headers collapse their rows (state persisted per
   device). Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
-  affordance (calendar icon, or the date once set), a person-assignment
+  affordance (calendar icon, or the date once set), an empty-sections
+  toggle (prunes section headers with no visible tasks from the
+  expanded card; per-project, persisted per device), a person-assignment
   action, and a note icon that opens the project's notes pane. Only the
   caret expands the card in place; clicking anywhere else on the row
   (name, meter, dead space) opens the **project detail pane**. The card

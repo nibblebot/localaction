@@ -67,6 +67,7 @@ import { useShowCompleted } from './useShowCompleted.ts';
 import { useCollapsedProjects } from './useCollapsedProjects.ts';
 import { useCollapsedSections } from './useCollapsedSections.ts';
 import { useCollapsedProjectGroups } from './useCollapsedProjectGroups.ts';
+import { useHiddenEmptySections } from './useHiddenEmptySections.ts';
 
 // Lazy: carries markdown-it (~100KB min) out of the main chunk —
 // loaded on first note-preview render, never on task-only surfaces.
@@ -84,6 +85,7 @@ export default function MainPane(): React.JSX.Element {
   const collapsedProjects = useCollapsedProjects();
   const collapsedSections = useCollapsedSections();
   const collapsedProjectGroups = useCollapsedProjectGroups();
+  const hiddenEmptySections = useHiddenEmptySections();
 
   const parentChain = useMemo<readonly HeaderArea[]>(() => {
     if (!areaId) return [];
@@ -210,6 +212,8 @@ export default function MainPane(): React.JSX.Element {
             onToggleCollapse={collapsedProjects.toggle}
             collapsedGroups={collapsedProjectGroups.collapsed}
             onToggleGroup={collapsedProjectGroups.toggle}
+            hiddenEmptySections={hiddenEmptySections.collapsed}
+            onToggleEmptySections={hiddenEmptySections.toggle}
           />
         </CollapsibleSection>
         <AreaTasksSection
@@ -632,6 +636,8 @@ function ProjectsSection({
   onToggleCollapse,
   collapsedGroups,
   onToggleGroup,
+  hiddenEmptySections,
+  onToggleEmptySections,
 }: {
   areaId: string;
   subAreas: readonly SubAreaRef[];
@@ -640,6 +646,9 @@ function ProjectsSection({
   onToggleCollapse: (id: string) => void;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (id: string) => void;
+  /** Project ids whose empty section headers are pruned. */
+  hiddenEmptySections: ReadonlySet<string>;
+  onToggleEmptySections: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
@@ -662,6 +671,8 @@ function ProjectsSection({
         onToggleCollapse={onToggleCollapse}
         collapsedGroups={collapsedGroups}
         onToggleGroup={onToggleGroup}
+        hiddenEmptySections={hiddenEmptySections}
+        onToggleEmptySections={onToggleEmptySections}
       />
       {subAreas.map((sa) => (
         <SubAreaProjects
@@ -674,6 +685,8 @@ function ProjectsSection({
           onToggleCollapse={onToggleCollapse}
           collapsedGroups={collapsedGroups}
           onToggleGroup={onToggleGroup}
+          hiddenEmptySections={hiddenEmptySections}
+          onToggleEmptySections={onToggleEmptySections}
         />
       ))}
       <InlineAddButton
@@ -703,6 +716,8 @@ function AreaProjectGroups({
   onToggleCollapse,
   collapsedGroups,
   onToggleGroup,
+  hiddenEmptySections,
+  onToggleEmptySections,
 }: {
   areaId: string;
   rollups: ProjectRollup[];
@@ -711,6 +726,8 @@ function AreaProjectGroups({
   onToggleCollapse: (id: string) => void;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (id: string) => void;
+  hiddenEmptySections: ReadonlySet<string>;
+  onToggleEmptySections: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const inArea = useMemo(
@@ -776,6 +793,8 @@ function AreaProjectGroups({
             showCompleted={showCompleted}
             collapsed={collapsed.has(p.projectId)}
             onToggleCollapse={() => onToggleCollapse(p.projectId)}
+            hideEmptySections={hiddenEmptySections.has(p.projectId)}
+            onToggleEmptySections={() => onToggleEmptySections(p.projectId)}
           />
         )}
         renderRow={(p) => (
@@ -789,6 +808,8 @@ function AreaProjectGroups({
             showCompleted={showCompleted}
             collapsed={collapsed.has(p.projectId)}
             onToggleCollapse={() => onToggleCollapse(p.projectId)}
+            hideEmptySections={hiddenEmptySections.has(p.projectId)}
+            onToggleEmptySections={() => onToggleEmptySections(p.projectId)}
           />
         )}
       />
@@ -812,6 +833,8 @@ function SubAreaProjects({
   onToggleCollapse,
   collapsedGroups,
   onToggleGroup,
+  hiddenEmptySections,
+  onToggleEmptySections,
 }: {
   areaId: string;
   name: string;
@@ -821,6 +844,8 @@ function SubAreaProjects({
   onToggleCollapse: (id: string) => void;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (id: string) => void;
+  hiddenEmptySections: ReadonlySet<string>;
+  onToggleEmptySections: (id: string) => void;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const areaTaskIds = useAreaTaskIds(store, areaId);
@@ -837,6 +862,8 @@ function SubAreaProjects({
         onToggleCollapse={onToggleCollapse}
         collapsedGroups={collapsedGroups}
         onToggleGroup={onToggleGroup}
+        hiddenEmptySections={hiddenEmptySections}
+        onToggleEmptySections={onToggleEmptySections}
       />
     </div>
   );
@@ -922,6 +949,8 @@ function ProjectRow({
   showCompleted,
   collapsed,
   onToggleCollapse,
+  hideEmptySections,
+  onToggleEmptySections,
 }: {
   projectId: string;
   name: string;
@@ -931,6 +960,9 @@ function ProjectRow({
   showCompleted: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Prune section headers with no visible tasks in the expanded card. */
+  hideEmptySections: boolean;
+  onToggleEmptySections: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
@@ -1014,6 +1046,21 @@ function ProjectRow({
           <ProjectDueDateButton projectId={projectId} />
           <button
             type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
             className="project-row-action"
             aria-label={`Open notes for ${display}`}
             title="Notes"
@@ -1058,7 +1105,12 @@ function ProjectRow({
       </div>
       {!collapsed && (
         <div className="project-row-tasks">
-          <ProjectTaskList projectId={projectId} projectName={display} showCompleted={showCompleted} />
+          <ProjectTaskList
+            projectId={projectId}
+            projectName={display}
+            showCompleted={showCompleted}
+            hideEmptySections={hideEmptySections}
+          />
         </div>
       )}
       <ConfirmModal
@@ -1092,6 +1144,8 @@ function SortableProjectRow({
   showCompleted,
   collapsed,
   onToggleCollapse,
+  hideEmptySections,
+  onToggleEmptySections,
 }: {
   handle: SortableHandleProps;
   projectId: string;
@@ -1101,6 +1155,9 @@ function SortableProjectRow({
   showCompleted: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  /** Prune section headers with no visible tasks in the expanded card. */
+  hideEmptySections: boolean;
+  onToggleEmptySections: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
@@ -1205,6 +1262,21 @@ function SortableProjectRow({
           <ProjectDueDateButton projectId={projectId} />
           <button
             type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
             className="project-row-action"
             aria-label={`Open notes for ${display}`}
             title="Notes"
@@ -1249,7 +1321,12 @@ function SortableProjectRow({
       </div>
       {!collapsed && (
         <div className="project-row-tasks">
-          <ProjectTaskList projectId={projectId} projectName={display} showCompleted={showCompleted} />
+          <ProjectTaskList
+            projectId={projectId}
+            projectName={display}
+            showCompleted={showCompleted}
+            hideEmptySections={hideEmptySections}
+          />
         </div>
       )}
       <ConfirmModal

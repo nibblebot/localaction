@@ -92,37 +92,55 @@ export async function attachSyncServer(
   // to redo the schema bootstrap. The `Database` is closed in `close()`.
   const db = await openDatabase(dbPath);
   await dropLegacyJsonTable(db);
-  const tinyServer = createWsServer(wsServer, async (pathId) => {
-    const safePathId = sanitizePathId(pathId);
-    if (!safePathId) {
-      throw new Error(`invalid sync path: ${pathId}`);
-    }
-    const store = createMergeableStore();
-    process.stderr.write(
-      `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
-    );
-    if (process.env['LOCALACTION_DEBUG']) {
-      const touched = new Set<string>();
-      store.addCellListener(
-        null,
-        null,
-        null,
-        (_store: MergeableStore, _tableId: string, _rowId: string, _cellId: string) => {
-          touched.add(_tableId);
-          process.stderr.write(
-            `[srv ${safePathId}] cell changed: ${_tableId}/${_rowId}/${_cellId}\n`,
-          );
-        },
+  // requestTimeoutSeconds=0.25 (TinyBase default: 1s). While TinyBase's
+  // ws-server configures/starts a per-path server client (which happens on
+  // EVERY sole-client connect — it tears the path down when the last client
+  // disconnects), all inbound messages are buffered. That includes the
+  // response to the server's own initial sync pull, so that pull always dies
+  // at this timeout before the path goes Ready and the buffer replays. With
+  // the 1s default, the buffered client pull was answered at ~1.05s — just
+  // after the client's own 1s request timeout — so the initial sync silently
+  // aborted and data only flowed when a later local mutation (OPFS load)
+  // pushed ContentHashes: the multi-second "slow initial sync" on every
+  // page reload. 0.25s gets the path Ready fast enough for the client's
+  // pull to be answered within its timeout; healthy responses on localhost
+  // take <10ms, so the smaller budget changes nothing in steady state.
+  const tinyServer = createWsServer(
+    wsServer,
+    async (pathId) => {
+      const safePathId = sanitizePathId(pathId);
+      if (!safePathId) {
+        throw new Error(`invalid sync path: ${pathId}`);
+      }
+      const store = createMergeableStore();
+      process.stderr.write(
+        `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
       );
-      store.addDidFinishTransactionListener(() => {
-        process.stderr.write(
-          `[srv ${safePathId}] tx finished | touched: ${Array.from(touched).sort().join(',')} | store tables: ${Object.keys(store.getTables()).sort().join(',')}\n`,
+      if (process.env['LOCALACTION_DEBUG']) {
+        const touched = new Set<string>();
+        store.addCellListener(
+          null,
+          null,
+          null,
+          (_store: MergeableStore, _tableId: string, _rowId: string, _cellId: string) => {
+            touched.add(_tableId);
+            process.stderr.write(
+              `[srv ${safePathId}] cell changed: ${_tableId}/${_rowId}/${_cellId}\n`,
+            );
+          },
         );
-        touched.clear();
-      });
-    }
-    return createServerPersister(store, db);
-  });
+        store.addDidFinishTransactionListener(() => {
+          process.stderr.write(
+            `[srv ${safePathId}] tx finished | touched: ${Array.from(touched).sort().join(',')} | store tables: ${Object.keys(store.getTables()).sort().join(',')}\n`,
+          );
+          touched.clear();
+        });
+      }
+      return createServerPersister(store, db);
+    },
+    undefined,
+    0.25,
+  );
 
   httpServer.on('upgrade', (req, socket, head) => {
     if (!req.url) {

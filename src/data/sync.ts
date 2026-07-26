@@ -135,7 +135,17 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
 
     let sync: Awaited<ReturnType<typeof createWsSynchronizer>>;
     try {
-      sync = await createWsSynchronizer(store, ws);
+      // requestTimeoutSeconds=10 (TinyBase default: 1s). On a sole-client
+      // connect the server buffers inbound messages until its per-path
+      // persister + synchronizer finish starting (SQLite load + its own
+      // initial-pull timeout). The client's first GetContentHashes pull is
+      // only answered once the path goes Ready — with the 1s default that
+      // answer arrived just AFTER the client had already given up, silently
+      // aborting the initial sync and gating all data flow on the next
+      // local store mutation (OPFS load). 10s keeps the pull alive across
+      // slow server-side starts; aborted chains fail silently anyway, so a
+      // larger budget costs nothing in steady state.
+      sync = await createWsSynchronizer(store, ws, 10);
     } catch (err) {
       connecting = false;
       setStatus({ kind: 'error', message: (err as Error).message });

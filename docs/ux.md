@@ -70,8 +70,8 @@ active one.
 
 ### The area tree
 
-Areas are top-level containers; each may hold one level of **sub-areas**
-(same semantics, nested under a parent).
+Areas are top-level containers; each may hold nested **sub-areas**
+(same semantics, recursively).
 
 - Each row: colour dot, name, and the recursive open-task count across its
   subtree (descendant areas and recursive sub-tasks included). Top-level
@@ -81,8 +81,8 @@ Areas are top-level containers; each may hold one level of **sub-areas**
 - **Drag-to-move** across the whole tree via `SortableTree` (dnd-kit's
   flattened-tree pattern — one drag context spans every level). Vertical
   movement picks the insertion row; dragging right nests the row under
-  the row above, dragging left unnests it. Nesting is clamped to one
-  level of sub-areas; a row's subtree always moves with it.
+  the row above, dragging left unnests it. A row's subtree always moves
+  with it.
 - A new-area input sits at the foot of the section; from a top-level area
   view, the header adds a sub-area.
 - Selecting an area drives the MainPane's area view (and expands the row).

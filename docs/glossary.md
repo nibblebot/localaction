@@ -84,7 +84,7 @@ The Sidebar's people section (`PersonFilterFacet`): the list of [Persons](#perso
 
 ## Areas Section
 
-The Sidebar section titled "Areas": the **Area tree** (a flattened drag surface where vertical movement reorders and horizontal movement nests/unnests, clamped to one level of sub-areas) plus the new-area input. Each **area row** shows a colour dot, the area name, and the recursive open-task count across its subtree; top-level rows with children carry a collapse caret.
+The Sidebar section titled "Areas": the **Area tree** (a flattened drag surface where vertical movement reorders and horizontal movement nests/unnests, recursively) plus the new-area input. Each **area row** shows a colour dot, the area name, and the recursive open-task count across its subtree; top-level rows with children carry a collapse caret.
 
 ## Sidebar Footer
 

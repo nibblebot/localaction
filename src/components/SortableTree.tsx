@@ -79,6 +79,12 @@ const sortableOverlayHandle: SortableHandleProps = {
  * - `maxDepth` clamps how deep a row may be nested (e.g. 1 for a
  *   two-level tree). Depth can never exceed "previous row's depth + 1",
  *   so no level is ever skipped.
+ * - Dropping a row onto one of its own ancestor rows (an easy
+ *   overshoot when dragging up, since the parent row sits directly
+ *   above the first sibling) keeps it in the family as the ancestor's
+ *   first child. Ejecting the row to the level above the ancestor
+ *   requires an intentional horizontal drag left — vertical movement
+ *   alone never detaches a row from its group.
  *
  * Keyboard drags reorder vertically only; depth changes are
  * pointer-driven.
@@ -201,16 +207,37 @@ function getProjection<TId extends string>(
   const activeIndex = items.findIndex((i) => i.id === activeId);
   if (overIndex < 0 || activeIndex < 0) return null;
   const activeItem = items[activeIndex]!;
+  const overItem = items[overIndex]!;
+
+  // Projected depth: own depth + horizontal drag, clamped below so the
+  // row nests at most one level past the row above it and never
+  // shallower than the row below it.
+  const projectedDepth = activeItem.depth + Math.round(offsetX / indentWidth);
+
+  // Dragging a row UP over one of its own ancestors is an overshoot
+  // inside the same group — the parent row sits directly above the
+  // first sibling, so aiming for the top of the group easily lands on
+  // it. Interpret the drop as "first child of that ancestor": the
+  // clamping below would otherwise eject the row to the level ABOVE
+  // the ancestor. An intentional horizontal drag left (projected depth
+  // shallower than the ancestor's child level) keeps the old meaning:
+  // drop before the ancestor.
+  let dropIndex = overIndex;
+  if (projectedDepth >= overItem.depth + 1) {
+    for (let cur = activeItem.parentId; cur !== null; ) {
+      if (cur === overId) {
+        dropIndex = overIndex + 1;
+        break;
+      }
+      cur = items.find((i) => i.id === cur)?.parentId ?? null;
+    }
+  }
 
   // Where the row will sit once dropped.
-  const newItems = arrayMove([...items], activeIndex, overIndex);
-  const previousItem = newItems[overIndex - 1] as FlattenedItem<TId> | undefined;
-  const nextItem = newItems[overIndex + 1] as FlattenedItem<TId> | undefined;
+  const newItems = arrayMove([...items], activeIndex, dropIndex);
+  const previousItem = newItems[dropIndex - 1] as FlattenedItem<TId> | undefined;
+  const nextItem = newItems[dropIndex + 1] as FlattenedItem<TId> | undefined;
 
-  // Projected depth: own depth + horizontal drag, clamped so the row
-  // nests at most one level past the row above it and never shallower
-  // than the row below it.
-  const projectedDepth = activeItem.depth + Math.round(offsetX / indentWidth);
   const maxDepth = Math.min(
     previousItem ? previousItem.depth + 1 : 0,
     maxDepthLimit,
@@ -235,7 +262,7 @@ function getProjection<TId extends string>(
     // preceding row at the target depth.
     parentId =
       newItems
-        .slice(0, overIndex)
+        .slice(0, dropIndex)
         .reverse()
         .find((i) => i.depth === depth)?.parentId ?? null;
   }
@@ -244,7 +271,7 @@ function getProjection<TId extends string>(
   // the drop position at the same depth under the same parent. A
   // shallower row ends the sibling group (drop = last child).
   let beforeId: TId | undefined;
-  for (let i = overIndex + 1; i < newItems.length; i += 1) {
+  for (let i = dropIndex + 1; i < newItems.length; i += 1) {
     const it = newItems[i]!;
     if (it.depth < depth) break;
     if (it.depth === depth && it.parentId === parentId) {

@@ -156,7 +156,11 @@ draggable task tree, and an add input. Quick-add (`Shift+A`) lands here.
 ### Today / Week
 
 One shared `DuePane` with different ranges — Today is the single day; Week
-titles itself *"Week · \<range\>"*. Open items due in range group under
+titles itself *"Week · \<range\>"*. Open items whose due date has already
+passed collect in a collapsible *Overdue* section above the range groups —
+tasks render with their weekday + date label, and overdue projects render
+as a single link row into their area with an *Overdue* badge; the section
+and its dates are danger-tinted. Open items due in range group under
 area headings (colour dot + name) and their projects. In Today, a project
 whose own due date falls in range shows its link row (with a *Due today*
 badge and a collapse caret) followed by its full task tree — the same
@@ -166,8 +170,9 @@ and the add-task / add-section footer. Sections with no open tasks under
 them are hidden here (they still render in the area and project views). The caret hides the tree without
 leaving the view; collapse state persists per device. In Week the project stays a single
 link row into its area with a *Due this week* badge, and each task row
-shows its weekday label. Done tasks collect in a collapsible *Done* section
-(state persisted per device). Empty state: *"Nothing in this view."*
+shows its weekday label. Done tasks collect in a collapsible *Done* section.
+Both *Overdue* and *Done* collapse from their header rows; collapse state
+persists per device, keyed independently per view. Empty state: *"Nothing in this view."*
 
 ### Project detail pane
 

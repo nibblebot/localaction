@@ -1340,9 +1340,9 @@ body.sidebar-resizing {
   padding: 1px 8px;
 }
 
-/* Done section: collapsed by default via localStorage state; the whole
-   header row is the toggle. */
-.today-done-toggle {
+/* Collapsible section headers (Overdue, Done): the whole header row
+   is the toggle; state persists per view via localStorage. */
+.today-section-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1355,15 +1355,29 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-.today-done-toggle .today-group-title {
+.today-section-toggle .today-group-title {
   margin: 0;
   padding-inline: 0;
   color: inherit;
 }
 
-.today-done-toggle .svg-icon {
+.today-section-toggle .svg-icon {
   width: 14px;
   height: 14px;
+}
+
+/* Overdue section: danger-tinted so past-due items read at a glance. */
+.today-overdue-toggle {
+  color: var(--danger);
+}
+
+.today-overdue .today-due-badge {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.today-overdue .task-line-due-date {
+  color: var(--danger);
 }
 
 .today-done .task-list {

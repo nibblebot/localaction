@@ -9,6 +9,7 @@ import {
 import type { DueItem } from '../data/index.ts';
 import { useSelection } from './useSelection.ts';
 import { useCollapsedSet } from './useCollapsedSet.ts';
+import { todayIso } from './dates.ts';
 import { TaskList } from './TaskList.tsx';
 import ProjectTaskList from './ProjectTaskList.tsx';
 import type { AreaColorId } from '../data/colors.ts';
@@ -170,23 +171,40 @@ export default function DuePane({
   projectBadgeLabel: string;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const items = useDueItems(store, from, to);
+  // The query range reaches back to the ISO floor so past-due items are
+  // fetched too; they split into the Overdue section below.
+  const items = useDueItems(store, '0000-01-01', to);
   const counts = useAreaCounts(store);
   const rollups = useProjectRollups(store);
   const { collapsed, toggle } = useCollapsedSet(storageKey);
 
+  const today = todayIso();
   const open = useMemo(() => items.filter((i) => !i.done), [items]);
+  /** Open items whose due date has already passed — lifted out of the
+   * range groups into the Overdue section. Same definition in both
+   * views: anything due before today. */
+  const overdue = useMemo(() => open.filter((i) => i.dueDate < today), [open, today]);
+  const overdueTaskIds = useMemo(
+    () => overdue.filter((i) => i.kind === 'task').map((i) => i.id),
+    [overdue],
+  );
+  const overdueProjects = useMemo(() => overdue.filter((i) => i.kind === 'project'), [overdue]);
+  const inRange = useMemo(() => open.filter((i) => i.dueDate >= today), [open, today]);
   const doneTaskIds = useMemo(
-    () => items.filter((i) => i.done && i.kind === 'task').map((i) => i.id),
-    [items],
+    () =>
+      items
+        .filter((i) => i.done && i.kind === 'task' && i.dueDate >= from)
+        .map((i) => i.id),
+    [items, from],
   );
 
   const groups = useMemo(() => {
     const areaMeta = new Map(counts.map((c) => [c.id, { name: c.name, color: c.color, order: c.order }]));
     const projectMeta = new Map(rollups.map((r) => [r.projectId, { name: r.projectName, order: r.order }]));
-    return groupDueItems(open, areaMeta, projectMeta);
-  }, [open, counts, rollups]);
+    return groupDueItems(inRange, areaMeta, projectMeta);
+  }, [inRange, counts, rollups]);
 
+  const overdueCollapsed = collapsed.has('overdue');
   const doneCollapsed = collapsed.has('done');
   const showRowDates = from !== to;
   /** Single-day Today view: due projects expand their full task tree. */
@@ -198,10 +216,46 @@ export default function DuePane({
         <header className="main-pane-header">
           <h2 className="main-pane-title">{title}</h2>
         </header>
-        {groups.length === 0 && doneTaskIds.length === 0 ? (
+        {groups.length === 0 && overdue.length === 0 && doneTaskIds.length === 0 ? (
           <p className="today-empty">Nothing in this view.</p>
         ) : (
-          groups.map((area) => (
+          <>
+        {overdue.length > 0 && (
+          <section className="today-group today-overdue" aria-label="Overdue">
+            <button
+              type="button"
+              className="today-section-toggle today-overdue-toggle"
+              aria-expanded={!overdueCollapsed}
+              onClick={() => toggle('overdue')}
+            >
+              <svg className="svg-icon" aria-hidden="true">
+                <use
+                  href={`/icons.svg#${overdueCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
+                />
+              </svg>
+              <h3 className="today-group-title">Overdue</h3>
+              <span className="sidebar-link-count">{overdue.length}</span>
+            </button>
+            {!overdueCollapsed && (
+              <>
+                {overdueProjects.map((project) => (
+                  <ProjectDueRow
+                    key={project.id}
+                    areaId={project.areaId}
+                    name={
+                      rollups.find((r) => r.projectId === project.id)?.projectName || 'Untitled'
+                    }
+                    badgeLabel="Overdue"
+                  />
+                ))}
+                {overdueTaskIds.length > 0 && (
+                  <TaskList ids={overdueTaskIds} readOnly effectiveStatus showDueDate />
+                )}
+              </>
+            )}
+          </section>
+        )}
+        {groups.map((area) => (
             <section
               key={area.areaId ?? 'inbox'}
               className="today-group"
@@ -263,13 +317,14 @@ export default function DuePane({
                 );
               })}
             </section>
-          ))
+          ))}
+          </>
         )}
         {doneTaskIds.length > 0 && (
           <section className="today-group today-done" aria-label="Done">
             <button
               type="button"
-              className="today-done-toggle"
+              className="today-section-toggle"
               aria-expanded={!doneCollapsed}
               onClick={() => toggle('done')}
             >

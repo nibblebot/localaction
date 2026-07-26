@@ -115,14 +115,22 @@ add-sub-area button sits beside the name. The header's action row holds the
 **cast chips** (the area's people, edited in place) and the **Completed
 toggle** (show/hide done tasks in place — device-wide, persisted).
 
-- **Projects** — every project owned by the area, grouped **Active** /
-  **Backlog** / **Done**, drag-to-reorder within the area. Dragging a
-  project into **Backlog** shelves it (a stored status) and dragging it
-  back restores it; **Done** is derived from task completion and is not
-  a drop target. Active and Backlog are both standing drop zones —
-  visible even while empty, whenever the area has a project in either
-  group. Group headers collapse their rows (state persisted per
-  device). Each project row shows an
+- **Projects** — every project owned by the area and its sub-areas,
+  grouped **Active** / **Backlog** / **Done**. The status groups are
+  hoisted above the sub-areas: each group header renders once, and the
+  area's own projects sit at the top of the group with each sub-area's
+  projects as a labeled slice below them (clickable sub-area heading).
+  A sub-area's read-only area-task rollup tops its Active slice.
+  Drag-to-reorder within a slice; dragging a project into its area's
+  **Backlog** slice shelves it (a stored status) and dragging it back
+  restores it; a drop that lands in another area's slice snaps back —
+  drag never moves a project between areas. **Done** is derived from
+  task completion and is not a drop target. The area's own Active and
+  Backlog slices are both standing drop zones — visible even while
+  empty, whenever the area has a project in either group; a sub-area's
+  empty counterpart slice appears mid-drag, labeled by its heading.
+  Group headers collapse their rows (state persisted per device).
+  Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), an empty-sections
   toggle (prunes section headers with no visible tasks from the
@@ -137,9 +145,7 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   card footer holds *Add task* / *Add section* inline-add buttons. A
   collapse-all / expand-all button in the section header operates on every
   card at once; per-card collapse state persists per device.
-- Sub-areas (recursively) roll into the Projects section under a clickable
-  sub-area heading, each preceded by that sub-area's read-only area-task
-  rollup. An *Add project* button closes the section.
+  An *Add project* button closes the section.
 - **Area tasks** — the area-rooted task tree (draggable, sub-tasks nest)
   with an *Add task* button.
 - **Notes** — notes attached to this area or anywhere in its subtree (or

@@ -32,6 +32,7 @@ import {
   COLUMNS,
   getPlacement,
   useInboxTaskIds,
+  getAreaTaskIds,
   useAreaTaskIds,
   usePeopleForEntity,
   useHiddenCount,
@@ -39,7 +40,7 @@ import {
   useEntityPersonIds,
   usePerson,
 } from '../data/index.ts';
-import type { Area, AreaCount, NoteEntityType, ProjectRollup } from '../data/index.ts';
+import type { Area, AreaCount, NoteEntityType } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
@@ -56,6 +57,7 @@ import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
 import ProjectTaskList from './ProjectTaskList.tsx';
 import ProjectStatusGroups from './ProjectStatusGroups.tsx';
+import type { ProjectStatusSlice } from './ProjectStatusGroups.tsx';
 import Group from './Group.tsx';
 import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
 import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
@@ -652,9 +654,91 @@ function ProjectsSection({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
+  const { selected: filter } = usePersonFilter();
+  // person_links/persons changes must re-run the imperative
+  // peopleForEntity filter below — the token joins the memo deps. The
+  // tasks token re-runs the per-sub-area area-task presence check.
+  const personsV =
+    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
+  const tasksV = useTableVersion(store, TABLES.tasks);
+
   const inArea = useMemo(
     () => rollups.filter((r) => r.areaId === areaId),
     [rollups, areaId],
+  );
+
+  // One slice per in-scope area — the viewed area first (headerless),
+  // then every sub-area depth-first — each partitioning its visible
+  // projects into the hoisted Active / Backlog / Done groups. Backlog
+  // is a stored status and wins over the derived done state: a shelved
+  // project stays shelved even when its tasks complete.
+  const slices = useMemo<readonly ProjectStatusSlice[]>(() => {
+    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
+    void tasksV; // invalidation token: task edits re-run the area-task presence check
+    const set = new Set(filter);
+    const partition = (id: string, name: string | null): ProjectStatusSlice => {
+      const visible = rollups
+        .filter((r) => r.areaId === id)
+        .sort((a, b) => {
+          if (a.order !== b.order) return a.order - b.order;
+          return a.projectName.localeCompare(b.projectName);
+        })
+        .filter((p) => {
+          if (filter.length === 0) return true;
+          for (const personId of peopleForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
+            if (set.has(personId)) return true;
+          }
+          return false;
+        });
+      return {
+        areaId: id,
+        name,
+        backlog: visible.filter((p) => p.status === PROJECT_STATUS.backlog),
+        done: visible.filter(
+          (p) => p.status !== PROJECT_STATUS.backlog && p.total > 0 && p.done === p.total,
+        ),
+        active: visible.filter(
+          (p) => p.status !== PROJECT_STATUS.backlog && (p.total === 0 || p.done < p.total),
+        ),
+        // The viewed area's own tasks live in their own pane section;
+        // only a sub-area's tasks roll up into its Active slice here.
+        hasAreaTasks: name !== null && getAreaTaskIds(store, id).length > 0,
+      };
+    };
+    return [
+      partition(areaId, null),
+      ...subAreas.map((sa) => partition(sa.id, sa.name)),
+    ];
+  }, [store, rollups, filter, personsV, tasksV, areaId, subAreas]);
+
+  // Sub-area chrome (clickable header + read-only tasks rollup) is
+  // attached to the slices here so ProjectStatusGroups stays
+  // presentational.
+  const slicesWithChrome = useMemo<readonly ProjectStatusSlice[]>(
+    () =>
+      slices.map((s) =>
+        s.name === null
+          ? s
+          : {
+              ...s,
+              header: <SubAreaHeader areaId={s.areaId} name={s.name} />,
+              tasksRollup: <SubAreaTasksRollup areaId={s.areaId} showCompleted={showCompleted} />,
+            },
+      ),
+    [slices, showCompleted],
+  );
+
+  // The person-filter hidden stub aggregates every in-scope area now
+  // that the groups are hoisted above the sub-area slices.
+  const scopedProjectIds = useMemo(() => {
+    const ids = new Set([areaId, ...subAreas.map((sa) => sa.id)]);
+    return rollups.filter((r) => r.areaId !== null && ids.has(r.areaId)).map((r) => r.projectId);
+  }, [rollups, areaId, subAreas]);
+  const hiddenCount = useHiddenCount(
+    store,
+    NOTE_ENTITY_TYPE.project,
+    scopedProjectIds,
+    filter,
   );
 
   function addProject(name: string): void {
@@ -663,124 +747,8 @@ function ProjectsSection({
 
   return (
     <section className="projects-tab" aria-label="Projects">
-      <AreaProjectGroups
-        areaId={areaId}
-        rollups={rollups}
-        showCompleted={showCompleted}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
-        collapsedGroups={collapsedGroups}
-        onToggleGroup={onToggleGroup}
-        hiddenEmptySections={hiddenEmptySections}
-        onToggleEmptySections={onToggleEmptySections}
-      />
-      {subAreas.map((sa) => (
-        <SubAreaProjects
-          key={sa.id}
-          areaId={sa.id}
-          name={sa.name}
-          rollups={rollups}
-          showCompleted={showCompleted}
-          collapsed={collapsed}
-          onToggleCollapse={onToggleCollapse}
-          collapsedGroups={collapsedGroups}
-          onToggleGroup={onToggleGroup}
-          hiddenEmptySections={hiddenEmptySections}
-          onToggleEmptySections={onToggleEmptySections}
-        />
-      ))}
-      <InlineAddButton
-        label="Add project"
-        placeholder={
-          inArea.length === 0
-            ? 'No projects yet — add the first one.'
-            : 'New project…'
-        }
-        inputAriaLabel="New project"
-        onSubmit={addProject}
-      />
-    </section>
-  );
-}
-
-/**
- * ACTIVE / BACKLOG / DONE project groups for a single area, with the
- * person filter applied. Reused for the area itself and for each
- * sub-area rolled into the view.
- */
-function AreaProjectGroups({
-  areaId,
-  rollups,
-  showCompleted,
-  collapsed,
-  onToggleCollapse,
-  collapsedGroups,
-  onToggleGroup,
-  hiddenEmptySections,
-  onToggleEmptySections,
-}: {
-  areaId: string;
-  rollups: ProjectRollup[];
-  showCompleted: boolean;
-  collapsed: ReadonlySet<string>;
-  onToggleCollapse: (id: string) => void;
-  collapsedGroups: ReadonlySet<string>;
-  onToggleGroup: (id: string) => void;
-  hiddenEmptySections: ReadonlySet<string>;
-  onToggleEmptySections: (id: string) => void;
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const inArea = useMemo(
-    () =>
-      rollups
-        .filter((r) => r.areaId === areaId)
-        .sort((a, b) => {
-          if (a.order !== b.order) return a.order - b.order;
-          return a.projectName.localeCompare(b.projectName);
-        }),
-    [rollups, areaId],
-  );
-
-  const { selected: filter } = usePersonFilter();
-  const projectIds = inArea.map((p) => p.projectId);
-  const hiddenCount = useHiddenCount(
-    store,
-    NOTE_ENTITY_TYPE.project,
-    projectIds,
-    filter,
-  );
-  // person_links/persons changes must re-run the imperative
-  // peopleForEntity filter below — the token joins the memo deps.
-  const personsV =
-    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
-  const visible = useMemo(() => {
-    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
-    if (filter.length === 0) return inArea;
-    const set = new Set(filter);
-    return inArea.filter((p) => {
-      for (const id of peopleForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
-        if (set.has(id)) return true;
-      }
-      return false;
-    });
-  }, [store, inArea, filter, personsV]);
-
-  // Backlog is a stored status and wins over the derived done state —
-  // a shelved project stays shelved even when its tasks complete.
-  const backlog = visible.filter((p) => p.status === PROJECT_STATUS.backlog);
-  const done = visible.filter(
-    (p) => p.status !== PROJECT_STATUS.backlog && p.total > 0 && p.done === p.total,
-  );
-  const active = visible.filter(
-    (p) => p.status !== PROJECT_STATUS.backlog && (p.total === 0 || p.done < p.total),
-  );
-
-  return (
-    <>
       <ProjectStatusGroups
-        active={active}
-        backlog={backlog}
-        done={done}
+        slices={slicesWithChrome}
         collapsedGroups={collapsedGroups}
         onToggleGroup={onToggleGroup}
         renderSortableRow={(p, handle) => (
@@ -818,54 +786,17 @@ function AreaProjectGroups({
           {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
         </p>
       )}
-    </>
-  );
-}
-
-/** A sub-area's area-rooted tasks and project groups, rolled into the
- * parent area's combined Projects section. */
-function SubAreaProjects({
-  areaId,
-  name,
-  rollups,
-  showCompleted,
-  collapsed,
-  onToggleCollapse,
-  collapsedGroups,
-  onToggleGroup,
-  hiddenEmptySections,
-  onToggleEmptySections,
-}: {
-  areaId: string;
-  name: string;
-  rollups: ProjectRollup[];
-  showCompleted: boolean;
-  collapsed: ReadonlySet<string>;
-  onToggleCollapse: (id: string) => void;
-  collapsedGroups: ReadonlySet<string>;
-  onToggleGroup: (id: string) => void;
-  hiddenEmptySections: ReadonlySet<string>;
-  onToggleEmptySections: (id: string) => void;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const areaTaskIds = useAreaTaskIds(store, areaId);
-  if (!rollups.some((r) => r.areaId === areaId) && areaTaskIds.length === 0) return null;
-  return (
-    <div className="subarea-section">
-      <SubAreaHeader areaId={areaId} name={name} />
-      <SubAreaTasksRollup areaId={areaId} showCompleted={showCompleted} />
-      <AreaProjectGroups
-        areaId={areaId}
-        rollups={rollups}
-        showCompleted={showCompleted}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
-        collapsedGroups={collapsedGroups}
-        onToggleGroup={onToggleGroup}
-        hiddenEmptySections={hiddenEmptySections}
-        onToggleEmptySections={onToggleEmptySections}
+      <InlineAddButton
+        label="Add project"
+        placeholder={
+          inArea.length === 0
+            ? 'No projects yet — add the first one.'
+            : 'New project…'
+        }
+        inputAriaLabel="New project"
+        onSubmit={addProject}
       />
-    </div>
+    </section>
   );
 }
 
@@ -1934,9 +1865,10 @@ function AreaTasksSection({
 }
 
 /**
- * Read-only area-task rollup shown inside a rolled-in sub-area section
- * of the combined Projects view. Flat and non-interactive: creation
- * and editing happen on the sub-area's own view. Hidden when empty.
+ * Read-only area-task rollup shown at the top of a sub-area's Active
+ * slice in the parent area's hoisted Projects view. Flat and
+ * non-interactive: creation and editing happen on the sub-area's own
+ * view. Hidden when empty.
  */
 function SubAreaTasksRollup({ areaId, showCompleted }: { areaId: string; showCompleted: boolean }): React.JSX.Element {
   const { store } = useDataLayer();

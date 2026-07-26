@@ -44,6 +44,54 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(page.locator('.area-header-name')).toContainText(child);
   });
 
+  test('Active group is hoisted above the sub-area slices it contains', async ({
+    page,
+  }) => {
+    const parent = `Family ${uniq()}`;
+    const child = `Kids ${uniq()}`;
+    const parentProject = `Renovation ${uniq()}`;
+    const childProject = `School play ${uniq()}`;
+    await createArea(page, parent);
+    // A project in the parent area itself.
+    await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+    await page.locator('.projects-tab .inline-add-input').fill(parentProject);
+    await page.locator('.projects-tab .inline-add-input').press('Enter');
+    await expect(
+      page.locator('.project-row-name', { hasText: parentProject }),
+    ).toBeVisible();
+    // A sub-area with its own project.
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(child);
+    await page.locator('.area-header-add-input').press('Enter');
+    await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+    await page.locator('.projects-tab .inline-add-input').fill(childProject);
+    await page.locator('.projects-tab .inline-add-input').press('Enter');
+    // Back on the parent: a single Active group holds the parent's
+    // project AND the sub-area slice (header + project) below it.
+    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    const active = page.locator('.tab-group').filter({
+      has: page.locator('.tab-group-title', { hasText: 'Active' }),
+    });
+    await expect(active).toHaveCount(1);
+    await expect(
+      active.locator('.project-row-name', { hasText: parentProject }),
+    ).toBeVisible();
+    await expect(
+      active.locator('.subarea-header-name', { hasText: child }),
+    ).toBeVisible();
+    await expect(
+      active.locator('.project-row-name', { hasText: childProject }),
+    ).toBeVisible();
+    // The group title sits above the sub-area slice it contains.
+    const titleBox = await active.locator('.tab-group-title').boundingBox();
+    const headerBox = await active
+      .locator('.subarea-header-name', { hasText: child })
+      .boundingBox();
+    expect(titleBox).not.toBeNull();
+    expect(headerBox).not.toBeNull();
+    expect(titleBox!.y).toBeLessThan(headerBox!.y);
+  });
+
   test('parent Projects tab lists sub-area tasks inside their project card', async ({
     page,
   }) => {

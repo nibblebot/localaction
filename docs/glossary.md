@@ -96,7 +96,7 @@ The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a ti
 
 ## Area View
 
-The Main Pane view for a selected Area: an [Area header](#area-header) above three collapsible sections — [Area tasks](#area-tasks-section), [Projects](#projects-section), and [Notes](#notes-section). Sub-areas roll up into the Projects section; both section counts include the full sub-area subtree.
+The Main Pane view for a selected Area: an [Area header](#area-header) above three collapsible sections — [Area tasks](#area-tasks-section), [Projects](#projects-section), and [Notes](#notes-section). Sub-areas roll up into the Projects and Area tasks sections; the section counts include the full sub-area subtree.
 
 ## Area Header
 
@@ -104,11 +104,11 @@ The header of an Area view: the area's colour marker and name (inline-renamable 
 
 ## Area Tasks Section
 
-The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an *Add task* affordance.
+The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an *Add task* affordance. Sub-areas (recursively) roll in below the Area's own tree as labeled, editable groups — one per sub-area that roots its own tasks — each scoped to that sub-area's placement.
 
 ## Projects Section
 
-The Area view section listing every Project owned by the Area, grouped **Active** / **Backlog** / **Done**, drag-to-reorder within the Area. Active and Backlog are both standing drop zones — each renders while the Area has any project in either group, even while empty — so shelving or restoring a project is always a visible drag away (the Done group is derived and not a drop target). Each group header collapses its rows; group collapse state persists per device. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**, each preceded by that sub-area's read-only area-task rollup. When sub-areas roll in, the projects owned directly by the viewed Area are labeled with a static **Area projects** header (the Area's colour dot, no navigation target); with no sub-areas there is nothing to disambiguate and the slice stays headerless. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
+The Area view section listing every Project owned by the Area, grouped **Active** / **Backlog** / **Done**, drag-to-reorder within the Area. Active and Backlog are both standing drop zones — each renders while the Area has any project in either group, even while empty — so shelving or restoring a project is always a visible drag away (the Done group is derived and not a drop target). Each group header collapses its rows; group collapse state persists per device. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**. When sub-areas roll in, the projects owned directly by the viewed Area are labeled with a static **Area projects** header (the Area's colour dot, no navigation target); with no sub-areas there is nothing to disambiguate and the slice stays headerless. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
 
 ## Notes Section
 
@@ -132,7 +132,7 @@ A [Section's](#section) header inside the Project task list: a drag handle, the 
 
 ## Task Row
 
-A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — person assignment, due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes and in sub-area task rollups.
+A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — person assignment, due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
 
 ## Project Notes Pane
 

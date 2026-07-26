@@ -24,7 +24,6 @@ import {
   moveTask,
   PLACEMENT_SEP,
   getEffectiveTaskStatus,
-  sortTaskIds,
   TABLES,
   TASK_STATUS,
   PROJECT_STATUS,
@@ -54,7 +53,7 @@ import InlineAddButton from './InlineAddButton.tsx';
 import { areaColorHex } from '../data/colors.ts';
 import type { AreaColorId } from '../data/colors.ts';
 import type { SortableHandleProps } from './SortableList.tsx';
-import { TaskList, TaskTreeByStatus } from './TaskList.tsx';
+import { TaskTreeByStatus } from './TaskList.tsx';
 import ProjectTaskList from './ProjectTaskList.tsx';
 import ProjectStatusGroups from './ProjectStatusGroups.tsx';
 import type { ProjectStatusSlice } from './ProjectStatusGroups.tsx';
@@ -221,6 +220,7 @@ export default function MainPane(): React.JSX.Element {
         </CollapsibleSection>
         <AreaTasksSection
           areaId={areaId}
+          subAreas={subAreas}
           showCompleted={showCompleted}
           collapsed={collapsedSections.collapsed.has('tasks')}
           onToggleCollapse={() => collapsedSections.toggle('tasks')}
@@ -667,11 +667,9 @@ function ProjectsSection({
   const rollups = useProjectRollups(store);
   const { selected: filter } = usePersonFilter();
   // person_links/persons changes must re-run the imperative
-  // peopleForEntity filter below — the token joins the memo deps. The
-  // tasks token re-runs the per-sub-area area-task presence check.
+  // peopleForEntity filter below — the token joins the memo deps.
   const personsV =
     useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
-  const tasksV = useTableVersion(store, TABLES.tasks);
 
   const inArea = useMemo(
     () => rollups.filter((r) => r.areaId === areaId),
@@ -685,7 +683,6 @@ function ProjectsSection({
   // project stays shelved even when its tasks complete.
   const slices = useMemo<readonly ProjectStatusSlice[]>(() => {
     void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
-    void tasksV; // invalidation token: task edits re-run the area-task presence check
     const set = new Set(filter);
     const partition = (id: string, name: string | null): ProjectStatusSlice => {
       const visible = rollups
@@ -711,22 +708,19 @@ function ProjectsSection({
         active: visible.filter(
           (p) => p.status !== PROJECT_STATUS.backlog && (p.total === 0 || p.done < p.total),
         ),
-        // The viewed area's own tasks live in their own pane section;
-        // only a sub-area's tasks roll up into its Active slice here.
-        hasAreaTasks: name !== null && getAreaTaskIds(store, id).length > 0,
       };
     };
     return [
       partition(areaId, null),
       ...subAreas.map((sa) => partition(sa.id, sa.name)),
     ];
-  }, [store, rollups, filter, personsV, tasksV, areaId, subAreas]);
+  }, [store, rollups, filter, personsV, areaId, subAreas]);
 
-  // Sub-area chrome (clickable header + read-only tasks rollup) is
-  // attached to the slices here so ProjectStatusGroups stays
-  // presentational. The viewed area's own slice gets a static
-  // "Area projects" header once sub-areas roll in — with no sub-areas
-  // there is nothing to disambiguate, so it stays headerless.
+  // Sub-area chrome (a clickable header) is attached to the slices here
+  // so ProjectStatusGroups stays presentational. The viewed area's own
+  // slice gets a static "Area projects" header once sub-areas roll in —
+  // with no sub-areas there is nothing to disambiguate, so it stays
+  // headerless.
   const viewedArea = useArea(store, areaId);
   const slicesWithChrome = useMemo<readonly ProjectStatusSlice[]>(
     () =>
@@ -744,10 +738,9 @@ function ProjectsSection({
                   color={subAreas.find((sa) => sa.id === s.areaId)?.color ?? 'gray'}
                 />
               ),
-              tasksRollup: <SubAreaTasksRollup areaId={s.areaId} showCompleted={showCompleted} />,
             },
       ),
-    [slices, subAreas, viewedArea, showCompleted],
+    [slices, subAreas, viewedArea],
   );
 
   // The person-filter hidden stub aggregates every in-scope area now
@@ -1840,19 +1833,24 @@ function InboxPane(): React.JSX.Element {
 }
 
 /**
- * The selected area's own task band — the area-level "ungrouped" inbox.
- * Writable: tasks are created with `placement: area:<id>`, edited,
- * checked off, and drag-reordered in place. Rendered through
+ * The selected area's task band — the area-level "ungrouped" inbox —
+ * followed by one labeled group per sub-area that roots its own tasks.
+ * Writable: the area's own tasks are created with `placement: area:<id>`,
+ * edited, checked off, and drag-reordered in place; each sub-area group
+ * is the same editable tree scoped to that sub-area's placement (a root
+ * drop inside a group maps back to its own sub-area). Rendered through
  * TaskTreeByStatus so sub-tasks nest correctly and `onMove` can
- * re-parent within the band (root drop maps back to the area).
+ * re-parent within a band.
  */
 function AreaTasksSection({
   areaId,
+  subAreas,
   showCompleted,
   collapsed,
   onToggleCollapse,
 }: {
   areaId: string;
+  subAreas: readonly SubAreaRef[];
   showCompleted: boolean;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -1889,11 +1887,27 @@ function AreaTasksSection({
     : topLevelIds.filter(
         (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
       ).length;
+  // The section count covers the whole subtree, matching the Projects
+  // and Notes section-count convention. Sub-area top-level ids are read
+  // imperatively (one hook per sub-area can't loop), so the tasks table
+  // version joins the memo deps as the invalidation token.
+  const tasksV = useTableVersion(store, TABLES.tasks);
+  const visibleSubAreaCount = useMemo(() => {
+    void tasksV; // invalidation token: task edits re-run the subtree count
+    let n = 0;
+    for (const sa of subAreas) {
+      const tops = getAreaTaskIds(store, sa.id);
+      n += showCompleted
+        ? tops.length
+        : tops.filter((tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done).length;
+    }
+    return n;
+  }, [store, tasksV, subAreas, showCompleted]);
   return (
     <CollapsibleSection
       title="Area tasks"
       icon="tasks"
-      count={visibleTopLevel}
+      count={visibleTopLevel + visibleSubAreaCount}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}
     >
@@ -1913,17 +1927,34 @@ function AreaTasksSection({
         inputAriaLabel="New area task"
         onSubmit={addTask}
       />
+      {subAreas.map((sa) => (
+        <SubAreaTaskGroup
+          key={sa.id}
+          areaId={sa.id}
+          name={sa.name}
+          showCompleted={showCompleted}
+        />
+      ))}
     </CollapsibleSection>
   );
 }
 
 /**
- * Read-only area-task rollup shown at the top of a sub-area's Active
- * slice in the parent area's hoisted Projects view. Flat and
- * non-interactive: creation and editing happen on the sub-area's own
- * view. Hidden when empty.
+ * One rolled-in sub-area's area-rooted tasks inside the viewed area's
+ * Area tasks section: the same editable tree as the area's own band,
+ * scoped to the sub-area's placement — a root drop inside the group
+ * re-parents to that sub-area, never to the viewed area. Labeled by the
+ * sub-area's name; hidden while the sub-area has no visible tasks.
  */
-function SubAreaTasksRollup({ areaId, showCompleted }: { areaId: string; showCompleted: boolean }): React.JSX.Element {
+function SubAreaTaskGroup({
+  areaId,
+  name,
+  showCompleted,
+}: {
+  areaId: string;
+  name: string;
+  showCompleted: boolean;
+}): React.JSX.Element | null {
   const { store } = useDataLayer();
   const topLevelIds = useAreaTaskIds(store, areaId);
   const allIds = useMemo(() => {
@@ -1934,25 +1965,32 @@ function SubAreaTasksRollup({ areaId, showCompleted }: { areaId: string; showCom
     }
     return out;
   }, [topLevelIds, store]);
-  const orderedIds = sortTaskIds(store, allIds);
-  const visibleIds = useMemo(
-    () =>
-      showCompleted
-        ? orderedIds
-        : orderedIds.filter(
-            (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
-          ),
-    [showCompleted, orderedIds, store],
-  );
-  if (visibleIds.length === 0) return <></>;
   const visibleTopLevel = showCompleted
     ? topLevelIds.length
     : topLevelIds.filter(
         (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
       ).length;
+  if (visibleTopLevel === 0) return null;
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId ? `task${PLACEMENT_SEP}${parentId}` : `area${PLACEMENT_SEP}${areaId}`,
+      beforeId,
+    );
+  }
   return (
-    <Group title="Area tasks" count={visibleTopLevel}>
-      <TaskList ids={visibleIds} readOnly effectiveStatus />
+    <Group title={name} count={visibleTopLevel}>
+      <TaskTreeByStatus
+        ids={allIds}
+        onMove={onMove}
+        ariaLabel={`Area tasks in ${name}`}
+        showCompleted={showCompleted}
+      />
     </Group>
   );
 }

@@ -120,7 +120,6 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   hoisted above the sub-areas: each group header renders once, and the
   area's own projects sit at the top of the group with each sub-area's
   projects as a labeled slice below them (clickable sub-area heading).
-  A sub-area's read-only area-task rollup tops its Active slice.
   Drag-to-reorder within a slice; dragging a project into its area's
   **Backlog** slice shelves it (a stored status) and dragging it back
   restores it; a drop that lands in another area's slice snaps back —
@@ -147,14 +146,16 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   card at once; per-card collapse state persists per device.
   An *Add project* button closes the section.
 - **Area tasks** — the area-rooted task tree (draggable, sub-tasks nest)
-  with an *Add task* button.
+  with an *Add task* button, followed by one labeled, editable group per
+  sub-area that roots its own tasks (each group scoped to that
+  sub-area — a root drop inside it re-parents to the sub-area).
 - **Notes** — notes attached to this area or anywhere in its subtree (or
   their projects/tasks), each a line with title and markdown body preview,
   inline-editable, deletable behind a confirm. The add input creates an
   area-scoped note; project-scoped notes are created in the project notes
   pane.
 
-Both the Projects and Notes counts include the full sub-area subtree.
+The Projects, Area tasks, and Notes counts all include the full sub-area subtree.
 
 ### Inbox
 

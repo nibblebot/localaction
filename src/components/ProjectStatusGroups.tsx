@@ -49,12 +49,10 @@ import Group from './Group.tsx';
  *   destination: it renders on every area view, even with no
  *   projects at all — shelving a project must never require
  *   discovering a drop zone that only exists mid-drag. Its Active
- *   slice renders while the area has any project in either group or
- *   roots its own tasks (to host the read-only tasks rollup). A
+ *   slice renders while the area has any project in either group. A
  *   sub-area's empty counterpart slice renders only mid-drag
  *   (labeled by its header), so a sub-area's name never repeats
- *   across groups at rest; its Active slice additionally renders
- *   while the sub-area roots its own tasks.
+ *   across groups at rest.
  * - A same-slice drop reorders (`reorderProject`); a cross-group drop
  *   within the same area writes the stored status and the new position
  *   in one transaction (`moveProjectToStatus`).
@@ -76,14 +74,8 @@ export interface ProjectStatusSlice {
   active: readonly ProjectRollup[];
   backlog: readonly ProjectRollup[];
   done: readonly ProjectRollup[];
-  /** True while the area roots its own tasks — its Active slice stays
-   * visible to host the tasks rollup even with no projects. */
-  hasAreaTasks: boolean;
   /** Sub-area header rendered above the slice's rows. */
   header?: ReactNode;
-  /** Read-only area-tasks rollup rendered at the top of the Active
-   * slice, above the project rows. */
-  tasksRollup?: ReactNode;
 }
 
 interface SlicePosition {
@@ -164,9 +156,9 @@ function SortableProjectSlot({
 }
 
 /** One area's slice of a sortable status group: a droppable container
- * holding the slice's header, optional tasks rollup, and rows. An
- * empty slice keeps a labeled drop zone (see the standing-drop-
- * destination invariant in the module docstring). */
+ * holding the slice's header and rows. An empty slice keeps a labeled
+ * drop zone (see the standing-drop-destination invariant in the module
+ * docstring). */
 function SliceDropZone({
   areaId,
   group,
@@ -322,15 +314,12 @@ export default function ProjectStatusGroups({
   // destination: it renders even when the area has no projects at
   // all, so shelving never requires discovering a target that only
   // exists mid-drag. Its Active slice renders while the area has any
-  // project in either group (or roots its own tasks, to host the
-  // rollup). A sub-area's empty counterpart slice renders only
-  // mid-drag (labeled by its header) so its name never repeats across
-  // groups at rest; its Active slice additionally renders while the
-  // sub-area roots its own tasks. With no rows and no area tasks,
-  // only the viewed area's Backlog slice renders.
+  // project in either group. A sub-area's empty counterpart slice
+  // renders only mid-drag (labeled by its header) so its name never
+  // repeats across groups at rest. With no rows, only the viewed
+  // area's Backlog slice renders.
   const activeSliceVisible = (s: ProjectStatusSlice): boolean =>
     s.active.length > 0 ||
-    s.hasAreaTasks ||
     (s.name === null && s.backlog.length > 0) ||
     (draggingSource?.areaId === s.areaId && draggingSource.group === 'backlog');
   const backlogSliceVisible = (s: ProjectStatusSlice): boolean =>
@@ -396,8 +385,8 @@ export default function ProjectStatusGroups({
           >
             {activeSlices.map((s) => {
               // The dashed empty zone + hint only make sense as a drop
-              // affordance; a slice kept visible solely for its tasks
-              // rollup stays plain.
+              // affordance; a slice with no rows outside a drag stays
+              // plain.
               const empty =
                 s.active.length === 0 &&
                 ((s.name === null && s.backlog.length > 0) ||
@@ -413,7 +402,6 @@ export default function ProjectStatusGroups({
                   emptyHint="Drag a project here to restore it"
                 >
                   {s.header}
-                  {s.tasksRollup}
                   {s.active.length > 0 && (
                     <div
                       className="sortable-list"

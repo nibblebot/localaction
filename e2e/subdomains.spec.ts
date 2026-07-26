@@ -122,6 +122,69 @@ test.describe('Sub-area roll-up into the parent area view', () => {
       page.locator('.subarea-section .task-line-title').last(),
     ).toHaveValue(task);
   });
+
+  test('parent Area tasks section groups sub-area tasks under the sub-area name', async ({
+    page,
+  }) => {
+    const parent = `Work ${uniq()}`;
+    const child = `Kids ${uniq()}`;
+    const taskA = `Pack lunches ${uniq()}`;
+    const taskB = `Sign forms ${uniq()}`;
+    await createArea(page, parent);
+    // A sub-area with two area-rooted tasks.
+    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
+    await page.locator('.area-header-add-input').fill(child);
+    await page.locator('.area-header-add-input').press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(child);
+    const childSection = page.locator('.pane-section', { hasText: 'Area tasks' });
+    const addTask = async (title: string): Promise<void> => {
+      await childSection.locator('button[aria-label="Add task"]').click();
+      await childSection.locator('input[aria-label="New area task"]').fill(title);
+      await childSection.locator('input[aria-label="New area task"]').press('Enter');
+    };
+    await addTask(taskA);
+    await addTask(taskB);
+    await expect(childSection.locator('.task-line-title')).toHaveCount(2);
+
+    // Back on the parent: both tasks sit in the Area tasks section under
+    // a group labeled with the sub-area's name — not in Projects.
+    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    const section = page.locator('.pane-section', { hasText: 'Area tasks' });
+    const group = section.locator('.tab-group', {
+      has: page.locator('.tab-group-title', { hasText: child }),
+    });
+    await expect(group.locator('.task-line-title').nth(0)).toHaveValue(taskA);
+    await expect(group.locator('.task-line-title').nth(1)).toHaveValue(taskB);
+    await expect(page.locator('.projects-tab .task-line-title')).toHaveCount(0);
+    // The section count includes the sub-area's tasks.
+    await expect(section.locator('.pane-section-toggle')).toContainText('· 2');
+
+    // Drag-reorder inside the group: the second task moves above the first.
+    const second = group.locator('.task-line').nth(1);
+    const first = group.locator('.task-line').nth(0);
+    const handle = second.locator('.task-line-drag-handle');
+    const hb = await handle.boundingBox();
+    const fb = await first.boundingBox();
+    expect(hb).not.toBeNull();
+    expect(fb).not.toBeNull();
+    await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(hb!.x + hb!.width / 2, hb!.y - 20, { steps: 5 });
+    await page.mouse.move(fb!.x + fb!.width / 2, fb!.y + 2, { steps: 10 });
+    await page.mouse.up();
+    await expect(group.locator('.task-line-title').nth(0)).toHaveValue(taskB);
+    await expect(group.locator('.task-line-title').nth(1)).toHaveValue(taskA);
+    // dnd-kit's PointerSensor swallows document-level clicks (capture)
+    // for 50ms after a drop; React's checkbox onChange rides the click
+    // event, so a too-fast click toggles the DOM box without writing.
+    await page.waitForTimeout(100);
+
+    // Check-off is editable in place too: the done task is pruned and
+    // the count drops.
+    await page.locator(`input[aria-label="Mark “${taskB}” done"]`).click();
+    await expect(group.locator('.task-line-title')).toHaveCount(1);
+    await expect(section.locator('.pane-section-toggle')).toContainText('· 1');
+  });
 });
 
 test.describe('Sub-areas (inline create)', () => {

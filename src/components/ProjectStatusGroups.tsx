@@ -45,15 +45,16 @@ import Group from './Group.tsx';
  * Backlog slices stay drop-connected while rendered in separate
  * hoisted groups.
  *
- * - The viewed area's Active and Backlog slices are standing drop
- *   destinations: each renders while the area has any project in
- *   either group, even while empty — shelving or restoring a project
- *   must never require discovering a drop zone that only exists
- *   mid-drag. A sub-area's empty counterpart slice renders only
- *   mid-drag (labeled by its header), so a sub-area's name never
- *   repeats across groups at rest; its Active slice additionally
- *   renders while the sub-area roots its own tasks, to host the
- *   (read-only) tasks rollup.
+ * - The viewed area's Backlog slice is a permanent standing drop
+ *   destination: it renders on every area view, even with no
+ *   projects at all — shelving a project must never require
+ *   discovering a drop zone that only exists mid-drag. Its Active
+ *   slice renders while the area has any project in either group or
+ *   roots its own tasks (to host the read-only tasks rollup). A
+ *   sub-area's empty counterpart slice renders only mid-drag
+ *   (labeled by its header), so a sub-area's name never repeats
+ *   across groups at rest; its Active slice additionally renders
+ *   while the sub-area roots its own tasks.
  * - A same-slice drop reorders (`reorderProject`); a cross-group drop
  *   within the same area writes the stored status and the new position
  *   in one transaction (`moveProjectToStatus`).
@@ -317,22 +318,24 @@ export default function ProjectStatusGroups({
 
   const draggingSource = draggingId === null ? null : findPosition(draggingId);
 
-  // The viewed area's slices are standing drop destinations: each
-  // renders while the area has any project in either group, even while
-  // empty, so shelving or restoring never requires discovering a
-  // target that only exists mid-drag. A sub-area's empty counterpart
-  // slice renders only mid-drag (labeled by its header) so its name
-  // never repeats across groups at rest; its Active slice additionally
-  // renders while the sub-area roots its own tasks (the tasks rollup
-  // lives there). With no rows and no area tasks, no slice renders.
+  // The viewed area's Backlog slice is a permanent standing drop
+  // destination: it renders even when the area has no projects at
+  // all, so shelving never requires discovering a target that only
+  // exists mid-drag. Its Active slice renders while the area has any
+  // project in either group (or roots its own tasks, to host the
+  // rollup). A sub-area's empty counterpart slice renders only
+  // mid-drag (labeled by its header) so its name never repeats across
+  // groups at rest; its Active slice additionally renders while the
+  // sub-area roots its own tasks. With no rows and no area tasks,
+  // only the viewed area's Backlog slice renders.
   const activeSliceVisible = (s: ProjectStatusSlice): boolean =>
     s.active.length > 0 ||
     s.hasAreaTasks ||
     (s.name === null && s.backlog.length > 0) ||
     (draggingSource?.areaId === s.areaId && draggingSource.group === 'backlog');
   const backlogSliceVisible = (s: ProjectStatusSlice): boolean =>
+    s.name === null ||
     s.backlog.length > 0 ||
-    (s.name === null && s.active.length > 0) ||
     (draggingSource?.areaId === s.areaId && draggingSource.group === 'active');
 
   const activeSlices = slices.filter(activeSliceVisible);
@@ -437,9 +440,11 @@ export default function ProjectStatusGroups({
             onToggleCollapse={() => onToggleGroup('backlog')}
           >
             {backlogSlices.map((s) => {
+              // The viewed area's always-visible Backlog slice keeps
+              // the dashed standing drop zone whenever it has no rows.
               const empty =
                 s.backlog.length === 0 &&
-                ((s.name === null && s.active.length > 0) ||
+                (s.name === null ||
                   (draggingSource?.areaId === s.areaId &&
                     draggingSource.group === 'active'));
               return (

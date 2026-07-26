@@ -112,7 +112,7 @@ export default function MainPane(): React.JSX.Element {
         return a.name.localeCompare(b.name);
       });
       for (const k of kids) {
-        out.push({ id: k.id, name: k.name });
+        out.push({ id: k.id, name: k.name, color: k.color });
         walk(k.id);
       }
     };
@@ -599,6 +599,7 @@ function CollapsibleSection({
 interface SubAreaRef {
   id: string;
   name: string;
+  color: AreaColorId;
 }
 
 /**
@@ -723,19 +724,30 @@ function ProjectsSection({
 
   // Sub-area chrome (clickable header + read-only tasks rollup) is
   // attached to the slices here so ProjectStatusGroups stays
-  // presentational.
+  // presentational. The viewed area's own slice gets a static
+  // "Area projects" header once sub-areas roll in — with no sub-areas
+  // there is nothing to disambiguate, so it stays headerless.
+  const viewedArea = useArea(store, areaId);
   const slicesWithChrome = useMemo<readonly ProjectStatusSlice[]>(
     () =>
       slices.map((s) =>
         s.name === null
-          ? s
+          ? subAreas.length === 0 || !viewedArea
+            ? s
+            : { ...s, header: <AreaProjectsHeader color={viewedArea.color} /> }
           : {
               ...s,
-              header: <SubAreaHeader areaId={s.areaId} name={s.name} />,
+              header: (
+                <SubAreaHeader
+                  areaId={s.areaId}
+                  name={s.name}
+                  color={subAreas.find((sa) => sa.id === s.areaId)?.color ?? 'gray'}
+                />
+              ),
               tasksRollup: <SubAreaTasksRollup areaId={s.areaId} showCompleted={showCompleted} />,
             },
       ),
-    [slices, showCompleted],
+    [slices, subAreas, viewedArea, showCompleted],
   );
 
   // The person-filter hidden stub aggregates every in-scope area now
@@ -810,13 +822,38 @@ function ProjectsSection({
   );
 }
 
+/** Static heading for the viewed area's own project slice: the
+ *  projects that live directly in the area rather than in one of its
+ *  sub-areas. A label, not a navigation target — clicking through
+ *  would be a no-op on the already-viewed area. */
+function AreaProjectsHeader({
+  color,
+}: {
+  color: AreaColorId;
+}): React.JSX.Element {
+  return (
+    <header className="subarea-header">
+      <span className="subarea-header-name subarea-header-static">
+        <span
+          className="sidebar-item-dot"
+          style={{ background: areaColorHex(color) }}
+          aria-hidden="true"
+        />
+        Area projects
+      </span>
+    </header>
+  );
+}
+
 /** Clickable heading for a rolled-in sub-area section. */
 function SubAreaHeader({
   areaId,
   name,
+  color,
 }: {
   areaId: string;
   name: string;
+  color: AreaColorId;
 }): React.JSX.Element {
   const { navigate } = useSelection();
   return (
@@ -827,6 +864,11 @@ function SubAreaHeader({
         title="Open sub-area"
         onClick={() => navigate({ kind: 'area', id: areaId })}
       >
+        <span
+          className="sidebar-item-dot"
+          style={{ background: areaColorHex(color) }}
+          aria-hidden="true"
+        />
         {name || 'Untitled'}
       </button>
     </header>

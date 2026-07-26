@@ -763,7 +763,7 @@ body.sidebar-resizing {
    the cards sit flush with the page gutter, the same register as the
    section header, and the parent → child relationship is invisible. */
 .pane-section > :not(.pane-section-head) {
-  margin-inline-start: calc(var(--space-2) + var(--icon-sm) + 6px);
+  margin-inline-start: calc(var(--space-2) + 6px);
 }
 
 /* Static (non-collapsible) section header — the project detail pane's
@@ -920,7 +920,7 @@ body.sidebar-resizing {
    shape with horizontal rules. */
 .tab-group-list {
   list-style: none;
-  margin: 0;
+  margin: 0 0 0 20px;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -1246,10 +1246,25 @@ body.sidebar-resizing {
   border: none;
   padding: 0;
   cursor: pointer;
+  /* Dot + name form a single click target, centered as one row. */
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .subarea-header-name:hover {
   text-decoration: underline;
+}
+
+/* Static variant ("Area projects" on the viewed area's own slice):
+   same type scale as the clickable sub-area name, but it labels the
+   slice instead of navigating — no pointer, no hover underline. */
+.subarea-header-static {
+  cursor: default;
+}
+
+.subarea-header-static:hover {
+  text-decoration: none;
 }
 
 /* Static weekday + day label rendered inside a read-only task row

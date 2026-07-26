@@ -1,8 +1,8 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from './schema.ts';
+import { COLUMNS, NOTE_ENTITY_TYPE, TABLES, TASK_STATUS } from './schema.ts';
 import type { NoteEntityType } from './schema.ts';
 import { peopleForEntity } from './personSelectors.ts';
-import { getRootPlacement } from './tasks.ts';
+import { getRootPlacement, getEffectiveTaskStatus } from './tasks.ts';
 import { useTableVersion } from './internal.ts';
 
 /**
@@ -118,6 +118,8 @@ export function areaHasMatch(
 export interface FilteredAreaCount {
   projectCount: number;
   taskCount: number;
+  /** Matching tasks that are still open — the sidebar badge count. */
+  openTaskCount: number;
   noteCount: number;
 }
 
@@ -129,6 +131,7 @@ export function getFilteredAreaCounts(
   const subtree = descendantAreaIds(store, areaId);
   let projectCount = 0;
   let taskCount = 0;
+  let openTaskCount = 0;
   let noteCount = 0;
 
   for (const pid of store.getRowIds(TABLES.projects)) {
@@ -138,7 +141,9 @@ export function getFilteredAreaCounts(
   }
   for (const tid of store.getRowIds(TABLES.tasks)) {
     if (!taskInSubtree(store, tid, subtree)) continue;
-    if (entityMatches(store, NOTE_ENTITY_TYPE.task, tid, filter)) taskCount += 1;
+    if (!entityMatches(store, NOTE_ENTITY_TYPE.task, tid, filter)) continue;
+    taskCount += 1;
+    if (getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done) openTaskCount += 1;
   }
   for (const nid of store.getRowIds(TABLES.notes)) {
     const t = store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType);
@@ -152,7 +157,7 @@ export function getFilteredAreaCounts(
       if (entityMatches(store, NOTE_ENTITY_TYPE.task, e, filter)) noteCount += 1;
     }
   }
-  return { projectCount, taskCount, noteCount };
+  return { projectCount, taskCount, openTaskCount, noteCount };
 }
 
 // --- React hooks ---------------------------------------------------------

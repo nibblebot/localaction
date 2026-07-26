@@ -2,7 +2,7 @@ import type { MergeableStore } from 'tinybase';
 import { COLUMNS, PROJECT_STATUS, TABLES, TASK_STATUS } from './schema.ts';
 import type { ProjectStatus } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
-import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus } from './tasks.ts';
+import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus, childTaskIds } from './tasks.ts';
 import { useTableVersion } from './internal.ts';
 import type { Area } from './types.ts';
 
@@ -28,7 +28,10 @@ export interface AreaCount {
   order: number;
   childCount: number;
   projectCount: number;
+  /** All tasks in the subtree — drives the empty-area dimming. */
   taskCount: number;
+  /** Incomplete (effective-open) tasks — the sidebar badge count. */
+  openTaskCount: number;
   noteCount: number;
 }
 
@@ -92,10 +95,12 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
 
   const projectCount = new Map<string, number>();
   const taskCount = new Map<string, number>();
+  const openTaskCount = new Map<string, number>();
   const noteCount = new Map<string, number>();
   for (const did of allAreaIds) {
     projectCount.set(did, 0);
     taskCount.set(did, 0);
+    openTaskCount.set(did, 0);
     noteCount.set(did, 0);
   }
 
@@ -106,11 +111,37 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
       projectCount.set(owner, (projectCount.get(owner) ?? 0) + 1);
     }
   }
+  // Effective-done memo: effective status recurses through children, so
+  // resolving it per task would be O(N²). One memoised pass keeps the
+  // count loop linear. Matches getEffectiveTaskStatus: done ⟺ stored
+  // done AND every child effectively done.
+  const effectiveDone = new Map<string, boolean>();
+  const resolveEffectiveDone = (id: string): boolean => {
+    const cached = effectiveDone.get(id);
+    if (cached !== undefined) return cached;
+    effectiveDone.set(id, false); // cycle guard
+    let done =
+      store.getCell(TABLES.tasks, id, COLUMNS.tasks.status) === TASK_STATUS.done;
+    if (done) {
+      for (const child of childTaskIds(store, id)) {
+        if (!resolveEffectiveDone(child)) {
+          done = false;
+          break;
+        }
+      }
+    }
+    effectiveDone.set(id, done);
+    return done;
+  };
+
   for (const tid of taskIds) {
     const aId = taskArea.get(tid) ?? null;
     if (!aId) continue;
     for (const owner of descendantsOf.get(aId) ?? []) {
       taskCount.set(owner, (taskCount.get(owner) ?? 0) + 1);
+      if (!resolveEffectiveDone(tid)) {
+        openTaskCount.set(owner, (openTaskCount.get(owner) ?? 0) + 1);
+      }
     }
   }
   for (const nid of noteIds) {
@@ -139,6 +170,7 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
         (directSubAreaCount.get(did) ?? 0) + (directProjectCount.get(did) ?? 0),
       projectCount: projectCount.get(did) ?? 0,
       taskCount: taskCount.get(did) ?? 0,
+      openTaskCount: openTaskCount.get(did) ?? 0,
       noteCount: noteCount.get(did) ?? 0,
     };
   });

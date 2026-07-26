@@ -81,7 +81,7 @@ function SortableAreaRow({
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const displayName = node.count.name || 'Untitled';
-  const count = taskCountOverride ?? node.count.taskCount;
+  const count = taskCountOverride ?? node.count.openTaskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
   const collapsible = collapsed !== null && collapsed !== undefined;
   // Empty areas (nothing inside them yet) recede to 40% opacity,
@@ -352,7 +352,7 @@ export default function Sidebar({
               const fc = filtered.get(node.count.id);
               const override = filterActive
                 ? fc
-                  ? fc.taskCount
+                  ? fc.openTaskCount
                   : 0
                 : null;
               return (

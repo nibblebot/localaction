@@ -16,7 +16,9 @@ const store = getStore();
 
 function App(): React.JSX.Element {
   // Mobile drawer: the sidebar slides in over the main pane below 768px.
-  // It closes on navigation (hash change), Escape, or backdrop tap.
+  // It closes on navigation (hash change), on any sidebar navigation tap
+  // (onNavigate — covers re-tapping the current route, which fires no
+  // hashchange), Escape, or backdrop tap.
   const [drawerOpen, setDrawerOpen] = useState(false);
   const sidebarRef = useRef<HTMLElement>(null);
   // While open the drawer is a modal dialog: focus is contained inside
@@ -59,7 +61,11 @@ function App(): React.JSX.Element {
                       <use href="/icons.svg#menu-icon" />
                     </svg>
                   </button>
-                  <Sidebar ref={sidebarRef} drawerOpen={drawerOpen} />
+                  <Sidebar
+                    ref={sidebarRef}
+                    drawerOpen={drawerOpen}
+                    onNavigate={() => setDrawerOpen(false)}
+                  />
                   {drawerOpen ? (
                     <div
                       className="drawer-backdrop"

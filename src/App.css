@@ -3236,7 +3236,8 @@ body.sidebar-resizing {
   .project-row-caret,
   .area-header-add,
   .appearance-fab-trigger,
-  .due-calendar-nav {
+  .due-calendar-nav,
+  .sidebar-section-title-action {
     position: relative;
   }
 

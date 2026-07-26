@@ -152,6 +152,7 @@ function SortableAreaRow({
 export default function Sidebar({
   ref,
   drawerOpen = false,
+  onNavigate,
 }: {
   /** Attached to the root <aside> so the app shell can trap focus while
    * the mobile drawer is open (React 19 ref-as-prop). */
@@ -159,6 +160,10 @@ export default function Sidebar({
   /** True only while the sidebar is presented as the mobile drawer:
    * the aside then behaves as a modal dialog instead of a landmark. */
   drawerOpen?: boolean;
+  /** Called when the user taps any navigation row (quick link or area).
+   * The shell uses it to close the mobile drawer — hashchange alone
+   * misses re-taps of the current route, which never fire it. */
+  onNavigate?: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const counts = useAreaCounts(store);
@@ -266,6 +271,7 @@ export default function Sidebar({
       <div className="sidebar-section">
         <a
           href={formatRoute(INBOX)}
+          onClick={onNavigate}
           className={`sidebar-item sidebar-item-top sidebar-inbox-link${selection.kind === 'inbox' ? ' sidebar-item-active' : ''}`}
           aria-label={inboxIds.length > 0 ? `Inbox, ${inboxIds.length}` : 'Inbox'}
           aria-current={selection.kind === 'inbox' ? 'page' : undefined}
@@ -279,6 +285,7 @@ export default function Sidebar({
         </a>
         <a
           href={formatRoute(TODAY)}
+          onClick={onNavigate}
           className={`sidebar-item sidebar-item-top sidebar-today-link${selection.kind === 'today' ? ' sidebar-item-active' : ''}`}
           aria-label={todayOpenCount > 0 ? `Today, ${todayOpenCount}` : 'Today'}
           aria-current={selection.kind === 'today' ? 'page' : undefined}
@@ -292,6 +299,7 @@ export default function Sidebar({
         </a>
         <a
           href={formatRoute(WEEK)}
+          onClick={onNavigate}
           className={`sidebar-item sidebar-item-top sidebar-week-link${selection.kind === 'week' ? ' sidebar-item-active' : ''}`}
           aria-label={weekOpenCount > 0 ? `Week, ${weekOpenCount}` : 'Week'}
           aria-current={selection.kind === 'week' ? 'page' : undefined}
@@ -364,6 +372,7 @@ export default function Sidebar({
                     // sidebar context matches the main pane.
                     expandArea(sid);
                     navigate({ kind: 'area', id: sid });
+                    onNavigate?.();
                   }}
                   isTopLevel={depth === 0}
                   dim={dimmed.has(node.count.id)}

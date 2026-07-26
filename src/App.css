@@ -721,13 +721,9 @@ body.sidebar-resizing {
   border: 0;
   padding: 2px 0;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-h);
   border-radius: var(--radius-sm);
   transition: color 0.15s ease;
-}
-
-.pane-section-toggle:hover {
-  color: var(--text-h);
 }
 
 .pane-section-toggle svg {
@@ -742,13 +738,13 @@ body.sidebar-resizing {
      Uppercase + tracking stay aligned with the other section eyebrows
      (sidebar, appearance, person picker). */
   font-size: 0.93rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   /* Same tracking as .sidebar-section-title and the appearance
      / person-picker eyebrows — every uppercase label reads with
      one consistent voice. */
   letter-spacing: 0.06em;
-  color: var(--text-secondary);
+  color: black;
 }
 .pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label) {
   margin-left: auto;

@@ -194,6 +194,7 @@ export default function MainPane(): React.JSX.Element {
         <PersonFilterBanner />
         <CollapsibleSection
           title="Projects"
+          icon="project-list"
           count={projectCount}
           collapsed={collapsedSections.collapsed.has('projects')}
           onToggleCollapse={() => collapsedSections.toggle('projects')}
@@ -226,6 +227,7 @@ export default function MainPane(): React.JSX.Element {
         />
         <CollapsibleSection
           title="Notes"
+          icon="notes"
           count={noteCount}
           collapsed={collapsedSections.collapsed.has('notes')}
           onToggleCollapse={() => collapsedSections.toggle('notes')}
@@ -549,6 +551,7 @@ function CompletedToggle({
  */
 function CollapsibleSection({
   title,
+  icon,
   count,
   collapsed,
   onToggleCollapse,
@@ -556,6 +559,8 @@ function CollapsibleSection({
   children,
 }: {
   title: string;
+  /** Icon sprite symbol id (without the `-icon` suffix) shown before the title. */
+  icon?: string;
   count: number;
   collapsed: boolean;
   onToggleCollapse: () => void;
@@ -576,6 +581,11 @@ function CollapsibleSection({
           <svg className="svg-icon" aria-hidden="true">
             <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
           </svg>
+          {icon && (
+            <svg className="svg-icon pane-section-icon" aria-hidden="true">
+              <use href={`/icons.svg#${icon}-icon`} />
+            </svg>
+          )}
           <span className="pane-section-title">{title}</span>
           <span className="tab-group-count">· {count}</span>
         </button>
@@ -1840,6 +1850,7 @@ function AreaTasksSection({
   return (
     <CollapsibleSection
       title="Area tasks"
+      icon="tasks"
       count={visibleTopLevel}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}

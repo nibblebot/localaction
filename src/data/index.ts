@@ -181,8 +181,6 @@ export {
 } from './personLinks.ts';
 
 export {
-  getEntityAllowedPersons,
-  useEntityAllowedPersons,
   peopleForEntity,
   presentPersonIds,
   sortPersonIds,

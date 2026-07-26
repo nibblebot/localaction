@@ -1,24 +1,19 @@
 /**
- * Row-chrome contract for the PersonAssignment icon, pinned to the
- * implementation's two independent suppression rules:
+ * Row-chrome contract for the PersonAssignment icon:
  *
- *   - Project-row chip: hidden while the project's containing AREA
- *     (the immediate `areaId`, which may be a sub-area) resolves to a
- *     single person (just Self). Reading the area, not the project.
+ *   - Project-row and task-row Edit-persons chips ALWAYS render —
+ *     there is no single-person suppression gate. The chip is the
+ *     only in-row way to open the assignment popover, and any person
+ *     may be assigned to any entity.
  *
- *   - Task-row chip: hidden while the task's containing PROJECT
- *     resolves to a single person (just Self). Reading the project,
- *     not the area. Tasks rooted in the Inbox have no project to
- *     test, so their chip always renders.
- * Because the two rules read different scopes, assigning a second
- * person to the area alone unhides only the project chip (the task
- * chip still reads the single-person project). A project assignee
- * must already belong to the area (subset rule), so a second person
- * on the project implies one on the area too.
+ *   - Assignment popovers list every present person, regardless of
+ *     hierarchy. There is no subset rule: a person assigned to no
+ *     area or project is still offered on (and assignable from) any
+ *     entity's popover.
  *
- * When visible, the Edit-persons trigger sits at the LEFT of its
- * right-aligned action cluster (first child of `.project-row-actions`
- * / `.task-line-actions`).
+ * The Edit-persons trigger sits at the LEFT of its right-aligned
+ * action cluster (first child of `.project-row-actions` /
+ * `.task-line-actions`).
  *
  * Locator note: a project row (`li.project-row`) WRAPS its task list,
  * so the chip lookups are scoped to the row's own action cluster
@@ -71,48 +66,8 @@ async function createTask(page: Page, projectName: string, title: string): Promi
   await input.press('Enter');
 }
 
-/**
- * Toggle a person onto the area (or sub-area) currently in view via
- * the header cast chip. The project-row rule reads this scope.
- */
-async function assignAreaPerson(page: Page, personName: string): Promise<void> {
-  await page.locator('.area-header-cast-chip').first().click();
-  const popover = page.locator('.person-picker');
-  await expect(popover).toBeVisible();
-  await popover.locator('.person-picker-row', { hasText: personName }).click();
-  await page.keyboard.press('Escape');
-}
-
-/**
- * Toggle a person onto a project. The row-level chip is suppressed
- * while the area is single-person, so the only always-on Edit-persons
- * trigger is the one in the project's notes-pane header. Returns to
- * the area Projects tab before continuing.
- */
-async function assignProjectPerson(
-  page: Page,
-  projectName: string,
-  personName: string,
-): Promise<void> {
-  const projectRow = page.locator('li.project-row', { hasText: projectName });
-  await projectRow.locator('button[aria-label^="Open notes for"]').click();
-  await expect(page.locator('.area-header-project-icon')).toBeVisible();
-  await page.locator('.area-header button[aria-label="Edit persons"]').click();
-  const popover = page.locator('.person-picker');
-  await expect(popover).toBeVisible();
-  // Click the checkbox directly — the row is a <label> wrapping a
-  // checkbox and an "Edit person" button; a row-level click can land
-  // on the button and open the rename form without toggling assignment.
-  await popover
-    .locator('.person-picker-row', { hasText: personName })
-    .locator('input[type="checkbox"]')
-    .check();
-  await page.keyboard.press('Escape');
-  await page.locator('.area-header-crumb').first().click();
-}
-
 test.describe('Person-assignment row chrome', () => {
-  test('both rows hide the Edit-persons chip when only Self exists anywhere', async ({ page }) => {
+  test('both rows render the Edit-persons chip when only Self exists', async ({ page }) => {
     const area = `Solo ${uniq()}`;
     const project = `Single-person project ${uniq()}`;
     const task = `Lonely task ${uniq()}`;
@@ -125,102 +80,7 @@ test.describe('Person-assignment row chrome', () => {
     const projectRow = page.locator('li.project-row', { hasText: project });
     const taskRow = page.locator('.task-line', { hasText: task });
 
-    // The right-aligned clusters always exist; only the chip is gated.
-    await expect(projectRow.locator('.project-row-actions')).toBeVisible();
-    await expect(taskRow.locator('.task-line-actions')).toBeVisible();
-
-    // Area and project both resolve to {Self} → both chips suppressed.
-    await expect(projectPersonsChip(projectRow)).toHaveCount(0);
-    await expect(taskPersonsChip(taskRow)).toHaveCount(0);
-  });
-
-  test('a second person on the AREA unhides only the project-row chip', async ({ page }) => {
-    // Project-rule reads the area; task-rule still reads the
-    // single-person project, so the task chip stays hidden.
-    const person = `Teammate ${uniq()}`;
-    const area = `Pair area ${uniq()}`;
-    const project = `Project under pair area ${uniq()}`;
-    const task = `Task in solo project ${uniq()}`;
-
-    await page.goto('/#/');
-    await createPerson(page, person);
-    await createArea(page, area);
-    await createProject(page, project);
-    await createTask(page, project, task);
-
-    const projectRow = page.locator('li.project-row', { hasText: project });
-    const taskRow = page.locator('.task-line', { hasText: task });
-    await expect(taskRow).toBeVisible();
-
-    await assignAreaPerson(page, person);
-
-    // Area now has 2 people → project-row chip appears.
-    await expect(projectPersonsChip(projectRow)).toBeVisible();
-    // Project still {Self} → task-row chip absent.
-    await expect(taskPersonsChip(taskRow)).toHaveCount(0);
-  });
-
-  test('a project popover only offers people already on the parent area', async ({ page }) => {
-    // Subset rule: a project may only draw assignees from its area's
-    // resolved people. A person present but not on the area is absent
-    // from the project's assignment popover until they join the area.
-    const person = `Collaborator ${uniq()}`;
-    const area = `Scoped area ${uniq()}`;
-    const project = `Scoped project ${uniq()}`;
-
-    await page.goto('/#/');
-    await createPerson(page, person);
-    await createArea(page, area);
-    await createProject(page, project);
-
-    const projectRow = page.locator('li.project-row', { hasText: project });
-
-    // Open the project's Edit-persons popover via the notes-pane header
-    // (the row chip is suppressed while the area is single-person).
-    await projectRow.locator('button[aria-label^="Open notes for"]').click();
-    await expect(page.locator('.area-header-project-icon')).toBeVisible();
-    await page.locator('.area-header button[aria-label="Edit persons"]').click();
-    const popover = page.locator('.person-picker');
-    await expect(popover).toBeVisible();
-    // Area is {Self}: the project popover lists only Self, never the
-    // off-area person.
-    await expect(popover.locator('.person-picker-row', { hasText: person })).toHaveCount(0);
-    await page.keyboard.press('Escape');
-    await page.locator('.area-header-crumb').first().click();
-
-    // Add the person to the area; the project popover now offers them.
-    await assignAreaPerson(page, person);
-    await projectRow.locator('button[aria-label^="Open notes for"]').click();
-    await expect(page.locator('.area-header-project-icon')).toBeVisible();
-    await page.locator('.area-header button[aria-label="Edit persons"]').click();
-    const popoverAfter = page.locator('.person-picker');
-    await expect(popoverAfter).toBeVisible();
-    await expect(popoverAfter.locator('.person-picker-row', { hasText: person })).toBeVisible();
-  });
-
-  test('with a second person on both scopes, both chips show and sit leftmost in their clusters', async ({
-    page,
-  }) => {
-    const person = `Partner ${uniq()}`;
-    const area = `Duo area ${uniq()}`;
-    const project = `Duo project ${uniq()}`;
-    const task = `Duo task ${uniq()}`;
-
-    await page.goto('/#/');
-    await createPerson(page, person);
-    await createArea(page, area);
-    await createProject(page, project);
-    await createTask(page, project, task);
-
-    const projectRow = page.locator('li.project-row', { hasText: project });
-    const taskRow = page.locator('.task-line', { hasText: task });
-
-    await assignAreaPerson(page, person);
-    await assignProjectPerson(page, project, person);
-
-    await expect(taskRow).toBeVisible();
-
-    // Both rules fire: area and project each carry 2 people.
+    // No suppression gate: both chips render even with just Self.
     await expect(projectPersonsChip(projectRow)).toBeVisible();
     await expect(taskPersonsChip(taskRow)).toBeVisible();
 
@@ -237,54 +97,74 @@ test.describe('Person-assignment row chrome', () => {
     );
   });
 
-  test('a project under a sub-area hides its chip until the sub-area gains a second person', async ({
-    page,
-  }) => {
-    // The project-rule reads the project's immediate areaId — for a
-    // project rooted in a sub-area that is the SUB-AREA, not the
-    // parent. So a single-person sub-area hides the chip, and a second
-    // person on the sub-area (not the parent) reveals it.
-    const person = `Cousin ${uniq()}`;
-    const parent = `Family ${uniq()}`;
-    const child = `Kids ${uniq()}`;
-    const project = `Sub-area project ${uniq()}`;
-    const task = `Sub-area task ${uniq()}`;
+  test('a task popover offers every present person and assigns directly', async ({ page }) => {
+    // The person is assigned to NOTHING upstream (no area, no project)
+    // — with no hierarchical narrowing they are still offered on, and
+    // assignable from, the task's popover.
+    const person = `Teammate ${uniq()}`;
+    const area = `Area ${uniq()}`;
+    const project = `Project ${uniq()}`;
+    const task = `Task ${uniq()}`;
 
     await page.goto('/#/');
     await createPerson(page, person);
-    await createArea(page, parent);
-    // Subset rule: a sub-area may only draw assignees from its parent
-    // area, so seed the person on the parent before entering the child.
-    await assignAreaPerson(page, person);
-    // Create + navigate into the sub-area.
-    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
-    await page.locator('.area-header-add-input').fill(child);
-    await page.locator('.area-header-add-input').press('Enter');
-    await expect(page.locator('.area-header-name')).toContainText(child);
-
+    await createArea(page, area);
     await createProject(page, project);
     await createTask(page, project, task);
 
-    const projectRow = page.locator('li.project-row', { hasText: project });
     const taskRow = page.locator('.task-line', { hasText: task });
     await expect(taskRow).toBeVisible();
 
-    // Sub-area and project both {Self} → both chips hidden.
-    await expect(projectPersonsChip(projectRow)).toHaveCount(0);
-    await expect(taskPersonsChip(taskRow)).toHaveCount(0);
+    await taskPersonsChip(taskRow).click();
+    const popover = page.locator('.person-picker');
+    await expect(popover).toBeVisible();
+    const personRow = popover.locator('.person-picker-row', { hasText: person });
+    await expect(personRow).toBeVisible();
+    // Click the checkbox directly — the row is a <label> wrapping a
+    // checkbox and an "Edit person" button; a row-level click can land
+    // on the button and open the rename form without toggling assignment.
+    await personRow.locator('input[type="checkbox"]').check();
+    await page.keyboard.press('Escape');
 
-    // Second person on the SUB-AREA (its header cast chip).
-    await assignAreaPerson(page, person);
+    // The assignment took: the person's avatar renders on the row chip.
+    await expect(taskPersonsChip(taskRow).locator(`.person-avatar[title="${person}"]`)).toBeVisible();
+  });
 
-    // Sub-area now 2 people → project-row chip visible. Project still
-    // {Self} → task-row chip stays hidden.
+  test('a project popover offers people not on the parent area', async ({ page }) => {
+    // No subset rule: a person assigned to nothing (present but off
+    // the area) is offered on the project's popover and checks
+    // successfully.
+    const person = `Collaborator ${uniq()}`;
+    const area = `Area ${uniq()}`;
+    const project = `Project ${uniq()}`;
+
+    await page.goto('/#/');
+    await createPerson(page, person);
+    await createArea(page, area);
+    await createProject(page, project);
+
+    const projectRow = page.locator('li.project-row', { hasText: project });
     await expect(projectPersonsChip(projectRow)).toBeVisible();
-    await expect(taskPersonsChip(taskRow)).toHaveCount(0);
+    await projectPersonsChip(projectRow).click();
+    const popover = page.locator('.person-picker');
+    await expect(popover).toBeVisible();
+    const personRow = popover.locator('.person-picker-row', { hasText: person });
+    await expect(personRow).toBeVisible();
+    // Click the checkbox directly — the row is a <label> wrapping a
+    // checkbox and an "Edit person" button; a row-level click can land
+    // on the button and open the rename form without toggling assignment.
+    await personRow.locator('input[type="checkbox"]').check();
+    await page.keyboard.press('Escape');
+
+    // The assignment took: the person's avatar renders on the row chip.
+    await expect(
+      projectPersonsChip(projectRow).locator(`.person-avatar[title="${person}"]`),
+    ).toBeVisible();
   });
 
   test('an Inbox-rooted task always renders the Edit-persons chip', async ({ page }) => {
-    // Inbox tasks have no containing project to test, so the chip is
-    // never suppressed — the user can add a non-Self assignee.
+    // Inbox tasks have no containing project, and there is no
+    // suppression gate — the chip always renders.
     await page.goto('/#/');
     await page.locator('.sidebar-inbox-link').click();
     await expect(page.locator('main[aria-label="Inbox"]')).toBeVisible();

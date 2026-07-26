@@ -34,12 +34,8 @@ import {
   restoreSubtree,
   buildTaskTree,
   pruneDoneTasks,
-  getRootPlacement,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
-  TABLES,
-  useTableVersion,
-  usePeopleForEntity,
 } from '../data/index.ts';
 import type { TaskTreeNode } from '../data/index.ts';
 import { useUndo } from './useUndo.ts';
@@ -144,69 +140,6 @@ export interface TaskRowProps {
   progress?: { done: number; total: number };
 }
 
-/**
- * Resolves the task's root placement to its containing project id,
- * or `null` when the task is rooted in an area or the inbox.
- * Section-table reactivity covers the rare case of a section's
- * projectId cell changing — `getRootPlacement` walks the section →
- * project edge.
- */
-function useTaskRootProjectId(taskId: string): string | null {
-  const { store } = useDataLayer();
-  useTableVersion(store, TABLES.sections);
-  const root = getRootPlacement(store, taskId);
-  return root.kind === 'project' ? root.id : null;
-}
-
-/**
- * Project-root branch: hides the person-assignment icon when the
- * project's resolved person set has length ≤ 1 (just Self). Lives
- * in its own component so `usePeopleForEntity` is unconditional
- * here — the parent only renders this when the task has a real
- * project root.
- */
-function TaskRowPersonAssignmentForProject({
-  taskId,
-  projectId,
-}: {
-  taskId: string;
-  projectId: string;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const projectPeople = usePeopleForEntity(store, NOTE_ENTITY_TYPE.project, projectId);
-  if (projectPeople.length <= 1) return null;
-  return (
-    <PersonAssignmentButton
-      entityType={NOTE_ENTITY_TYPE.task}
-      entityId={taskId}
-    />
-  );
-}
-
-/**
- * The person-assignment icon for a task row. Tasks rooted in an
- * area or the inbox always render the button (no containing
- * project to test against). Tasks with a project root fall through
- * to `TaskRowPersonAssignmentForProject`, which suppresses when the
- * project is single-person. The button always edits this task; only
- * the visibility test reads the parent.
- */
-function TaskRowPersonAssignment({
-  taskId,
-}: {
-  taskId: string;
-}): React.JSX.Element | null {
-  const projectId = useTaskRootProjectId(taskId);
-  if (projectId === null) {
-    return (
-      <PersonAssignmentButton
-        entityType={NOTE_ENTITY_TYPE.task}
-        entityId={taskId}
-      />
-    );
-  }
-  return <TaskRowPersonAssignmentForProject taskId={taskId} projectId={projectId} />;
-}
 export function TaskRow({
   taskId,
   readOnly,
@@ -301,7 +234,7 @@ export function TaskRow({
       {!readOnly && (
         <>
           <div className="task-line-actions">
-            <TaskRowPersonAssignment taskId={taskId} />
+            <PersonAssignmentButton entityType={NOTE_ENTITY_TYPE.task} entityId={taskId} />
             <TaskDueDateButton taskId={taskId} />
             <button
               type="button"

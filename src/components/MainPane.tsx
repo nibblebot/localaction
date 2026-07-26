@@ -120,13 +120,13 @@ export default function MainPane(): React.JSX.Element {
     return out;
   }, [counts, areaId]);
 
-   if (selection.kind === 'project') {
-     return <ProjectPane projectId={selection.id} hiddenEmptySections={hiddenEmptySections} />;
-   }
+  if (selection.kind === 'project') {
+    return <ProjectPane projectId={selection.id} hiddenEmptySections={hiddenEmptySections} />;
+  }
 
-   if (selection.kind === 'project-notes') {
-     return <ProjectNotesPane projectId={selection.id} />;
-   }
+  if (selection.kind === 'project-notes') {
+    return <ProjectNotesPane projectId={selection.id} />;
+  }
 
   if (selection.kind === 'inbox') {
     return <InboxPane />;
@@ -235,10 +235,10 @@ export default function MainPane(): React.JSX.Element {
         >
           <NotesSection areaId={areaId} />
         </CollapsibleSection>
-       </div>
-     </main>
-   );
- }
+      </div>
+    </main>
+  );
+}
 
 function AreaHeader({
   areaId,
@@ -731,15 +731,15 @@ function ProjectsSection({
             ? s
             : { ...s, header: <AreaProjectsHeader color={viewedArea.color} /> }
           : {
-              ...s,
-              header: (
-                <SubAreaHeader
-                  areaId={s.areaId}
-                  name={s.name}
-                  color={subAreas.find((sa) => sa.id === s.areaId)?.color ?? 'gray'}
-                />
-              ),
-            },
+            ...s,
+            header: (
+              <SubAreaHeader
+                areaId={s.areaId}
+                name={s.name}
+                color={subAreas.find((sa) => sa.id === s.areaId)?.color ?? 'gray'}
+              />
+            ),
+          },
       ),
     [slices, subAreas, viewedArea],
   );
@@ -1146,6 +1146,7 @@ function ProjectRow({
         )}
         <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
         <div className="project-row-actions">
+<<<<<<< HEAD
           <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
           <ProjectRowActions
             projectId={projectId}
@@ -1154,19 +1155,141 @@ function ProjectRow({
             onToggleEmptySections={onToggleEmptySections}
             onRename={() => setEditing(true)}
           />
-        </div>
+||||||| parent of d9f4024 (refactor(persons): assign any person to any entity)
+          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+=======
+          <PersonAssignmentButton entityType={NOTE_ENTITY_TYPE.project} entityId={projectId} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+>>>>>>> d9f4024 (refactor(persons): assign any person to any entity)
+        </div >
+      </div >
+    {!collapsed && (
+      <div className="project-row-tasks">
+        <ProjectTaskList
+          projectId={projectId}
+          projectName={display}
+          showCompleted={showCompleted}
+          hideEmptySections={hideEmptySections}
+        />
       </div>
-      {!collapsed && (
-        <div className="project-row-tasks">
-          <ProjectTaskList
-            projectId={projectId}
-            projectName={display}
-            showCompleted={showCompleted}
-            hideEmptySections={hideEmptySections}
-          />
-        </div>
-      )}
-    </li>
+    )
+}
+    </li >
   );
 }
 
@@ -1283,6 +1406,7 @@ function SortableProjectRow({
         )}
         <ProjectProgressMeter done={done} total={total} />
         <div className="project-row-actions">
+<<<<<<< HEAD
           <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
           <ProjectRowActions
             projectId={projectId}
@@ -1291,19 +1415,141 @@ function SortableProjectRow({
             onToggleEmptySections={onToggleEmptySections}
             onRename={() => setEditing(true)}
           />
-        </div>
+||||||| parent of d9f4024 (refactor(persons): assign any person to any entity)
+          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+=======
+          <PersonAssignmentButton entityType={NOTE_ENTITY_TYPE.project} entityId={projectId} />
+          <ProjectDueDateButton projectId={projectId} />
+          <button
+            type="button"
+            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+            aria-pressed={hideEmptySections}
+            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleEmptySections();
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#sections-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label={`Open notes for ${display}`}
+            title="Notes"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ kind: 'project-notes', id: projectId });
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#notes-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action"
+            aria-label="Rename project"
+            title="Rename"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditing(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#edit-icon" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger"
+            aria-label="Delete project"
+            title="Delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              setConfirmDelete(true);
+            }}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+>>>>>>> d9f4024 (refactor(persons): assign any person to any entity)
+        </div >
+      </div >
+    {!collapsed && (
+      <div className="project-row-tasks">
+        <ProjectTaskList
+          projectId={projectId}
+          projectName={display}
+          showCompleted={showCompleted}
+          hideEmptySections={hideEmptySections}
+        />
       </div>
-      {!collapsed && (
-        <div className="project-row-tasks">
-          <ProjectTaskList
-            projectId={projectId}
-            projectName={display}
-            showCompleted={showCompleted}
-            hideEmptySections={hideEmptySections}
-          />
-        </div>
-      )}
-    </li>
+    )
+}
+    </li >
   );
 }
 
@@ -1933,8 +2179,8 @@ function AreaTasksSection({
   const visibleTopLevel = showCompleted
     ? topLevelIds.length
     : topLevelIds.filter(
-        (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
-      ).length;
+      (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
+    ).length;
   // The section count covers the whole subtree, matching the Projects
   // and Notes section-count convention. Sub-area top-level ids are read
   // imperatively (one hook per sub-area can't loop), so the tasks table
@@ -2016,8 +2262,8 @@ function SubAreaTaskGroup({
   const visibleTopLevel = showCompleted
     ? topLevelIds.length
     : topLevelIds.filter(
-        (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
-      ).length;
+      (tid) => getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done,
+    ).length;
   if (visibleTopLevel === 0) return null;
   function onMove(
     activeId: string,

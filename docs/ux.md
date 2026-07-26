@@ -27,6 +27,8 @@ flowchart TB
   appearance menu. A resizer on its trailing edge drags to set its width
   (persisted per device). Below 768px the sidebar becomes a modal drawer —
   hamburger toggle, backdrop tap or Escape to close, focus trapped while open.
+  In the drawer the appearance menu presents as a bottom sheet pinned above
+  the footer so every segment stays reachable at phone widths.
 - **MainPane** (`MainPane.tsx`) — the working area. Renders the welcome
   screen, an area view, a project detail pane, a project-notes pane, the
   Inbox, or the Today / Week due panes, depending on the current selection.
@@ -136,7 +138,11 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   expanded card; per-project, persisted per device), a person-assignment
   action, and a note icon that opens the project's notes pane. Only the
   caret expands the card in place; clicking anywhere else on the row
-  (name, meter, dead space) opens the **project detail pane**. The card
+  (name, meter, dead space) opens the **project detail pane**. Below
+  768px the row sheds its action icons (keeping caret, name, count, and
+  the stateful due-date chip) so the name keeps its room and the whole
+  line stays a clean open-the-pane tap target; every hidden action is
+  mirrored on the detail pane. The card
   expands into one flattened drag surface spanning the
   unsectioned tasks and every section — tasks drag within/between groups
   and nest as sub-tasks; section rows (inline-renamable, deletable) drag

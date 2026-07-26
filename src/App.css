@@ -247,6 +247,10 @@ body.sidebar-resizing {
   font-weight: 600;
   font-size: 1rem;
   padding-block: 6px;
+  /* Quick links are quiet navigation rows, not hyperlinks — the
+     active wash + count pill carry the affordance. Only Inbox had
+     this reset before; Today / Week showed the UA underline. */
+  text-decoration: none;
 }
 
 .sidebar-item-dim {
@@ -289,9 +293,6 @@ body.sidebar-resizing {
   color: var(--accent);
 }
 
-.sidebar-inbox-link {
-  text-decoration: none;
-}
 
 .sidebar-area-children {
   list-style: none;
@@ -3182,6 +3183,38 @@ body.sidebar-resizing {
      the title off-screen. */
   .project-row-tasks {
     padding-inline: var(--space-2);
+  }
+
+  /* A phone-width project row is a navigation path, not an action
+     bar: the whole line opens the detail pane, which mirrors every
+     row action (progress, people, notes, rename, delete, the
+     empty-sections toggle). Only the stateful due-date chip stays
+     on the row — hiding the rest is what gives the name its room
+     back (before this, five always-on buttons truncated titles to
+     "K…" and made the open-project tap target ~17px wide). Scoped
+     to .project-row-line so the pane header keeps its cluster. */
+  .project-row-line .project-row-action:not(.due-date),
+  .project-row-line .person-assignment-button {
+    display: none;
+  }
+
+  /* With the row decluttered, long names wrap like task titles
+     instead of ellipsising after a few characters. */
+  .project-row-name {
+    white-space: normal;
+  }
+
+  /* The appearance menu is anchored to its trigger's inline-start,
+     which sits at the drawer footer's right edge — on a phone the
+     280px menu ran past the drawer and clipped at the viewport.
+     Pin it to the drawer box instead (the drawer's transform makes
+     `fixed` resolve against it, not the viewport): a full-width
+     bottom sheet rising above the footer, segments wrapping. */
+  .appearance-menu {
+    position: fixed;
+    inset-inline: var(--space-3);
+    bottom: calc(57px + env(safe-area-inset-bottom, 0px));
+    width: auto;
   }
  }
 

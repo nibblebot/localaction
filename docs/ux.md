@@ -187,8 +187,12 @@ persists per device, keyed independently per view. Empty state: *"Nothing in thi
 
 Clicking a project row (`#/p/<id>`) opens the standalone form of an
 expanded project card: the project header (area breadcrumb, person
-assignment, Completed toggle) above the same sectioned task tree the
-card expands into, with *Add task* / *Add section* inline-add buttons.
+assignment, Completed toggle) carries the same actions the card's row
+shows — the done/total progress meter, the due-date affordance, the
+empty-sections toggle (per-project state shared with the card), the
+note icon, rename, and delete (which returns to the owning area) —
+above the same sectioned task tree the card expands into, with
+*Add task* / *Add section* inline-add buttons.
 
 ### Project notes pane
 

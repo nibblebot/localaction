@@ -69,6 +69,7 @@ import { useCollapsedProjects } from './useCollapsedProjects.ts';
 import { useCollapsedSections } from './useCollapsedSections.ts';
 import { useCollapsedProjectGroups } from './useCollapsedProjectGroups.ts';
 import { useHiddenEmptySections } from './useHiddenEmptySections.ts';
+import type { CollapsedSet } from './useCollapsedSet.ts';
 
 // Lazy: carries markdown-it (~100KB min) out of the main chunk —
 // loaded on first note-preview render, never on task-only surfaces.
@@ -120,7 +121,7 @@ export default function MainPane(): React.JSX.Element {
   }, [counts, areaId]);
 
    if (selection.kind === 'project') {
-     return <ProjectPane projectId={selection.id} />;
+     return <ProjectPane projectId={selection.id} hiddenEmptySections={hiddenEmptySections} />;
    }
 
    if (selection.kind === 'project-notes') {
@@ -916,6 +917,147 @@ function ProjectRowPersonAssignment({
   }
   return <ProjectRowPersonAssignmentForArea projectId={projectId} areaId={areaId} />;
 }
+
+/** Done/total progress meter shared by the project card header and the
+ *  project detail pane header. `doneGroup` tints the bar green (the
+ *  card sits in the Done status group). */
+function ProjectProgressMeter({
+  done,
+  total,
+  doneGroup,
+}: {
+  done: number;
+  total: number;
+  doneGroup?: boolean;
+}): React.JSX.Element {
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+  return (
+    <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
+      <div
+        className={`project-row-progress-bar${doneGroup ? ' project-row-progress-done' : ''}`}
+      >
+        <div className="project-row-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
+      </div>
+      <span className="project-row-progress-count">
+        {done} / {total}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * The project action cluster shared by the area-view card and the
+ * project detail pane: due date, empty-section pruning, notes, rename,
+ * delete. Person assignment stays outside — its visibility rule
+ * differs per surface (gated on rows, always on in pane headers).
+ * Delete is confirmed and undoable; `onAfterDelete` lets the detail
+ * pane navigate away from the removed project.
+ */
+function ProjectRowActions({
+  projectId,
+  display,
+  hideEmptySections,
+  onToggleEmptySections,
+  onRename,
+  onAfterDelete,
+}: {
+  projectId: string;
+  /** Display name for aria-labels and the delete confirmation. */
+  display: string;
+  /** Prune section headers with no visible tasks in the task list. */
+  hideEmptySections: boolean;
+  onToggleEmptySections: () => void;
+  onRename: () => void;
+  /** Runs after a confirmed delete (panes navigate away; rows omit). */
+  onAfterDelete?: () => void;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const { navigate } = useSelection();
+  const { offerUndo } = useUndo();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <>
+      <ProjectDueDateButton projectId={projectId} />
+      <button
+        type="button"
+        className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+        aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
+        aria-pressed={hideEmptySections}
+        title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleEmptySections();
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#sections-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="project-row-action"
+        aria-label={`Open notes for ${display}`}
+        title="Notes"
+        onClick={(e) => {
+          e.stopPropagation();
+          navigate({ kind: 'project-notes', id: projectId });
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#notes-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="project-row-action"
+        aria-label="Rename project"
+        title="Rename"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRename();
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#edit-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="project-row-action project-row-action-danger"
+        aria-label="Delete project"
+        title="Delete"
+        onClick={(e) => {
+          e.stopPropagation();
+          setConfirmDelete(true);
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#trash-icon" />
+        </svg>
+      </button>
+      <ConfirmModal
+        open={confirmDelete}
+        title="Delete project?"
+        message={`"${display}" will be deleted along with its tasks and notes.`}
+        confirmLabel="Delete"
+        onConfirm={() => {
+          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
+          deleteProject(store, projectId);
+          setConfirmDelete(false);
+          offerUndo({
+            label: `Deleted project “${display}”`,
+            onUndo: () => {
+              restoreSubtree(store, snapshot);
+            },
+          });
+          onAfterDelete?.();
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+    </>
+  );
+}
+
 function ProjectRow({
   projectId,
   name,
@@ -943,11 +1085,8 @@ function ProjectRow({
   const { store } = useDataLayer();
   const { navigate } = useSelection();
   const project = useProject(store, projectId);
-  const { offerUndo } = useUndo();
   const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const display = (project?.name ?? '') || name || 'Untitled';
 
   const openProject = (): void => {
@@ -1005,78 +1144,16 @@ function ProjectRow({
             {display}
           </button>
         )}
-        <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
-          <div
-            className={`project-row-progress-bar${
-              doneGroup ? ' project-row-progress-done' : ''
-            }`}
-          >
-            <div className="project-row-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
-          </div>
-          <span className="project-row-progress-count">
-            {done} / {total}
-          </span>
-        </div>
+        <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
         <div className="project-row-actions">
           <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
-          <ProjectDueDateButton projectId={projectId} />
-          <button
-            type="button"
-            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
-            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
-            aria-pressed={hideEmptySections}
-            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleEmptySections();
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#sections-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action"
-            aria-label={`Open notes for ${display}`}
-            title="Notes"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate({ kind: 'project-notes', id: projectId });
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#notes-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action"
-            aria-label="Rename project"
-            title="Rename"
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(true);
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#edit-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action project-row-action-danger"
-            aria-label="Delete project"
-            title="Delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(true);
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#trash-icon" />
-            </svg>
-          </button>
+          <ProjectRowActions
+            projectId={projectId}
+            display={display}
+            hideEmptySections={hideEmptySections}
+            onToggleEmptySections={onToggleEmptySections}
+            onRename={() => setEditing(true)}
+          />
         </div>
       </div>
       {!collapsed && (
@@ -1089,24 +1166,6 @@ function ProjectRow({
           />
         </div>
       )}
-      <ConfirmModal
-        open={confirmDelete}
-        title="Delete project?"
-        message={`"${display}" will be deleted along with its tasks and notes.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
-          deleteProject(store, projectId);
-          setConfirmDelete(false);
-          offerUndo({
-            label: `Deleted project “${display}”`,
-            onUndo: () => {
-              restoreSubtree(store, snapshot);
-            },
-          });
-        }}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </li>
   );
 }
@@ -1138,11 +1197,8 @@ function SortableProjectRow({
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
   const [editing, setEditing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const { navigate } = useSelection();
-  const { offerUndo } = useUndo();
 
-  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const display = (project?.name ?? '') || name || 'Untitled';
 
   const classes = ['project-row', 'sortable-row'];
@@ -1225,74 +1281,16 @@ function SortableProjectRow({
             {display}
           </button>
         )}
-        <div className="project-row-progress" aria-label={`${done} of ${total} tasks done`}>
-          <div className="project-row-progress-bar">
-            <div className="project-row-progress-fill" style={{ transform: `scaleX(${pct / 100})` }} />
-          </div>
-          <span className="project-row-progress-count">
-            {done} / {total}
-          </span>
-        </div>
+        <ProjectProgressMeter done={done} total={total} />
         <div className="project-row-actions">
           <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
-          <ProjectDueDateButton projectId={projectId} />
-          <button
-            type="button"
-            className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
-            aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
-            aria-pressed={hideEmptySections}
-            title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleEmptySections();
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#sections-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action"
-            aria-label={`Open notes for ${display}`}
-            title="Notes"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate({ kind: 'project-notes', id: projectId });
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#notes-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action"
-            aria-label="Rename project"
-            title="Rename"
-            onClick={(e) => {
-              e.stopPropagation();
-              setEditing(true);
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#edit-icon" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="project-row-action project-row-action-danger"
-            aria-label="Delete project"
-            title="Delete"
-            onClick={(e) => {
-              e.stopPropagation();
-              setConfirmDelete(true);
-            }}
-          >
-            <svg className="svg-icon" aria-hidden="true">
-              <use href="/icons.svg#trash-icon" />
-            </svg>
-          </button>
+          <ProjectRowActions
+            projectId={projectId}
+            display={display}
+            hideEmptySections={hideEmptySections}
+            onToggleEmptySections={onToggleEmptySections}
+            onRename={() => setEditing(true)}
+          />
         </div>
       </div>
       {!collapsed && (
@@ -1305,24 +1303,6 @@ function SortableProjectRow({
           />
         </div>
       )}
-      <ConfirmModal
-        open={confirmDelete}
-        title="Delete project?"
-        message={`"${display}" will be deleted along with its tasks and notes.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
-          deleteProject(store, projectId);
-          setConfirmDelete(false);
-          offerUndo({
-            label: `Deleted project “${display}”`,
-            onUndo: () => {
-              restoreSubtree(store, snapshot);
-            },
-          });
-        }}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </li>
   );
 }
@@ -1531,16 +1511,29 @@ function ProjectPaneHeader({
   projectId,
   name,
   trailing,
+  actions,
 }: {
   areaId: string | null;
   projectId: string;
   name: string;
   /** Extra actions pinned to the header's right edge. */
   trailing?: React.ReactNode;
+  /**
+   * Presence opts the header into the project-row chrome the area-view
+   * card carries — progress meter plus the due-date / empty-sections /
+   * notes / rename / delete cluster — so the detail pane is the
+   * standalone form of the card. The notes pane omits it.
+   */
+  actions?: {
+    hideEmptySections: boolean;
+    onToggleEmptySections: () => void;
+  };
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
   const areaRowIds = useRowIds(TABLES.areas, store);
+  const rollups = useProjectRollups(store);
+  const [editing, setEditing] = useState(false);
   const chain = useMemo<readonly Area[]>(() => {
     if (!areaId) return [];
     void areaRowIds.length;
@@ -1550,6 +1543,8 @@ function ProjectPaneHeader({
     return [...ancestors, direct];
   }, [store, areaId, areaRowIds]);
   const showSlash = chain.length > 0;
+  const display = name || 'Untitled';
+  const rollup = rollups.find((r) => r.projectId === projectId);
   return (
     <div className="area-header">
       {chain.map((p, i) => (
@@ -1579,11 +1574,47 @@ function ProjectPaneHeader({
       >
         <use href="/icons.svg#project-list-icon" />
       </svg>
-      <h1 className="area-header-name">{name || 'Untitled'}</h1>
+      {editing && actions ? (
+        <input
+          type="text"
+          className="area-header-add-input"
+          aria-label="Project name"
+          defaultValue={display}
+          autoFocus
+          onBlur={(e) => {
+            const next = e.currentTarget.value.trim() || 'Untitled';
+            if (next !== display) {
+              store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
+            }
+            setEditing(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+            else if (e.key === 'Escape') setEditing(false);
+          }}
+        />
+      ) : (
+        <h1 className="area-header-name">{display}</h1>
+      )}
       <PersonAssignmentButton
         entityType={NOTE_ENTITY_TYPE.project}
         entityId={projectId}
       />
+      {actions && (
+        <div className="project-row-actions">
+          <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
+          <ProjectRowActions
+            projectId={projectId}
+            display={display}
+            hideEmptySections={actions.hideEmptySections}
+            onToggleEmptySections={actions.onToggleEmptySections}
+            onRename={() => setEditing(true)}
+            onAfterDelete={() => {
+              navigate(areaId ? { kind: 'area', id: areaId } : INBOX);
+            }}
+          />
+        </div>
+      )}
       {trailing && <div className="area-header-actions">{trailing}</div>}
     </div>
   );
@@ -1592,15 +1623,27 @@ function ProjectPaneHeader({
 /**
  * Project detail pane — the standalone form of an expanded project card
  * in the area view (`#/p/<id>`, reached by clicking a project row). The
- * header carries the area breadcrumb; the body is the same sectioned
- * `ProjectTaskList` the card expands into, with the shared Completed
- * toggle in the header. Project-scoped notes stay in the notes pane.
+ * header carries the area breadcrumb and the same row-action cluster
+ * the card shows (progress, due date, empty-sections toggle, notes,
+ * rename, delete) next to the shared Completed toggle; the body is the
+ * same sectioned `ProjectTaskList` the card expands into. Project-
+ * scoped notes stay in the notes pane. The empty-sections state comes
+ * from the parent `MainPane` — one hook instance per screen, so the
+ * card and this pane never disagree.
  */
-function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
+function ProjectPane({
+  projectId,
+  hiddenEmptySections,
+}: {
+  projectId: string;
+  /** MainPane's instance — shared so a toggle here reads back on the card. */
+  hiddenEmptySections: CollapsedSet;
+}): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
   const taskCount = useTasksForProjectDeep(store, projectId).length;
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
+  const hideEmptySections = hiddenEmptySections.collapsed.has(projectId);
 
   if (!project) {
     return (
@@ -1624,6 +1667,10 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
           areaId={project.areaId}
           projectId={projectId}
           name={projectName}
+          actions={{
+            hideEmptySections,
+            onToggleEmptySections: () => hiddenEmptySections.toggle(projectId),
+          }}
           trailing={
             <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
           }
@@ -1641,6 +1688,7 @@ function ProjectPane({ projectId }: { projectId: string }): React.JSX.Element {
               projectId={projectId}
               projectName={projectName}
               showCompleted={showCompleted}
+              hideEmptySections={hideEmptySections}
             />
           </div>
         </section>

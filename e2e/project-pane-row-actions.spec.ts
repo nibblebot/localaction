@@ -1,0 +1,121 @@
+import { test, expect, type Page } from '@playwright/test';
+
+/**
+ * The project detail pane (`#/p/<id>`) is the standalone form of an
+ * expanded project card — its header carries the same row actions the
+ * area-view card shows: progress meter, due date, empty-sections
+ * toggle, notes, rename, delete. Empty-section state is per project,
+ * so toggling it on one surface applies to the other.
+ */
+
+const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+async function createArea(page: Page, name: string): Promise<void> {
+  const input = page.locator('.sidebar-section-add .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
+}
+
+async function createProject(page: Page, name: string): Promise<void> {
+  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
+  const input = page.locator('.projects-tab .inline-add-input');
+  await input.fill(name);
+  await input.press('Enter');
+}
+
+async function addPaneTask(page: Page, title: string): Promise<void> {
+  await page.locator('.project-pane-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
+  const input = page.locator('.project-pane-tasks .tasks-tab-footer input[aria-label="New task"]');
+  await input.fill(title);
+  await input.press('Enter');
+}
+
+async function openProjectPane(page: Page, area: string, project: string): Promise<void> {
+  await page.goto('/#/');
+  await createArea(page, area);
+  await createProject(page, project);
+  await page.locator('li.project-row', { hasText: project }).locator('.project-row-name').click();
+  await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+  await expect(page.locator('.area-header-name')).toContainText(project);
+}
+
+test.describe('Project detail pane row actions', () => {
+  test('pane header mirrors the card: progress, due date, empty-sections toggle', async ({
+    page,
+  }) => {
+    const tok = uniq();
+    const area = `Area ${tok}`;
+    const project = `Project ${tok}`;
+    await openProjectPane(page, area, project);
+    const header = page.locator('.area-header');
+
+    // Progress meter tracks the deep task list, live.
+    await addPaneTask(page, `Task one ${tok}`);
+    await addPaneTask(page, `Task two ${tok}`);
+    await expect(header.locator('.project-row-progress-count')).toHaveText('0 / 2');
+    await page.locator(`input[aria-label="Mark “Task one ${tok}” done"]`).click();
+    await expect(header.locator('.project-row-progress-count')).toHaveText('1 / 2');
+
+    // Due date: pick the 14th from the calendar popover, label shows MM/DD.
+    await header.getByRole('button', { name: 'Set due date' }).click();
+    const calendar = page.getByRole('dialog', { name: 'Pick due date' });
+    await calendar.getByRole('gridcell', { name: '14', exact: true }).click();
+    const mm = String(new Date().getMonth() + 1).padStart(2, '0');
+    await expect(header.locator('.due-date-label')).toHaveText(`${mm}/14`);
+
+    // Empty-sections toggle prunes section headers with no visible tasks.
+    await page
+      .locator('.project-pane-tasks .tasks-tab-footer button[aria-label="Add section"]')
+      .click();
+    const sectionInput = page.locator(
+      '.project-pane-tasks .tasks-tab-footer input[aria-label="New section"]',
+    );
+    await sectionInput.fill(`Empty ${tok}`);
+    await sectionInput.press('Enter');
+    await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(1);
+    await header.getByRole('button', { name: `Hide empty sections in ${project}` }).click();
+    const toggle = header.getByRole('button', { name: `Show empty sections in ${project}` });
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(0);
+
+    // The state is per project: back on the area view the card hides the
+    // empty section too, and its toggle reads pressed.
+    await page.locator('.area-header-crumb', { hasText: area }).click();
+    await expect(page).toHaveURL(/#\/a\/[^/]+$/);
+    const card = page.locator('li.project-row', { hasText: project });
+    await expect(card.locator('.section-row')).toHaveCount(0);
+    await expect(
+      card.getByRole('button', { name: `Show empty sections in ${project}` }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('notes, rename, and delete work from the pane header', async ({ page }) => {
+    const tok = uniq();
+    const area = `Area ${tok}`;
+    const project = `Project ${tok}`;
+    await openProjectPane(page, area, project);
+    const header = page.locator('.area-header');
+
+    // Notes opens the project's notes pane; back returns to the detail pane.
+    await header.getByRole('button', { name: `Open notes for ${project}` }).click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+\/notes$/);
+    await page.goBack();
+    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+
+    // Rename swaps the header title for an inline input.
+    await header.getByRole('button', { name: 'Rename project' }).click();
+    const rename = header.getByRole('textbox', { name: 'Project name' });
+    await rename.fill(`Renamed ${tok}`);
+    await rename.press('Enter');
+    await expect(page.locator('.area-header-name')).toContainText(`Renamed ${tok}`);
+
+    // Delete confirms, then navigates back to the area without the project.
+    await header.getByRole('button', { name: 'Delete project' }).click();
+    await page.getByRole('dialog', { name: 'Delete project?' })
+      .getByRole('button', { name: 'Delete' })
+      .click();
+    await expect(page).toHaveURL(/#\/a\/[^/]+$/);
+    await expect(page.locator('.area-header-name')).toContainText(area);
+    await expect(page.locator('.project-row-name', { hasText: `Renamed ${tok}` })).toHaveCount(0);
+  });
+});

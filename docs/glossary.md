@@ -92,7 +92,7 @@ The strip pinned to the bottom of the Sidebar holding the two app-wide status/se
 
 ## Main Pane
 
-The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a time based on the current selection: the Welcome screen, an [Area view](#area-view), a [Project notes pane](#project-notes-pane), or the Inbox / Today / Week panes.
+The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a time based on the current selection: the Welcome screen, an [Area view](#area-view), a [Project detail pane](#project-detail-pane), a [Project notes pane](#project-notes-pane), or the Inbox / Today / Week panes.
 
 ## Area View
 
@@ -137,3 +137,7 @@ A single Task's row anywhere in the app: a drag handle (on sortable surfaces), t
 ## Project Notes Pane
 
 The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project header with a breadcrumb back to its Area, plus the Project's Notes with an add input. The only place project-scoped Notes are created.
+
+## Project Detail Pane
+
+The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the person-assignment action, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).

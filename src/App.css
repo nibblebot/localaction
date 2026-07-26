@@ -1102,10 +1102,13 @@ body.sidebar-resizing {
   transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-/* Row chrome wakes on hover/focus (DESIGN.md: quiet controls). Data —
-   a set due date, assigned avatars — stays visible at rest. */
+/* Row chrome wakes on hover/focus (DESIGN.md: quiet controls) — on the
+   card itself, and on the pane header that mirrors the card's actions.
+   Data — a set due date, assigned avatars — stays visible at rest. */
 .project-row:hover .project-row-action,
 .project-row:focus-within .project-row-action,
+.area-header:hover .project-row-action,
+.area-header:focus-within .project-row-action,
 .project-row-action.due-date-set {
   opacity: 1;
 }

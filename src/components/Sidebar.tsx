@@ -5,8 +5,6 @@ import {
   createArea,
   moveArea,
   useInboxTaskIds,
-  useDimmedAreaIds,
-  useFilteredAreaCounts,
   useDueItems,
   type AreaCount,
 } from '../data/index.ts';
@@ -21,8 +19,6 @@ import SidebarResizer from './SidebarResizer.tsx';
 import { areaColorHex, type AreaColorId } from '../data/colors.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableTreeNode } from './SortableTree.tsx';
-import PersonFilterFacet from './persons/PersonFilterFacet.tsx';
-import { usePersonFilter } from './persons/usePersonFilter.ts';
 import type { SortableHandleProps } from './SortableList.tsx';
 
 interface AreaNode {
@@ -62,8 +58,6 @@ interface SortableAreaRowProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   isTopLevel: boolean;
-  dim: boolean;
-  taskCountOverride: number | null;
   /** Present only when this row's children are rendered and collapsible. */
   collapsed?: boolean | null;
   onToggleCollapse?: (id: string) => void;
@@ -74,14 +68,12 @@ function SortableAreaRow({
   selectedId,
   onSelect,
   isTopLevel,
-  dim,
-  taskCountOverride,
   collapsed,
   onToggleCollapse,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const displayName = node.count.name || 'Untitled';
-  const count = taskCountOverride ?? node.count.openTaskCount;
+  const count = node.count.openTaskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
   const collapsible = collapsed !== null && collapsed !== undefined;
   // Empty areas (nothing inside them yet) recede to 40% opacity,
@@ -92,7 +84,7 @@ function SortableAreaRow({
     node.count.noteCount === 0;
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
-  if ((dim || empty) && !isActive) classes.push('sidebar-item-dim');
+  if (empty && !isActive) classes.push('sidebar-item-dim');
   return (
     <li
       ref={handle.ref}
@@ -193,16 +185,6 @@ export default function Sidebar({
     walk(tree);
     return m;
   }, [tree]);
-  const { active: filterActive, selected: filterSelected } = usePersonFilter();
-  const allAreaIds = useMemo<string[]>(
-    () => tree.flatMap(function walk(n: AreaNode): string[] {
-      return [n.count.id, ...n.children.flatMap(walk)];
-    }),
-    [tree],
-  );
-  const dimmed = useDimmedAreaIds(store, allAreaIds, filterSelected);
-  // Under an active filter, show only matching tasks in each area subtree.
-  const filtered = useFilteredAreaCounts(store, allAreaIds, filterSelected);
   const activeColor: AreaColorId = useMemo(() => {
     if (selection.kind !== 'area') return 'gray';
     const c = counts.find((x) => x.id === selection.id);
@@ -266,7 +248,6 @@ export default function Sidebar({
       <div className="sidebar-section sidebar-app-name-row">
         <h1 className="sidebar-app-name">LocalAction</h1>
       </div>
-      <PersonFilterFacet />
 
       <div className="sidebar-section">
         <a
@@ -356,12 +337,6 @@ export default function Sidebar({
             {(id, handle, depth) => {
               const node = nodeById.get(id);
               if (!node) return <></>;
-              const fc = filtered.get(node.count.id);
-              const override = filterActive
-                ? fc
-                  ? fc.openTaskCount
-                  : 0
-                : null;
               return (
                 <SortableAreaRow
                   handle={handle}
@@ -375,8 +350,6 @@ export default function Sidebar({
                     onNavigate?.();
                   }}
                   isTopLevel={depth === 0}
-                  dim={dimmed.has(node.count.id)}
-                  taskCountOverride={override}
                   collapsed={
                     depth === 0 && node.children.length > 0
                       ? collapsed.has(node.count.id)

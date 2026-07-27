@@ -14,11 +14,10 @@ import { tombstoneId } from './tombstones.ts';
  * caller simply drops the snapshot — the tombstone has already done its
  * job.
  *
- * A snapshot never includes the `persons` table (people are never
- * cascaded) and restores cannot resurrect an owner deleted *after* the
- * snapshot was taken: restoring a project whose area was since deleted
- * leaves the project's relation dangling, which read models already
- * tolerate. Sequential deletes each take their own snapshot and undo
+ * Restores cannot resurrect an owner deleted *after* the snapshot was
+ * taken: restoring a project whose area was since deleted leaves the
+ * project's relation dangling, which read models already tolerate.
+ * Sequential deletes each take their own snapshot and undo
  * independently.
  */
 export interface SubtreeSnapshot {
@@ -45,7 +44,6 @@ export function captureSubtree(
   take(TABLES.sections, doomed.sections);
   take(TABLES.tasks, doomed.tasks);
   take(TABLES.notes, attachedRowIds(store, TABLES.notes, doomed));
-  take(TABLES.person_links, attachedRowIds(store, TABLES.person_links, doomed));
   return { entityType, entityId, rows };
 }
 

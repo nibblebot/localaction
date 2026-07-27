@@ -3,19 +3,16 @@ import {
   COLUMNS,
   NOTE_ENTITY_TYPE,
   TOMBSTONE_ENTITY_TYPE,
-  SELF_PERSON_ID,
   TABLES,
   TASK_STATUS,
 } from '../../src/data/schema.ts';
 
 describe('schema constants', () => {
-  it('exposes the eight top-level tables the schema defines', () => {
+  it('exposes the six top-level tables the schema defines', () => {
     expect(Object.values(TABLES).sort()).toEqual(
       [
         'areas',
         'notes',
-        'person_links',
-        'persons',
         'projects',
         'sections',
         'tasks',
@@ -60,22 +57,5 @@ describe('schema constants', () => {
       createdAt: 'createdAt',
       updatedAt: 'updatedAt',
     });
-  });
-
-  it('declares the person table columns and the self id constant', () => {
-    expect(COLUMNS.persons).toEqual({
-      id: 'id',
-      name: 'name',
-      color: 'color',
-      createdAt: 'createdAt',
-      updatedAt: 'updatedAt',
-    });
-    expect(COLUMNS.person_links).toEqual({
-      id: 'id',
-      personId: 'personId',
-      entityType: 'entityType',
-      entityId: 'entityId',
-    });
-    expect(SELF_PERSON_ID).toBe('self');
   });
 });

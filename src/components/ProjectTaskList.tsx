@@ -2,7 +2,7 @@
  * Project task list — the single implementation behind every expanded
  * project card in the area view's combined Projects tab: a sectioned
  * SortableTree with fully editable sections, add-task and add-section
- * buttons, and the person-filter "N tasks hidden" stub.
+ * buttons.
  */
 import { useState } from 'react';
 import { useDataLayer, createTask, createSection } from '../data/index.ts';
@@ -24,7 +24,7 @@ export default function ProjectTaskList({
   hideEmptySections?: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const { taskIds, visibleIds, hiddenCount, subtaskProgress } = useProjectTaskList(projectId);
+  const { taskIds, visibleIds, subtaskProgress } = useProjectTaskList(projectId);
   /** Which footer inline-add is open; the other button hides meanwhile. */
   const [openAdd, setOpenAdd] = useState<'task' | 'section' | null>(null);
 
@@ -68,11 +68,6 @@ export default function ProjectTaskList({
           onOpenChange={(open) => setOpenAdd(open ? 'section' : null)}
         />
       </div>
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'task' : 'tasks'} hidden
-        </p>
-      )}
     </>
   );
 }

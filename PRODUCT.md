@@ -14,11 +14,11 @@ Solo power users: people who organize life and projects seriously — GTD practi
 
 ## Product Purpose
 
-A calm, self-owned place for everything that matters. LocalAction organizes life by ongoing areas, bounded projects, and one-off tasks, with notes and people woven through — all offline-first, with data the user truly owns. Success is an interface whose depth is visibly impressive: drag-anywhere trees, live rollups, inline editing, and sync that work so well they sell the product by demonstration.
+A calm, self-owned place for everything that matters. LocalAction organizes life by ongoing areas, bounded projects, and one-off tasks, with notes woven through — all offline-first, with data the user truly owns.
 
 ## Positioning
 
-Local-first ownership paired with serious structural depth. No other tool gives you both a fully self-owned, offline-capable store (SQLite on disk, OPFS in browser, sync you run yourself) and a genuine GTD-depth model — areas, sub-areas, projects, sections, nested sub-tasks, notes, persons. Every screen reinforces that pairing: your data, structured deeply.
+Local-first ownership paired with serious structural depth. No other tool gives you both a fully self-owned, offline-capable store (SQLite on disk, OPFS in browser, sync you run yourself) and a genuine GTD-depth model — areas, sub-areas, projects, sections, nested sub-tasks, notes. Every screen reinforces that pairing: your data, structured deeply.
 
 ## Brand Personality
 

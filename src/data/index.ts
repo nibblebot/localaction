@@ -5,7 +5,6 @@ export {
   PROJECT_STATUS,
   NOTE_ENTITY_TYPE,
   TOMBSTONE_ENTITY_TYPE,
-  SELF_PERSON_ID,
   SCHEMA_VERSION,
   SCHEMA_VERSION_VALUE_ID,
 } from './schema.ts';
@@ -22,8 +21,6 @@ export type {
   NoteEntityType,
   TombstoneEntityType,
   TombstoneColumn,
-  PersonColumn,
-  PersonLinkColumn,
 } from './schema.ts';
 
 export { getStore } from './store.ts';
@@ -54,7 +51,6 @@ export type {
   SectionPatch,
   Task,
   Note,
-  Person,
   AreaInput,
   AreaPatch,
   ProjectInput,
@@ -64,8 +60,6 @@ export type {
   TaskPlacement,
   NoteInput,
   NotePatch,
-  PersonInput,
-  PersonPatch,
   Tombstone,
 } from './types.ts';
 
@@ -158,44 +152,6 @@ export {
   getTombstone,
   useTombstoneIds,
 } from './tombstones.ts';
-
-export {
-  initials,
-  nameDerivedHue,
-  createPerson,
-  updatePerson,
-  deletePerson,
-  getPerson,
-  usePerson,
-  useAllPersonIds,
-  ensureSelfPerson,
-} from './persons.ts';
-
-export {
-  setEntityPersons,
-  addEntityPerson,
-  removeEntityPerson,
-  getEntityPersonIds,
-  getEntityIdsForPerson,
-  useEntityPersonIds,
-} from './personLinks.ts';
-
-export {
-  peopleForEntity,
-  presentPersonIds,
-  sortPersonIds,
-  usePeopleForEntity,
-  usePresentPersonIds,
-} from './personSelectors.ts';
-
-export {
-  areaHasMatch,
-  getFilteredAreaCounts,
-  useDimmedAreaIds,
-  useFilteredAreaCounts,
-  useHiddenCount,
-} from './personFilter.ts';
-export type { FilteredAreaCount } from './personFilter.ts';
 
 export { AREA_COLORS, isAreaColorId, areaColorHex } from './colors.ts';
 export type { AreaColorId } from './colors.ts';

@@ -10,8 +10,8 @@ import { getSectionIdsForProject } from './sections.ts';
 /**
  * Placement reference encoding (ADR-0001). A task's single `placement`
  * cell holds `${kind}:${id}` for project/section/area/task roots, or is
- * absent for an Inbox root. Parts are UUIDs (or the literal `self`), so
- * `:` is a safe separator. `section:<id>` marks a top-level task inside
+ * absent for an Inbox root. Parts are UUIDs, so `:` is a safe
+ * separator. `section:<id>` marks a top-level task inside
  * a project Section; the owning project resolves through the section row.
  */
 export const PLACEMENT_SEP = ':';

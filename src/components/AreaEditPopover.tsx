@@ -85,7 +85,7 @@ export default function AreaEditPopover({
 
   return (
     <>
-      <div className="person-picker-backdrop" onClick={onClose} />
+      <div className="area-edit-backdrop" onClick={onClose} />
       <div
         ref={dialogRef}
         className="area-edit"

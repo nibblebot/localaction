@@ -43,8 +43,8 @@ export function normalizeRelation(value: unknown): string | null {
  * table re-renders the subscriber. Multi-table derivations sum
  * several calls (fixed hook order, complete deps):
  *
- *   const v = useTableVersion(store, TABLES.persons)
- *           + useTableVersion(store, TABLES.person_links);
+ *   const v = useTableVersion(store, TABLES.projects)
+ *           + useTableVersion(store, TABLES.tasks);
  */
 export function useTableVersion(store: MergeableStore, tableId: string): number {
   const [version, setVersion] = useState(0);

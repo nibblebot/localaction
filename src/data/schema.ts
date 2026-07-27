@@ -4,8 +4,6 @@ export const TABLES = {
   sections: 'sections',
   tasks: 'tasks',
   notes: 'notes',
-  persons: 'persons',
-  person_links: 'person_links',
   tombstones: 'tombstones',
 } as const;
 
@@ -25,8 +23,6 @@ export const SCHEMA_VERSION = 3;
 export const SCHEMA_VERSION_VALUE_ID = 'schemaVersion';
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
-
-export const SELF_PERSON_ID = 'self';
 
 export const COLUMNS = {
   areas: {
@@ -95,19 +91,6 @@ export const COLUMNS = {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
   },
-  persons: {
-    id: 'id',
-    name: 'name',
-    color: 'color',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt',
-  },
-  person_links: {
-    id: 'id',
-    personId: 'personId',
-    entityType: 'entityType',
-    entityId: 'entityId',
-  },
   tombstones: {
     id: 'id',
     entityType: 'entityType',
@@ -121,9 +104,6 @@ export type ProjectColumn = (typeof COLUMNS.projects)[keyof typeof COLUMNS.proje
 export type SectionColumn = (typeof COLUMNS.sections)[keyof typeof COLUMNS.sections];
 export type TaskColumn = (typeof COLUMNS.tasks)[keyof typeof COLUMNS.tasks];
 export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
-export type PersonColumn = (typeof COLUMNS.persons)[keyof typeof COLUMNS.persons];
-export type PersonLinkColumn =
-  (typeof COLUMNS.person_links)[keyof typeof COLUMNS.person_links];
 export type TombstoneColumn =
   (typeof COLUMNS.tombstones)[keyof typeof COLUMNS.tombstones];
 
@@ -158,8 +138,8 @@ export type NoteEntityType =
 
 /**
  * Entity types a tombstone can name. Superset of `NOTE_ENTITY_TYPE`:
- * sections never carry notes or person links, but deleting one must
- * still leave a typed tombstone so the deletion wins after sync merges.
+ * sections never carry notes, but deleting one must still leave a
+ * typed tombstone so the deletion wins after sync merges.
  */
 export const TOMBSTONE_ENTITY_TYPE = {
   ...NOTE_ENTITY_TYPE,

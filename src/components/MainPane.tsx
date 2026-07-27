@@ -33,13 +33,8 @@ import {
   useInboxTaskIds,
   getAreaTaskIds,
   useAreaTaskIds,
-  usePeopleForEntity,
-  useHiddenCount,
-  peopleForEntity,
-  useEntityPersonIds,
-  usePerson,
 } from '../data/index.ts';
-import type { Area, AreaCount, NoteEntityType } from '../data/index.ts';
+import type { Area, AreaCount } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
@@ -58,12 +53,7 @@ import ProjectTaskList from './ProjectTaskList.tsx';
 import ProjectStatusGroups from './ProjectStatusGroups.tsx';
 import type { ProjectStatusSlice } from './ProjectStatusGroups.tsx';
 import Group from './Group.tsx';
-import PersonFilterBanner from './persons/PersonFilterBanner.tsx';
-import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import ProjectDueDateButton from './ProjectDueDateButton.tsx';
-import PersonAssignmentPopover from './persons/PersonAssignmentPopover.tsx';
-import PersonAvatar from './persons/PersonAvatar.tsx';
-import { usePersonFilter } from './persons/usePersonFilter.ts';
 import { useShowCompleted } from './useShowCompleted.ts';
 import { useCollapsedProjects } from './useCollapsedProjects.ts';
 import { useCollapsedSections } from './useCollapsedSections.ts';
@@ -191,7 +181,6 @@ export default function MainPane(): React.JSX.Element {
           onCreateSubArea={addSubArea}
           onDeleteArea={goToInbox}
         />
-        <PersonFilterBanner />
         <CollapsibleSection
           title="Projects"
           icon="project-list"
@@ -267,7 +256,6 @@ function AreaHeader({
   const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(null);
-  const cast = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
   const { offerUndo } = useUndo();
 
   function openEditor(e: MouseEvent<HTMLElement>): void {
@@ -373,7 +361,6 @@ function AreaHeader({
         </button>
       )}
       <div className="area-header-actions">
-        <AreaHeaderCast areaId={areaId} cast={cast} />
         <CompletedToggle showCompleted={showCompleted} onToggle={onToggleCompleted} />
       </div>
 
@@ -412,76 +399,6 @@ function AreaHeader({
   );
 }
 
-function AreaHeaderCast({
-  areaId,
-  cast,
-}: {
-  areaId: string;
-  cast: readonly string[];
-}): React.JSX.Element {
-  const { store } = useDataLayer();
-  const current = useEntityPersonIds(store, NOTE_ENTITY_TYPE.area, areaId);
-  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  return (
-    <>
-      <div ref={containerRef} className="area-header-cast" aria-label="Cast">
-        {cast.map((pid) => (
-          <CastChip
-            key={pid}
-            personId={pid}
-            store={store}
-            expanded={anchor !== null}
-            onEdit={() => {
-              const r = containerRef.current?.getBoundingClientRect();
-              setAnchor({ x: r ? r.left : 0, y: r ? r.bottom + 4 : 0 });
-            }}
-          />
-        ))}
-      </div>
-      <PersonAssignmentPopover
-        anchor={anchor}
-        entityType={NOTE_ENTITY_TYPE.area}
-        entityId={areaId}
-        current={current}
-        title="Cast"
-        onClose={() => setAnchor(null)}
-      />
-    </>
-  );
-}
-
-
-function CastChip({
-  personId,
-  store,
-  expanded,
-  onEdit,
-}: {
-  personId: string;
-  store: MergeableStore;
-  expanded: boolean;
-  onEdit: () => void;
-}): React.JSX.Element | null {
-  // usePerson subscribes to the row's name/color cells so the chip
-  // re-renders on rename/recolor.
-  const person = usePerson(store, personId);
-  if (!person) return null;
-  const label = `Edit cast: ${person.name || 'Untitled'}`;
-  return (
-    <button
-      type="button"
-      className="area-header-cast-chip"
-      onClick={onEdit}
-      title={label}
-      aria-label={label}
-      aria-haspopup="dialog"
-      aria-expanded={expanded}
-    >
-      <PersonAvatar name={person.name} color={person.color} small />
-    </button>
-  );
-}
 type HeaderArea = Pick<Area, 'id' | 'name' | 'color'>;
 
 function buildParentChainFromCounts(
@@ -605,8 +522,7 @@ interface SubAreaRef {
 
 /**
  * Collapse-all / expand-all for the combined Projects tab. Operates on
- * every project rolled into the view (the area plus its sub-areas);
- * hidden by the person filter ids are harmless to include.
+ * every project rolled into the view (the area plus its sub-areas).
  */
 function ProjectCollapseAllButton({
   areaId,
@@ -666,12 +582,6 @@ function ProjectsSection({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
-  const { selected: filter } = usePersonFilter();
-  // person_links/persons changes must re-run the imperative
-  // peopleForEntity filter below — the token joins the memo deps.
-  const personsV =
-    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
-
   const inArea = useMemo(
     () => rollups.filter((r) => r.areaId === areaId),
     [rollups, areaId],
@@ -683,30 +593,21 @@ function ProjectsSection({
   // is a stored status and wins over the derived done state: a shelved
   // project stays shelved even when its tasks complete.
   const slices = useMemo<readonly ProjectStatusSlice[]>(() => {
-    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
-    const set = new Set(filter);
     const partition = (id: string, name: string | null): ProjectStatusSlice => {
-      const visible = rollups
+      const sorted = rollups
         .filter((r) => r.areaId === id)
         .sort((a, b) => {
           if (a.order !== b.order) return a.order - b.order;
           return a.projectName.localeCompare(b.projectName);
-        })
-        .filter((p) => {
-          if (filter.length === 0) return true;
-          for (const personId of peopleForEntity(store, NOTE_ENTITY_TYPE.project, p.projectId)) {
-            if (set.has(personId)) return true;
-          }
-          return false;
         });
       return {
         areaId: id,
         name,
-        backlog: visible.filter((p) => p.status === PROJECT_STATUS.backlog),
-        done: visible.filter(
+        backlog: sorted.filter((p) => p.status === PROJECT_STATUS.backlog),
+        done: sorted.filter(
           (p) => p.status !== PROJECT_STATUS.backlog && p.total > 0 && p.done === p.total,
         ),
-        active: visible.filter(
+        active: sorted.filter(
           (p) => p.status !== PROJECT_STATUS.backlog && (p.total === 0 || p.done < p.total),
         ),
       };
@@ -715,7 +616,7 @@ function ProjectsSection({
       partition(areaId, null),
       ...subAreas.map((sa) => partition(sa.id, sa.name)),
     ];
-  }, [store, rollups, filter, personsV, areaId, subAreas]);
+  }, [rollups, areaId, subAreas]);
 
   // Sub-area chrome (a clickable header) is attached to the slices here
   // so ProjectStatusGroups stays presentational. The viewed area's own
@@ -742,19 +643,6 @@ function ProjectsSection({
           },
       ),
     [slices, subAreas, viewedArea],
-  );
-
-  // The person-filter hidden stub aggregates every in-scope area now
-  // that the groups are hoisted above the sub-area slices.
-  const scopedProjectIds = useMemo(() => {
-    const ids = new Set([areaId, ...subAreas.map((sa) => sa.id)]);
-    return rollups.filter((r) => r.areaId !== null && ids.has(r.areaId)).map((r) => r.projectId);
-  }, [rollups, areaId, subAreas]);
-  const hiddenCount = useHiddenCount(
-    store,
-    NOTE_ENTITY_TYPE.project,
-    scopedProjectIds,
-    filter,
   );
 
   function addProject(name: string): void {
@@ -797,11 +685,6 @@ function ProjectsSection({
           />
         )}
       />
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'project' : 'projects'} hidden
-        </p>
-      )}
       <InlineAddButton
         label="Add project"
         placeholder={
@@ -869,55 +752,6 @@ function SubAreaHeader({
   );
 }
 
-/**
- * The person-assignment icon for a project row, suppressed when the
- * project's containing area has a single-person resolved set (just
- * Self). The button still edits this project; only the visibility
- * test reads the area.
- *
- * `ProjectRowPersonAssignment` (without `ForArea`) is the parent's
- * branch selector: when no containing area exists (`areaId === null`,
- * i.e. a project rooted in the Inbox) it always renders the button;
- * otherwise it delegates to the gate, which only exists in the
- * project-with-area branch so the `usePeopleForEntity` hook is
- * unconditional.
- */
-function ProjectRowPersonAssignmentForArea({
-  projectId,
-  areaId,
-}: {
-  projectId: string;
-  areaId: string;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const areaPeople = usePeopleForEntity(store, NOTE_ENTITY_TYPE.area, areaId);
-  if (areaPeople.length <= 1) return null;
-  return (
-    <PersonAssignmentButton
-      entityType={NOTE_ENTITY_TYPE.project}
-      entityId={projectId}
-    />
-  );
-}
-
-function ProjectRowPersonAssignment({
-  projectId,
-  areaId,
-}: {
-  projectId: string;
-  areaId: string | null;
-}): React.JSX.Element | null {
-  if (areaId === null) {
-    return (
-      <PersonAssignmentButton
-        entityType={NOTE_ENTITY_TYPE.project}
-        entityId={projectId}
-      />
-    );
-  }
-  return <ProjectRowPersonAssignmentForArea projectId={projectId} areaId={areaId} />;
-}
-
 /** Done/total progress meter shared by the project card header and the
  *  project detail pane header. `doneGroup` tints the bar green (the
  *  card sits in the Done status group). */
@@ -948,10 +782,8 @@ function ProjectProgressMeter({
 /**
  * The project action cluster shared by the area-view card and the
  * project detail pane: due date, empty-section pruning, notes, rename,
- * delete. Person assignment stays outside — its visibility rule
- * differs per surface (gated on rows, always on in pane headers).
- * Delete is confirmed and undoable; `onAfterDelete` lets the detail
- * pane navigate away from the removed project.
+ * delete. Delete is confirmed and undoable; `onAfterDelete` lets the
+ * detail pane navigate away from the removed project.
  */
 function ProjectRowActions({
   projectId,
@@ -1146,7 +978,6 @@ function ProjectRow({
         )}
         <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
         <div className="project-row-actions">
-          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
           <ProjectRowActions
             projectId={projectId}
             display={display}
@@ -1284,7 +1115,6 @@ function SortableProjectRow({
         )}
         <ProjectProgressMeter done={done} total={total} />
         <div className="project-row-actions">
-          <ProjectRowPersonAssignment projectId={projectId} areaId={project?.areaId ?? null} />
           <ProjectRowActions
             projectId={projectId}
             display={display}
@@ -1323,34 +1153,6 @@ function NotesSection({
     () => [...areaNotes, ...projectNotes, ...taskNotes],
     [areaNotes, projectNotes, taskNotes],
   );
-  const { selected: filter } = usePersonFilter();
-  const hiddenCount = useHiddenCount(store, NOTE_ENTITY_TYPE.area, allIds, filter);
-  const personsV =
-    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
-  const visible = useMemo(() => {
-    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
-    if (filter.length === 0) return allIds;
-    const set = new Set(filter);
-    return allIds.filter((nid) => {
-      const noteEntityType = String(
-        store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType) ?? '',
-      );
-      const noteEntityId = String(
-        store.getCell(TABLES.notes, nid, COLUMNS.notes.entityId) ?? '',
-      );
-      if (!noteEntityId || noteEntityType === '') return false;
-      for (const id of peopleForEntity(
-        store,
-        noteEntityType as NoteEntityType,
-        noteEntityId,
-      )) {
-        if (set.has(id)) return true;
-      }
-      return false;
-    });
-  }, [store, allIds, filter, personsV]);
-
-
   function addNote(title: string): void {
     createNote(store, {
       title,
@@ -1363,7 +1165,7 @@ function NotesSection({
   return (
     <section className="notes-tab" aria-label="Notes">
       <ul className="notes-tab-list" role="list">
-        {visible.map((nid) => (
+        {allIds.map((nid) => (
           <NoteLine key={nid} noteId={nid} />
         ))}
       </ul>
@@ -1376,11 +1178,6 @@ function NotesSection({
         ariaLabel="New note"
         onSubmit={addNote}
       />
-      {hiddenCount > 0 && (
-        <p className="hidden-stub">
-          {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
-        </p>
-      )}
     </section>
   );
 }
@@ -1598,10 +1395,6 @@ function ProjectPaneHeader({
       ) : (
         <h1 className="area-header-name">{display}</h1>
       )}
-      <PersonAssignmentButton
-        entityType={NOTE_ENTITY_TYPE.project}
-        entityId={projectId}
-      />
       {actions && (
         <div className="project-row-actions">
           <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
@@ -1677,7 +1470,6 @@ function ProjectPane({
             <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
           }
         />
-        <PersonFilterBanner />
         <section className="pane-section pane-section-static" aria-label="Tasks">
           <div className="pane-section-head">
             <span className="pane-section-static-label">
@@ -1725,31 +1517,6 @@ function ProjectNotesPane({ projectId }: { projectId: string }): React.JSX.Eleme
     };
   }, [store, projectId]);
 
-  const { selected: filter } = usePersonFilter();
-  const hiddenCount = useHiddenCount(
-    store,
-    NOTE_ENTITY_TYPE.project,
-    noteIds,
-    filter,
-  );
-  const personsV =
-    useTableVersion(store, TABLES.persons) + useTableVersion(store, TABLES.person_links);
-  const visible = useMemo(() => {
-    void personsV; // invalidation token: person_links/persons edits re-run the peopleForEntity filter
-    if (filter.length === 0) return noteIds;
-    const set = new Set(filter);
-    return noteIds.filter((nid) => {
-      for (const id of peopleForEntity(
-        store,
-        NOTE_ENTITY_TYPE.project,
-        nid,
-      )) {
-        if (set.has(id)) return true;
-      }
-      return false;
-    });
-  }, [store, noteIds, filter, personsV]);
-
   function addNote(title: string): void {
     createNote(store, {
       title,
@@ -1788,10 +1555,9 @@ function ProjectNotesPane({ projectId }: { projectId: string }): React.JSX.Eleme
           projectId={projectId}
           name={project.name || 'Untitled'}
         />
-        <PersonFilterBanner />
         <section className="notes-tab" aria-label="Notes">
           <ul className="notes-tab-list" role="list">
-            {visible.map((nid) => (
+            {noteIds.map((nid) => (
               <NoteLine key={nid} noteId={nid} />
             ))}
           </ul>
@@ -1805,11 +1571,6 @@ function ProjectNotesPane({ projectId }: { projectId: string }): React.JSX.Eleme
             ariaLabel="New note"
             onSubmit={addNote}
           />
-          {hiddenCount > 0 && (
-            <p className="hidden-stub">
-              {hiddenCount} {hiddenCount === 1 ? 'note' : 'notes'} hidden
-            </p>
-          )}
         </section>
       </div>
     </main>

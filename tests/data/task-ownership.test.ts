@@ -6,7 +6,6 @@ import { createTask } from '../../src/data/tasks.ts';
 import { createProject } from '../../src/data/projects.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createNote } from '../../src/data/notes.ts';
-import { setEntityPersons } from '../../src/data/personLinks.ts';
 import {
   deleteArea,
   deleteProject,
@@ -45,19 +44,17 @@ describe('cascade deletion (ADR-0001)', () => {
     expect(hasTombstone(store, NOTE_ENTITY_TYPE.area, a)).toBe(true);
   });
 
-  it('strips notes and person links attached to any doomed entity', () => {
+  it('strips notes attached to any doomed entity', () => {
     const a = createArea(store, { name: 'A' });
     const p = createProject(store, { name: 'P', areaId: a });
     const t = createTask(store, { title: 'T', placement: { kind: 'project', id: p } });
     const areaNote = createNote(store, { title: 'an', entityType: 'area', entityId: a });
     const projNote = createNote(store, { title: 'pn', entityType: 'project', entityId: p });
     const taskNote = createNote(store, { title: 'tn', entityType: 'task', entityId: t });
-    setEntityPersons(store, NOTE_ENTITY_TYPE.task, t, ['m1']);
     deleteArea(store, a);
     expect(store.hasRow(TABLES.notes, areaNote)).toBe(false);
     expect(store.hasRow(TABLES.notes, projNote)).toBe(false);
     expect(store.hasRow(TABLES.notes, taskNote)).toBe(false);
-    expect(store.getRowIds(TABLES.person_links)).toEqual([]);
   });
 
   it('deletes a project and its tasks, leaving the area alone', () => {

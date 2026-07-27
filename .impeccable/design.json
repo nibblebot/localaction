@@ -307,7 +307,7 @@
       },
       {
         "name": "The Four-Tier Ramp Rule",
-        "body": "The sans ramp has four sizes (display 1.36 / title 1.07 / body 1 / label 0.79) plus mono (0.89, separate family) plus two container-driven exceptions (.person-avatar 0.71, .person-avatar-sm 0.64). Adding a fifth sans size requires dropping one \u2014 never both.",
+        "body": "The sans ramp has four sizes (display 1.36 / title 1.07 / body 1 / label 0.79) plus mono (0.89, separate family). Adding a fifth sans size requires dropping one \u2014 never both.",
         "section": "typography"
       }
     ],

@@ -39,7 +39,7 @@ async function inboxTitles(page: Page): Promise<string[]> {
 //
 // The bug: React Compiler memoizes hooks based on argument identity. The
 // affected hooks (`useInboxTaskIds`, `useAreaTaskIds`, `useTasksForProjectDeep`,
-// `useNoteIdsForEntity`, `useEntityPersonIds`) called `useRowIds` / `useTables`
+// `useNoteIdsForEntity`) called `useRowIds` / `useTables`
 // for the subscription but passed only the singleton `store` (and stable args)
 // to their calculation function. The compiler's cache key never changed, so
 // the cached value was returned across re-renders, hiding newly-written rows.

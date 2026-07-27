@@ -4,7 +4,7 @@
  * flags on TaskRow / the list wrappers, never separate components:
  *
  * - `readOnly`        — area flat list: span title, no row
- *                       actions (person, add sub-task, delete).
+ *                       actions (add sub-task, delete).
  * - `showDueDate`     — optional static date label after the title
  *                       (e.g. "Mon · 7/20"); surfaces calendar days
  *                       in cross-day views without exposing the
@@ -42,7 +42,6 @@ import { useUndo } from './useUndo.ts';
 import { SortableTree } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { consumeTaskTitleFocus, queueTaskTitleFocus } from './taskTitleFocus.ts';
-import PersonAssignmentButton from './persons/PersonAssignmentButton.tsx';
 import TaskDueDateButton from './TaskDueDateButton.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
 import { weekdayWithDate } from './dates.ts';
@@ -234,7 +233,6 @@ export function TaskRow({
       {!readOnly && (
         <>
           <div className="task-line-actions">
-            <PersonAssignmentButton entityType={NOTE_ENTITY_TYPE.task} entityId={taskId} />
             <TaskDueDateButton taskId={taskId} />
             <button
               type="button"

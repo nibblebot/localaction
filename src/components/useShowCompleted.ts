@@ -36,8 +36,8 @@ export interface ShowCompleted {
 /**
  * Completed-task visibility for the project/area task trees. Pure view
  * state — kept out of the TinyBase store so it never syncs; shared by
- * every pane on this device and persisted to localStorage like the
- * person filter so it survives reloads.
+ * every pane on this device and persisted to localStorage so it
+ * survives reloads.
  */
 export function useShowCompleted(): ShowCompleted {
   const showCompleted = useSyncExternalStore(

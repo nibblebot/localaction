@@ -12,7 +12,7 @@ import { writeTombstone } from './tombstones.ts';
 /**
  * Containment-aware deletion (ADR-0001). Deleting an owner removes its
  * full subtree — descendant Areas, Projects, Task trees, and every Note
- * and Person Link attached to any of them — and records a permanent typed
+ * attached to any of them — and records a permanent typed
  * tombstone so the deletion wins over delayed or concurrent assignments
  * once offline replicas merge.
  *
@@ -85,10 +85,10 @@ export function collectDoomedSets(
   return { areas: doomedAreas, projects: doomedProjects, sections: doomedSections, tasks: doomedTasks };
 }
 
-/** Ids of note / person-link rows attached to any entity in `sets`. */
+/** Ids of note rows attached to any entity in `sets`. */
 export function attachedRowIds(
   store: MergeableStore,
-  table: typeof TABLES.notes | typeof TABLES.person_links,
+  table: typeof TABLES.notes,
   sets: DoomedSets,
 ): string[] {
   const out: string[] = [];
@@ -118,12 +118,9 @@ export function cascadeDeleteSubtree(
   for (const pid of doomed.projects) deleteIfPresent(TABLES.projects, pid);
   for (const aid of doomed.areas) deleteIfPresent(TABLES.areas, aid);
 
-  // Strip attachments (notes + person links) for every doomed entity.
+  // Strip attached notes for every doomed entity.
   for (const nid of attachedRowIds(store, TABLES.notes, doomed)) {
     deleteIfPresent(TABLES.notes, nid);
-  }
-  for (const lid of attachedRowIds(store, TABLES.person_links, doomed)) {
-    deleteIfPresent(TABLES.person_links, lid);
   }
   return changed;
 }

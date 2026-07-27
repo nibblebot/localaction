@@ -13,12 +13,6 @@ Node server that holds the authoritative SQLite copy. Three runtime modes —
 Vite dev, Vite preview, and the prod server (`tsx server/index.ts`) — all share one sync handler
 so behaviour never drifts between them.
 
-**Person facet.** Every entity (Area, Project, Task) carries an M:N set of
-Persons — a crosscutting facet orthogonal to the Area trie. The app's own
-user is the distinguished `Self` Person. See
-[glossary.md](./glossary.md#person) for the vocabulary and
-[§ Data model](#data-model) for the storage shape.
-
 ```mermaid
   subgraph Browser["Browser (client)"]
     UI["React 19 app\n(Sidebar / MainPane)"]
@@ -66,26 +60,19 @@ The seam between React and TinyBase. Everything is re-exported from
 - **Store** — `store.ts` holds a process-wide `createMergeableStore()` singleton
   (`getStore()`). A MergeableStore tracks per-cell HLC timestamps, which is what
   makes conflict-free sync possible.
-- **Schema** — `schema.ts` defines eight tables and their column keys as
+- **Schema** — `schema.ts` defines six tables and their column keys as
   `const` maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`),
   `NOTE_ENTITY_TYPE` (`area` / `project` / `task`), and
-  `TOMBSTONE_ENTITY_TYPE` (those three + `section`) enums-as-objects, and
-  the `SELF_PERSON_ID` literal (`"self"`).
+  `TOMBSTONE_ENTITY_TYPE` (those three + `section`) enums-as-objects.
 - **CRUD + hooks** — one module per entity (`areas.ts`, `projects.ts`,
-  `sections.ts`, `tasks.ts`, `notes.ts`, `persons.ts`, `personLinks.ts`). Each exposes
+  `sections.ts`, `tasks.ts`, `notes.ts`). Each exposes
   imperative mutators/readers (`createX` / `updateX` / `deleteX` / `getX`)
   **and** a React hook (`useX`) built on `tinybase/ui-react`'s
-  `useRow` / `useRowIds`. IDs are `crypto.randomUUID()` except for the
-  `Self` row which uses the fixed literal `"self"` (idempotent bootstrap
-  in `DataLayerProvider`); timestamps are ISO 8601.
+  `useRow` / `useRowIds`. IDs are `crypto.randomUUID()`;
+  timestamps are ISO 8601.
 - **Selectors** — `selectors.ts` derives rollups (`useAreaCounts`,
   `useProjectRollups`, `useNotesForAreaTree`). Each `get*` takes an optional
   `_version` dependency token so React Compiler can memoise the derived output.
-  `personSelectors.ts` derives the people of any entity
-  (`{Self} ∪ (storedSet ∩ persons_present)` — the read-time presence
-  intersection is what makes deletion non-destructive and revivable).
-  `personFilter.ts`
-  exposes `areaHasMatch` + `useDimmedAreaIds` for the sidebar filter dim.
 - **Ordering** — `order.ts` (see [Ordering](#ordering) below).
 - **Helpers** — `colors.ts` (the area palette), `slug.ts` (note slugs),
   `internal.ts` (`newId`, `nowIso`, `row`, `useStoreVersion`).
@@ -128,33 +115,11 @@ erDiagram
   notes { string body "markdown" }
   notes { string entityType "area|project|task" }
   notes { string entityId FK "polymorphic" }
-  persons { string id PK "literal 'self' for Self" }
-  persons { string name }
-  persons { string color "free hex" }
-  person_links { string id PK "composite: {type}:{id}:{personId}" }
-  person_links { string personId FK "never Self" }
-  person_links { string entityType "area|project|task" }
-  person_links { string entityId FK "polymorphic" }
-  areas ||--o{ person_links : "entityType=area"
-  projects ||--o{ person_links : "entityType=project"
-  tasks ||--o{ person_links : "entityType=task"
-  persons ||--o{ person_links : "personId"
 ```
 
 - **Note** — markdown body attached to exactly one entity via the
   (`entityType`, `entityId`) pair, addressed by `slug`.
-- **Person** — first-class entity; id is the literal `"self"` for the
-  app's own user, otherwise a UUID. Carries a `name` and a free-hex
-  `color`. The avatar is derived from the name (no stored column).
-- **person_links** — polymorphic link table mirroring `notes`. One
-  row per non-Self membership, row id `${entityType}:${entityId}:${personId}`
-  (deterministic composite so two devices adding the same person
-  converge to one row). Self is never stored; it is force-unioned at
-  read time. The people of any entity are derived at read time as
-  `{Self} ∪ (storedSet ∩ persons_present)` — each entity's set stands
-  alone (no inheritance or narrowing), and a deleted person drops out
-  of every association without mutating the stored rows.
-  No `order`, no timestamp cells on links (HLC carries the merge metadata).
+
 ### Ordering
 
 Drag-to-reorder spans the whole tree: one flattened `SortableTree`

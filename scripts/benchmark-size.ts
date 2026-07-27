@@ -22,7 +22,6 @@ import { createServerPersister } from '../server/persister.ts';
 import { createArea } from '../src/data/areas.ts';
 import { createProject } from '../src/data/projects.ts';
 import { createTask } from '../src/data/tasks.ts';
-import { ensureSelfPerson } from '../src/data/persons.ts';
 import {
   deleteArea,
   deleteProject,
@@ -182,13 +181,12 @@ async function main(): Promise<void> {
   const snaps: Snapshot[] = [];
   snaps.push(await snapshot(db, '1a. empty file (openDatabase only, no writes)', 'test-bench-size.db'));
 
-  // Case 1b: first boot — initial load stamps schemaVersion, Self person
-  // bootstrap, autoSave persists. Smallest real DB.
+  // Case 1b: first boot — initial load stamps schemaVersion, autoSave
+  // persists. Smallest real DB.
   await persister.startAutoLoad();
   await persister.startAutoSave();
-  store.transaction(() => ensureSelfPerson(store));
-  await waitForCounts(db, { tinybase_values: 1, persons: 1 });
-  snaps.push(await snapshot(db, '1b. initial boot (schemaVersion + Self person, no user data)', 'test-bench-size.db'));
+  await waitForCounts(db, { tinybase_values: 1 });
+  snaps.push(await snapshot(db, '1b. initial boot (schemaVersion, no user data)', 'test-bench-size.db'));
 
   // Case 2: 10 areas, 30 projects, 100 tasks.
   let t0 = Date.now();

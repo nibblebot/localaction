@@ -23,3 +23,18 @@ export function reconcileSchemaVersion(store: MergeableStore): boolean {
   });
   return true;
 }
+
+/**
+ * Retired People feature. Pre-removal snapshots (browser OPFS and server
+ * SQLite) can still carry `persons`/`person_links` tables. Drop just those
+ * tables right after load — on both client and server — so autosave and
+ * sync propagate the deletion everywhere. This is deliberately NOT a
+ * SCHEMA_VERSION bump: reconcileSchemaVersion wipes every table, which
+ * would erase all user data.
+ */
+export function dropLegacyPersonTables(store: MergeableStore): void {
+  store.transaction(() => {
+    if (store.hasTable('persons')) store.delTable('persons');
+    if (store.hasTable('person_links')) store.delTable('person_links');
+  });
+}

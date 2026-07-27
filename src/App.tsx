@@ -9,7 +9,6 @@ import { useFocusTrap } from './components/useFocusTrap.ts';
 import { Inspector } from 'tinybase/ui-react-inspector';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
-import PersonFilterProvider from './components/persons/PersonFilterContext.tsx';
 import './App.css';
 
 const store = getStore();
@@ -44,42 +43,40 @@ function App(): React.JSX.Element {
   return (
     <Provider store={store}>
       <AppearanceProvider>
-        <PersonFilterProvider>
-          <DataLayerProvider>
-            <SelectionProvider>
-              <UndoProvider>
-                <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
-                  <button
-                    type="button"
-                    className="drawer-toggle"
-                    aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
-                    aria-expanded={drawerOpen}
-                    aria-controls="app-sidebar"
-                    onClick={() => setDrawerOpen((v) => !v)}
-                  >
-                    <svg className="svg-icon" aria-hidden="true">
-                      <use href="/icons.svg#menu-icon" />
-                    </svg>
-                  </button>
-                  <Sidebar
-                    ref={sidebarRef}
-                    drawerOpen={drawerOpen}
-                    onNavigate={() => setDrawerOpen(false)}
+        <DataLayerProvider>
+          <SelectionProvider>
+            <UndoProvider>
+              <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
+                <button
+                  type="button"
+                  className="drawer-toggle"
+                  aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
+                  aria-expanded={drawerOpen}
+                  aria-controls="app-sidebar"
+                  onClick={() => setDrawerOpen((v) => !v)}
+                >
+                  <svg className="svg-icon" aria-hidden="true">
+                    <use href="/icons.svg#menu-icon" />
+                  </svg>
+                </button>
+                <Sidebar
+                  ref={sidebarRef}
+                  drawerOpen={drawerOpen}
+                  onNavigate={() => setDrawerOpen(false)}
+                />
+                {drawerOpen ? (
+                  <div
+                    className="drawer-backdrop"
+                    onClick={() => setDrawerOpen(false)}
                   />
-                  {drawerOpen ? (
-                    <div
-                      className="drawer-backdrop"
-                      onClick={() => setDrawerOpen(false)}
-                    />
-                  ) : null}
-                  <MainPane />
-                  {import.meta.env.DEV ? <Inspector /> : null}
-                  <QuickAddModal />
-                </div>
-              </UndoProvider>
-            </SelectionProvider>
-          </DataLayerProvider>
-        </PersonFilterProvider>
+                ) : null}
+                <MainPane />
+                {import.meta.env.DEV ? <Inspector /> : null}
+                <QuickAddModal />
+              </div>
+            </UndoProvider>
+          </SelectionProvider>
+        </DataLayerProvider>
       </AppearanceProvider>
     </Provider>
   );

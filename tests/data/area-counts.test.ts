@@ -5,7 +5,6 @@ import { TASK_STATUS } from '../../src/data/schema.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createTask, setTaskStatus } from '../../src/data/tasks.ts';
 import { getAreaCounts } from '../../src/data/selectors.ts';
-import { getFilteredAreaCounts } from '../../src/data/personFilter.ts';
 
 function areaCounts(store: MergeableStore, areaId: string) {
   const row = getAreaCounts(store).find((c) => c.id === areaId);
@@ -58,18 +57,5 @@ describe('getAreaCounts open-task counts', () => {
     const parentCounts = areaCounts(store, area);
     expect(parentCounts.taskCount).toBe(2);
     expect(parentCounts.openTaskCount).toBe(1);
-  });
-});
-
-describe('getFilteredAreaCounts open-task counts', () => {
-  it('mirrors open-only semantics under a person filter', () => {
-    const store = createMergeableStore();
-    const area = createArea(store, { name: 'Work' });
-    const done = createTask(store, { title: 'done', placement: { kind: 'area', id: area } });
-    createTask(store, { title: 'open', placement: { kind: 'area', id: area } });
-    setTaskStatus(store, done, TASK_STATUS.done);
-    const counts = getFilteredAreaCounts(store, area, new Set());
-    expect(counts.taskCount).toBe(2);
-    expect(counts.openTaskCount).toBe(1);
   });
 });

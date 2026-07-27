@@ -50,14 +50,6 @@ typography:
     fontFamily: "'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     fontSize: "0.79rem"
     fontWeight: 500
-  mono:
-    fontFamily: "ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace"
-    fontSize: "0.89rem"
-    fontWeight: 400
-    # Container-driven exceptions (NOT part of the ramp):
-    # - .person-avatar 22x22 circle, 2-char initials at 0.71rem
-    # - .person-avatar-sm 18x18 circle at 0.64rem
-    # These sizes are dictated by the badge geometry, not hierarchy.
 rounded:
   sm: "6px"
   md: "10px"
@@ -220,7 +212,7 @@ Quiet controls that wake on hover. Chrome hides until needed — row actions app
 ### Rows and lists
 - **Sidebar row:** Transparent at rest; hover washes surface-hover; active fills the accent wash with Iris text and a tinted count pill. Top-level areas run 600 weight. Dimmed rows (empty areas) drop to 40% opacity, recovering on hover.
 - **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed 22px icon actions. Done state: strikethrough, muted ink, 60% opacity on the row.
-- **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count. On phone-width viewports the row is a navigation path, not an action bar: caret, name, count, and the stateful due-date chip stay; every other action (people, notes, rename, delete, empty-sections) lives on the project detail pane the row opens, and long names wrap instead of truncating.
+- **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count. On phone-width viewports the row is a navigation path, not an action bar: caret, name, count, and the stateful due-date chip stay; every other action (notes, rename, delete, empty-sections) lives on the project detail pane the row opens, and long names wrap instead of truncating.
 - **Drag interaction:** Source row dims to 35% and keeps its rest shadow; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
 
 ### Tabs
@@ -239,9 +231,6 @@ Every completion and every cascade delete offers a 6-second undo window: a quiet
 
 ### Navigation
 The sidebar is the instrument panel: Rail surface, section titles in small caps-weight labels, area rows with user-colored dots and live count pills, the sync badge pinned at the foot. The main pane holds the working view — area or project — with a breadcrumb chain for parent context. There is no top-level chrome beyond this: no app bar, no toolbar strip.
-
-### Person avatars
-22px circles (18px small) with 10px 600-weight initials in the person's own color, a barely-there inset ring. Users' people, at chip scale — they annotate rows and areas without competing with the One Voice accent.
 
 ### Icons
 One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12px — carets, row-level actions), `--icon-sm` (14px — default chrome and drag grips), `--icon-md` (18px — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.

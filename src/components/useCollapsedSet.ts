@@ -36,8 +36,8 @@ export interface CollapsedSet {
 /**
  * LocalStorage-backed collapse state for a set of entities. Pure view
  * state — kept out of the TinyBase store so it never syncs; persisted
- * to localStorage like the person filter so it survives reloads on
- * this device. An empty set means everything is expanded.
+ * to localStorage so it survives reloads on this device. An empty set
+ * means everything is expanded.
  */
 export function useCollapsedSet(storageKey: string): CollapsedSet {
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => loadStored(storageKey));

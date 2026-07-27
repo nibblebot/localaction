@@ -54,8 +54,8 @@ export interface SidebarWidth {
 
 /**
  * Sidebar width — pure view state, persisted to localStorage like
- * collapse state and the person filter so it survives reloads on this
- * device. Not synced: width is a per-screen preference, not data.
+ * collapse state so it survives reloads on this device. Not synced:
+ * width is a per-screen preference, not data.
  *
  * The committed width drives `--sidebar-w` on the document root,
  * which `.app-shell`'s grid template already consumes.

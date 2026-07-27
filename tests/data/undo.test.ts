@@ -7,8 +7,6 @@ import { createProject } from '../../src/data/projects.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createSection } from '../../src/data/sections.ts';
 import { createNote } from '../../src/data/notes.ts';
-import { createPerson } from '../../src/data/persons.ts';
-import { setEntityPersons, getEntityPersonIds } from '../../src/data/personLinks.ts';
 import {
   deleteArea,
   deleteTask,
@@ -67,7 +65,7 @@ describe('captureSubtree / restoreSubtree', () => {
     uninstall();
   });
 
-  it('round-trips an area cascade: sub-area, project, section, tasks, person link', () => {
+  it('round-trips an area cascade: sub-area, project, section, tasks', () => {
     const areaId = createArea(store, { name: 'Work', color: 'blue' });
     const subId = createArea(store, { name: 'Clients', color: 'green', parentId: areaId });
     const projectId = createProject(store, { name: 'Q3', areaId: subId });
@@ -75,8 +73,6 @@ describe('captureSubtree / restoreSubtree', () => {
     const areaTask = createTask(store, { title: 'Area task', placement: { kind: 'area', id: areaId } });
     const projTask = createTask(store, { title: 'Proj task', placement: { kind: 'project', id: projectId } });
     const sectTask = createTask(store, { title: 'Sect task', placement: { kind: 'section', id: sectionId } });
-    const personId = createPerson(store, { name: 'Ada' });
-    setEntityPersons(store, NOTE_ENTITY_TYPE.project, projectId, [personId]);
 
     const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.area, areaId);
     deleteArea(store, areaId);
@@ -85,7 +81,6 @@ describe('captureSubtree / restoreSubtree', () => {
     expect(store.hasRow(TABLES.projects, projectId)).toBe(false);
     expect(store.hasRow(TABLES.sections, sectionId)).toBe(false);
     for (const id of [areaTask, projTask, sectTask]) expect(getTask(store, id)).toBeUndefined();
-    expect(getEntityPersonIds(store, NOTE_ENTITY_TYPE.project, projectId)).toEqual([]);
 
     restoreSubtree(store, snapshot);
 
@@ -95,7 +90,6 @@ describe('captureSubtree / restoreSubtree', () => {
     expect(getTask(store, areaTask)?.title).toBe('Area task');
     expect(getTask(store, projTask)?.title).toBe('Proj task');
     expect(getTask(store, sectTask)?.title).toBe('Sect task');
-    expect(getEntityPersonIds(store, NOTE_ENTITY_TYPE.project, projectId)).toEqual([personId]);
     expect(hasTombstone(store, NOTE_ENTITY_TYPE.area, areaId)).toBe(false);
   });
 

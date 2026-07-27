@@ -5,8 +5,8 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /** Open traps, bottom → top. Only the topmost trap handles Tab, so
- * nested overlays (e.g. the person-edit popover opened from the
- * assignment popover) don't fight each other. */
+ * nested overlays (e.g. a popover opened from another popover) don't
+ * fight each other. */
 const trapStack: HTMLElement[] = [];
 
 /**

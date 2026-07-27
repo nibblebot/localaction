@@ -8,7 +8,7 @@ An ongoing area of life or practice that has no end state. Top-level container f
 
 ## Sub-Area
 
-A nested Area. Same semantics as Area — ongoing, container — but lives under a parent Area. (Historically, the glossary listed person-flavored sub-areas like `Family → Wife`; that pattern is **replaced by [Persons](#person)** — a Person is the orthogonal facet, not a sub-area node.)
+A nested Area. Same semantics as Area — ongoing, container — but lives under a parent Area.
 
 ## Project
 
@@ -18,7 +18,7 @@ A Project has three presentation states in the [Projects section](#projects-sect
 
 ## Section
 
-A named group of top-level Tasks inside a Project (e.g. "Phase 1", "Backlog"). Sections exist only at the top level of a Project — they never nest, belong to exactly one Project, and hold Tasks only (no Notes, no Persons). A Task joins a Section through its `section:<id>` placement; its owning Project resolves through the Section row. Sections are ordered by drag within their Project and always render after the Project's unsectioned Tasks. Deleting a Section deletes its Tasks (containment cascade, with a typed tombstone).
+A named group of top-level Tasks inside a Project (e.g. "Phase 1", "Backlog"). Sections exist only at the top level of a Project — they never nest, belong to exactly one Project, and hold Tasks only (no Notes). A Task joins a Section through its `section:<id>` placement; its owning Project resolves through the Section row. Sections are ordered by drag within their Project and always render after the Project's unsectioned Tasks. Deleting a Section deletes its Tasks (containment cascade, with a typed tombstone).
 
 ## Task
 
@@ -45,25 +45,6 @@ Supports standard markdown rendering (CommonMark subset).
 
 A URL-safe identifier for a Note, derived from its title. Stable across renames unless something resolves them differently.
 
-## Person
-
-An individual a LocalAction entity (Area, Project, or Task) is associated with. The app's own user is always represented by a distinguished Person called **Self**. Persons carry a name and a colour; their avatar is derived from their name (see [ux.md](./ux.md)). A Person is **not** a node in the Area trie — it is an orthogonal facet, M:N across every entity type.
-
-Self's name is a display name, not an identity: the user can rename Self like any other Person, and every canonical behaviour (always present, always assigned, non-deletable, sorted first, never stored as a link) keys off the fixed row id `"self"`, so a rename changes only what is rendered.
-
-## Cast
-
-The set of Persons associated with an Area — simply the Area's own [Person Links](#person-link), edited through the Area's header cast chips. Sub-areas / Projects / Tasks also carry a set, but that set is "this entity's persons" — the term **cast** specifically denotes an Area's set. There is no inheritance or constraint: every entity's set stands alone, and assignment popovers list every present Person.
-
-## Effective Person Set
-
-The Persons an entity actually resolves to at read time:
-`{Self} ∪ ( storedSet(e) ∩ persons_present )`. Always non-empty. Stored rows are never mutated to enforce it — see [architecture.md](./architecture.md) for the read path.
-
-## Person Link
-
-A row in the `person_links` table expressing that a non-Self Person is associated with a specific `(entityType, entityId)` target. Self is **never** stored as a link — it is force-unioned at read time.
-
 ---
 
 # UI Structure
@@ -76,11 +57,7 @@ The two-pane workspace (`.app-shell`): [Sidebar](#sidebar) on the left, [Main Pa
 
 ## Sidebar
 
-The left-hand navigation column (`Sidebar.tsx`). From top to bottom: the app-name row (the "LocalAction" title), the [Person Filter](#person-filter), the quick links (Inbox, Today, Week — each with a live count), the Areas section, and the [Sidebar footer](#sidebar-footer). A resizer on its trailing edge drags to set its width.
-
-## Person Filter
-
-The Sidebar's people section (`PersonFilterFacet`): the list of [Persons](#person) that filters every view by assignment. Selecting a Person dims or prunes non-matching entities app-wide; it is a filter facet, not a navigation destination.
+The left-hand navigation column (`Sidebar.tsx`). From top to bottom: the app-name row (the "LocalAction" title), the quick links (Inbox, Today, Week — each with a live count), the Areas section, and the [Sidebar footer](#sidebar-footer). A resizer on its trailing edge drags to set its width.
 
 ## Areas Section
 
@@ -100,7 +77,7 @@ The Main Pane view for a selected Area: an [Area header](#area-header) above thr
 
 ## Area Header
 
-The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a breadcrumb of the parent chain, the **cast chips** (the Area's [Cast](#cast), editable in place), the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
+The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a breadcrumb of the parent chain, the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
 
 ## Area Tasks Section
 
@@ -116,7 +93,7 @@ The Area view section rolling up every [Note](#note) attached to the Area, its s
 
 ## Project Row
 
-A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (hides [Section](#section) headers with no visible tasks in the expanded card; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), and a person-assignment action. Most of the row is the expand toggle.
+A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (hides [Section](#section) headers with no visible tasks in the expanded card; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)). Most of the row is the expand toggle.
 
 ## Project Card
 
@@ -124,7 +101,7 @@ A [Project row](#project-row) plus its expanded inline body — the [Project tas
 
 ## Project Task List
 
-The body of an expanded [Project card](#project-card) (`ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons) and, when the [Person Filter](#person-filter) prunes rows, the **hidden-tasks stub** ("N tasks hidden").
+The body of an expanded [Project card](#project-card) (`ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons).
 
 ## Section Row
 
@@ -132,7 +109,7 @@ A [Section's](#section) header inside the Project task list: a drag handle, the 
 
 ## Task Row
 
-A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — person assignment, due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
+A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
 
 ## Project Notes Pane
 
@@ -140,4 +117,4 @@ The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project
 
 ## Project Detail Pane
 
-The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the person-assignment action, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
+The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).

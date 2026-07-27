@@ -1,7 +1,7 @@
 import { createOpfsPersister } from 'tinybase/persisters/persister-browser';
 import type { OpfsPersister } from 'tinybase/persisters/persister-browser';
 import { getStore } from './store.ts';
-import { reconcileSchemaVersion } from './schemaVersion.ts';
+import { reconcileSchemaVersion, dropLegacyPersonTables } from './schemaVersion.ts';
 export const OPFS_FILE_NAME = 'localaction.json';
 
 const onError = (err: unknown): void => {
@@ -23,6 +23,9 @@ export function startLocalPersistence(): Promise<OpfsPersister> {
     const persister = createOpfsPersister(getStore(), handle, onError);
     await persister.load();
     reconcileSchemaVersion(getStore());
+    // Purge the retired People tables before autosave so OPFS persists
+    // the post-purge state (see dropLegacyPersonTables).
+    dropLegacyPersonTables(getStore());
     void persister.startAutoSave();
     return persister;
   })();

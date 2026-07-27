@@ -56,7 +56,5 @@ test('section-title actions stay tappable next to their touch halos', async ({
   await openDrawer(page);
   await page.tap('button[aria-label="New area"]');
   await expect(page.locator('.sidebar-section-add .inline-add-input')).toBeFocused();
-  await page.tap('button[aria-label="New person"]');
-  await expect(page.locator('.person-filter-new-form input')).toBeVisible();
 });
 

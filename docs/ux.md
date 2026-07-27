@@ -14,7 +14,7 @@ The app is a two-pane workspace:
 flowchart TB
   subgraph Shell["app-shell"]
     direction LR
-    Side["Sidebar\napp name · person filter\nInbox / Today / Week · area tree\nsync badge + appearance menu"]
+    Side["Sidebar\napp name\nInbox / Today / Week · area tree\nsync badge + appearance menu"]
     Main["MainPane\nwelcome · area view · project detail / notes\ninbox · today · week"]
   end
   Insp["TinyBase Inspector\n(dev-only overlay)"]
@@ -22,7 +22,7 @@ flowchart TB
 ```
 
 - **Sidebar** (`Sidebar.tsx`) — the navigation column. Top to bottom: the
-  app-name row, the person filter, the Inbox / Today / Week quick links, the
+  app-name row, the Inbox / Today / Week quick links, the
   Areas section, and the footer holding the sync status badge and the
   appearance menu. A resizer on its trailing edge drags to set its width
   (persisted per device). Below 768px the sidebar becomes a modal drawer —
@@ -51,18 +51,6 @@ There is no router library — `src/router.ts` is a tiny hash router.
   single field; Enter commits a new Inbox task, Esc or the backdrop cancels.
 
 ## The sidebar
-
-### Person filter
-
-One chip per present person (`PersonFilterFacet`), avatar + name. Clicking a
-chip toggles its presence in the filter; an empty selection means no filter.
-The section's **+** button is the only place people are created; each chip
-carries a hover/focus edit affordance (rename, recolour, delete — Self is
-renamed there too; its canonical identity is the fixed row id). While a
-filter is active: a banner over the MainPane names the selected people and
-offers one-click *Clear*; sidebar areas with no matching work dim and show
-their filtered count; task and note lists prune non-matching rows and show a
-"N hidden" stub. The selection persists per device.
 
 ### Quick links
 
@@ -114,8 +102,7 @@ area name with its colour dot. Clicking the name opens an `AreaEditPopover`
 — rename (commits on blur/Enter), palette swatch (commits immediately), and
 delete (gated by a confirm modal the header owns, with undo). An inline
 add-sub-area button sits beside the name. The header's action row holds the
-**cast chips** (the area's people, edited in place) and the **Completed
-toggle** (show/hide done tasks in place — device-wide, persisted).
+**Completed toggle** (show/hide done tasks in place — device-wide, persisted).
 
 - **Projects** — every project owned by the area and its sub-areas,
   grouped **Active** / **Backlog** / **Done**. The status groups are
@@ -135,8 +122,8 @@ toggle** (show/hide done tasks in place — device-wide, persisted).
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), an empty-sections
   toggle (prunes section headers with no visible tasks from the
-  expanded card; per-project, persisted per device), a person-assignment
-  action, and a note icon that opens the project's notes pane. Only the
+  expanded card; per-project, persisted per device), and a note icon
+  that opens the project's notes pane. Only the
   caret expands the card in place; clicking anywhere else on the row
   (name, meter, dead space) opens the **project detail pane**. Below
   768px the row sheds its action icons (keeping caret, name, count, and
@@ -192,8 +179,8 @@ persists per device, keyed independently per view. Empty state: *"Nothing in thi
 ### Project detail pane
 
 Clicking a project row (`#/p/<id>`) opens the standalone form of an
-expanded project card: the project header (area breadcrumb, person
-assignment, Completed toggle) carries the same actions the card's row
+expanded project card: the project header (area breadcrumb, Completed
+toggle) carries the same actions the card's row
 shows — the done/total progress meter, the due-date affordance, the
 empty-sections toggle (per-project state shared with the card), the
 note icon, rename, and delete (which returns to the owning area) —
@@ -248,20 +235,17 @@ appearance menu:
 - **`InlineAddInput` / `InlineAddButton`** — the add affordances everywhere:
   new area, project, task, section, or note.
 - **`EditableTitle`** — inline rename of an entity's title (section names).
-- **Popovers** — `AreaEditPopover` (rename / recolour / delete an area),
-  `PersonEditPopover` (rename / recolour / delete a person),
-  `PersonAssignmentPopover` (set an entity's people), and the due-date
-  pickers behind the task / project due-date buttons.
+- **Popovers** — `AreaEditPopover` (rename / recolour / delete an area) and
+  the due-date pickers behind the task / project due-date buttons.
 - **`ConfirmModal`** — confirmation for destructive actions (delete).
 - **`UndoToast`** — completing a task offers a timed undo.
 - **`QuickAddModal`** — global `Shift+A` quick-add to the Inbox.
 - **Device-local view state** — collapse sets, the Completed toggle, the
-  person filter, the sidebar width, and appearance all persist to
-  `localStorage` and never sync: they are per-screen preferences, not data.
+  sidebar width, and appearance all persist to `localStorage` and never
+  sync: they are per-screen preferences, not data.
 
 ## Colour system
 
 Areas carry a palette colour (`src/data/colors.ts`, `AREA_COLORS`): purple,
 blue, green, pink, amber, gray. The chosen id is stored on the area and
 rendered as its sidebar dot / header marker; an unknown id falls back to gray.
-Persons likewise carry a colour, rendered on their avatars and chips.

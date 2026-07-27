@@ -26,7 +26,10 @@ import {
 } from 'tinybase/persisters/persister-sqlite3';
 import { TABLES } from '../src/data/schema.ts';
 import { row } from '../src/data/internal.ts';
-import { reconcileSchemaVersion } from '../src/data/schemaVersion.ts';
+import {
+  reconcileSchemaVersion,
+  dropLegacyPersonTables,
+} from '../src/data/schemaVersion.ts';
 import type { ServerDatabase } from './db.ts';
 
 /**
@@ -163,6 +166,10 @@ export function createServerPersister(
     // (forwarded by the spread) immediately after `startAutoLoad()`, whose
     // initial full save persists the post-reconcile state.
     reconcileSchemaVersion(store);
+    // Purge the retired People tables (see dropLegacyPersonTables); the
+    // deletion flows through the mirror bridge and the initial autosave,
+    // and sync propagates it to connected clients.
+    dropLegacyPersonTables(store);
     return facade;
   };
 

@@ -500,6 +500,13 @@ body.sidebar-resizing {
    Area edit popover (rename + recolor from the area header)
    ============================================================ */
 
+/* Backdrop for AreaEditPopover. */
+.area-edit-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover-backdrop);
+}
+
 .area-edit {
   position: fixed;
   z-index: var(--z-popover);
@@ -737,13 +744,13 @@ body.sidebar-resizing {
   /* One register up from the inner status-group labels (.tab-group-title
      is 0.79rem) so the section header reads as the parent, not a peer.
      Uppercase + tracking stay aligned with the other section eyebrows
-     (sidebar, appearance, person picker). */
+     (sidebar, appearance). */
   font-size: 0.93rem;
   font-weight: 700;
   text-transform: uppercase;
   /* Same tracking as .sidebar-section-title and the appearance
-     / person-picker eyebrows — every uppercase label reads with
-     one consistent voice. */
+     eyebrows — every uppercase label reads with one consistent
+     voice. */
   letter-spacing: 0.06em;
   color: black;
 }
@@ -962,8 +969,8 @@ body.sidebar-resizing {
   cursor: pointer;
 }
 
-/* Right-aligned action cluster on project rows (DueDate, Person,
-   Notes, Rename, Trash). One wrapper so the cluster shifts together
+/* Right-aligned action cluster on project rows (DueDate, Notes,
+   Rename, Trash). One wrapper so the cluster shifts together
    when items are added/hidden, and only one auto-margin slot
    consumes the flex space. */
 .project-row-actions {
@@ -1450,7 +1457,7 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-/* Right-aligned action cluster on task rows (DueDate, Person,
+/* Right-aligned action cluster on task rows (DueDate,
    AddSubtask, Trash). One wrapper so the cluster shifts together
    when items are added/hidden, and only one auto-margin slot
    consumes the flex space. */
@@ -2512,420 +2519,6 @@ body.sidebar-resizing {
 }
 
 /* ============================================================
-   Person facet
-   ============================================================ */
-
-.person-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-pill);
-  font-size: 0.71rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  user-select: none;
-  flex-shrink: 0;
-  vertical-align: middle;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
-}
-
-.person-avatar-sm {
-  width: 18px;
-  height: 18px;
-  font-size: 0.64rem;
-}
-
-.person-avatars {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  vertical-align: middle;
-}
-
-/* The button wrapping a row's avatar cluster (opens the assignment
-   popover). Visual chrome comes from the avatars themselves. */
-.person-assignment-button {
-  background: transparent;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-}
-
-.person-avatars-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-inline-start: auto;
-}
-
-/* ============================================================
-   Person filter facet (sidebar)
-   ============================================================ */
-
-.person-filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.person-filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px 2px 4px;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 1rem;
-  color: var(--text);
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.person-filter-chip:hover {
-  background: var(--surface-hover);
-}
-
-.person-filter-chip[data-on='true'] {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
-  color: var(--accent);
-}
-/* Chip wrapper: positions the hover/focus edit badge without
-   shifting the chip layout. */
-.person-filter-chip-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.person-filter-chip-edit {
-  position: absolute;
-  top: -6px;
-  inset-inline-end: -6px;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.person-filter-chip-edit .svg-icon {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
-}
-
-.person-filter-chip-wrap:hover .person-filter-chip-edit,
-.person-filter-chip-wrap:focus-within .person-filter-chip-edit {
-  display: inline-flex;
-}
-
-.person-filter-chip-edit:hover {
-  background: var(--surface-hover);
-  color: var(--text-h);
-}
-
-.person-filter-empty {
-  font-size: 1rem;
-  color: var(--text-muted);
-  padding: 4px 0;
-}
-
-.person-filter-new-form {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 4px 0;
-}
-
-.person-filter-new-form .inline-add-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  margin: 0;
-}
-
-/* Filter banner over MainPane */
-
-.person-filter-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  margin-bottom: var(--space-4);
-  background: var(--accent-bg);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  color: var(--accent);
-  font-size: 1rem;
-}
-
-.person-filter-banner-text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.person-filter-banner-clear {
-  flex: 0 0 auto;
-  background: transparent;
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
-  border-radius: var(--radius-sm);
-  padding: 2px 8px;
-  font: inherit;
-  cursor: pointer;
-}
-
-.person-filter-banner-clear:hover {
-  background: var(--accent-tint);
-}
-
-/* Hidden-stub (variant C of filter prototype) */
-
-.hidden-stub {
-  font-size: 1rem;
-  color: var(--text-muted);
-  font-style: italic;
-  padding: 4px 0 8px;
-}
-
-/* ============================================================
-   Person cast chips (Area header)
-   ============================================================ */
-
-.area-header-cast {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-inline-end: var(--space-2);
-}
-
-.area-header-cast-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 1rem;
-  cursor: pointer;
-  color: var(--text);
-  font-family: inherit;
-}
-
-.area-header-cast-chip:hover {
-  background: var(--surface-hover);
-  color: var(--text-h);
-}
-
-
-.area-header-cast-empty {
-  font-size: 1rem;
-  color: var(--text-muted);
-  font-style: italic;
-  margin-inline-start: var(--space-3);
-}
-
-/* ============================================================
-   Person assignment popover
-   ============================================================ */
-
-.person-picker {
-  position: fixed;
-  z-index: var(--z-popover);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  min-width: 200px;
-  max-width: 280px;
-  padding: var(--space-2);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.person-picker-title {
-  font-size: 0.79rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  padding: 4px 6px 6px;
-}
-
-.person-picker-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.person-picker-row:hover {
-  background: var(--surface-hover);
-}
-
-.person-picker-row input {
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-.person-picker-row-locked {
-  color: var(--text-muted);
-  cursor: default;
-}
-
-.person-picker-row-locked:hover {
-  background: transparent;
-}
-
-.person-picker-row-note {
-  margin-inline-start: auto;
-  font-size: 0.79rem;
-  color: var(--text-muted);
-  font-style: italic;
-}
-
-.person-picker-row-edit {
-  margin-inline-start: auto;
-  background: transparent;
-  border: 0;
-  padding: 2px 4px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-}
-
-.person-picker-row-edit:hover {
-  background: var(--surface-hover);
-  color: var(--text-h);
-}
-
-.person-picker-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-popover-backdrop);
-}
-
-/* ============================================================
-   Person edit (name + color)
-   ============================================================ */
-
-.person-edit {
-  position: fixed;
-  z-index: var(--z-popover);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
-  min-width: 240px;
-  padding: var(--space-3);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.person-edit-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.person-edit-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  font: inherit;
-  background: var(--bg-elevated);
-  color: var(--text);
-}
-
-.person-edit-name:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-
-.person-edit-color {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.person-edit-color-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--radius-pill);
-  cursor: pointer;
-  border: 2px solid transparent;
-  padding: 0;
-}
-
-.person-edit-color-swatch[data-active='true'] {
-  border-color: var(--accent);
-}
-
-.person-edit-color-picker {
-  width: 36px;
-  height: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  cursor: pointer;
-  padding: 0;
-}
-
-.person-edit-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: 4px;
-}
-
-.person-edit-spacer {
-  flex: 1 1 auto;
-}
-
-.person-edit-delete {
-  background: transparent;
-  border: 0;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 6px;
-  font: inherit;
-  font-size: 1rem;
-  border-radius: var(--radius-sm);
-}
-
-.person-edit-delete:hover {
-  color: var(--danger);
-  background: var(--danger-bg);
-}
-
-.person-edit-delete:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.person-edit-delete:disabled:hover {
-  color: var(--text-muted);
-  background: transparent;
-}
-
-/* ============================================================
    Due date (row button + calendar popover; projects and tasks)
    ============================================================ */
 
@@ -3187,14 +2780,13 @@ body.sidebar-resizing {
 
   /* A phone-width project row is a navigation path, not an action
      bar: the whole line opens the detail pane, which mirrors every
-     row action (progress, people, notes, rename, delete, the
+     row action (progress, notes, rename, delete, the
      empty-sections toggle). Only the stateful due-date chip stays
      on the row — hiding the rest is what gives the name its room
      back (before this, five always-on buttons truncated titles to
      "K…" and made the open-project tap target ~17px wide). Scoped
      to .project-row-line so the pane header keeps its cluster. */
-  .project-row-line .project-row-action:not(.due-date),
-  .project-row-line .person-assignment-button {
+  .project-row-line .project-row-action:not(.due-date) {
     display: none;
   }
 
@@ -3231,7 +2823,6 @@ body.sidebar-resizing {
   .task-line-drag-handle,
   .project-row-drag-handle,
   .task-line-check,
-  .person-avatar,
   .sidebar-area-caret,
   .project-row-caret,
   .area-header-add,
@@ -3258,7 +2849,6 @@ body.sidebar-resizing {
   .task-line-drag-handle::after,
   .project-row-drag-handle::after,
   .task-line-check::after,
-  .person-avatar::after,
   .sidebar-area-caret::after,
   .project-row-caret::after {
     content: '';

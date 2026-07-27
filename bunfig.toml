@@ -1,0 +1,6 @@
+# `bun test` scans recursively for *.test.* / *.spec.* from this root.
+# e2e/ holds Playwright specs (*.spec.ts) that must only ever run under
+# @playwright/test (`bun run test:e2e`) — rooting the scan at tests/
+# keeps Bun's runner away from them.
+[test]
+root = "tests"

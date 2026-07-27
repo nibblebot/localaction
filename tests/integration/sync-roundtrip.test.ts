@@ -1,8 +1,7 @@
-// @vitest-environment node
 /**
  * Sync-server round-trip integration test.
  *
- * Boots the same prod server that `pnpm start` uses, then connects two
+ * Boots the same prod server that `bun run start` uses, then connects two
  * TinyBase MergeableStores to it as if they were two browser tabs.
  * Asserts that:
  *
@@ -13,8 +12,7 @@
  *   4. The SQLite file round-trips through the tabular server persister's
  *      `load()` (`createServerTabularPersister`).
  *
- * Runs under vitest with `@vitest-environment node` (no DOM, real
- * `ws`/`sqlite3` Node modules).
+ * Runs under `bun test` (real `ws` + `bun:sqlite` modules, no DOM).
  */
 import {
   afterAll,
@@ -22,7 +20,7 @@ import {
   describe,
   expect,
   it,
-} from 'vitest';
+} from 'bun:test';
 import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -152,7 +150,7 @@ async function waitForPersisted(
       // transient SQLite lock while the server auto-saves; retry
     }
     await persister.destroy();
-    await new Promise<void>((resolve) => db.close(() => resolve()));
+    db.close();
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(
@@ -208,10 +206,7 @@ describe('sync server round-trip', () => {
     const reloadDb = await openDatabase(dbPath, { readonly: true });
     const reloadPersister = createServerTabularPersister(reload, reloadDb);
     await reloadPersister.load();
-    const { promise: closed, resolve: closeResolved } =
-      Promise.withResolvers<void>();
-    reloadDb.close(() => closeResolved());
-    await closed;
+    reloadDb.close();
     expect(reload.getCell('areas', 'd1', 'name')).toBe('Family');
     expect(reload.getCell('areas', 'd2', 'parentId')).toBe('d1');
     expect(reload.getCell('projects', 'p1', 'name')).toBe('Plan vacation');

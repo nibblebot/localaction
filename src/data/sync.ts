@@ -29,6 +29,13 @@ export type SyncStatus =
 export interface SyncClientOptions {
   webSocketImpl?: typeof WebSocket;
   endpoint?: string;
+  /**
+   * Test seam: override the synchronizer factory. The StrictMode
+   * regression test injects a never-resolving factory to hold the
+   * race window open (module-level mocking leaks across `bun test`
+   * files, so injection is the only reliable seam).
+   */
+  synchronizerImpl?: typeof createWsSynchronizer;
 }
 
 let singleton: SyncClient | undefined;
@@ -145,7 +152,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       // local store mutation (OPFS load). 10s keeps the pull alive across
       // slow server-side starts; aborted chains fail silently anyway, so a
       // larger budget costs nothing in steady state.
-      sync = await createWsSynchronizer(store, ws, 10);
+      sync = await (options.synchronizerImpl ?? createWsSynchronizer)(store, ws, 10);
     } catch (err) {
       connecting = false;
       setStatus({ kind: 'error', message: (err as Error).message });

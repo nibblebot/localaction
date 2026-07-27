@@ -1,10 +1,10 @@
-// `pnpm backup-db` — online backup of the server's SQLite store.
+// `bun run backup-db` — online backup of the server's SQLite store.
 //
-//   pnpm backup-db                                # defaultDbPath() → timestamped sibling
-//   pnpm backup-db --db /tmp/localaction-test-x.db --out ./backups/snapshot.db
+//   bun run backup-db                                # defaultDbPath() → timestamped sibling
+//   bun run backup-db --db /tmp/localaction-test-x.db --out ./backups/snapshot.db
 //
 // Uses SQLite's online backup form `VACUUM INTO`: the copy runs inside a
-// read transaction on the source, so a running `pnpm dev` / `pnpm start`
+// read transaction on the source, so a running `bun run dev` / `bun run start`
 // server keeps serving (and writing) while the backup is taken — the result
 // is a consistent snapshot as of backup start, never a torn file. As a bonus
 // the destination comes out fully compacted.
@@ -48,7 +48,7 @@ function parseArgs(argv: readonly string[]): CliArgs {
 
 function printUsage(stream: NodeJS.WriteStream): void {
   stream.write(
-    'Usage: pnpm backup-db [--db <path>] [--out <path>]\n' +
+    'Usage: bun run backup-db [--db <path>] [--out <path>]\n' +
       '\n' +
       'Back up the SQLite store of a running (or stopped) localaction server\n' +
       'using SQLite online backup (VACUUM INTO). Safe while the server is live.\n' +
@@ -104,15 +104,11 @@ async function main(): Promise<void> {
   // Read-only: VACUUM INTO only reads the source (SQLite supports it on
   // read-only connections), so a live server's locks are the only contention.
   // busyTimeout from openDatabase covers the brief read-lock overlap.
-  const db = await openDatabase(dbPath, { readonly: true });
+  const db = openDatabase(dbPath, { readonly: true });
   try {
-    await new Promise<void>((res, rej) => {
-      db.exec(`VACUUM INTO ${sqlStringLiteral(outPath)}`, (err: Error | null) =>
-        err ? rej(err) : res(),
-      );
-    });
+    db.exec(`VACUUM INTO ${sqlStringLiteral(outPath)}`);
   } finally {
-    await new Promise<void>((res) => db.close(() => res()));
+    db.close();
   }
 
   const size = statSync(outPath).size;

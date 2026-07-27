@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from '../../src/data/schema.ts';

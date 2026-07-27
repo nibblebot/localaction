@@ -1,4 +1,4 @@
-// `pnpm dev` entrypoint that adds a `--db` flag on top of Vite.
+// `bun run dev` entrypoint that adds a `--db` flag on top of Vite.
 //
 // Vite's CLI (`cac`) rejects unknown options, so `vite --db X` fails before
 // `vite.config.ts` loads. We move `--db <path>` past Vite's `--` separator:
@@ -9,11 +9,17 @@
 // the real store (`defaultDbPath()`, the platform user-data dir) explicitly
 // so `vite.config.ts` always sees an intentional path.
 //
-//   pnpm dev --port 5180 --strictPort                       # real store (defaultDbPath())
-//   pnpm dev --db /tmp/localaction-demo.db --port 5180      # isolated throwaway store
+//   bun run dev --port 5180 --strictPort                       # real store (defaultDbPath())
+//   bun run dev --db /tmp/localaction-demo.db --port 5180      # isolated throwaway store
+//
+// Vite itself is spawned as `bun --bun vite --configLoader runner`:
+// `vite.config.ts` statically imports `server/index.ts` → `server/db.ts` →
+// `bun:sqlite`, so every Vite process that loads the config must run under
+// the Bun runtime.
 
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defaultDbPath } from '../server/db.ts';
 
 // Split argv into Vite-native tokens and our `--db` token(s). The `--db` value
@@ -43,7 +49,24 @@ function rewriteArgv(argv: readonly string[]): string[] {
 
 const viteArgs = rewriteArgv(process.argv.slice(2));
 
-const result = spawnSync('vite', viteArgs, { stdio: 'inherit' });
+// process.execPath is the Bun binary (this script runs via `bun scripts/dev.ts`).
+// `--configLoader runner`: Vite's default config BUNDLER (rolldown) breaks
+// `ws` upgrade handling under Bun — the bundled sync plugin accepts the
+// socket server-side but its 101 response never reaches the wire. The
+// native module runner skips bundling and the handshake works.
+const viteBin = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'node_modules',
+  'vite',
+  'bin',
+  'vite.js',
+);
+const result = spawnSync(
+  process.execPath,
+  ['--bun', viteBin, '--configLoader', 'runner', ...viteArgs],
+  { stdio: 'inherit' },
+);
 if (result.error) {
   process.stderr.write(`error: failed to launch vite: ${result.error.message}\n`);
   process.exit(1);

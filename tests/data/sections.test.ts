@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { createSection, updateSection, getSection, getSectionIdsForProject } from '../../src/data/sections.ts';

@@ -84,34 +84,26 @@ async function main() {
 
     // Direct proof of tabular mode: the project row lives in a per-entity
     // `projects` SQL table keyed by `_id`, not in a JSON blob.
-    const rawDb = await openDatabase(DB_PATH, { readonly: true });
-    const { promise: projectRowsPromise, resolve: gotRows, reject: rowsFailed } =
-      Promise.withResolvers<Array<{ name: string }>>();
-    rawDb.all(
-      "SELECT name FROM projects WHERE _id = 'p1'",
-      (err: Error | null, rows: Array<{ name: string }>) =>
-        err ? rowsFailed(err) : gotRows(rows),
-    );
-    const projectRows = await projectRowsPromise;
+    const rawDb = openDatabase(DB_PATH, { readonly: true });
+    const projectRows = rawDb
+      .query("SELECT name FROM projects WHERE _id = 'p1'")
+      .all() as Array<{ name: string }>;
     assert(
       projectRows.length === 1 && projectRows[0]!.name === 'Plan vacation',
       `tabular SELECT from projects did not return the p1 row (got ${JSON.stringify(projectRows)})`,
     );
-    const { promise: tableRows, resolve: gotTables, reject: tablesFailed } =
-      Promise.withResolvers<Array<{ name: string }>>();
-    rawDb.all(
-      "SELECT name FROM sqlite_master WHERE type = 'table'",
-      (err: Error | null, rows: Array<{ name: string }>) =>
-        err ? tablesFailed(err) : gotTables(rows),
-    );
-    const tableNames = (await tableRows).map((r) => r.name);
+    const tableNames = (
+      rawDb.query("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
+        name: string;
+      }>
+    ).map((r) => r.name);
     for (const expected of ['areas', 'projects', VALUES_TABLE_NAME]) {
       assert(
         tableNames.includes(expected),
         `tabular tables missing ${expected} (have: ${tableNames.join(', ')})`,
       );
     }
-    await new Promise<void>((resolve) => rawDb.close(() => resolve()));
+    rawDb.close();
     console.log('smoke: raw SQL confirms tabular tables (areas, projects, values)');
     await syncA.destroy();
     await syncB.destroy();
@@ -215,7 +207,7 @@ async function waitForPersisted(
       // transient SQLite lock while the server auto-saves; retry
     }
     await persister.destroy();
-    await new Promise<void>((resolve) => db.close(() => resolve()));
+    db.close();
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   throw new Error(

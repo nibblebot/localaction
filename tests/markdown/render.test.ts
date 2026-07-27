@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { renderMarkdown } from '../../src/markdown/render.ts';
 
 describe('renderMarkdown', () => {

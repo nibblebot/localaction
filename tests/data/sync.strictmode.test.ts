@@ -1,8 +1,21 @@
 // Regression test: React 19 StrictMode double-mount must not open two WS
-// connections. The first client is destroyed before its `createWsSynchronizer`
+// connections. The first client is destroyed before its synchronizer
 // await resolves, so `currentSync` is undefined at destroy() time. The fix
 // tracks the in-flight WebSocket so destroy() can close it directly.
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+//
+// The hanging synchronizer is injected via `synchronizerImpl` (a
+// `startSync` test seam) rather than `mock.module`: Bun shares one module
+// registry across all test files in a run and resolves each file's
+// static imports at evaluation time, so a module mock installed here
+// leaks into tests/integration/ and hangs its synchronizers.
+import { describe, expect, it, beforeEach } from 'bun:test';
+import type { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
+import { startSync } from '../../src/data/sync.ts';
+
+// Hangs forever — that's the race window where StrictMode's first-mount
+// cleanup runs while we're still awaiting.
+const hangingSynchronizer = ((_store: unknown, _ws: unknown) =>
+  new Promise(() => {})) as unknown as typeof createWsSynchronizer;
 
 interface FakeWsHandle {
   url: string;
@@ -15,20 +28,6 @@ interface FakeWsCtor {
   instances: FakeWsHandle[];
   ctor: typeof WebSocket;
 }
-
-vi.mock('tinybase/synchronizers/synchronizer-ws-client', () => ({
-  createWsSynchronizer: async (
-    _store: unknown,
-    _ws: WebSocket,
-  ): Promise<{ destroy: () => Promise<void>; startSync: () => Promise<void> }> => {
-    // Hangs forever — that's the race window where StrictMode's first-mount
-    // cleanup runs while we're still awaiting.
-    return new Promise(() => {});
-  },
-}));
-
-// Import AFTER the mock so startSync() picks up the mocked synchronizer.
-import { startSync } from '../../src/data/sync.ts';
 
 function makeFakeWebSocket(): FakeWsCtor {
   const instances: FakeWsHandle[] = [];
@@ -57,18 +56,23 @@ function makeFakeWebSocket(): FakeWsCtor {
 
 describe('startSync under StrictMode double-mount', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'location', {
+    // No DOM under `bun test`: `defaultEndpoint()` only reads
+    // `window.location`, so stub a minimal `window` on globalThis.
+    Object.defineProperty(globalThis, 'window', {
       configurable: true,
       writable: true,
-      value: { protocol: 'http:', host: 'example.test', pathname: '/' },
+      value: { location: { protocol: 'http:', host: 'example.test', pathname: '/' } },
     });
   });
 
   it('closes the in-flight WS of the first mount so only one WS exists', async () => {
     const fake = makeFakeWebSocket();
 
-    // Mount #1: startSync() opens WS1, then hangs in createWsSynchronizer.
-    const first = startSync({ webSocketImpl: fake.ctor });
+    // Mount #1: startSync() opens WS1, then hangs in the synchronizer.
+    const first = startSync({
+      webSocketImpl: fake.ctor,
+      synchronizerImpl: hangingSynchronizer,
+    });
     first.start();
     // Let microtasks flush so the constructor runs.
     await Promise.resolve();
@@ -82,7 +86,10 @@ describe('startSync under StrictMode double-mount', () => {
     expect(fake.instances[0].closed).toBe(true);
 
     // Mount #2: a fresh client opens a new WS. With the fix, only WS2 is live.
-    const second = startSync({ webSocketImpl: fake.ctor });
+    const second = startSync({
+      webSocketImpl: fake.ctor,
+      synchronizerImpl: hangingSynchronizer,
+    });
     second.start();
     await Promise.resolve();
     await Promise.resolve();

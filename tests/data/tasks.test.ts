@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { TABLES, COLUMNS, TASK_STATUS } from '../../src/data/schema.ts';
@@ -122,7 +122,7 @@ describe('createTaskAfter', () => {
     const b = createTask(store, { title: 'b' });
     const inserted = createTaskAfter(store, a, '');
     expect(inserted).not.toBeNull();
-    expect(renderedOrder(getInboxTaskIds(store))).toEqual([a, inserted, b]);
+    expect(renderedOrder(getInboxTaskIds(store))).toEqual([a, inserted!, b]);
   });
 
   it('inherits the placement of a project / sub-task sibling', () => {
@@ -132,7 +132,7 @@ describe('createTaskAfter', () => {
     const second = createTask(store, { title: 'two', placement: { kind: 'project', id: p } });
     const between = createTaskAfter(store, first, '');
     expect(getTask(store, between!)?.placement).toEqual({ kind: 'project', id: p });
-    expect(renderedOrder(getTasksForProjectDeep(store, p))).toEqual([first, between, second]);
+    expect(renderedOrder(getTasksForProjectDeep(store, p))).toEqual([first, between!, second]);
 
     // Inserting after a top-level task produces a top-level task (never a
     // sub-task); inserting after a sub-task keeps the sub-task's parent.
@@ -144,14 +144,14 @@ describe('createTaskAfter', () => {
     expect(getTask(store, afterSub!)?.placement).toEqual({ kind: 'task', id: first });
     const tree = buildTaskTree(store, getTasksForProjectDeep(store, p));
     const firstNode = tree.children.find((n) => n.id === first)!;
-    expect(firstNode.children.map((n) => n.id)).toEqual([sub, afterSub]);
+    expect(firstNode.children.map((n) => n.id)).toEqual([sub, afterSub!]);
   });
 
   it('appends at the end when the given task is the last sibling', () => {
     const a = createTask(store, { title: 'a' });
     const b = createTask(store, { title: 'b' });
     const inserted = createTaskAfter(store, b, '');
-    expect(renderedOrder(getInboxTaskIds(store))).toEqual([a, b, inserted]);
+    expect(renderedOrder(getInboxTaskIds(store))).toEqual([a, b, inserted!]);
   });
 
   it('returns null and creates nothing when the anchor task is gone', () => {

@@ -1,13 +1,20 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'bun:test';
 import { startSync } from '../../src/data/sync.ts';
+
+// No DOM under `bun test`: `defaultEndpoint()` only reads
+// `window.location`, so stub a minimal `window` on globalThis instead of
+// pulling in happy-dom/jsdom.
+function stubWindowLocation(protocol: string): void {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    writable: true,
+    value: { location: { protocol, host: 'example.test', pathname: '/' } },
+  });
+}
 
 describe('startSync URL handling', () => {
   beforeEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: { protocol: 'http:', host: 'example.test', pathname: '/' },
-    });
+    stubWindowLocation('http:');
   });
 
   /**
@@ -51,11 +58,7 @@ describe('startSync URL handling', () => {
   });
 
   it('builds a wss:// endpoint when served over HTTPS', async () => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: { protocol: 'https:', host: 'example.test', pathname: '/' },
-    });
+    stubWindowLocation('https:');
     const calls: string[] = [];
     const client = startSync({ webSocketImpl: fakeWebSocket(calls) });
     client.start();

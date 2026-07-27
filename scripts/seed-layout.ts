@@ -3,8 +3,8 @@
  * area tree + projects/sections/tasks/subtasks so the layout pass has a
  * representative working surface in the browser.
  *
- * Usage: pnpm exec tsx scripts/seed-layout.ts
- *   → prints the exact `pnpm dev --db "<tmp path>"` command to browse it.
+ * Usage: bun scripts/seed-layout.ts
+ *   → prints the exact `bun run dev --db "<tmp path>"` command to browse it.
  *
  * Strategy: write directly to the SQLite file via the same tabular
  * persister the dev server uses, so no server / mergeable-sync dance
@@ -369,9 +369,9 @@ async function main(): Promise<void> {
   );
   console.log('seed: wrote', DB_PATH);
   console.log('seed: rows', rowCounts);
-  console.log(`seed: next → pnpm dev --db "${DB_PATH}"`);
+  console.log(`seed: next → bun run dev --db "${DB_PATH}"`);
 
-  await new Promise<void>((resolve) => db.close(() => resolve()));
+  db.close();
 }
 
 main().then(

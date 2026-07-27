@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import {
   COLUMNS,
   NOTE_ENTITY_TYPE,
@@ -9,7 +9,7 @@ import {
 
 describe('schema constants', () => {
   it('exposes the six top-level tables the schema defines', () => {
-    expect(Object.values(TABLES).sort()).toEqual(
+    expect<string[]>(Object.values(TABLES).sort()).toEqual(
       [
         'areas',
         'notes',

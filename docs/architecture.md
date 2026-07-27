@@ -10,7 +10,7 @@ LocalAction is a single-page React app whose state lives in an in-browser
 [TinyBase](https://tinybase.org/) **MergeableStore**. The same store is
 persisted locally (OPFS) **and** kept in sync over a WebSocket with a small
 Node server that holds the authoritative SQLite copy. Three runtime modes —
-Vite dev, Vite preview, and the prod server (`tsx server/index.ts`) — all share one sync handler
+Vite dev, Vite preview, and the prod server (`bun server/index.ts`) — all share one sync handler
 so behaviour never drifts between them.
 
 ```mermaid
@@ -23,10 +23,10 @@ so behaviour never drifts between them.
     Store <--> OPFS
     Store <--> SyncC
   end
-  subgraph Server["Server (Node)"]
+  subgraph Server["Server (Bun)"]
     WS["WebSocketServer\n/ws"]
     Tiny["createWsServer\n(per-pathId store)"]
-    SQLite[("SQLite\nsqlite3 (npm)")]
+    SQLite[("SQLite\nbun:sqlite")]
     Static["Static file server\n(dist/, SPA fallback)"]
     WS --> Tiny
     Tiny <--> SQLite
@@ -150,13 +150,14 @@ Two independent persisters bracket the same in-memory store:
   `localaction.json` in the origin's OPFS directory. On boot it `load()`s the
   snapshot, runs `backfillOrder()`, then `startAutoSave()`s. If OPFS / the File
   System Access API is unavailable, persistence is disabled (warned, non-fatal).
-- **Server (SQLite)** — `server/db.ts` opens a connection via the `sqlite3` npm
-  package and hands it straight to TinyBase's `createSqlite3Persister` — the
-  package already exposes the `sqlite3#Database`-shaped API
-  (`all`/`get`/`run`/`exec`/`close` plus the `EventEmitter` listener surface)
-  the persister expects. One DB connection is shared process-wide (see
-  `server/index.ts`). Loaded via `createRequire` in `db.ts` because `sqlite3`
-  is CommonJS-only under our `verbatimModuleSyntax` config.
+- **Server (SQLite)** — `server/db.ts` opens a `bun:sqlite` `Database`
+  (synchronous; `PRAGMA busy_timeout = 5000` on open) and hands it straight
+  to TinyBase's `createSqliteBunPersister` — the persister drives the
+  `query(sql).all(...params)` shape the database already exposes, so no
+  adapter layer is needed. One DB connection is shared process-wide (see
+  `server/index.ts`). Because `bun:sqlite` only resolves under the Bun
+  runtime, every process that loads `server/db.ts` — prod server, scripts,
+  Vite's config, tests — must run under Bun.
 
 ## Sync
 
@@ -212,41 +213,55 @@ One unified server serves both static assets and the sync socket:
 
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
-| dev | `pnpm dev` (`scripts/dev.ts` → `vite`) | `vite.config.ts` plugin → `configureServer` |
-| preview | `pnpm preview` | same plugin → `configurePreviewServer` |
-| prod | `pnpm start` (`tsx server/index.ts`) | `startServer` directly (module `isMain`) |
+| dev | `bun run dev` (`scripts/dev.ts` → `bun --bun vite --configLoader runner`) | `vite.config.ts` plugin → `configureServer` |
+| preview | `bun run preview` (`bun --bun vite preview --configLoader runner`) | same plugin → `configurePreviewServer` |
+| prod | `bun run start` (`bun server/index.ts`) | `startServer` directly (module `isMain`) |
+
+Vite runs under Bun in every mode because `vite.config.ts` statically
+imports `server/index.ts` → `server/db.ts` → `bun:sqlite`. The
+`--configLoader runner` flag is load-bearing in dev/preview: Vite's default
+rolldown config bundler breaks `ws` upgrade handling under Bun (the bundled
+handler accepts the socket server-side but its 101 response never reaches
+the wire); the native module runner skips bundling and the handshake works.
 
 Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path):
-- prod (`pnpm start`): `--port` > `5173`; `--db` > `defaultDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data.db` on Linux).
-- dev (`pnpm dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
-- preview (`pnpm preview`): `--db <path>` works via the `--` escape (e.g. `pnpm preview -- --db X`), else `vite.config.ts` falls back to `defaultDbPath()`; `--port` is Vite-native.
+- prod (`bun run start`): `--port` > `5173`; `--db` > `defaultDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data.db` on Linux).
+- dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
+- preview (`bun run preview`): `--db <path>` works via the `--` escape (e.g. `bun run preview -- --db X`), else `vite.config.ts` falls back to `defaultDbPath()`; `--port` is Vite-native.
 
 ## Build & toolchain
 
-- `pnpm build` = `tsc -b` (project references: `tsconfig.app.json` for
-  `src/` + `tests/`, `tsconfig.node.json` for config files) then `vite build`.
-  TS errors anywhere — including config files — fail the build.
+- `bun run build` = `tsc -b` (project references: `tsconfig.app.json` for
+  `src/` + `tests/`, `tsconfig.node.json` for config files) then
+  `bun --bun vite build`. TS errors anywhere — including config files —
+  fail the build.
 - **React Compiler** is on (`babel-plugin-react-compiler` via
   `@rolldown/plugin-babel`); code must stay compiler-clean.
 - TS quirks: `verbatimModuleSyntax` (use `import type`, no default React
-- `moduleResolution: bundler`. For CJS-only packages (e.g. `sqlite3`) loaded
-  from Node TS, use `node:module`'s `createRequire(import.meta.url)` — preserves
-  `verbatimModuleSyntax` and avoids default-import surprise.
-- Everything runs under Node; `.ts` in `scripts/` and `server/` is run by
-  `tsx` (a devDependency). `vite` is invoked directly.
+  import), `erasableSyntaxOnly` (no enums/namespaces),
+  `moduleResolution: bundler`.
+- Everything app-side runs under Bun (package manager + runtime): `.ts` in
+  `scripts/` and `server/` is run by `bun` directly; Vite is invoked as
+  `bun --bun vite ...`. Node remains for Playwright and the tsc/oxlint
+  binaries.
 
 ## Testing strategy
 
-Runners split by environment, not by tool. vitest drives all suites; the
-integration suite opts in to a Node environment via per-file pragma.
+`bun test` drives all unit/integration suites; `bunfig.toml` sets
+`[test] root = "tests"` so Bun's recursive `*.spec.ts` matching never picks
+up the Playwright specs under `e2e/`.
 
-- **vitest** — `tests/data/` (data-layer unit suite), `tests/markdown/`,
-  `tests/router.test.ts`, and any `src/**/*.test.{ts,tsx}` run in jsdom.
-- **vitest (`@vitest-environment node`)** — `tests/integration/sync-roundtrip.test.ts`:
-  a real two-client ↔ one-server WebSocket round-trip with the shared SQLite
-  connection.
-- **Playwright** (`e2e/`) — one spec per user journey; auto-starts `pnpm dev`
-  on a non-default port (`5180`) so a manual `pnpm dev` session on `5173` can run in parallel; depends on the `/ws` handshake.
+- **bun test** — `tests/data/` (data-layer unit suite), `tests/markdown/`,
+  `tests/router.test.ts`. No DOM environment: the two sync tests stub
+  `globalThis.window` (`defaultEndpoint()` only reads `window.location`).
+  `bun test` shares one module registry across files, so module mocks leak
+  — fake through option seams (e.g. `startSync`'s `synchronizerImpl`)
+  instead of `mock.module`.
+- **bun test (`tests/integration/`)** — `sync-roundtrip.test.ts`: a real
+  two-client ↔ one-server WebSocket round-trip against the shared
+  `bun:sqlite` connection.
+- **Playwright** (`e2e/`) — one spec per user journey; auto-starts `bun run dev`
+  on a non-default port (`5180`) so a manual `bun run dev` session on `5173` can run in parallel; depends on the `/ws` handshake.
 - **`scripts/smoke.ts`** — boots the prod server on a random port and asserts
   WS sync between two clients plus a SQLite persistence round-trip.
 

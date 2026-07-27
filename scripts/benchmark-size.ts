@@ -7,7 +7,7 @@
  * through the app's cascade deleters — snapshotting on-disk file sizes,
  * page stats, and row counts at each of the 5 cases.
  *
- * Run: pnpm run benchmark-size
+ * Run: bun run benchmark-size
  */
 import {
   copyFileSync,
@@ -61,10 +61,8 @@ const areaName = (i: number) => `${pick(AREA_WORDS)} ${i}`;
 const projectName = (i: number) => `${pick(PROJECT_WORDS)} #${i}`;
 const taskTitle = (i: number) => `${pick(TASK_WORDS)} ${pick(TASK_OBJECTS)} (${i})`;
 
-function all<T>(db: ServerDatabase, sql: string): Promise<T[]> {
-  const { promise, resolve, reject } = Promise.withResolvers<T[]>();
-  db.all(sql, (err: Error | null, rows: T[]) => (err ? reject(err) : resolve(rows)));
-  return promise;
+function all<T>(db: ServerDatabase, sql: string): T[] {
+  return db.query(sql).all() as T[];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -254,7 +252,7 @@ async function main(): Promise<void> {
   const vacDb = await openDatabase(VACUUM_PATH);
   await all(vacDb, 'VACUUM');
   snaps.push(await snapshot(vacDb, '5b. case 5 content after VACUUM (copy)', 'test-bench-size-vacuum.db'));
-  await new Promise<void>((r) => vacDb.close(() => r()));
+  vacDb.close();
 
   // Summary table.
   console.log('\n=== SUMMARY ===');
@@ -268,7 +266,7 @@ async function main(): Promise<void> {
   }
 
   await persister.destroy();
-  await new Promise<void>((r) => db.close(() => r()));
+  db.close();
 }
 
 main().then(

@@ -34,12 +34,18 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     {
       // Wires the TinyBase WS sync handler into Vite's HTTP server upgrade
-      // events. Used in both `pnpm dev` (configureServer) and
-      // `pnpm preview` (configurePreviewServer); the prod server
-      // (`pnpm start`) calls the same `attachSyncServer` directly.
+      // events. Used in both `bun run dev` (configureServer) and
+      // `bun run preview` (configurePreviewServer); the prod server
+      // (`bun run start`) calls the same `attachSyncServer` directly.
       // Keeps the WS code in one place and avoids drift between modes.
-      // The server module imports the `sqlite3` npm package (a native
-      // binding resolved by `tsx`/`vite`/`node` directly).
+      // The server module imports `bun:sqlite`, which only resolves under
+      // the Bun runtime — every Vite invocation must be `bun --bun vite`.
+      // INVARIANT: dev/preview must also pass `--configLoader runner`
+      // (scripts/dev.ts, package.json `preview`). Vite's default rolldown
+      // config bundler breaks `ws` upgrade handling under Bun — the
+      // bundled handler accepts the socket server-side but its 101
+      // response never reaches the wire. The native module runner skips
+      // bundling and the handshake works.
       name: 'localaction-sync',
       async configureServer(server) {
         await attachSyncToVite(server, 'dev', syncDbPath)

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { parseRoute, formatRoute, routeEquals } from '../src/router.ts';
 import type { Selection } from '../src/router.ts';
 

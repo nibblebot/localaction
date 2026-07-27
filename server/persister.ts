@@ -21,9 +21,9 @@
  */
 import { createStore, type MergeableStore, type Store, type Tables } from 'tinybase';
 import {
-  createSqlite3Persister,
-  type Sqlite3Persister,
-} from 'tinybase/persisters/persister-sqlite3';
+  createSqliteBunPersister,
+  type SqliteBunPersister,
+} from 'tinybase/persisters/persister-sqlite-bun';
 import { TABLES } from '../src/data/schema.ts';
 import { row } from '../src/data/internal.ts';
 import {
@@ -68,8 +68,8 @@ const onIgnoredError = (error: unknown): void => {
 export function createServerTabularPersister(
   store: Store,
   db: ServerDatabase,
-): Sqlite3Persister {
-  return createSqlite3Persister(store, db, TABULAR_CONFIG, undefined, onIgnoredError);
+): SqliteBunPersister {
+  return createSqliteBunPersister(store, db, TABULAR_CONFIG, undefined, onIgnoredError);
 }
 
 /**
@@ -104,7 +104,7 @@ function cleanTables(tables: Tables): Tables {
 export function createServerPersister(
   store: MergeableStore,
   db: ServerDatabase,
-): Sqlite3Persister {
+): SqliteBunPersister {
   const mirror = createStore();
   const p = createServerTabularPersister(mirror, db);
 
@@ -145,19 +145,16 @@ export function createServerPersister(
 
   const startAutoLoad = async (
     initialContent?: unknown,
-  ): Promise<Sqlite3Persister> => {
+  ): Promise<SqliteBunPersister> => {
     // `createWsServer` calls `startAutoLoad()` on the persister it receives.
-    // The SQLite persister's autoload subscribes to the underlying database's
-    // `CHANGE` event, which fires for our own writes too. That callback chain
-    // ends in the WS server's `load()` → `getChangesFromOtherStore()`, which
-    // would overwrite just-saved state with whatever stale view a client has.
     // We still want the initial `load(initialContent)` so a freshly-spawned
-    // server client restores persisted state from SQLite, but we must skip
-    // the CHANGE-event autoload registration that would otherwise fire on
-    // every one of our own writes. The server is the sole writer; client
-    // updates arrive as WS `ContentDiff` messages handled by the WS server's
-    // own autoLoad path.
-    await p.load(initialContent as Parameters<Sqlite3Persister['load']>[0]);
+    // server client restores persisted state from SQLite, but we skip the
+    // change-feed autoload registration (under the old sqlite3 driver it
+    // fired on our own writes and fed stale client state back over them;
+    // the bun:sqlite persister has no change feed at all). The server is
+    // the sole writer; client updates arrive as WS `ContentDiff` messages
+    // handled by the WS server's own autoLoad path.
+    await p.load(initialContent as Parameters<SqliteBunPersister['load']>[0]);
     store.setContent([cleanTables(mirror.getTables()), mirror.getValues()]);
     // Clean-cutover wipe AFTER load: the persister just read the old SQLite
     // snapshot; reconcileSchemaVersion drops every row whose recorded version
@@ -173,7 +170,7 @@ export function createServerPersister(
     return facade;
   };
 
-  const destroy = async (): Promise<Sqlite3Persister> => {
+  const destroy = async (): Promise<SqliteBunPersister> => {
     // `createWsServer` destroys the persister when a path's last client
     // disconnects; the bridge listener must not leak.
     store.delListener(bridgeId);
@@ -181,7 +178,7 @@ export function createServerPersister(
     return facade;
   };
 
-  const facade: Sqlite3Persister = {
+  const facade: SqliteBunPersister = {
     ...p,
     // CRITICAL override: bare `...p` would expose the plain mirror and the
     // WS server would try to sync a non-mergeable store.
@@ -199,9 +196,5 @@ export function createServerPersister(
  * saving. Idempotent (`IF EXISTS`).
  */
 export async function dropLegacyJsonTable(db: ServerDatabase): Promise<void> {
-  const { promise, resolve, reject } = Promise.withResolvers<void>();
-  db.exec('DROP TABLE IF EXISTS tinybase', (err: Error | null) =>
-    err ? reject(err) : resolve(),
-  );
-  await promise;
+  db.exec('DROP TABLE IF EXISTS tinybase');
 }

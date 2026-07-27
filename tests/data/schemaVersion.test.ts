@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import { dropLegacyPersonTables } from '../../src/data/schemaVersion.ts';
 

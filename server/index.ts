@@ -2,6 +2,7 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, join } from 'node:path';
 import { existsSync, statSync, readFileSync } from 'node:fs';
+import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore, type MergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
@@ -65,6 +66,12 @@ export async function attachSyncServer(
 
   const wsServer = new WebSocketServer({ noServer: true });
 
+  // Track the TCP sockets we upgrade so close() can destroy them. Bun's
+  // node:http compat keeps upgraded sockets registered as open
+  // connections, so `httpServer.close()`'s callback never fires without
+  // this (Node detaches them at upgrade time and doesn't need it).
+  const openSockets = new Set<Duplex>();
+
   wsServer.on('connection', (ws, req) => {
     const connId = ++nextConnId;
     const remote = `${req.socket.remoteAddress ?? '?'}:${req.socket.remotePort ?? '?'}`;
@@ -90,11 +97,11 @@ export async function attachSyncServer(
       log(connId, `error: ${err.message}`);
     });
   });
-  // One shared sqlite3 connection for the whole process. `createSqlite3Persister`
+  // One shared bun:sqlite connection for the whole process. `createSqliteBunPersister`
   // only needs a `Database`; opening it per WebSocket connection leaked
   // FDs (no `db.close()`) and forced the per-connection persister factory
   // to redo the schema bootstrap. The `Database` is closed in `close()`.
-  const db = await openDatabase(dbPath);
+  const db = openDatabase(dbPath);
   await dropLegacyJsonTable(db);
   // requestTimeoutSeconds=0.25 (TinyBase default: 1s). While TinyBase's
   // ws-server configures/starts a per-path server client (which happens on
@@ -165,6 +172,8 @@ export async function attachSyncServer(
       return;
     }
     process.stderr.write(`[srv upgrade] upgrading ${url.pathname}\n`);
+    openSockets.add(socket);
+    socket.on('close', () => openSockets.delete(socket));
     wsServer.handleUpgrade(req, socket, head, (ws: WsWebSocket) => {
       wsServer.emit('connection', ws, req);
     });
@@ -175,10 +184,14 @@ export async function attachSyncServer(
     tinyServer,
     db,
     async close() {
+      // Sockets first: TinyBase's destroy waits on server-side client
+      // close events, and under Bun the upgraded sockets are the only
+      // handle that reliably ends them.
+      for (const socket of openSockets) {
+        socket.destroy();
+      }
       await tinyServer.destroy();
-      await new Promise<void>((resolve, reject) =>
-        db.close((err) => (err ? reject(err) : resolve())),
-      );
+      db.close();
     },
   };
 }
@@ -318,9 +331,9 @@ interface CliArgs {
   help: boolean;
 }
 
-// CLI flag parsing for the prod-server entrypoint (`pnpm start`).
+// CLI flag parsing for the prod-server entrypoint (`bun run start`).
 // `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
-// the entry (`tsx server/index.ts`) pick them at runtime. When `--db` is
+// the entry (`bun server/index.ts`) pick them at runtime. When `--db` is
 // absent the entry falls back to `defaultDbPath()` (platform user-data dir);
 // `startServer` itself has no fallback. Unknown flags are ignored so the
 // entry is robust to stray args.

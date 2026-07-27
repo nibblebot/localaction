@@ -23,7 +23,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `pnpm dev --port 5180 -- --db ${TEST_DB_PATH}`,
+    command: `pnpm dev --port 5180 -- --db "${TEST_DB_PATH}"`,
     url: 'http://localhost:5180',
     reuseExistingServer: false,
     timeout: 60_000,

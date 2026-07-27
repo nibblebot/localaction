@@ -5,12 +5,16 @@
 // `cac` then treats it as an inert positional, but it still arrives in
 // `process.argv`, where `vite.config.ts` reads it and hands it to
 // `attachSyncServer`. Everything else — including Vite's native `--port` —
-// is forwarded to Vite unchanged.
+// is forwarded to Vite unchanged. When the user passes no `--db`, we inject
+// the real store (`defaultDbPath()`, the platform user-data dir) explicitly
+// so `vite.config.ts` always sees an intentional path.
 //
-//   pnpm dev --db ./data/dev.db --port 5180 --strictPort
+//   pnpm dev --port 5180 --strictPort                       # real store (defaultDbPath())
+//   pnpm dev --db /tmp/localaction-demo.db --port 5180      # isolated throwaway store
 
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
+import { defaultDbPath } from '../server/db.ts';
 
 // Split argv into Vite-native tokens and our `--db` token(s). The `--db` value
 // is resolved to an absolute path and re-emitted after `--` so Vite ignores it
@@ -34,7 +38,7 @@ function rewriteArgv(argv: readonly string[]): string[] {
       native.push(arg);
     }
   }
-  return dbTokens.length > 0 ? [...native, '--', ...dbTokens] : native;
+  return [...native, '--', ...(dbTokens.length > 0 ? dbTokens : [`--db=${defaultDbPath()}`])];
 }
 
 const viteArgs = rewriteArgv(process.argv.slice(2));

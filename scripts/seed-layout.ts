@@ -1,19 +1,22 @@
 /**
- * Layout seed: populates data/test-layout.db with an area tree +
- * projects/sections/tasks/subtasks so the layout pass has a
+ * Layout seed: populates a throwaway SQLite file in the OS temp dir with an
+ * area tree + projects/sections/tasks/subtasks so the layout pass has a
  * representative working surface in the browser.
  *
  * Usage: pnpm exec tsx scripts/seed-layout.ts
+ *   → prints the exact `pnpm dev --db "<tmp path>"` command to browse it.
  *
  * Strategy: write directly to the SQLite file via the same tabular
  * persister the dev server uses, so no server / mergeable-sync dance
  * is needed and the autoSave timer never races a closed handle.
  */
-import { unlinkSync } from 'node:fs';
 import { createStore } from 'tinybase';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Row, Tables } from 'tinybase';
 import { openDatabase } from '../server/db.ts';
 import { createServerTabularPersister } from '../server/persister.ts';
+import { newId, nowIso } from '../src/data/internal.ts';
 import {
   TABLES,
   TASK_STATUS,
@@ -22,7 +25,12 @@ import {
   SCHEMA_VERSION_VALUE_ID,
 } from '../src/data/schema.ts';
 
-const DB_PATH = 'data/test-layout.db';
+// Unique per run, so a stale -wal/-shm pair from a previous seed can never
+// trip the open; the OS reaps tmp.
+const DB_PATH = join(
+  tmpdir(),
+  `localaction-test-layout-${Date.now()}-${process.pid}.db`,
+);
 
 function buildTables(): { tables: Tables; values: Record<string, unknown> } {
   const ts = nowIso();
@@ -349,12 +357,6 @@ function buildTables(): { tables: Tables; values: Record<string, unknown> } {
 }
 
 async function main(): Promise<void> {
-  try {
-    unlinkSync(DB_PATH);
-  } catch {
-    /* noop */
-  }
-
   const { tables, values } = buildTables();
   const store = createStore().setTables(tables).setValues(values);
 
@@ -367,6 +369,7 @@ async function main(): Promise<void> {
   );
   console.log('seed: wrote', DB_PATH);
   console.log('seed: rows', rowCounts);
+  console.log(`seed: next → pnpm dev --db "${DB_PATH}"`);
 
   await new Promise<void>((resolve) => db.close(() => resolve()));
 }

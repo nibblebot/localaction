@@ -5,7 +5,7 @@ import { existsSync, statSync, readFileSync } from 'node:fs';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore, type MergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-import { openDatabase, type ServerDatabase } from './db.ts';
+import { openDatabase, defaultDbPath, type ServerDatabase } from './db.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 export const DEFAULT_PORT = 5173;
 export const WS_PATH = '/ws';
@@ -17,7 +17,11 @@ export const STATIC_ROOT = join(__dirname, '..', STATIC_ROOT_NAME);
 export interface ServerOptions {
   port?: number;
   secret?: string;
-  dbPath?: string;
+  // Required: no built-in default. Entry points (`scripts/dev.ts`, the CLI
+  // below) pass `defaultDbPath()` explicitly; tests/smoke must name their
+  // own throwaway path so a run can never touch the user's real store by
+  // accident.
+  dbPath: string;
   staticRoot?: string;
 }
 
@@ -46,10 +50,10 @@ export interface AttachedSyncServer {
 
 export async function attachSyncServer(
   httpServer: Server,
-  options: ServerOptions = {},
+  options: ServerOptions,
 ): Promise<AttachedSyncServer> {
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
-  const dbPath = options.dbPath ?? './data/data.db';
+  const dbPath = options.dbPath;
 
   // Monotonic connection counter so log lines can be correlated without
   // touching the WebSocket (whose `id` is library-defined and may collide).
@@ -262,10 +266,10 @@ function mimeFor(path: string): string {
   return MIME_TYPES[extname(path).toLowerCase()] ?? 'application/octet-stream';
 }
 
-export async function startServer(options: ServerOptions = {}): Promise<RunningServer> {
+export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const port = options.port ?? DEFAULT_PORT;
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
-  const dbPath = options.dbPath ?? './data/data.db';
+  const dbPath = options.dbPath;
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
@@ -316,9 +320,10 @@ interface CliArgs {
 
 // CLI flag parsing for the prod-server entrypoint (`pnpm start`).
 // `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
-// the entry (`tsx server/index.ts`) pick them at runtime. `startServer` uses
-// the explicit option or falls back to its built-in default. Unknown flags
-// are ignored so the entry is robust to stray args.
+// the entry (`tsx server/index.ts`) pick them at runtime. When `--db` is
+// absent the entry falls back to `defaultDbPath()` (platform user-data dir);
+// `startServer` itself has no fallback. Unknown flags are ignored so the
+// entry is robust to stray args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { help: false };
   for (let i = 0; i < argv.length; i++) {
@@ -347,7 +352,7 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
     'Usage: localaction [options]\n' +
       '\n' +
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
-      '                   Default: ./data/data.db\n' +
+      `                   Default: ${defaultDbPath()}\n` +
       '  --port <n>       TCP port to listen on. Default: 5173\n' +
       '  -h, --help       Show this help and exit.\n',
   );
@@ -359,6 +364,6 @@ if (isMain) {
     printServerUsage(process.stdout);
     process.exit(0);
   }
-  const server = await startServer({ dbPath: cli.dbPath, port: cli.port });
+  const server = await startServer({ dbPath: cli.dbPath ?? defaultDbPath(), port: cli.port });
   console.log(`[localaction] listening on http://localhost:${server.port}`);
 }

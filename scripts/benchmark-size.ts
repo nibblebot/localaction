@@ -1,7 +1,8 @@
 /**
  * DB size growth benchmark. Boots the real server persistence path
  * (`createServerPersister`: MergeableStore → mirror bridge → tabular
- * SQLite autoSave) against a throwaway `data/test-bench-size.db`, seeds
+ * SQLite autoSave) against a throwaway `os.tmpdir()/localaction-bench-size/`
+ * dir, seeds
  * areas/projects/tasks through the app's own creators, then deletes half
  * through the app's cascade deleters — snapshotting on-disk file sizes,
  * page stats, and row counts at each of the 5 cases.
@@ -16,6 +17,7 @@ import {
   unlinkSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { createMergeableStore, type MergeableStore } from 'tinybase';
 import { openDatabase, type ServerDatabase } from '../server/db.ts';
 import { createServerPersister } from '../server/persister.ts';
@@ -29,7 +31,10 @@ import {
 } from '../src/data/deletion.ts';
 import { TABLES } from '../src/data/schema.ts';
 
-const DATA_DIR = join(process.cwd(), 'data');
+// Dedicated tmpdir subdir: never in the repo, and the readdir sweeps below
+// (which also pick up -wal/-shm sidecars for accurate on-disk sizes) only
+// ever see this benchmark's own files. The OS reaps tmp.
+const DATA_DIR = join(tmpdir(), 'localaction-bench-size');
 const DB_PATH = join(DATA_DIR, 'test-bench-size.db');
 const VACUUM_PATH = join(DATA_DIR, 'test-bench-size-vacuum.db');
 

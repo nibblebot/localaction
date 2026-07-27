@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
+import { defaultDbPath } from './server/db.ts'
 import type { Server } from 'node:http'
 import { resolve } from 'node:path'
 
@@ -25,7 +26,7 @@ function readDbPathFromArgv(argv: readonly string[]): string | undefined {
   }
   return undefined
 }
-const syncDbPath = readDbPathFromArgv(process.argv)
+const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDbPath()
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -54,15 +55,17 @@ export default defineConfig({
 // listener, so gate on the `.on` capability rather than checking for any
 // `http.Server`-specific property. The DB path (`--db`) is read from
 // `process.argv` — `scripts/dev.ts` moves it past Vite's `--` separator so
-// `cac` ignores it. The HTTP/WS port is whatever Vite binds (native `--port`).
+// `cac` ignores it, and always injects `defaultDbPath()` when the user
+// didn't pass one; the `?? defaultDbPath()` above covers bare
+// `vite preview`. The HTTP/WS port is whatever Vite binds (native `--port`).
 async function attachSyncToVite(
   server: { httpServer: unknown },
   label: string,
-  dbPath: string | undefined,
+  dbPath: string,
 ): Promise<void> {
   const httpServer = server.httpServer
   if (httpServer == null || typeof httpServer !== 'object') return
   if (!('on' in httpServer) || typeof httpServer.on !== 'function') return
   dbg(`attaching WS sync handler to Vite ${label} server`)
-  await attachSyncServer(httpServer as Server, dbPath ? { dbPath } : {})
+  await attachSyncServer(httpServer as Server, { dbPath })
 }

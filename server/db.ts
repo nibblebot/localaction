@@ -19,8 +19,20 @@
  */
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join } from 'node:path';
+import envPaths from 'env-paths';
 import type { Database as Sqlite3Database } from 'sqlite3';
+
+// The user's real store lives in the platform user-data directory, not the
+// repo: `~/.local/share/localaction/data.db` (Linux, honoring XDG_DATA_HOME),
+// `%LOCALAPPDATA%\localaction\Data\data.db` (Windows),
+// `~/Library/Application Support/localaction/data.db` (macOS). `suffix: ''`
+// drops env-paths' default `-nodejs` suffix. Entry points (`pnpm dev`,
+// `pnpm start`) pass this explicitly; the server API itself has no default,
+// so tests/smoke are forced to name their own throwaway path.
+export function defaultDbPath(): string {
+  return join(envPaths('localaction', { suffix: '' }).data, 'data.db');
+}
 
 const require = createRequire(import.meta.url);
 const sqlite3 = require('sqlite3') as {

@@ -108,6 +108,13 @@ body.sidebar-resizing {
   min-width: 0;
 }
 
+.sidebar-app-logo {
+  display: block;
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+
 .sidebar-app-name {
   font-size: 1.07rem;
   font-weight: 600;

@@ -246,6 +246,7 @@ export default function Sidebar({
       aria-modal={drawerOpen ? true : undefined}
     >
       <div className="sidebar-section sidebar-app-name-row">
+        <img src="/favicon.svg" alt="" width="22" height="22" className="sidebar-app-logo" />
         <h1 className="sidebar-app-name">LocalAction</h1>
       </div>
 

@@ -1,15 +1,23 @@
 import { Provider } from 'tinybase/ui-react';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { DataLayerProvider, getStore } from './data/index.ts';
 import SelectionProvider from './components/selection.tsx';
 import UndoProvider from './components/undo.tsx';
 import Sidebar from './components/Sidebar.tsx';
 import MainPane from './components/MainPane.tsx';
 import { useFocusTrap } from './components/useFocusTrap.ts';
-import { Inspector } from 'tinybase/ui-react-inspector';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import QuickAddModal from './components/QuickAddModal.tsx';
 import './App.css';
+
+// Dev-only TinyBase Inspector: `import.meta.env.DEV` is statically replaced
+// by Vite, so the dynamic import (and the whole ui-react-inspector chunk)
+// is tree-shaken out of production builds.
+const Inspector = import.meta.env.DEV
+  ? lazy(() =>
+      import('tinybase/ui-react-inspector').then((m) => ({ default: m.Inspector })),
+    )
+  : null;
 
 const store = getStore();
 
@@ -71,7 +79,11 @@ function App(): React.JSX.Element {
                   />
                 ) : null}
                 <MainPane />
-                {import.meta.env.DEV ? <Inspector /> : null}
+                {Inspector !== null ? (
+                  <Suspense fallback={null}>
+                    <Inspector />
+                  </Suspense>
+                ) : null}
                 <QuickAddModal />
               </div>
             </UndoProvider>

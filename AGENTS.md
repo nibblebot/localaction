@@ -18,18 +18,21 @@
 - `bun run preview` — serve the built `dist/` (same WS handler as dev; `bun --bun vite preview --configLoader runner`).
 - `bun run start` — boot the unified prod server (`server/index.ts`) under Bun. Port: `--port` flag (default `7373`). DB path: `--db` flag (default `defaultProdDbPath()` from `server/db.ts` — the platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
 - `bun run smoke` — boots the prod server on a random port and asserts (a) WS sync between two TinyBase clients, (b) the SQLite persister round-trips area/sub-area/project rows. Run with `bun run smoke`; it passes an explicit `port`/`dbPath`.
+- `bun run backup-db` — online backup of the SQLite store via `VACUUM INTO` (`scripts/backup-db.ts`): consistent snapshot while a server is running, source opened read-only, never overwrites an existing backup. Flags: `--db` (default `defaultProdDbPath()`), `--out` (default: timestamped sibling).
+- `bun run benchmark-size` — DB size-growth benchmark (`scripts/benchmark-size.ts`): seeds area/project/task rows through the app's creators, deletes half via the cascade deleters, and snapshots file size / page stats / row counts against a throwaway `os.tmpdir()` store.
 - `bun test` (or `bun run test`) — full unit + integration suite under `tests/`.
+- `bun run test:unit` — unit suites only (`tests/data`, `tests/markdown`, `tests/router.test.ts`).
 - `bun run test:integration` — focused on `tests/integration/`.
 - `bun run test:watch` — `bun test --watch`.
 - `bun run test:e2e` — Playwright (assumes `bunx playwright install chromium` has been run).
 - `bun run test:e2e:headed` — Playwright with the browser visible.
+- `bun run test:e2e:offline` — offline (service-worker) e2e against the production build: chains `bun run build`, then Playwright with `playwright.offline.config.ts` (`bun run preview` on port `5181` — the SW only registers in prod builds).
 
 ## Repo layout
 - `index.html` → `src/main.tsx` → `src/App.tsx` is the only entry chain. `main.tsx` wraps the tree in `<StrictMode>` (dev-time double render).
 - `tsconfig.node.json` covers Node-side config files: `vite.config.ts`, `playwright.config.ts`. `tsconfig.app.json` covers `src/` and `tests/` (data, integration, markdown suites + the loose `tests/router.test.ts`).
-- `tsconfig.app.json` declares `"types": ["vite/client", "node", "bun"]`. `@types/node` is intentionally scoped to `tsconfig.node.json` — `src/` keeps Node types out of the app build; `@types/bun` provides `bun:sqlite` / `bun:test` types where tests reach the server modules.
-- `public/` holds static assets served at root: `favicon.svg`, `icons.svg`, `fonts/`. The `icons.svg` sprite is consumed via `<use href="/icons.svg#NAME-icon" />` from `src/components/*.tsx` and `src/components/appearance/*.tsx` (never from `App.tsx` itself).
-- `src/assets/` holds images imported by TS (e.g. `hero.png`, `react.svg`).
+- `tsconfig.app.json` declares `"types": ["vite/client", "node", "bun"]`; `tsconfig.node.json` declares `"types": ["node", "bun"]`. `@types/bun` provides `bun:sqlite` / `bun:test` types where tests reach the server modules.
+- `public/` holds static assets served at root: `favicon.svg`, `icons.svg`, `fonts/`. The `icons.svg` sprite is consumed via `<use href="/icons.svg#NAME-icon" />` from `src/App.tsx` and `src/components/**/*.tsx` (including `src/components/appearance/`).
 - `dist/` is build output (gitignored). Do not hand-edit.
 - `src/data/` — the data-layer seam (TinyBase MergeableStore, OPFS-backed persister, WS sync, `DataLayerProvider`). Data APIs go through `src/data/index.ts`; UI bindings like `Provider`/`useRowIds` from `tinybase/ui-react*` and `Inspector` from `tinybase/ui-react-inspector` are allowed at consumer sites.
 - `server/` — prod-server entry (`server/index.ts`) and SQLite handle (`server/db.ts`, `bun:sqlite`). Serves `dist/` and upgrades `/ws`. Re-exports `attachSyncServer` so Vite's `configureServer` / `configurePreviewServer` reuse the same handler in dev/preview.

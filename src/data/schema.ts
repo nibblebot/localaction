@@ -103,8 +103,9 @@ export type TaskStatus = (typeof TASK_STATUS)[keyof typeof TASK_STATUS];
 /**
  * A Project's stored status. `active` is the default (stored as an
  * absent cell); `backlog` shelves the project out of the Active group
- * without touching its tasks. A Project reads **Done** only when every
- * task in it is done — that state is derived, never stored here.
+ * without touching its tasks. A Project reads **Done** only when it
+ * has at least one task and every task in it is done — that state is
+ * derived, never stored here (an empty project stays Active).
  */
 export const PROJECT_STATUS = {
   active: 'active',

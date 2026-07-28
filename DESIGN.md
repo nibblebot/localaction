@@ -168,7 +168,7 @@ The dark theme is a true inversion, not a tint: near-black canvas (#0f1115), sur
 - **Title** (600, 1.07rem, -0.005em, line-height 1.2, text-wrap balance): Section and modal headings, project name inside the Projects tab (the project card) and Tasks tab, sub-area headings, sidebar app name.
 - **Body** (400, 1rem, line-height 1.5): Default reading text. Buttons, inputs, row content, placeholders, undo toast.
 - **Label** (500, 0.79rem, often 600 for headings, uppercase + 0.06em tracking on eyebrows): Section titles (uppercase, tracked), count pills, tag chips, badges, segmented controls, *-sm button variants, inline-add inputs in compact rows. The sync badge in the sidebar footer sits at 500 weight.
-- **Mono** (400, 0.89rem, separate family): Code spans, fenced code blocks, markdown tags.
+- **Mono** (400, 0.89rem, separate family): Code spans and fenced code blocks.
 
 Every heading-tier element (Display + Title) uses `line-height: 1.2` and `text-wrap: balance` — heading rows breathe tighter than body and wrap evenly when long. Body keeps the 1.5 default. Nested row titles (section rows inside a project card) stay at body size with 500 weight so the project header retains the heaviest title until the card expands.
 
@@ -198,25 +198,25 @@ Quiet controls that wake on hover. Chrome hides until needed — row actions app
 
 ### Buttons
 - **Shape:** Gently rounded (10px radius; 6px padding rhythm `6px 12px`).
-- **Primary:** Iris fill, white text (0.93rem). Hover deepens to Iris Deep. The single most emphatic element on any screen — use one per view.
+- **Primary:** Iris fill, white text (1rem). Hover deepens to Iris Deep. The single most emphatic element on any screen — use one per view.
 - **Secondary:** Surface fill, hairline border, heading-ink text. Hover steps the surface up and the border to strong.
 - **Ghost:** Transparent at rest, secondary-ink text, tight padding (4px 8px). Hover washes the surface-hover tint. The workhorse for row-level and header actions.
 - **Danger:** Surface fill with danger border and text at rest; hover fills the danger tint. An "armed" confirmation state flips to a solid danger fill — destructive intent is always explicit before it executes.
 - **Focus:** Every interactive element shows a 2px outline in accent-border with 1px offset on `:focus-visible`. Mouse focus stays clean; keyboard focus is always visible.
 
 ### Chips
-- **Tag chip:** Accent wash background, Iris Deep text, accent hairline border, full pill radius (2px 8px padding, 0.79rem/500). Used for tags and metadata.
-- **Count pill:** Bare surface (or accent tint inside an active row), muted text, pill radius, tabular figures. Carries the live rollups — sidebar totals, tab counts.
-- **Sync badge:** A pill that tells the local-first story in plain words: *Local only* (neutral), *Syncing… / Retry #n* (warning tint), *Synced* (success tint), *Sync error* (danger tint). Always visible at the foot of the sidebar; never a transient toast.
+- **Tag chip:** Accent wash background, Iris Deep text, accent hairline border, full pill radius (2px 8px padding, 0.79rem/500). Reserved for tags and metadata.
+- **Count pill:** Bare surface (or accent tint inside an active row), muted text, pill radius, tabular figures. Carries the live rollups — sidebar totals, section counts.
+- **Sync badge:** A pill that tells the local-first story in plain words: *Local only* (neutral), *Syncing… / Retry #n…* (warning tint), *Synced* (success tint), *Sync error* (danger tint). Always visible at the foot of the sidebar; never a transient toast.
 
 ### Rows and lists
 - **Sidebar row:** Transparent at rest; hover washes surface-hover; active fills the accent wash with Iris text and a tinted count pill. Top-level areas run 600 weight. Dimmed rows (empty areas) drop to 40% opacity, recovering on hover.
 - **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed 22px icon actions. Done state: strikethrough, muted ink, 60% opacity on the row.
 - **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count. On phone-width viewports the row is a navigation path, not an action bar: caret, name, count, and the stateful due-date chip stay; every other action (notes, rename, delete, empty-sections) lives on the project detail pane the row opens, and long names wrap instead of truncating.
-- **Drag interaction:** Source row dims to 35% and keeps its rest shadow; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
+- **Drag interaction:** Source row dims to 35% and holds its place in the list; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
 
-### Tabs
-Underline tabs on a hairline baseline: 1rem/500, secondary ink, 2px transparent bottom border at rest. Active tab turns Iris with a 2px Iris underline; its count pill flips to the accent tint. Tabs remember their last selection per area.
+### Sections
+The working pane divides into collapsible sections — Projects, Area tasks, Notes — each headed by a small eyebrow (uppercase, 0.06em tracking) with a muted tabular count, and a caret toggle. Trailing header actions (search, sort, collapse-all) sit at the right edge. Inside Projects, the same pattern repeats one register down: status groups (Active / Backlog / Done) at label-tier size, collapsible, each carrying its live count. Hierarchy comes from the two eyebrow registers, never from chrome.
 
 ### Inputs / Fields
 - **Inline-add input (signature):** A dashed hairline border on transparent background with italic muted placeholder — visually an invitation, not a form control. Hover strengthens the border; focus turns it solid Iris on a surface fill. This is how every list says "add one here."
@@ -233,7 +233,7 @@ Every completion and every cascade delete offers a 6-second undo window: a quiet
 The sidebar is the instrument panel: Rail surface, section titles in small caps-weight labels, area rows with user-colored dots and live count pills, the sync badge pinned at the foot. The main pane holds the working view — area or project — with a breadcrumb chain for parent context. There is no top-level chrome beyond this: no app bar, no toolbar strip.
 
 ### Icons
-One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12px — carets, row-level actions), `--icon-sm` (14px — default chrome and drag grips), `--icon-md` (18px — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.
+One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12/14rem — carets, row-level actions), `--icon-sm` (1rem — default chrome and drag grips), `--icon-md` (18/14rem — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.
 
 ## 6. Do's and Don'ts
 

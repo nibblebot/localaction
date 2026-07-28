@@ -55,7 +55,7 @@ There is no router library — `src/router.ts` is a tiny hash router.
 ### Quick links
 
 **Inbox**, **Today**, and **Week**, each with a live count (unassociated
-tasks; tasks due today; tasks due this week) and `aria-current` on the
+tasks; open tasks due today; open tasks due this week) and `aria-current` on the
 active one.
 
 ### The area tree
@@ -73,8 +73,8 @@ Areas are top-level containers; each may hold nested **sub-areas**
   movement picks the insertion row; dragging right nests the row under
   the row above, dragging left unnests it. A row's subtree always moves
   with it.
-- A new-area input sits at the foot of the section; from a top-level area
-  view, the header adds a sub-area.
+- A new-area input sits at the foot of the section; from an area view,
+  the header adds a sub-area.
 - Selecting an area drives the MainPane's area view (and expands the row).
 
 ### Footer
@@ -113,17 +113,20 @@ add-sub-area button sits beside the name. The header's action row holds the
   **Backlog** slice shelves it (a stored status) and dragging it back
   restores it; a drop that lands in another area's slice snaps back —
   drag never moves a project between areas. **Done** is derived from
-  task completion and is not a drop target. The area's own Active and
-  Backlog slices are both standing drop zones — visible even while
-  empty, whenever the area has a project in either group; a sub-area's
+  task completion and is not a drop target. The area's own **Backlog**
+  slice is a standing drop zone on every area view — visible even while
+  the area has no projects at all, so shelving never requires
+  discovering a target mid-drag; its **Active** slice renders while the
+  area has a project in either group. A sub-area's
   empty counterpart slice appears mid-drag, labeled by its heading.
   Group headers collapse their rows (state persisted per device).
   Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), an empty-sections
   toggle (prunes section headers with no visible tasks from the
-  expanded card; per-project, persisted per device), and a note icon
-  that opens the project's notes pane. Only the
+  expanded card; per-project, persisted per device), a note icon
+  that opens the project's notes pane, and rename and delete (the
+  delete confirmed and undoable). Only the
   caret expands the card in place; clicking anywhere else on the row
   (name, meter, dead space) opens the **project detail pane**. Below
   768px the row sheds its action icons (keeping caret, name, count, and
@@ -197,10 +200,11 @@ the area view's Notes section rolls them up for display only.
 ## Notes & markdown
 
 A **Note** is a markdown body attached to exactly one entity (area, project,
-or task). Rendering goes through `src/markdown/render.ts` (`markdown-it`), a
-CommonMark subset. Notably, `[[double-brackets]]` are **not** turned into links
-— they render as literal text — and code spans are left alone. Each note is
-addressed by a URL-safe **slug** derived from its title.
+or task). Rendering goes through `src/markdown/render.ts` (`markdown-it`),
+CommonMark-based with raw HTML disabled and bare URLs autolinked. Notably,
+`[[double-brackets]]` are **not** turned into links
+— they render as literal text — and code spans are left alone. Each note
+carries a unique, URL-safe **slug** derived from its title.
 
 ## Appearance
 
@@ -225,8 +229,6 @@ appearance menu:
 
 ## Interaction patterns
 
-- **`SortableList`** — the shared drag-to-reorder surface (dnd-kit) with a drag
-  handle; used for flat sibling lists (project rows).
 - **`SortableTree`** — the flattened-tree drag surface (dnd-kit) for the
   sidebar area tree and task trees; vertical position + horizontal
   nest/unnest intent resolve to a reparenting move. A per-row `maxDepthOf`

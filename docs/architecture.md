@@ -9,7 +9,7 @@ see [`glossary.md`](./glossary.md).
 LocalAction is a single-page React app whose state lives in an in-browser
 [TinyBase](https://tinybase.org/) **MergeableStore**. The same store is
 persisted locally (OPFS) **and** kept in sync over a WebSocket with a small
-Node server that holds the authoritative SQLite copy. Three runtime modes —
+Bun server that holds the authoritative SQLite copy. Three runtime modes —
 Vite dev, Vite preview, and the prod server (`bun server/index.ts`) — all share one sync handler
 so behaviour never drifts between them.
 
@@ -37,19 +37,21 @@ so behaviour never drifts between them.
 ## Entry chain & provider stack
 
 `index.html` → `src/main.tsx` → `src/App.tsx` is the only entry. `main.tsx`
-renders `<App />` inside `<StrictMode>` (dev-time double render — every
-singleton below is engineered to survive it).
+registers the service worker, then renders `<App />` inside `<StrictMode>`
+(dev-time double render — every singleton below is engineered to survive it).
 
 `App.tsx` wraps the tree in a fixed provider order (outer → inner):
 
 1. `tinybase/ui-react` **`Provider store={store}`** — binds the React reconciler
-   to the store so `useRow` / `useRowIds` / `useTables` subscriptions fire.
+   to the store so `useRow` / `useRowIds` subscriptions fire.
 2. `AppearanceProvider` — theme / font / density (see [ux.md](./ux.md)).
 3. `DataLayerProvider` — boots persistence + sync, exposes them via context.
 4. `SelectionProvider` — the current hash-route selection + `navigate()`.
+5. `UndoProvider` — subtree snapshots that power delete-undo.
 
-Inside sit the shell: `Sidebar`, `MainPane`, the dev-only TinyBase `Inspector`,
-and `AppearanceMenu`.
+Inside sit the shell: `Sidebar` (which also hosts `SyncStatusBadge` and
+`AppearanceMenu`), `MainPane`, the dev-only TinyBase `Inspector`, and
+`QuickAddModal`.
 
 ## Data layer (`src/data/`)
 
@@ -62,20 +64,26 @@ The seam between React and TinyBase. Everything is re-exported from
   makes conflict-free sync possible.
 - **Schema** — `schema.ts` defines six tables and their column keys as
   `const` maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`),
-  `NOTE_ENTITY_TYPE` (`area` / `project` / `task`), and
-  `TOMBSTONE_ENTITY_TYPE` (those three + `section`) enums-as-objects.
+  `PROJECT_STATUS` (`active` is the default — stored as an absent cell —
+  and `backlog`; **Done** is derived, never stored), `NOTE_ENTITY_TYPE`
+  (`area` / `project` / `task`), and `TOMBSTONE_ENTITY_TYPE` (those three
+  + `section`) enums-as-objects.
 - **CRUD + hooks** — one module per entity (`areas.ts`, `projects.ts`,
-  `sections.ts`, `tasks.ts`, `notes.ts`). Each exposes
-  imperative mutators/readers (`createX` / `updateX` / `deleteX` / `getX`)
-  **and** a React hook (`useX`) built on `tinybase/ui-react`'s
-  `useRow` / `useRowIds`. IDs are `crypto.randomUUID()`;
-  timestamps are ISO 8601.
+  `sections.ts`, `tasks.ts`, `notes.ts`, `tombstones.ts`). Each exposes
+  imperative mutators/readers (`createX` / `updateX` / `getX`) and a
+  React hook (`useX`) built on `tinybase/ui-react`'s `useRow` / `useRowIds`.
+  Deletes live apart — `deletion.ts` runs the containment cascade and writes
+  typed tombstones (via `tombstones.ts`) so deletions win after sync merges;
+  `undo.ts` captures/restores subtree snapshots for delete-undo. Notes are
+  the exception: `deleteNote` stays on the entity module. IDs come from
+  `crypto.randomUUID()`; timestamps are ISO 8601.
 - **Selectors** — `selectors.ts` derives rollups (`useAreaCounts`,
-  `useProjectRollups`, `useNotesForAreaTree`). Each `get*` takes an optional
-  `_version` dependency token so React Compiler can memoise the derived output.
+  `useProjectRollups`, `useNotesForAreaTree`, `useDueItems`). Each `get*`
+  takes an optional `_version` dependency token so React Compiler can memoise
+  the derived output.
 - **Ordering** — `order.ts` (see [Ordering](#ordering) below).
 - **Helpers** — `colors.ts` (the area palette), `slug.ts` (note slugs),
-  `internal.ts` (`newId`, `nowIso`, `row`, `useStoreVersion`).
+  `internal.ts` (`newId`, `nowIso`, `row`, `useTableVersion`).
 
 ### Data model
 
@@ -98,6 +106,7 @@ erDiagram
   projects { string id PK }
   projects { string areaId FK "nullable" }
   projects { string dueDate "optional; YYYY-MM-DD" }
+  projects { string status "optional; only backlog stored; absent = active" }
   projects { float order }
   sections { string id PK }
   sections { string name }
@@ -115,10 +124,17 @@ erDiagram
   notes { string body "markdown" }
   notes { string entityType "area|project|task" }
   notes { string entityId FK "polymorphic" }
+  tombstones { string id PK }
+  tombstones { string entityType "area|project|task|section" }
+  tombstones { string entityId FK "polymorphic" }
+  tombstones { string deletedAt }
 ```
 
 - **Note** — markdown body attached to exactly one entity via the
   (`entityType`, `entityId`) pair, addressed by `slug`.
+- **Tombstone** — typed `(entityType, entityId)` row written by
+  `deletion.ts` so a deletion wins after a sync merge even when the
+  parent and child arrive in either order.
 
 ### Ordering
 
@@ -128,18 +144,26 @@ horizontal (nest/unnest) intent, and the move helpers write parent +
 order in one transaction. Each ordered table (`areas`, `projects`,
 `sections`, `tasks`) has an `order` key. `order.ts`:
 
-- Appends new rows at `lastSiblingOrder + 1000`.
-- On a drag, `computeInsertOrder` takes the midpoint between neighbours; when
-  the gap drops below `MIN_GAP` the whole sibling group is **renormalised** to
-  evenly-spaced integers from `RENORMALIZE_SPACING` (1000), in one transaction.
-- `backfillOrder()` seeds missing `order` cells (from `idHash(id)` + timestamps)
-  on boot — idempotent, run after OPFS loads.
-- Move helpers (`moveArea` / `moveTask` / `moveSection`) reorder within a
-  sibling group AND (areas/tasks) reparent in a single write (parent cell +
-  `order` + `updatedAt`). Both refuse moves that would create a cycle (a
-  row under itself or one of its own descendants) or target a missing
-  parent. `moveSection` and `reorderProject` stay sibling-scoped
-  (sections never leave their project; projects have no tree UI).
+- The `createX` helpers (areas/projects/sections/tasks) append new rows
+  at `lastSiblingOrder + 1000`.
+- On a drag, `computeInsertOrder` takes the midpoint between neighbours
+  (appending at the end lands at `last + 1000 − MIN_GAP`); when the
+  float can no longer represent the gap — the midpoint coincides with a
+  neighbour or the value is non-finite — the whole sibling group is
+  **renormalised** to evenly-spaced integers from `RENORMALIZE_SPACING`
+  (1000), in one transaction.
+- `backfillOrder()` seeds missing `order` cells on `areas` / `projects` /
+  `sections` (tasks already had one) — `(index + 1) * 1000 + idHash(id)`,
+  sorted by `createdAt` — on boot; idempotent, run after OPFS loads.
+- Move helpers (`moveArea` / `moveTask` / `moveSection` / `reorderProject`
+  / `moveProjectToStatus`) reorder within a sibling group AND
+  (areas/tasks) reparent in a single write (parent cell + `order` +
+  `updatedAt`). They refuse moves that would create a cycle (a row under
+  itself or one of its own descendants) or target a missing parent.
+  `moveSection` and `reorderProject` stay sibling-scoped (sections never
+  leave their project; projects have no tree UI); `moveProjectToStatus`
+  writes `status` + `order` in one transaction for Active ⇄ Backlog
+  drags.
 
 ## Persistence
 
@@ -147,17 +171,25 @@ Two independent persisters bracket the same in-memory store:
 
 - **Client (OPFS)** — `persistence.ts` uses
   `tinybase/persisters/persister-browser`'s `createOpfsPersister` against
-  `localaction.json` in the origin's OPFS directory. On boot it `load()`s the
-  snapshot, runs `backfillOrder()`, then `startAutoSave()`s. If OPFS / the File
-  System Access API is unavailable, persistence is disabled (warned, non-fatal).
+  `localaction.json` in the origin's OPFS directory. On boot it `load()`s
+  the snapshot and then `startAutoSave()`s; once the load resolves,
+  `DataLayerProvider` runs `backfillOrder()` to seed any missing `order`
+  cells. If OPFS / the File System Access API is unavailable,
+  persistence is disabled (warned, non-fatal).
 - **Server (SQLite)** — `server/db.ts` opens a `bun:sqlite` `Database`
-  (synchronous; `PRAGMA busy_timeout = 5000` on open) and hands it straight
-  to TinyBase's `createSqliteBunPersister` — the persister drives the
-  `query(sql).all(...params)` shape the database already exposes, so no
-  adapter layer is needed. One DB connection is shared process-wide (see
+  (synchronous; `PRAGMA busy_timeout = 5000` on open) — the persister
+  drives the `query(sql).all(...params)` shape the database already
+  exposes, so no adapter layer is needed at the driver boundary.
+  `server/persister.ts` builds the actual sync persister on top: a
+  tabular mapping (identity: SQL table = store table, derived from
+  `TABLES`) where each entity lives in its own SQL table, exposed to
+  `createWsServer` as `createServerPersister` — a facade that mirrors
+  the MergeableStore but loads/saves through a plain-Store bridge. On
+  boot the server drops the legacy JSON-mode `tinybase` table
+  (`dropLegacyJsonTable`). One DB connection is shared process-wide (see
   `server/index.ts`). Because `bun:sqlite` only resolves under the Bun
-  runtime, every process that loads `server/db.ts` — prod server, scripts,
-  Vite's config, tests — must run under Bun.
+  runtime, every process that loads `server/db.ts` — prod server,
+  scripts, Vite's config, tests — must run under Bun.
 
 **Schema evolution** — there is no versioning, wipe, or migration machinery:
 persisted stores (OPFS snapshot + server SQLite) load as-is on every boot.
@@ -176,10 +208,10 @@ sequenceDiagram
   participant C as Client (WsSynchronizer)
   participant H as HTTP server
   participant T as createWsServer
-  participant DB as SQLite persister
+  participant DB as Server persister
   C->>H: WS upgrade /ws?secret=…
   H->>T: handleUpgrade (pathId)
-  T->>DB: createMergeableStore() + persister(store, db)
+  T->>DB: createMergeableStore() + server persister(store, db)
   loop until convergence
     C-->>T: store deltas
     T-->>DB: persist
@@ -195,13 +227,16 @@ sequenceDiagram
   15 s cap. Status is a discriminated union surfaced through `SyncStatusBadge`.
 - **Server** — `attachSyncServer` (in `server/index.ts`) creates a
   `WebSocketServer({ noServer: true })` and hands it to TinyBase's
-  `createWsServer` with a persister factory: for each incoming `pathId` it makes
-  a fresh `MergeableStore` + `createSqliteBunPersister(store, db)` over the shared
-  connection. The HTTP `upgrade` event only claims `/ws` (so Vite's HMR socket
-  is left alone).
-- **Secret gate** — `LOCALACTION_SYNC_SECRET` (server, env or `--secret`)
-  checked against the `?secret=` query param. The client sends it from
-  `VITE_LOCALACTION_SYNC_SECRET`. An empty secret = open (warned in the log).
+  `createWsServer` with a persister factory: for each incoming `pathId` it
+  makes a fresh `MergeableStore` + `createServerPersister(store, db)` (the
+  tabular facade from `server/persister.ts`) over the shared connection.
+  The HTTP `upgrade` event only claims `/ws` (so Vite's HMR socket is left
+  alone).
+- **Secret gate** — `LOCALACTION_SYNC_SECRET` (server env, or
+  `ServerOptions.secret` for programmatic callers — the CLI has no
+  `--secret` flag) checked against the `?secret=` query param. The
+  client sends it from `VITE_LOCALACTION_SYNC_SECRET`. An empty secret
+  = open (warned in the log).
 
 ## Server (`server/`)
 
@@ -240,7 +275,9 @@ Flag precedence by mode (the server API has no built-in DB default — `ServerOp
 - `bun run build` = `tsc -b` (project references: `tsconfig.app.json` for
   `src/` + `tests/`, `tsconfig.node.json` for config files) then
   `bun --bun vite build`. TS errors anywhere — including config files —
-  fail the build.
+  fail the build. A build-only Vite plugin (`localaction-sw`) then bakes
+  a content-hashed precache manifest into `dist/sw.js`, which the
+  service worker registered from `main.tsx` installs on first load.
 - **React Compiler** is on (`babel-plugin-react-compiler` via
   `@rolldown/plugin-babel`); code must stay compiler-clean.
 - TS quirks: `verbatimModuleSyntax` (use `import type`, no default React

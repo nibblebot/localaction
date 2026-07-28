@@ -9,7 +9,7 @@ import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { openDatabase, defaultProdDbPath, type ServerDatabase } from './db.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
-export const DEFAULT_PORT = 5173;
+export const DEFAULT_PORT = 7373;
 export const WS_PATH = '/ws';
 export const STATIC_ROOT_NAME = 'dist';
 
@@ -316,7 +316,7 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
       '\n' +
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
       `                   Default: ${defaultProdDbPath()}\n` +
-      '  --port <n>       TCP port to listen on. Default: 5173\n' +
+      '  --port <n>       TCP port to listen on. Default: 7373\n' +
       '  -h, --help       Show this help and exit.\n',
   );
 }

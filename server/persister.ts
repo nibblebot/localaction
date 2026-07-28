@@ -26,18 +26,7 @@ import {
 } from 'tinybase/persisters/persister-sqlite-bun';
 import { TABLES } from '../src/data/schema.ts';
 import { row } from '../src/data/internal.ts';
-import {
-  reconcileSchemaVersion,
-  dropLegacyPersonTables,
-} from '../src/data/schemaVersion.ts';
 import type { ServerDatabase } from './db.ts';
-
-/**
- * The key/value table holding the `schemaVersion` value. Named explicitly
- * (not `values`) because `VALUES` is a SQLite keyword and breaks ad-hoc
- * `SELECT * FROM values` queries.
- */
-export const VALUES_TABLE_NAME = 'tinybase_values';
 
 // Identity mapping in both directions (SQL table name === store table id)
 // for every table in the app schema. `TABLES` is the single source — do not
@@ -47,11 +36,6 @@ const IDENTITY = Object.fromEntries(TABLE_NAMES.map((n) => [n, n]));
 const TABULAR_CONFIG = {
   mode: 'tabular',
   tables: { load: IDENTITY, save: IDENTITY },
-  // `values: {load: true, save: true}` is REQUIRED, not optional:
-  // `reconcileSchemaVersion` decides the ADR-0001 wipe from the persisted
-  // `schemaVersion` value; without persisting values, every server restart
-  // would read `undefined` and wipe the entire database.
-  values: { load: true, save: true, tableName: VALUES_TABLE_NAME },
 } as const;
 
 const onIgnoredError = (error: unknown): void => {
@@ -156,17 +140,6 @@ export function createServerPersister(
     // handled by the WS server's own autoLoad path.
     await p.load(initialContent as Parameters<SqliteBunPersister['load']>[0]);
     store.setContent([cleanTables(mirror.getTables()), mirror.getValues()]);
-    // Clean-cutover wipe AFTER load: the persister just read the old SQLite
-    // snapshot; reconcileSchemaVersion drops every row whose recorded version
-    // differs and stamps the current one. ADR-0001. The wipe flows through
-    // the bridge into the mirror, and the WS server calls `startAutoSave()`
-    // (forwarded by the spread) immediately after `startAutoLoad()`, whose
-    // initial full save persists the post-reconcile state.
-    reconcileSchemaVersion(store);
-    // Purge the retired People tables (see dropLegacyPersonTables); the
-    // deletion flows through the mirror bridge and the initial autosave,
-    // and sync propagates it to connected clients.
-    dropLegacyPersonTables(store);
     return facade;
   };
 

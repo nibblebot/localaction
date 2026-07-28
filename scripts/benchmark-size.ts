@@ -184,12 +184,13 @@ async function main(): Promise<void> {
   const snaps: Snapshot[] = [];
   snaps.push(await snapshot(db, '1a. empty file (openDatabase only, no writes)', 'test-bench-size.db'));
 
-  // Case 1b: first boot — initial load stamps schemaVersion, autoSave
-  // persists. Smallest real DB.
+  // Case 1b: first boot — no version stamp, no eager table creation; the
+  // file stays empty until the first user row. The settle delay makes the
+  // snapshot catch any rogue initial write.
   await persister.startAutoLoad();
   await persister.startAutoSave();
-  await waitForCounts(db, { tinybase_values: 1 });
-  snaps.push(await snapshot(db, '1b. initial boot (schemaVersion, no user data)', 'test-bench-size.db'));
+  await sleep(500);
+  snaps.push(await snapshot(db, '1b. initial boot (no writes, no user data)', 'test-bench-size.db'));
 
   // Case 2: 10 areas, 30 projects, 100 tasks.
   let t0 = Date.now();

@@ -21,8 +21,6 @@ import {
   TABLES,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
-  SCHEMA_VERSION,
-  SCHEMA_VERSION_VALUE_ID,
 } from '../src/data/schema.ts';
 
 // Unique per run, so a stale -wal/-shm pair from a previous seed can never
@@ -32,7 +30,7 @@ const DB_PATH = join(
   `localaction-test-layout-${Date.now()}-${process.pid}.db`,
 );
 
-function buildTables(): { tables: Tables; values: Record<string, unknown> } {
+function buildTables(): Tables {
   const ts = nowIso();
 
   const areas: Record<string, Row> = {};
@@ -345,20 +343,17 @@ function buildTables(): { tables: Tables; values: Record<string, unknown> } {
   };
 
   return {
-    tables: {
-      [TABLES.areas]: areas,
-      [TABLES.projects]: projects,
-      [TABLES.sections]: sections,
-      [TABLES.tasks]: tasks,
-      [TABLES.notes]: notes,
-    },
-    values: { [SCHEMA_VERSION_VALUE_ID]: SCHEMA_VERSION },
+    [TABLES.areas]: areas,
+    [TABLES.projects]: projects,
+    [TABLES.sections]: sections,
+    [TABLES.tasks]: tasks,
+    [TABLES.notes]: notes,
   };
 }
 
 async function main(): Promise<void> {
-  const { tables, values } = buildTables();
-  const store = createStore().setTables(tables).setValues(values);
+  const tables = buildTables();
+  const store = createStore().setTables(tables);
 
   const db = await openDatabase(DB_PATH);
   const persister = createServerTabularPersister(store, db);

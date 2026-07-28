@@ -7,20 +7,6 @@ export const TABLES = {
   tombstones: 'tombstones',
 } as const;
 
-/**
- * App-level schema version. Bumping this triggers a clean cutover wipe of
- * any persisted store (OPFS client snapshot + server SQLite) on load —
- * see `reconcileSchemaVersion`. There is no row migration (ADR-0001).
- */
-export const SCHEMA_VERSION = 3;
-
-/**
- * Keyed-value id recording the schema version last applied to a persisted
- * store. TinyBase's value map is flat, so this is a single top-level
- * value (not a cell) that survives persistence and sync alongside the
- * row data.
- */
-export const SCHEMA_VERSION_VALUE_ID = 'schemaVersion';
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
 
@@ -65,7 +51,7 @@ export const COLUMNS = {
     id: 'id',
     title: 'title',
     /**
-     * Discriminated placement reference (ADR-0001): `area:<id>`,
+     * Discriminated placement reference: `area:<id>`,
      * `project:<id>`, `section:<id>` (top-level task inside a project
      * Section), `task:<id>` (sub-task), or absent for an Inbox root.
      * One mergeable cell resolves a single owner under last-writer-wins.

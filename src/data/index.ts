@@ -5,11 +5,7 @@ export {
   PROJECT_STATUS,
   NOTE_ENTITY_TYPE,
   TOMBSTONE_ENTITY_TYPE,
-  SCHEMA_VERSION,
-  SCHEMA_VERSION_VALUE_ID,
 } from './schema.ts';
-
-export { reconcileSchemaVersion } from './schemaVersion.ts';
 export type {
   TableName,
   AreaColumn,

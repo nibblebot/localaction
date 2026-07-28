@@ -7,7 +7,6 @@ import type { MergeableStore } from 'tinybase';
 import { openDatabase } from '../server/db.ts';
 import {
   createServerTabularPersister,
-  VALUES_TABLE_NAME,
 } from '../server/persister.ts';
 import {
   createWsSynchronizer,
@@ -97,14 +96,14 @@ async function main() {
         name: string;
       }>
     ).map((r) => r.name);
-    for (const expected of ['areas', 'projects', VALUES_TABLE_NAME]) {
+    for (const expected of ['areas', 'projects']) {
       assert(
         tableNames.includes(expected),
         `tabular tables missing ${expected} (have: ${tableNames.join(', ')})`,
       );
     }
     rawDb.close();
-    console.log('smoke: raw SQL confirms tabular tables (areas, projects, values)');
+    console.log('smoke: raw SQL confirms tabular tables (areas, projects)');
     await syncA.destroy();
     await syncB.destroy();
 

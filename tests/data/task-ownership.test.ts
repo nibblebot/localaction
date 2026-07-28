@@ -1,5 +1,4 @@
 import { describe, expect, it, beforeEach } from 'bun:test';
-import { row } from '../../src/data/internal.ts';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { createTask } from '../../src/data/tasks.ts';
@@ -19,14 +18,12 @@ import {
   tombstoneId,
 } from '../../src/data/tombstones.ts';
 import { TABLES, NOTE_ENTITY_TYPE } from '../../src/data/schema.ts';
-import { reconcileSchemaVersion } from '../../src/data/schemaVersion.ts';
-import { SCHEMA_VERSION } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
 }
 
-describe('cascade deletion (ADR-0001)', () => {
+describe('cascade deletion', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
@@ -146,40 +143,5 @@ describe('tombstone reconciler (sync-driven)', () => {
     } finally {
       uninstall();
     }
-  });
-});
-
-describe('schema-version wipe (ADR-0001)', () => {
-  it('is a no-op when the stored version matches', () => {
-    const store = freshStore();
-    store.setRow(TABLES.areas, 'A', row({ id: 'A' }));
-    reconcileSchemaVersion(store);
-    // First reconcile stamps the current version (no wipe needed —
-    // current persisted snapshot was empty/unversioned, so it wipes).
-    // To test no-op, stamp the current version first.
-    const store2 = freshStore();
-    store2.setValue('schemaVersion', SCHEMA_VERSION);
-    store2.setRow(TABLES.areas, 'A', row({ id: 'A' }));
-    const changed = reconcileSchemaVersion(store2);
-    expect(changed).toBe(false);
-    expect(store2.hasRow(TABLES.areas, 'A')).toBe(true);
-  });
-
-  it('wipes all tables and the value map on a version mismatch', () => {
-    const store = freshStore();
-    store.setRow(TABLES.areas, 'A', row({ id: 'A' }));
-    store.setValue('schemaVersion', SCHEMA_VERSION - 1);
-    const changed = reconcileSchemaVersion(store);
-    expect(changed).toBe(true);
-    expect(store.hasRow(TABLES.areas, 'A')).toBe(false);
-    expect(store.getValue('schemaVersion')).toBe(SCHEMA_VERSION);
-  });
-
-  it('wipes a brand-new (unversioned) store', () => {
-    const store = freshStore();
-    store.setRow(TABLES.areas, 'A', row({ id: 'A' }));
-    const changed = reconcileSchemaVersion(store);
-    expect(changed).toBe(true);
-    expect(store.getRowIds(TABLES.areas)).toEqual([]);
   });
 });

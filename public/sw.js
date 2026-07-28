@@ -54,6 +54,25 @@ self.addEventListener('fetch', (event) => {
   // WS upgrades never fire fetch events, but keep the sync endpoint out of
   // the cache path on principle.
   if (url.pathname === '/ws') return;
+  // Non-default fonts are excluded from the precache and fetched on demand
+  // when the user switches fonts. Cache-first with a runtime fill so a font
+  // keeps working offline once it has been loaded; a font never fetched
+  // online simply falls back to the system font offline.
+  if (url.pathname.startsWith('/fonts/')) {
+    event.respondWith(
+      caches.open(CACHE).then((cache) =>
+        cache.match(request).then(
+          (hit) =>
+            hit ??
+            fetch(request).then((res) => {
+              if (res.ok) cache.put(request, res.clone());
+              return res;
+            }),
+        ),
+      ),
+    );
+    return;
+  }
   // Hash-based routing: every navigation is the app shell.
   const target = request.mode === 'navigate' ? '/index.html' : request;
   event.respondWith(caches.match(target).then((hit) => hit ?? fetch(request)));

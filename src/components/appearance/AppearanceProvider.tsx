@@ -20,6 +20,8 @@ export interface AppearanceState {
   setDensity: (next: Density) => void;
 }
 
+// Keep in sync with the font boot script in index.html, which reads this key
+// and the font ids pre-paint to preload only the active font.
 const STORAGE_KEY = 'localaction.appearance.v1';
 const THEME_ATTR = 'data-la-theme';
 const FONT_ATTR = 'data-la-font';

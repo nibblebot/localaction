@@ -29,6 +29,11 @@ const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultProdDbPath()
 // Absolute dist/ path, captured in `configResolved` (the config may be
 // bundled to a temp file at build time, so import.meta.url is unreliable).
 let outDir = ''
+
+// Fonts loaded on demand (everything except the default, DM Sans) are kept
+// out of the service-worker precache — see the localaction-sw plugin and
+// public/sw.js's runtime font caching.
+const LAZY_FONT = /^fonts\/(?!DMSans-)/
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -62,6 +67,9 @@ export default defineConfig({
     // any build that changes a byte produces a new cache name, the new SW
     // precaches it on install, and activate() drops the previous cache.
     // `public/sw.js` itself is the template and is excluded from the list.
+    // Non-default fonts are excluded too: only the default (DM Sans) is
+    // precached; the rest are fetched on demand when the user switches
+    // fonts and runtime-cached by sw.js's fetch handler.
     {
       name: 'localaction-sw',
       apply: 'build',
@@ -75,7 +83,7 @@ export default defineConfig({
           .filter((rel) => statSync(join(dist, rel)).isFile())
           .map((rel) => rel.split(sep).join('/'));
         const urls = files
-          .filter((f) => f !== 'sw.js')
+          .filter((f) => f !== 'sw.js' && !LAZY_FONT.test(f))
           .map((f) => `/${f}`)
           .sort();
         const version = createHash('sha256')

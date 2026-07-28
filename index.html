@@ -9,7 +9,41 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
-    <link rel="preload" href="/fonts/PlusJakartaSans-Variable.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Font boot: only the active font is ever fetched. Applies the persisted
+         font before first paint and preloads exactly that file; other fonts
+         load on demand via their lazy @font-face when the user switches.
+         STORAGE_KEY/font ids must stay in sync with
+         src/components/appearance/AppearanceProvider.tsx. -->
+    <script>
+      (function () {
+        var FONT_FILES = {
+          jakarta: 'PlusJakartaSans',
+          plex: 'IBMPlexSans',
+          general: 'GeneralSans',
+          manrope: 'Manrope',
+          dm: 'DMSans',
+        };
+        var font = 'dm';
+        try {
+          var stored = JSON.parse(
+            localStorage.getItem('localaction.appearance.v1') || '{}',
+          );
+          if (stored && typeof stored.font === 'string' && FONT_FILES[stored.font]) {
+            font = stored.font;
+          }
+        } catch {
+          // localStorage unavailable or corrupt — fall back to the default.
+        }
+        document.documentElement.setAttribute('data-la-font', font);
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'font';
+        link.type = 'font/woff2';
+        link.crossOrigin = 'anonymous';
+        link.href = '/fonts/' + FONT_FILES[font] + '-Variable.woff2';
+        document.head.appendChild(link);
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>localaction</title>
   </head>

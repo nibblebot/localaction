@@ -159,6 +159,12 @@ Two independent persisters bracket the same in-memory store:
   runtime, every process that loads `server/db.ts` — prod server, scripts,
   Vite's config, tests — must run under Bun.
 
+**Schema evolution** — there is no versioning, wipe, or migration machinery:
+persisted stores (OPFS snapshot + server SQLite) load as-is on every boot.
+Schema changes must therefore be backward-compatible — add tables or columns
+and have readers treat absent cells as `undefined` — or be handled as a
+deliberate, one-off transform at load time.
+
 ## Sync
 
 TinyBase's `synchronizer-ws` keeps every connected store convergent via the
@@ -190,7 +196,7 @@ sequenceDiagram
 - **Server** — `attachSyncServer` (in `server/index.ts`) creates a
   `WebSocketServer({ noServer: true })` and hands it to TinyBase's
   `createWsServer` with a persister factory: for each incoming `pathId` it makes
-  a fresh `MergeableStore` + `createSqlite3Persister(store, db)` over the shared
+  a fresh `MergeableStore` + `createSqliteBunPersister(store, db)` over the shared
   connection. The HTTP `upgrade` event only claims `/ws` (so Vite's HMR socket
   is left alone).
 - **Secret gate** — `LOCALACTION_SYNC_SECRET` (server, env or `--secret`)

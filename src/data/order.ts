@@ -18,7 +18,7 @@ import { normalizeRelation, nowIso, row } from './internal.ts';
  * after many reorders.
  *
  * `order` is purely relative — its absolute value is not meaningful
- * across reorders or devices. Row-level LWW (ADR-0002) keeps the
+ * across reorders or devices. Row-level LWW keeps the
  * last-edit's position authoritative when two devices move a row
  * concurrently.
  */
@@ -352,7 +352,7 @@ export function moveSection(
 /**
  * Move a task to a new sibling position within `placement`, reparenting
  * it when the placement differs from its current one. `placement` is
- * the encoded cell value (ADR-0001: `project:<id>`, `section:<id>`,
+ * the encoded cell value (`project:<id>`, `section:<id>`,
  * `area:<id>`, `task:<id>`, or `null` for the Inbox). A single write
  * updates placement + order so subscribers see one change.
  *

@@ -47,7 +47,7 @@ export function DataLayerProvider({
   useEffect(() => {
     // Idempotently attach the tombstone reconciler to the store. It
     // sweeps after every transaction (local or merged) and cascades any
-    // subtree rooted at a tombstoned target. ADR-0001.
+    // subtree rooted at a tombstoned target.
     const uninstallReconciler = installTombstoneReconciler(store);
 
     if (offline) {

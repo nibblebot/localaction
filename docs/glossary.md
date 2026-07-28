@@ -1,6 +1,6 @@
 # Glossary
 
-The domain vocabulary for LocalAction. Use these terms when writing issues, ADRs, or any project context. Don't drift to synonyms; if you need a concept that isn't here, that's a signal either to reconsider or to grow the glossary.
+The domain vocabulary for LocalAction. Use these terms when writing issues or any project context. Don't drift to synonyms; if you need a concept that isn't here, that's a signal either to reconsider or to grow the glossary.
 
 ## Area
 
@@ -49,7 +49,7 @@ A URL-safe identifier for a Note, derived from its title. Stable across renames 
 
 # UI Structure
 
-The canonical names for the shell's regions and their contents. Use these in issues, ADRs, and reviews instead of ad-hoc descriptions ("the left panel", "the expanded project thing"). Component names in `src/components/` mirror these terms.
+The canonical names for the shell's regions and their contents. Use these in issues and reviews instead of ad-hoc descriptions ("the left panel", "the expanded project thing"). Component names in `src/components/` mirror these terms.
 
 ## App Shell
 

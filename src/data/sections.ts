@@ -8,7 +8,7 @@ import { readSiblingOrders } from './order.ts';
 /**
  * Sections (glossary: Section) — named groups of top-level tasks inside
  * a project. A section never nests and never owns sub-tasks directly;
- * tasks join one via the `section:<id>` placement (ADR-0001).
+ * tasks join one via the `section:<id>` placement.
  */
 
 function nextOrder(store: MergeableStore, projectId: string): number {

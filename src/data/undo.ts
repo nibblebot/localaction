@@ -5,7 +5,7 @@ import { attachedRowIds, collectDoomedSets } from './deletion.ts';
 import { tombstoneId } from './tombstones.ts';
 
 /**
- * Undo snapshots (ADR-0001's escape hatch). Tombstones make deletion
+ * Undo snapshots (the escape hatch). Tombstones make deletion
  * permanent and sync-convergent; they are the wrong tool for a 5-second
  * "didn't mean that" window. `captureSubtree` copies exactly the rows a
  * cascade will remove (it shares `collectDoomedSets` with the cascade, so

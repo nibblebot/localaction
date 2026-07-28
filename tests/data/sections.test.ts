@@ -64,7 +64,7 @@ describe('sections (CRUD + ordering)', () => {
   });
 });
 
-describe('section task placement (ADR-0001)', () => {
+describe('section task placement', () => {
   let store: MergeableStore;
   let projectId: string;
   let sectionId: string;

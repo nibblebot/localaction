@@ -6,7 +6,7 @@
  *
  * Model: the tree's root level holds the project's unsectioned top-level
  * tasks first, then one node per section whose children are the
- * section's top-level tasks. Section node ids are the ADR-0001 placement
+ * section's top-level tasks. Section node ids use the placement
  * encoding `section:<id>` (task ids are UUIDs, so they never collide),
  * which makes a task's drop parent a ready-made placement string.
  *
@@ -68,8 +68,8 @@ function decodeSectionNodeId(id: string): string | null {
 }
 
 /**
- * The placement of a task's top-level ancestor (its ownership root,
- * ADR-0001), as the encoded cell value. Sub-tasks resolve through
+ * The placement of a task's top-level ancestor (its ownership root),
+ * as the encoded cell value. Sub-tasks resolve through
  * their ancestry; a broken chain resolves to the Inbox (null).
  */
 function topLevelPlacementKey(store: MergeableStore, id: string): string | null {

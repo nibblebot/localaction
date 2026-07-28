@@ -8,7 +8,7 @@ import { moveTask, readSiblingOrders } from './order.ts';
 import { getSectionIdsForProject } from './sections.ts';
 
 /**
- * Placement reference encoding (ADR-0001). A task's single `placement`
+ * Placement reference encoding. A task's single `placement`
  * cell holds `${kind}:${id}` for project/section/area/task roots, or is
  * absent for an Inbox root. Parts are UUIDs, so `:` is a safe
  * separator. `section:<id>` marks a top-level task inside
@@ -121,7 +121,7 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
 /**
  * Set a task's stored status. The read-time invariant
  * ("done ⟺ all descendants done") is enforced by `getEffectiveTaskStatus`,
- * mirroring ADR-0001's read-time-derivation pattern (no write cascade):
+ * a read-time-derivation pattern (no write cascade):
  * completing a leaf flips it to done; completing a parent while a child
  * is still open leaves the parent stored-done but effective-open until
  * the last child is completed. Reopening any task writes only that one
@@ -181,7 +181,7 @@ export function getPlacement(store: MergeableStore, id: string): TaskPlacement {
 
 /**
  * Walk up the parent chain to the owning root. A Sub-Task resolves
- * ownership through its ancestry (ADR-0001); an orphaned sub-task
+ * ownership through its ancestry; an orphaned sub-task
  * (parent gone) resolves to the Inbox. A Section root resolves to the
  * section's owning Project (a missing section resolves to the Inbox).
  */
@@ -342,7 +342,7 @@ export function getTasksForProjectDeep(
     collectDescendants(store, top, out);
   }
   // Section-rooted top-level tasks belong to the project too — their
-  // placement points at the section, not the project (ADR-0001).
+  // placement points at the section, not the project.
   for (const sid of getSectionIdsForProject(store, projectId)) {
     for (const top of topLevelTaskIdsForPlacement(store, `section${PLACEMENT_SEP}${sid}`)) {
       out.push(top);

@@ -97,7 +97,7 @@ describe('deleteArea', () => {
     expect(getArea(store, id)).toBeUndefined();
   });
 
-  it('cascades deletion through the sub-area subtree (ADR-0001)', () => {
+  it('cascades deletion through the sub-area subtree', () => {
     const parent = createArea(store, { name: 'Family' });
     const child = createArea(store, { name: 'Wife', parentId: parent });
     deleteArea(store, parent);

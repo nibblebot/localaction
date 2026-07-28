@@ -2,7 +2,7 @@ import type { TaskStatus, ProjectStatus, NoteEntityType, TombstoneEntityType } f
 import type { AreaColorId } from './colors.ts';
 
 /**
- * A Task's owner (ADR-0001). Only the top-level Task carries a non-`task`
+ * A Task's owner. Only the top-level Task carries a non-`task`
  * placement; a Sub-Task's placement is `{ kind: 'task', id }` pointing at
  * its parent, and ownership resolves by walking up the chain.
  *
@@ -129,7 +129,7 @@ export interface TaskPatch {
 }
 
 /**
- * A permanent deletion record (ADR-0001). Typed tombstones make deletion
+ * A permanent deletion record. Typed tombstones make deletion
  * win over delayed or concurrent assignments after offline replicas merge.
  */
 export interface Tombstone {

@@ -8,7 +8,7 @@ import type { Area } from './types.ts';
 
 /**
  * The area a task ultimately belongs to (resolved through its placement
- * chain, ADR-0001), or null for Inbox-rooted / orphaned tasks.
+ * chain), or null for Inbox-rooted / orphaned tasks.
  */
 function taskOwningArea(store: MergeableStore, taskId: string): string | null {
   const root = getRootPlacement(store, taskId);

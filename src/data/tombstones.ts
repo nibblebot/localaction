@@ -6,7 +6,7 @@ import { nowIso, row } from './internal.ts';
 import type { Tombstone } from './types.ts';
 
 /**
- * Permanent deletion records (ADR-0001). A tombstone's id is the
+ * Permanent deletion records. A tombstone's id is the
  * deterministic composite `${entityType}:${entityId}`, so two devices
  * deleting the same entity converge to one row under sync. Tombstones are
  * never removed; the reconciler deletes any entity whose containment

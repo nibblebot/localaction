@@ -10,7 +10,7 @@ import {
 import { writeTombstone } from './tombstones.ts';
 
 /**
- * Containment-aware deletion (ADR-0001). Deleting an owner removes its
+ * Containment-aware deletion. Deleting an owner removes its
  * full subtree — descendant Areas, Projects, Task trees, and every Note
  * attached to any of them — and records a permanent typed
  * tombstone so the deletion wins over delayed or concurrent assignments

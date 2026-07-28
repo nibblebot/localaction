@@ -766,22 +766,6 @@ body.sidebar-resizing {
   gap: 6px;
 }
 
-/* Section bodies (rows, lists, add inputs) indent past the disclosure
-   chevron so content aligns under the section-title text. Without this
-   the cards sit flush with the page gutter, the same register as the
-   section header, and the parent → child relationship is invisible. */
-.pane-section > :not(.pane-section-head) {
-  margin-inline-start: calc(var(--space-2) + 6px);
-}
-
-/* Static (non-collapsible) section header — the project detail pane's
-   Tasks header. Same chrome as the collapsible sections but with no
-   disclosure chevron, so the body stays flush with the page gutter
-   instead of indenting past a caret that isn't there. */
-.pane-section-static > :not(.pane-section-head) {
-  margin-inline-start: 0;
-}
-
 /* ============================================================
    Inline tab actions (search / sort / add)
    ============================================================ */
@@ -849,12 +833,11 @@ body.sidebar-resizing {
   align-items: baseline;
   gap: var(--space-1);
   margin-bottom: var(--space-2);
-  padding-inline: var(--space-2);
 }
 
 .tab-group-title {
-  font-size: 0.79rem;
-  font-weight: 600;
+  font-size: 0.93rem;
+  font-weight: 700;
   color: var(--text-muted);
 }
 
@@ -928,11 +911,10 @@ body.sidebar-resizing {
    shape with horizontal rules. */
 .tab-group-list {
   list-style: none;
-  margin: 0 0 0 20px;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 /* ============================================================
@@ -984,8 +966,8 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
   padding: 0;
   border: 0;
@@ -2311,8 +2293,8 @@ body.sidebar-resizing {
    ------------------------------------------------------------ */
 
 .project-row-drag-handle {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2327,15 +2309,6 @@ body.sidebar-resizing {
      22px box so the handle→caret gap matches caret→name. */
   margin-right: -4px;
   touch-action: none;
-  /* Hidden until the grip itself is hovered / focused / the row
-     is being dragged. We use `opacity` (not `visibility: hidden`)
-     so the button still occupies its grid cell and `:hover` fires
-     when the mouse crosses into the handle area — visibility:
-     hidden would swallow the cursor and leave the grip
-     un-grabbable from the row surface. `pointer-events: auto`
-     stays on at rest so the :hover transition can trigger; the
-     handle reserves its 22×22 hit area but is visually absent. */
-  opacity: 0;
   transition: opacity 0.12s ease;
 }
 
@@ -2351,16 +2324,6 @@ body.sidebar-resizing {
 .project-row-drag-handle svg {
   width: var(--icon-sm);
   height: var(--icon-sm);
-}
-
-/* Reveal only when the handle is directly hovered, has keyboard
-   focus, or its row is being dragged — not when any other part of
-   the row is hovered. The grip is an explicit, optional drag
-   target; the row's `cursor: grab` is the discoverable default. */
-.project-row-drag-handle:hover,
-.project-row-drag-handle:focus-visible,
-.sortable-row-active .project-row-drag-handle {
-  opacity: 1;
 }
 
 /* When the user is actively dragging a project row, hide the

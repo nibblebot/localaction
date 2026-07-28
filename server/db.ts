@@ -13,6 +13,7 @@ import { Database } from 'bun:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import envPaths from 'env-paths';
+import { logInfo } from '../src/log.ts';
 
 // The user's real store lives in the platform user-data directory, not the
 // repo: `~/.local/share/localaction/data.db` (Linux, honoring XDG_DATA_HOME),
@@ -44,5 +45,6 @@ export function openDatabase(file: string, opts: OpenOptions = {}): ServerDataba
   // holding a shared lock makes a writer's COMMIT return BUSY at once —
   // silently dropping the write (e.g. TinyBase autoSave losing rows).
   db.exec('PRAGMA busy_timeout = 5000');
+  logInfo('persistence', `opened sqlite at ${file}${opts.readonly ? ' (readonly)' : ''}`);
   return db;
 }

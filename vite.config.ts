@@ -3,13 +3,11 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
 import { defaultDbPath } from './server/db.ts'
+import { logInfo } from './src/log.ts'
 import type { Server } from 'node:http'
-import { resolve } from 'node:path'
-
-const DEBUG = !!process.env['LOCALACTION_DEBUG']
-const dbg = (msg: string): void => {
-  if (DEBUG) process.stderr.write(`[vite-sync] ${msg}\n`)
-}
+import { createHash } from 'node:crypto'
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
 // Read `--db <path>` / `--db=<path>` from argv. `scripts/dev.ts` forwards our
 // `--db` past Vite's `--` separator (Vite's `cac` rejects unknown options), so
 // it reaches us here even though Vite's own CLI ignores it. `--port` stays
@@ -27,6 +25,10 @@ function readDbPathFromArgv(argv: readonly string[]): string | undefined {
   return undefined
 }
 const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDbPath()
+
+// Absolute dist/ path, captured in `configResolved` (the config may be
+// bundled to a temp file at build time, so import.meta.url is unreliable).
+let outDir = ''
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -54,6 +56,50 @@ export default defineConfig({
         await attachSyncToVite(server, 'preview', syncDbPath)
       },
     },
+    // Bakes the precache manifest into dist/sw.js. Runs after the build has
+    // emitted bundles and copied public/ (closeBundle), so the file list is
+    // complete. The cache version is a content hash of every emitted file:
+    // any build that changes a byte produces a new cache name, the new SW
+    // precaches it on install, and activate() drops the previous cache.
+    // `public/sw.js` itself is the template and is excluded from the list.
+    {
+      name: 'localaction-sw',
+      apply: 'build',
+      configResolved(config) {
+        outDir = resolve(config.root, config.build.outDir)
+      },
+      closeBundle() {
+        const dist = outDir;
+        const files = readdirSync(dist, { recursive: true })
+          .map(String)
+          .filter((rel) => statSync(join(dist, rel)).isFile())
+          .map((rel) => rel.split(sep).join('/'));
+        const urls = files
+          .filter((f) => f !== 'sw.js')
+          .map((f) => `/${f}`)
+          .sort();
+        const version = createHash('sha256')
+          .update(
+            files
+              .sort()
+              .map(
+                (f) =>
+                  `${f}:${createHash('sha256').update(readFileSync(join(dist, f))).digest('hex')}`,
+              )
+              .join('\n'),
+          )
+          .digest('hex')
+          .slice(0, 12);
+        const swPath = join(dist, 'sw.js');
+        const out = readFileSync(swPath, 'utf8')
+          .replaceAll('__CACHE_VERSION__', version)
+          .replaceAll('"__PRECACHE_URLS__"', JSON.stringify(urls));
+        if (out.includes('__CACHE_VERSION__') || out.includes('__PRECACHE_URLS__')) {
+          throw new Error('localaction-sw: token substitution failed in dist/sw.js');
+        }
+        writeFileSync(swPath, out);
+      },
+    },
   ],
 })
 // Attach the TinyBase WS sync handler to a Vite dev/preview HTTP server.
@@ -72,6 +118,6 @@ async function attachSyncToVite(
   const httpServer = server.httpServer
   if (httpServer == null || typeof httpServer !== 'object') return
   if (!('on' in httpServer) || typeof httpServer.on !== 'function') return
-  dbg(`attaching WS sync handler to Vite ${label} server`)
+  logInfo('server', `attached WS sync handler (vite ${label})`)
   await attachSyncServer(httpServer as Server, { dbPath })
 }

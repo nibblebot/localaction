@@ -4,10 +4,11 @@ import { dirname, extname, join } from 'node:path';
 import { existsSync, statSync, readFileSync } from 'node:fs';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
-import { createMergeableStore, type MergeableStore } from 'tinybase';
+import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { openDatabase, defaultDbPath, type ServerDatabase } from './db.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
+import { logInfo, logWarn } from '../src/log.ts';
 export const DEFAULT_PORT = 5173;
 export const WS_PATH = '/ws';
 export const STATIC_ROOT_NAME = 'dist';
@@ -56,14 +57,6 @@ export async function attachSyncServer(
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath;
 
-  // Monotonic connection counter so log lines can be correlated without
-  // touching the WebSocket (whose `id` is library-defined and may collide).
-  let nextConnId = 0;
-
-  const log = (connId: number, msg: string): void => {
-    process.stderr.write(`[srv conn=${connId}] ${msg}\n`);
-  };
-
   const wsServer = new WebSocketServer({ noServer: true });
 
   // Track the TCP sockets we upgrade so close() can destroy them. Bun's
@@ -71,32 +64,6 @@ export async function attachSyncServer(
   // connections, so `httpServer.close()`'s callback never fires without
   // this (Node detaches them at upgrade time and doesn't need it).
   const openSockets = new Set<Duplex>();
-
-  wsServer.on('connection', (ws, req) => {
-    const connId = ++nextConnId;
-    const remote = `${req.socket.remoteAddress ?? '?'}:${req.socket.remotePort ?? '?'}`;
-    log(connId, `connected from ${remote}`);
-    ws.on('message', (data, isBinary) => {
-      let size: number;
-      if (Array.isArray(data)) {
-        size = Buffer.concat(data).byteLength;
-      } else if (Buffer.isBuffer(data)) {
-        size = data.byteLength;
-      } else if (data instanceof ArrayBuffer) {
-        size = data.byteLength;
-      } else {
-        size = Buffer.byteLength(data);
-      }
-      const kind = isBinary ? 'binary' : 'text';
-      log(connId, `recv ${kind} ${size}B`);
-    });
-    ws.on('close', (code, reason) => {
-      log(connId, `closed code=${code} reason=${reason.toString('utf8') || '(empty)'}`);
-    });
-    ws.on('error', (err) => {
-      log(connId, `error: ${err.message}`);
-    });
-  });
   // One shared bun:sqlite connection for the whole process. `createSqliteBunPersister`
   // only needs a `Database`; opening it per WebSocket connection leaked
   // FDs (no `db.close()`) and forced the per-connection persister factory
@@ -124,29 +91,7 @@ export async function attachSyncServer(
         throw new Error(`invalid sync path: ${pathId}`);
       }
       const store = createMergeableStore();
-      process.stderr.write(
-        `[srv ${safePathId}] persister created. debug=${!!process.env['LOCALACTION_DEBUG']}\n`,
-      );
-      if (process.env['LOCALACTION_DEBUG']) {
-        const touched = new Set<string>();
-        store.addCellListener(
-          null,
-          null,
-          null,
-          (_store: MergeableStore, _tableId: string, _rowId: string, _cellId: string) => {
-            touched.add(_tableId);
-            process.stderr.write(
-              `[srv ${safePathId}] cell changed: ${_tableId}/${_rowId}/${_cellId}\n`,
-            );
-          },
-        );
-        store.addDidFinishTransactionListener(() => {
-          process.stderr.write(
-            `[srv ${safePathId}] tx finished | touched: ${Array.from(touched).sort().join(',')} | store tables: ${Object.keys(store.getTables()).sort().join(',')}\n`,
-          );
-          touched.clear();
-        });
-      }
+      logInfo('sync', `persister created for path ${safePathId}`);
       return createServerPersister(store, db);
     },
     undefined,
@@ -166,16 +111,20 @@ export async function attachSyncServer(
       return;
     }
     if (!checkSecret(url, secret)) {
-      process.stderr.write(`[srv upgrade] 401 secret mismatch on ${url.pathname}\n`);
+      logWarn('sync', `ws upgrade rejected, secret mismatch (${url.pathname})`);
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
       return;
     }
-    process.stderr.write(`[srv upgrade] upgrading ${url.pathname}\n`);
+    logInfo('sync', `ws upgrade accepted (${url.pathname})`);
     openSockets.add(socket);
     socket.on('close', () => openSockets.delete(socket));
     wsServer.handleUpgrade(req, socket, head, (ws: WsWebSocket) => {
       wsServer.emit('connection', ws, req);
+      logInfo('sync', `client connected (${wsServer.clients.size} online)`);
+      ws.on('close', () => {
+        logInfo('sync', `client disconnected (${wsServer.clients.size} online)`);
+      });
     });
   });
 
@@ -192,6 +141,7 @@ export async function attachSyncServer(
       }
       await tinyServer.destroy();
       db.close();
+      logInfo('persistence', 'closed sqlite');
     },
   };
 }
@@ -284,6 +234,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath;
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
+  logInfo('server', `starting (port ${port}, db ${dbPath}, static ${staticRoot})`);
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
   const { wsServer, tinyServer, close: closeSync } = await attachSyncServer(
@@ -295,12 +246,10 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   );
 
   await new Promise<void>((resolve) => httpServer.listen(port, () => resolve()));
+  logInfo('server', `listening on http://localhost:${port}`);
 
   if (!secret) {
-    console.warn(
-      '[localaction] LOCALACTION_SYNC_SECRET is empty; /ws accepts any client. ' +
-      'Set this env var in production.',
-    );
+    logWarn('server', 'sync secret empty, /ws accepts any client');
   }
 
   return {
@@ -319,6 +268,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
       await new Promise<void>((resolve, reject) =>
         httpServer.close((err) => (err ? reject(err) : resolve())),
       );
+      logInfo('server', 'closed');
     },
   };
 }
@@ -377,6 +327,5 @@ if (isMain) {
     printServerUsage(process.stdout);
     process.exit(0);
   }
-  const server = await startServer({ dbPath: cli.dbPath ?? defaultDbPath(), port: cli.port });
-  console.log(`[localaction] listening on http://localhost:${server.port}`);
+  await startServer({ dbPath: cli.dbPath ?? defaultDbPath(), port: cli.port });
 }

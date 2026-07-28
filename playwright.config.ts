@@ -3,7 +3,15 @@ import { TEST_DB_PATH } from './e2e/test-db-path.ts';
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: ['**/global-setup.ts', '**/global-teardown.ts', '**/test-db-path.ts'],
+  testIgnore: [
+    '**/global-setup.ts',
+    '**/global-teardown.ts',
+    '**/test-db-path.ts',
+    '**/offline.spec.ts',
+    '**/offline-test-db-path.ts',
+    '**/offline-global-setup.ts',
+    '**/offline-global-teardown.ts',
+  ],
   fullyParallel: false,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,

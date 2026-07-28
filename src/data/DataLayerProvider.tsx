@@ -8,6 +8,7 @@ import type { ReactElement, ReactNode } from 'react';
 import type { MergeableStore } from 'tinybase';
 import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
+import { logWarn } from '../log.ts';
 import { backfillOrder } from './order.ts';
 import { installTombstoneReconciler } from './deletion.ts';
 import {
@@ -65,7 +66,7 @@ export function DataLayerProvider({
         // missing `order` cells. Idempotent — re-running is a no-op.
         backfillOrder(store);
       } catch (err) {
-        console.warn('[localaction] persistence disabled', err);
+        logWarn('persistence', `disabled: ${err instanceof Error ? err.message : String(err)}`);
       }
       if (!cancelled) setPersistenceReady(true);
     })();

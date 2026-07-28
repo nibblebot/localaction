@@ -1,5 +1,6 @@
 import { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { getStore } from './store.ts';
+import { logInfo, logWarn } from '../log.ts';
 
 // Module-level singleton. One SyncClient per page, started lazily and
 // never destroyed by React effects. Survives StrictMode's mount →
@@ -93,6 +94,22 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
   let currentWs: WebSocket | undefined;
 
   function setStatus(next: SyncStatus): void {
+    switch (next.kind) {
+      case 'connecting':
+        logInfo('sync', `connecting to ${url}`);
+        break;
+      case 'connected':
+        logInfo('sync', `connected to ${url}`);
+        break;
+      case 'retrying':
+        logInfo('sync', `retry #${next.attempt} in ${next.nextDelayMs}ms (reason: ${next.reason})`);
+        break;
+      case 'error':
+        logWarn('sync', `error: ${next.message}`);
+        break;
+      case 'idle':
+        break;
+    }
     status = next;
     for (const listener of listeners) listener(next);
   }
@@ -220,6 +237,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
         } catch {
         }
       }
+      logInfo('sync', 'destroyed');
     },
     get status(): SyncStatus {
       return status;

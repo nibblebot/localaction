@@ -53,7 +53,7 @@
 - **`bun test` shares one module registry across all test files in a run**, and `mock.module` registrations leak into later files (their static imports resolve at evaluation time, before any `afterAll` restore can run). Never use `mock.module` for app modules — inject fakes through option seams instead (e.g. `startSync`'s `synchronizerImpl`, used by `tests/data/sync.strictmode.test.ts`).
 - **Playwright config** auto-starts `bun run dev` on a non-default port (`5180`) via `webServer.command`; `reuseExistingServer: false`. Tests never share the default Vite/prod-server port (`5173`) so a manual `bun run dev` session can run in parallel without conflict. Tests depend on the `/ws` handshake succeeding.
 - **Test databases live in the OS temp dir (`os.tmpdir()`), never in the repo.** Any dev/preview/smoke run that doesn't need the user's real store must point `--db` at a unique throwaway path under tmp (e.g. `join(tmpdir(), \`localaction-test-<purpose>-${Date.now()}-${process.pid}.db\`)` — `e2e/test-db-path.ts` is the canonical helper). The unique name keeps simultaneous runs from clobbering each other. No cleanup ritual: the OS reaps tmp, and Playwright e2e additionally removes its own DB via global setup/teardown. For an isolated manual `bun run dev` session, pass `--db "<tmp path>"` explicitly — never let an experimental run fall through to `defaultDevDbPath()`. The user's real stores live in the platform user-data dir (`defaultDevDbPath()`/`defaultProdDbPath()` in `server/db.ts`); `bun run dev` and `bun run start` pass them explicitly, and `ServerOptions.dbPath` is required so nothing falls back to a repo-relative path.
-- **Real data is NEVER wiped without an explicit user prompt gate.** The user's store (`defaultDevDbPath()`/`defaultProdDbPath()` — e.g. `~/.local/share/localaction/data-dev.db` and `data-prod.db` on Linux — the pre-split `data.db` from older versions, or any non-`test-*.db` SQLite file, plus the browser's OPFS snapshot) must never be deleted, overwritten, or invalidated by an agent without asking the user first. This binds two ways: (a) directly — no `rm`/`mv`/truncation of non-test DB files, no clearing of OPFS outside throwaway browser profiles; and (b) indirectly — bumping `SCHEMA_VERSION` in `src/data/schema.ts` triggers `reconcileSchemaVersion`'s clean-cutover wipe of every persisted store on next load, so a version bump requires prior user approval too (state the data loss explicitly when asking). Test databases (throwaway paths under `os.tmpdir()`) and e2e browser profiles are exempt — those are always safe to wipe.
+- **Real data is NEVER wiped without an explicit user prompt gate.** The user's store (`defaultDevDbPath()`/`defaultProdDbPath()` — e.g. `~/.local/share/localaction/data-dev.db` and `data-prod.db` on Linux — the pre-split `data.db` from older versions, or any non-`test-*.db` SQLite file, plus the browser's OPFS snapshot) must never be deleted, overwritten, or invalidated by an agent without asking the user first. No `rm`/`mv`/truncation of non-test DB files, no clearing of OPFS outside throwaway browser profiles. Test databases (throwaway paths under `os.tmpdir()`) and e2e browser profiles are exempt — those are always safe to wipe.
 ## Conventions
 - Components are default-exported function components returning `React.JSX.Element` (or `React.JSX.Element | null`). See `src/components/Sidebar.tsx` for the canonical shape; `src/App.tsx` follows the same pattern.
 - Library seams (e.g. `src/data/`) export named functions and types. Components are the only default-exports in `src/`.
@@ -73,17 +73,3 @@ Tests should exercise **external behavior**, not implementation. The data layer 
 ## Design context
 
 `PRODUCT.md` (root) — register (`product`), platform (`web`), users, positioning, brand personality ("calm precision", reference: Things), anti-references. `DESIGN.md` (root) — the visual system: "The Quiet Instrument" north star, Iris accent (#7c3aed, ≤10% per screen), violet-tinted neutral ladder, tonal elevation (no shadows at rest), Plus Jakarta Sans, density-as-user-knob. `.impeccable/design.json` — machine-readable sidecar (tonal ramps, component snippets). Consult these before UI work; they are normative for design decisions.
-
-## Agent skills
-
-### Issue tracker
-
-Local markdown — issues live under `.scratch/<feature>/issues/`. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) recorded as `Status:` lines. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context — vocabulary lives in `docs/glossary.md` (not a root `CONTEXT.md`); no ADRs yet (`docs/adr/` is absent). The skill convention (`docs/agents/domain.md`) still describes where it *would* look; if it can't find those files it proceeds silently.

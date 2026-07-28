@@ -6,7 +6,7 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-import { openDatabase, defaultDbPath, type ServerDatabase } from './db.ts';
+import { openDatabase, defaultProdDbPath, type ServerDatabase } from './db.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
 export const DEFAULT_PORT = 5173;
@@ -20,9 +20,9 @@ export interface ServerOptions {
   port?: number;
   secret?: string;
   // Required: no built-in default. Entry points (`scripts/dev.ts`, the CLI
-  // below) pass `defaultDbPath()` explicitly; tests/smoke must name their
-  // own throwaway path so a run can never touch the user's real store by
-  // accident.
+  // below) pass `defaultDevDbPath()`/`defaultProdDbPath()` explicitly;
+  // tests/smoke must name their own throwaway path so a run can never touch
+  // the user's real store by accident.
   dbPath: string;
   staticRoot?: string;
 }
@@ -284,7 +284,7 @@ interface CliArgs {
 // CLI flag parsing for the prod-server entrypoint (`bun run start`).
 // `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
 // the entry (`bun server/index.ts`) pick them at runtime. When `--db` is
-// absent the entry falls back to `defaultDbPath()` (platform user-data dir);
+// absent the entry falls back to `defaultProdDbPath()` (platform user-data dir);
 // `startServer` itself has no fallback. Unknown flags are ignored so the
 // entry is robust to stray args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
@@ -315,7 +315,7 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
     'Usage: localaction [options]\n' +
       '\n' +
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
-      `                   Default: ${defaultDbPath()}\n` +
+      `                   Default: ${defaultProdDbPath()}\n` +
       '  --port <n>       TCP port to listen on. Default: 5173\n' +
       '  -h, --help       Show this help and exit.\n',
   );
@@ -327,5 +327,5 @@ if (isMain) {
     printServerUsage(process.stdout);
     process.exit(0);
   }
-  await startServer({ dbPath: cli.dbPath ?? defaultDbPath(), port: cli.port });
+  await startServer({ dbPath: cli.dbPath ?? defaultProdDbPath(), port: cli.port });
 }

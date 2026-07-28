@@ -1,6 +1,6 @@
 // `bun run backup-db` — online backup of the server's SQLite store.
 //
-//   bun run backup-db                                # defaultDbPath() → timestamped sibling
+//   bun run backup-db                                # defaultProdDbPath() → timestamped sibling
 //   bun run backup-db --db /tmp/localaction-test-x.db --out ./backups/snapshot.db
 //
 // Uses SQLite's online backup form `VACUUM INTO`: the copy runs inside a
@@ -17,7 +17,7 @@
 
 import { existsSync, statSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
-import { openDatabase, defaultDbPath } from '../server/db.ts';
+import { openDatabase, defaultProdDbPath } from '../server/db.ts';
 
 interface CliArgs {
   dbPath: string;
@@ -26,7 +26,7 @@ interface CliArgs {
 }
 
 function parseArgs(argv: readonly string[]): CliArgs {
-  const out: CliArgs = { dbPath: defaultDbPath(), help: false };
+  const out: CliArgs = { dbPath: defaultProdDbPath(), help: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--db') {
@@ -53,7 +53,7 @@ function printUsage(stream: NodeJS.WriteStream): void {
       'Back up the SQLite store of a running (or stopped) localaction server\n' +
       'using SQLite online backup (VACUUM INTO). Safe while the server is live.\n' +
       '\n' +
-      `  --db <path>    SQLite file to back up. Default: ${defaultDbPath()}\n` +
+      `  --db <path>    SQLite file to back up. Default: ${defaultProdDbPath()}\n` +
       '  --out <path>   Destination file. Default: <db dir>/<db name>.backup-<timestamp>.db\n' +
       '  -h, --help     Show this help and exit.\n',
   );

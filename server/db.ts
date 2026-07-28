@@ -15,15 +15,25 @@ import { dirname, join } from 'node:path';
 import envPaths from 'env-paths';
 import { logInfo } from '../src/log.ts';
 
-// The user's real store lives in the platform user-data directory, not the
-// repo: `~/.local/share/localaction/data.db` (Linux, honoring XDG_DATA_HOME),
-// `%LOCALAPPDATA%\localaction\Data\data.db` (Windows),
-// `~/Library/Application Support/localaction/data.db` (macOS). `suffix: ''`
-// drops env-paths' default `-nodejs` suffix. Entry points (`bun run dev`,
-// `bun run start`) pass this explicitly; the server API itself has no default,
-// so tests/smoke are forced to name their own throwaway path.
-export function defaultDbPath(): string {
-  return join(envPaths('localaction', { suffix: '' }).data, 'data.db');
+// The user's real stores live in the platform user-data directory, not the
+// repo: `~/.local/share/localaction/data-dev.db` / `data-prod.db` (Linux,
+// honoring XDG_DATA_HOME), `%LOCALAPPDATA%\localaction\Data\data-dev.db` /
+// `data-prod.db` (Windows), `~/Library/Application Support/localaction/…`
+// (macOS). `suffix: ''` drops env-paths' default `-nodejs` suffix.
+//
+// Dev and prod get separate files so an experimental `bun run dev` session
+// never shares state with the production store: `defaultDevDbPath()` is the
+// `bun run dev` default; `defaultProdDbPath()` is the `bun run start` /
+// bare `vite preview` / `bun run backup-db` default. A pre-split `data.db`
+// from older versions is left untouched — nothing reads, migrates, or
+// deletes it. Entry points pass the path explicitly; the server API itself
+// has no default, so tests/smoke are forced to name their own throwaway path.
+export function defaultDevDbPath(): string {
+  return join(envPaths('localaction', { suffix: '' }).data, 'data-dev.db');
+}
+
+export function defaultProdDbPath(): string {
+  return join(envPaths('localaction', { suffix: '' }).data, 'data-prod.db');
 }
 
 export type ServerDatabase = Database;

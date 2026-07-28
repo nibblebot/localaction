@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
-import { defaultDbPath } from './server/db.ts'
+import { defaultProdDbPath } from './server/db.ts'
 import { logInfo } from './src/log.ts'
 import type { Server } from 'node:http'
 import { createHash } from 'node:crypto'
@@ -24,7 +24,7 @@ function readDbPathFromArgv(argv: readonly string[]): string | undefined {
   }
   return undefined
 }
-const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDbPath()
+const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultProdDbPath()
 
 // Absolute dist/ path, captured in `configResolved` (the config may be
 // bundled to a temp file at build time, so import.meta.url is unreliable).
@@ -107,8 +107,8 @@ export default defineConfig({
 // listener, so gate on the `.on` capability rather than checking for any
 // `http.Server`-specific property. The DB path (`--db`) is read from
 // `process.argv` — `scripts/dev.ts` moves it past Vite's `--` separator so
-// `cac` ignores it, and always injects `defaultDbPath()` when the user
-// didn't pass one; the `?? defaultDbPath()` above covers bare
+// `cac` ignores it, and always injects `defaultDevDbPath()` when the user
+// didn't pass one; the `?? defaultProdDbPath()` above covers bare
 // `vite preview`. The HTTP/WS port is whatever Vite binds (native `--port`).
 async function attachSyncToVite(
   server: { httpServer: unknown },

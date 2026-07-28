@@ -6,10 +6,12 @@
 // `process.argv`, where `vite.config.ts` reads it and hands it to
 // `attachSyncServer`. Everything else — including Vite's native `--port` —
 // is forwarded to Vite unchanged. When the user passes no `--db`, we inject
-// the real store (`defaultDbPath()`, the platform user-data dir) explicitly
-// so `vite.config.ts` always sees an intentional path.
+// the dev store (`defaultDevDbPath()`, the platform user-data dir) explicitly
+// so `vite.config.ts` always sees an intentional path. The dev store is
+// separate from the production store (`data-prod.db`) so experimental dev
+// runs never touch it.
 //
-//   bun run dev --port 5180 --strictPort                       # real store (defaultDbPath())
+//   bun run dev --port 5180 --strictPort                       # dev store (defaultDevDbPath())
 //   bun run dev --db /tmp/localaction-demo.db --port 5180      # isolated throwaway store
 //
 // Vite itself is spawned as `bun --bun vite --configLoader runner`:
@@ -20,7 +22,7 @@
 import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { defaultDbPath } from '../server/db.ts';
+import { defaultDevDbPath } from '../server/db.ts';
 
 // Split argv into Vite-native tokens and our `--db` token(s). The `--db` value
 // is resolved to an absolute path and re-emitted after `--` so Vite ignores it
@@ -44,7 +46,7 @@ function rewriteArgv(argv: readonly string[]): string[] {
       native.push(arg);
     }
   }
-  return [...native, '--', ...(dbTokens.length > 0 ? dbTokens : [`--db=${defaultDbPath()}`])];
+  return [...native, '--', ...(dbTokens.length > 0 ? dbTokens : [`--db=${defaultDevDbPath()}`])];
 }
 
 const viteArgs = rewriteArgv(process.argv.slice(2));

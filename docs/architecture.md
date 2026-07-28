@@ -224,10 +224,10 @@ rolldown config bundler breaks `ws` upgrade handling under Bun (the bundled
 handler accepts the socket server-side but its 101 response never reaches
 the wire); the native module runner skips bundling and the handshake works.
 
-Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path):
-- prod (`bun run start`): `--port` > `5173`; `--db` > `defaultDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data.db` on Linux).
-- dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
-- preview (`bun run preview`): `--db <path>` works via the `--` escape (e.g. `bun run preview -- --db X`), else `vite.config.ts` falls back to `defaultDbPath()`; `--port` is Vite-native.
+Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). Dev and prod use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db`) so dev runs never share the production store; a pre-split `data.db` is left untouched:
+- prod (`bun run start`): `--port` > `5173`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
+- dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
+- preview (`bun run preview`): `--db <path>` works via the `--` escape (e.g. `bun run preview -- --db X`), else `vite.config.ts` falls back to `defaultProdDbPath()`; `--port` is Vite-native.
 
 ## Build & toolchain
 

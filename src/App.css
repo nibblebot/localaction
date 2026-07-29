@@ -1,6 +1,6 @@
 /* ============================================================
    App shell — 2-zone layout
-   sidebar (--sidebar-w, default 200px, user-resizable 200–260px) | main (1fr)
+   sidebar (--sidebar-w, default 240px, user-resizable 200–260px) | main (1fr)
    ============================================================ */
 
 .app-shell {
@@ -657,45 +657,45 @@ body.sidebar-resizing {
   margin: 4px 0 0;
 }
 
-/* Inline add button — dashed "+" toggle that reveals an inline-add-input
-   in place (see InlineAddButton.tsx). Mirrors the input's rest/hover/
-   focus treatment so the swap reads as the same slot. */
-
-.inline-add-button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-  font-size: 1rem;
-  font-style: italic;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: 6px 10px;
-  margin: 6px 0 0;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.inline-add-button:hover {
-  border-color: var(--text-muted);
-  color: var(--text-h);
-}
-
-.inline-add-button:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  border-style: solid;
-  background: var(--surface);
-}
-
 /* Wrapper around a revealed input: invisible to layout so the input
    behaves as a direct child of the button's flex/block container. */
 .inline-add-wrap {
   display: contents;
+}
+
+/* Header-revealed inline-add input (InlineAddButton open state). In a
+   pane-section head it flexes inline next to the title; in a tab-group
+   head it wraps onto its own row, indented under the title text. */
+.pane-section-head .inline-add-input {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  align-self: center;
+}
+
+.tab-group-head .inline-add-wrap {
+  display: block;
+  flex: 0 0 100%;
+}
+
+.tab-group-head .inline-add-input {
+  margin: var(--space-1) 0;
+  margin-inline-start: calc(var(--icon-sm) + 6px);
+  width: calc(100% - var(--icon-sm) - 6px);
+}
+
+/* Group header as a drop target: a quiet dashed outline while a drag
+   is in flight, accent tint + solid accent outline on hover. */
+.tab-group-head-drop-target {
+  outline: 1px dashed var(--border-strong);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.tab-group-head-drop-over {
+  background: var(--accent-tint);
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .sidebar-section-add {
@@ -724,7 +724,6 @@ body.sidebar-resizing {
   align-items: center;
   gap: var(--space-2);
   margin-bottom: var(--space-2);
-  padding-inline: var(--space-2);
 }
 
 .pane-section-toggle {
@@ -734,7 +733,10 @@ body.sidebar-resizing {
   font: inherit;
   background: transparent;
   border: 0;
-  padding: 2px 0;
+  /* Outdented like .tab-group-toggle so the section chevrons align
+     with the Active / Backlog / Done chevrons one register down. */
+  margin-inline-start: calc(-1 * var(--space-2));
+  padding: 2px var(--space-2);
   cursor: pointer;
   color: var(--text-h);
   border-radius: var(--radius-sm);
@@ -761,7 +763,7 @@ body.sidebar-resizing {
   letter-spacing: 0.06em;
   color: black;
 }
-.pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label) {
+.pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label):not(.area-tab-action-add) {
   margin-left: auto;
 }
 
@@ -837,7 +839,8 @@ body.sidebar-resizing {
 
 .tab-group-head {
   display: flex;
-  align-items: baseline;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-1);
   margin-bottom: var(--space-2);
 }
@@ -879,31 +882,14 @@ body.sidebar-resizing {
 }
 
 /* Droppable wrapper around a sortable status group. The default state
-   is invisible — only an in-flight drag paints the affordance. */
+   is invisible — only direct pointer overlap paints the affordance. */
 .tab-group-droppable {
   border-radius: var(--radius-md);
-}
-
-/* Empty destination group (Backlog with no shelved projects): a
-   standing drop zone — dashed outline plus a quiet hint — so shelving
-   a project never requires discovering a target that only exists
-   mid-drag. */
-.tab-group-empty-zone {
-  min-height: calc(var(--space-6) + var(--space-4));
-  outline: 1px dashed var(--border);
-  outline-offset: 2px;
 }
 
 .tab-group-drop-over {
   outline: 1px dashed var(--border-strong);
   outline-offset: 2px;
-}
-
-.tab-group-empty-hint {
-  margin: 0;
-  padding: var(--space-1) var(--space-2) var(--space-2);
-  font-size: 0.79rem;
-  color: var(--text-muted);
 }
 
 .tab-group-count {
@@ -1463,6 +1449,11 @@ body.sidebar-resizing {
   cursor: pointer;
   accent-color: var(--accent);
   flex-shrink: 0;
+  /* Center the 14px box on the title's first line: title is 1rem with
+     a 1.5 line box and 2px top padding, so the line center sits at
+     2px + 0.75rem from the row's top. rem-based: exact at every
+     density. */
+  margin-top: calc(0.75rem - 5px);
 }
 
 .task-line-title {
@@ -2360,6 +2351,9 @@ body.sidebar-resizing {
   /* Negative margin absorbs the grip icon's dead space inside the
      24px box so the handle→checkbox gap matches checkbox→title. */
   margin-right: -2px;
+  /* Same first-line centering as .task-line-check (24px box on the
+     title's 2px + 0.75rem line center). */
+  margin-top: calc(0.75rem - 10px);
   touch-action: none;
   /* Hidden until the row is hovered / focused / being dragged —
      keeps the grip chrome off the resting state. */
@@ -2461,31 +2455,6 @@ body.sidebar-resizing {
 .section-row:hover .task-line-action,
 .section-row:focus-within .task-line-action {
   opacity: 1;
-}
-
-/* Footer under the project task tree: the add-task and add-section
-   buttons (or their revealed inputs) side by side on one row. A
-   generous top margin separates the footer from the last task
-   row, so the dashed invitations read as a deliberate footer
-   gesture rather than as a missing row. */
-.tasks-tab-footer {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.tasks-tab-footer .inline-add-input {
-  flex: 1 1 0;
-  min-width: 0;
-  margin-top: 0;
-}
-
-.tasks-tab-footer .inline-add-button {
-  flex: 0 0 auto;
-  width: auto;
-  margin-top: 0;
 }
 
 /* ============================================================

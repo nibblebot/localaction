@@ -13,9 +13,9 @@ async function createArea(page: Page, name: string): Promise<void> {
 async function addAreaTask(page: Page, title: string): Promise<void> {
   const section = page.locator('.pane-section', { hasText: 'Area tasks' });
   await section.locator('button[aria-label="Add task"]').click();
-  const input = section.locator('input[aria-label="New area task"]');
-  await input.fill(title);
-  await input.press('Enter');
+  await expect(section.locator('.task-line-title:focus')).toBeVisible();
+  await page.keyboard.type(title);
+  await page.keyboard.press('Enter');
 }
 
 test('area tasks: add, nest, complete, and persist across reload', async ({ page }) => {
@@ -71,9 +71,10 @@ test('collapsing a section hides its body and persists across reload', async ({ 
   await page.goto('/#/');
   await createArea(page, area);
 
-  // Collapse Notes: its body (the inline add input) disappears.
+  // Collapse Notes: its body disappears. (An empty notes body is
+  // zero-height, so assert DOM presence rather than visibility.)
   const notesToggle = page.locator('.pane-section-toggle', { hasText: 'Notes' });
-  await expect(page.locator('.notes-tab')).toBeVisible();
+  await expect(page.locator('.notes-tab')).toHaveCount(1);
   await notesToggle.click();
   await expect(notesToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(page.locator('.notes-tab')).toHaveCount(0);
@@ -88,6 +89,6 @@ test('collapsing a section hides its body and persists across reload', async ({ 
   // Re-expanding restores the body; the Projects and Area tasks
   // sections were never affected.
   await page.locator('.pane-section-toggle', { hasText: 'Notes' }).click();
-  await expect(page.locator('.notes-tab')).toBeVisible();
+  await expect(page.locator('.notes-tab')).toHaveCount(1);
   await expect(page.locator('.projects-tab')).toBeVisible();
 });

@@ -28,6 +28,12 @@ import {
 import type { ProjectRollup, ProjectStatus } from '../data/index.ts';
 import type { SortableHandleProps } from './SortableList.tsx';
 import Group from './Group.tsx';
+import {
+  containerId,
+  headerContainerId,
+  resolveProjectDrop,
+} from './projectGroupDrop.ts';
+import type { SlicePosition, StatusGroupId } from './projectGroupDrop.ts';
 
 /**
  * The project status groups of an area view (Active / Backlog / Done),
@@ -45,14 +51,14 @@ import Group from './Group.tsx';
  * Backlog slices stay drop-connected while rendered in separate
  * hoisted groups.
  *
- * - The viewed area's Backlog slice is a permanent standing drop
- *   destination: it renders on every area view, even with no
- *   projects at all — shelving a project must never require
- *   discovering a drop zone that only exists mid-drag. Its Active
- *   slice renders while the area has any project in either group. A
- *   sub-area's empty counterpart slice renders only mid-drag
- *   (labeled by its header), so a sub-area's name never repeats
- *   across groups at rest.
+ * - The viewed area's Active and Backlog slices are permanent standing
+ *   destinations: both render on every area view, even with no
+ *   projects at all — the group headers carry the add-project
+ *   affordances and are themselves drop targets, so shelving a project
+ *   never requires discovering a drop zone that only exists mid-drag.
+ *   A sub-area's empty counterpart slice renders only mid-drag
+ *   (labeled by its header), so a sub-area's name never repeats across
+ *   groups at rest.
  * - A same-slice drop reorders (`reorderProject`); a cross-group drop
  *   within the same area writes the stored status and the new position
  *   in one transaction (`moveProjectToStatus`).
@@ -60,8 +66,6 @@ import Group from './Group.tsx';
  * Row rendering stays with the caller (`renderSortableRow` /
  * `renderRow`) so the project-row chrome lives in one place.
  */
-
-type StatusGroupId = 'active' | 'backlog';
 
 /** One area's projects inside the hoisted status groups — the viewed
  * area itself or one rolled-in sub-area. */
@@ -76,26 +80,6 @@ export interface ProjectStatusSlice {
   done: readonly ProjectRollup[];
   /** Sub-area header rendered above the slice's rows. */
   header?: ReactNode;
-}
-
-interface SlicePosition {
-  areaId: string;
-  group: StatusGroupId;
-}
-
-/** Droppable container id for one area's slice of a status group.
- * Prefixed so it can never collide with a project id in the same
- * DndContext. */
-function containerId(areaId: string, group: StatusGroupId): string {
-  return `project-group:${areaId}:${group}`;
-}
-
-function parseContainerId(id: string): SlicePosition | null {
-  if (!id.startsWith('project-group:')) return null;
-  const sep = id.lastIndexOf(':');
-  const group = id.slice(sep + 1);
-  if (group !== 'active' && group !== 'backlog') return null;
-  return { areaId: id.slice('project-group:'.length, sep), group };
 }
 
 const STATUS_FOR_GROUP: Record<StatusGroupId, ProjectStatus> = {
@@ -156,24 +140,19 @@ function SortableProjectSlot({
 }
 
 /** One area's slice of a sortable status group: a droppable container
- * holding the slice's header and rows. An empty slice keeps a labeled
- * drop zone (see the standing-drop-destination invariant in the module
- * docstring). */
+ * holding the slice's header and rows, so a drop below the last row
+ * lands at the end of the slice. Invisible at rest and while dragging
+ * (the hoisted group headers carry the drop-target affordance); only
+ * direct pointer overlap paints `tab-group-drop-over`. */
 function SliceDropZone({
   areaId,
   group,
-  empty,
   className,
-  emptyHint,
   children,
 }: {
   areaId: string;
   group: StatusGroupId;
-  /** True when the slice has no rows — paints the dashed drop zone and
-   * renders `emptyHint`. */
-  empty: boolean;
   className?: string;
-  emptyHint?: string;
   children: ReactNode;
 }): ReactElement {
   const { setNodeRef, isOver } = useDroppable({
@@ -183,14 +162,52 @@ function SliceDropZone({
   const classes = ['tab-group-droppable'];
   if (className !== undefined) classes.push(className);
   if (isOver) classes.push('tab-group-drop-over');
-  if (empty) classes.push('tab-group-empty-zone');
   return (
     <div ref={setNodeRef} className={classes.join(' ')}>
       {children}
-      {empty && emptyHint !== undefined && (
-        <p className="tab-group-empty-hint">{emptyHint}</p>
-      )}
     </div>
+  );
+}
+
+/** The viewed area's hoisted group header as a drop target: dropping
+ * on Active / Backlog appends to the viewed area's slice of that
+ * group. Distinct id from the slice containers — header and container
+ * are separate droppables in the same DndContext. MUST render inside
+ * the DndContext tree: useDroppable called in the component that
+ * renders DndContext registers against the default context and never
+ * receives collisions. */
+function GroupHeaderDropTarget({
+  areaId,
+  group,
+  dragging,
+  valid,
+  children,
+}: {
+  areaId: string | undefined;
+  group: StatusGroupId;
+  /** A drag is in flight. */
+  dragging: boolean;
+  /** False when the dragged row belongs to another area — the drop
+   * would snap back, so the header stays quiet. */
+  valid: boolean;
+  children: (dropProps: {
+    dropRef: (node: HTMLElement | null) => void;
+    dropActive: boolean;
+    dropOver: boolean;
+  }) => ReactNode;
+}): ReactElement {
+  const { setNodeRef, isOver } = useDroppable({
+    id: headerContainerId(areaId ?? '', group),
+    disabled: areaId === undefined,
+  });
+  return (
+    <>
+      {children({
+        dropRef: setNodeRef,
+        dropActive: dragging && valid,
+        dropOver: isOver && valid,
+      })}
+    </>
   );
 }
 
@@ -198,6 +215,7 @@ export default function ProjectStatusGroups({
   slices,
   collapsedGroups,
   onToggleGroup,
+  renderGroupAction,
   renderSortableRow,
   renderRow,
 }: {
@@ -206,11 +224,20 @@ export default function ProjectStatusGroups({
   slices: readonly ProjectStatusSlice[];
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (id: StatusGroupId | 'done') => void;
+  /** Action rendered at the right edge of the Active / Backlog group
+   * headers (e.g. the per-group add-project "+"). Done gets none. */
+  renderGroupAction?: (group: StatusGroupId) => ReactNode;
   renderSortableRow: (p: ProjectRollup, handle: SortableHandleProps) => ReactNode;
   renderRow: (p: ProjectRollup) => ReactNode;
 }): ReactElement {
   const { store } = useDataLayer();
   const [draggingId, setDraggingId] = useState<string | null>(null);
+
+  // The viewed area's slice (name === null) is the hoisted headers'
+  // drop destination. The droppable hooks live in GroupHeaderDropTarget
+  // INSIDE the DndContext tree — called here they'd register against
+  // the default context and never receive collisions.
+  const viewedAreaId = slices.find((s) => s.name === null)?.areaId;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -254,40 +281,10 @@ export default function ProjectStatusGroups({
       if (!over) return;
       const dragId = String(dragged.id);
       const overId = String(over.id);
-      if (dragId === overId) return;
 
-      const source = findPosition(dragId);
-      if (!source) return;
-
-      let target: SlicePosition;
-      let beforeId: string | undefined;
-      const overContainer = parseContainerId(overId);
-      if (overContainer) {
-        // Drop on an empty slice / slice chrome → end of that slice.
-        target = overContainer;
-        beforeId = undefined;
-      } else {
-        const overPos = findPosition(overId);
-        if (!overPos) return;
-        target = overPos;
-        if (target.areaId === source.areaId && target.group === source.group) {
-          // Same gap translation as SortableList: the hidden dragging
-          // row keeps its slot, so the landing gap shifts by one when
-          // moving down past the row it sat above.
-          const ids = idsIn(source);
-          const overIdx = ids.indexOf(overId);
-          const activeIdx = ids.indexOf(dragId);
-          if (activeIdx < 0 || activeIdx < overIdx) {
-            const next = ids[overIdx + 1];
-            beforeId = next === dragId ? ids[overIdx + 2] : next;
-          } else {
-            beforeId = ids[overIdx];
-          }
-        } else {
-          // Cross-slice: the drop lands right before the `over` row.
-          beforeId = overId;
-        }
-      }
+      const resolved = resolveProjectDrop(dragId, overId, findPosition, idsIn);
+      if (!resolved) return;
+      const { source, target, beforeId } = resolved;
 
       // Cross-area drops are a no-op — the row snaps back. Projects
       // change areas only from their own edit affordances, never by
@@ -310,17 +307,17 @@ export default function ProjectStatusGroups({
 
   const draggingSource = draggingId === null ? null : findPosition(draggingId);
 
-  // The viewed area's Backlog slice is a permanent standing drop
-  // destination: it renders even when the area has no projects at
-  // all, so shelving never requires discovering a target that only
-  // exists mid-drag. Its Active slice renders while the area has any
-  // project in either group. A sub-area's empty counterpart slice
+  // Both of the viewed area's slices are permanent standing
+  // destinations: each renders even when the area has no projects at
+  // all, so the group headers (and their add affordances) are always
+  // present and shelving never requires discovering a target that
+  // only exists mid-drag. A sub-area's empty counterpart slice
   // renders only mid-drag (labeled by its header) so its name never
   // repeats across groups at rest. With no rows, only the viewed
-  // area's Backlog slice renders.
+  // area's two slices render.
   const activeSliceVisible = (s: ProjectStatusSlice): boolean =>
+    s.name === null ||
     s.active.length > 0 ||
-    (s.name === null && s.backlog.length > 0) ||
     (draggingSource?.areaId === s.areaId && draggingSource.group === 'backlog');
   const backlogSliceVisible = (s: ProjectStatusSlice): boolean =>
     s.name === null ||
@@ -377,91 +374,98 @@ export default function ProjectStatusGroups({
     >
       <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
         {activeSlices.length > 0 && (
-          <Group
-            title="Active"
-            count={activeSlices.reduce((n, s) => n + s.active.length, 0)}
-            collapsed={collapsedGroups.has('active')}
-            onToggleCollapse={() => onToggleGroup('active')}
+          <GroupHeaderDropTarget
+            areaId={viewedAreaId}
+            group="active"
+            dragging={draggingId !== null}
+            valid={draggingSource?.areaId === viewedAreaId}
           >
-            {activeSlices.map((s) => {
-              // The dashed empty zone + hint only make sense as a drop
-              // affordance; a slice with no rows outside a drag stays
-              // plain.
-              const empty =
-                s.active.length === 0 &&
-                ((s.name === null && s.backlog.length > 0) ||
-                  (draggingSource?.areaId === s.areaId &&
-                    draggingSource.group === 'backlog'));
-              return (
-                <SliceDropZone
-                  key={s.areaId}
-                  areaId={s.areaId}
-                  group="active"
-                  empty={empty}
-                  className={s.name === null ? undefined : 'subarea-section'}
-                  emptyHint="Drag a project here to restore it"
-                >
-                  {s.header}
-                  {s.active.length > 0 && (
-                    <div
-                      className="sortable-list"
-                      role="list"
-                      aria-label={sortableListLabel(s, 'Active')}
+            {(dropProps) => (
+              <Group
+                title="Active"
+                count={activeSlices.reduce((n, s) => n + s.active.length, 0)}
+                collapsed={collapsedGroups.has('active')}
+                onToggleCollapse={() => onToggleGroup('active')}
+                trailing={renderGroupAction?.('active')}
+                dropRef={dropProps.dropRef}
+                dropActive={dropProps.dropActive}
+                dropOver={dropProps.dropOver}
+              >
+                {activeSlices.map((s) => {
+                  return (
+                    <SliceDropZone
+                      key={s.areaId}
+                      areaId={s.areaId}
+                      group="active"
+                      className={s.name === null ? undefined : 'subarea-section'}
                     >
-                      {s.active.map((p) => (
-                        <SortableProjectSlot key={p.projectId} id={p.projectId} group="active">
-                          {(handle) => renderSortableRow(p, handle)}
-                        </SortableProjectSlot>
-                      ))}
-                    </div>
-                  )}
-                </SliceDropZone>
-              );
-            })}
-          </Group>
+                      {s.header}
+                      {s.active.length > 0 && (
+                        <div
+                          className="sortable-list"
+                          role="list"
+                          aria-label={sortableListLabel(s, 'Active')}
+                        >
+                          {s.active.map((p) => (
+                            <SortableProjectSlot key={p.projectId} id={p.projectId} group="active">
+                              {(handle) => renderSortableRow(p, handle)}
+                            </SortableProjectSlot>
+                          ))}
+                        </div>
+                      )}
+                    </SliceDropZone>
+                  );
+                })}
+              </Group>
+            )}
+          </GroupHeaderDropTarget>
         )}
         {backlogSlices.length > 0 && (
-          <Group
-            title="Backlog"
-            count={backlogSlices.reduce((n, s) => n + s.backlog.length, 0)}
-            collapsed={collapsedGroups.has('backlog')}
-            onToggleCollapse={() => onToggleGroup('backlog')}
+          <GroupHeaderDropTarget
+            areaId={viewedAreaId}
+            group="backlog"
+            dragging={draggingId !== null}
+            valid={draggingSource?.areaId === viewedAreaId}
           >
-            {backlogSlices.map((s) => {
-              // The viewed area's always-visible Backlog slice keeps
-              // the dashed standing drop zone whenever it has no rows.
-              const empty =
-                s.backlog.length === 0 &&
-                (s.name === null ||
-                  (draggingSource?.areaId === s.areaId &&
-                    draggingSource.group === 'active'));
-              return (
-                <SliceDropZone
-                  key={s.areaId}
-                  areaId={s.areaId}
-                  group="backlog"
-                  empty={empty}
-                  className={s.name === null ? undefined : 'subarea-section'}
-                  emptyHint="Drag a project here to shelve it"
-                >
-                  {s.header}
-                  {s.backlog.length > 0 && (
-                    <div
-                      className="sortable-list"
-                      role="list"
-                      aria-label={sortableListLabel(s, 'Backlog')}
+            {(dropProps) => (
+              <Group
+                title="Backlog"
+                count={backlogSlices.reduce((n, s) => n + s.backlog.length, 0)}
+                collapsed={collapsedGroups.has('backlog')}
+                onToggleCollapse={() => onToggleGroup('backlog')}
+                trailing={renderGroupAction?.('backlog')}
+                dropRef={dropProps.dropRef}
+                dropActive={dropProps.dropActive}
+                dropOver={dropProps.dropOver}
+              >
+                {backlogSlices.map((s) => {
+                  return (
+                    <SliceDropZone
+                      key={s.areaId}
+                      areaId={s.areaId}
+                      group="backlog"
+                      className={s.name === null ? undefined : 'subarea-section'}
                     >
-                      {s.backlog.map((p) => (
-                        <SortableProjectSlot key={p.projectId} id={p.projectId} group="backlog">
-                          {(handle) => renderSortableRow(p, handle)}
-                        </SortableProjectSlot>
-                      ))}
-                    </div>
-                  )}
-                </SliceDropZone>
-              );
-            })}
-          </Group>
+                      {s.header}
+                      {s.backlog.length > 0 && (
+                        <div
+                          className="sortable-list"
+                          role="list"
+                          aria-label={sortableListLabel(s, 'Backlog')}
+                        >
+                          {s.backlog.map((p) => (
+                            <SortableProjectSlot key={p.projectId} id={p.projectId} group="backlog">
+                              {(handle) => renderSortableRow(p, handle)}
+                            </SortableProjectSlot>
+                          ))}
+                        </div>
+                      )}
+                    </SliceDropZone>
+                  );
+                })}
+              </Group>
+            )}
+          </GroupHeaderDropTarget>
         )}
       </SortableContext>
       {doneSlices.length > 0 && (

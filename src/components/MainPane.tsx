@@ -14,6 +14,8 @@ import {
   createProject,
   createTask,
   createNote,
+  createSection,
+  updateProject,
   createArea,
   getArea,
   deleteProject,
@@ -54,6 +56,7 @@ import ProjectStatusGroups from './ProjectStatusGroups.tsx';
 import type { ProjectStatusSlice } from './ProjectStatusGroups.tsx';
 import Group from './Group.tsx';
 import ProjectDueDateButton from './ProjectDueDateButton.tsx';
+import { queueTaskTitleFocus, queueSectionTitleFocus } from './taskTitleFocus.ts';
 import { useShowCompleted } from './useShowCompleted.ts';
 import { useCollapsedProjects } from './useCollapsedProjects.ts';
 import { useCollapsedSections } from './useCollapsedSections.ts';
@@ -221,6 +224,14 @@ export default function MainPane(): React.JSX.Element {
           count={noteCount}
           collapsed={collapsedSections.collapsed.has('notes')}
           onToggleCollapse={() => collapsedSections.toggle('notes')}
+          trailing={
+            <AddNoteButton
+              areaId={areaId}
+              onOpen={() => {
+                if (collapsedSections.collapsed.has('notes')) collapsedSections.toggle('notes');
+              }}
+            />
+          }
         >
           <NotesSection areaId={areaId} />
         </CollapsibleSection>
@@ -582,10 +593,6 @@ function ProjectsSection({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const rollups = useProjectRollups(store);
-  const inArea = useMemo(
-    () => rollups.filter((r) => r.areaId === areaId),
-    [rollups, areaId],
-  );
 
   // One slice per in-scope area — the viewed area first (headerless),
   // then every sub-area depth-first — each partitioning its visible
@@ -645,8 +652,9 @@ function ProjectsSection({
     [slices, subAreas, viewedArea],
   );
 
-  function addProject(name: string): void {
-    createProject(store, { name, areaId });
+  function addProject(name: string, group: 'active' | 'backlog'): void {
+    const id = createProject(store, { name, areaId });
+    if (group === 'backlog') updateProject(store, id, { status: PROJECT_STATUS.backlog });
   }
 
   return (
@@ -655,6 +663,18 @@ function ProjectsSection({
         slices={slicesWithChrome}
         collapsedGroups={collapsedGroups}
         onToggleGroup={onToggleGroup}
+        renderGroupAction={(group) => (
+          <InlineAddButton
+            label={group === 'active' ? 'Add project to Active' : 'Add project to Backlog'}
+            placeholder="New project…"
+            inputAriaLabel="New project"
+            className="area-tab-action-add"
+            onSubmit={(name) => addProject(name, group)}
+            onOpenChange={(open) => {
+              if (open && collapsedGroups.has(group)) onToggleGroup(group);
+            }}
+          />
+        )}
         renderSortableRow={(p, handle) => (
           <SortableProjectRow
             handle={handle}
@@ -684,16 +704,6 @@ function ProjectsSection({
             onToggleEmptySections={() => onToggleEmptySections(p.projectId)}
           />
         )}
-      />
-      <InlineAddButton
-        label="Add project"
-        placeholder={
-          inArea.length === 0
-            ? 'No projects yet — add the first one.'
-            : 'New project…'
-        }
-        inputAriaLabel="New project"
-        onSubmit={addProject}
       />
     </section>
   );
@@ -781,9 +791,11 @@ function ProjectProgressMeter({
 
 /**
  * The project action cluster shared by the area-view card and the
- * project detail pane: due date, empty-section pruning, notes, rename,
- * delete. Delete is confirmed and undoable; `onAfterDelete` lets the
- * detail pane navigate away from the removed project.
+ * project detail pane: add-task, add-section, due date, empty-section
+ * pruning, notes, rename, delete. Delete is confirmed and undoable;
+ * `onAfterDelete` lets the detail pane navigate away from the removed
+ * project. The add affordances create an empty task/section and hand
+ * focus to its title input once the row mounts.
  */
 function ProjectRowActions({
   projectId,
@@ -792,6 +804,7 @@ function ProjectRowActions({
   onToggleEmptySections,
   onRename,
   onAfterDelete,
+  onEnsureExpanded,
 }: {
   projectId: string;
   /** Display name for aria-labels and the delete confirmation. */
@@ -802,6 +815,8 @@ function ProjectRowActions({
   onRename: () => void;
   /** Runs after a confirmed delete (panes navigate away; rows omit). */
   onAfterDelete?: () => void;
+  /** Expands a collapsed card so the new row can mount (panes omit). */
+  onEnsureExpanded?: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
@@ -809,6 +824,41 @@ function ProjectRowActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <>
+      <button
+        type="button"
+        className="project-row-action"
+        aria-label={`Add task to ${display}`}
+        title="Add task"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEnsureExpanded?.();
+          const id = createTask(store, { title: '', placement: { kind: 'project', id: projectId } });
+          queueTaskTitleFocus(id);
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#plus-filled-icon" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="project-row-action"
+        aria-label={`Add section to ${display}`}
+        title="Add section"
+        onClick={(e) => {
+          e.stopPropagation();
+          onEnsureExpanded?.();
+          // A freshly created (empty) section would be pruned while
+          // empty-section pruning is on, stranding the queued focus.
+          if (hideEmptySections) onToggleEmptySections();
+          const id = createSection(store, { name: '', projectId });
+          queueSectionTitleFocus(id);
+        }}
+      >
+        <svg className="svg-icon" aria-hidden="true">
+          <use href="/icons.svg#add-section-icon" />
+        </svg>
+      </button>
       <ProjectDueDateButton projectId={projectId} />
       <button
         type="button"
@@ -984,6 +1034,9 @@ function ProjectRow({
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
             onRename={() => setEditing(true)}
+            onEnsureExpanded={() => {
+              if (collapsed) onToggleCollapse();
+            }}
           />
         </div >
       </div >
@@ -1121,6 +1174,9 @@ function SortableProjectRow({
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
             onRename={() => setEditing(true)}
+            onEnsureExpanded={() => {
+              if (collapsed) onToggleCollapse();
+            }}
           />
         </div >
       </div >
@@ -1153,14 +1209,6 @@ function NotesSection({
     () => [...areaNotes, ...projectNotes, ...taskNotes],
     [areaNotes, projectNotes, taskNotes],
   );
-  function addNote(title: string): void {
-    createNote(store, {
-      title,
-      body: '',
-      entityType: NOTE_ENTITY_TYPE.area,
-      entityId: areaId,
-    });
-  }
 
   return (
     <section className="notes-tab" aria-label="Notes">
@@ -1169,16 +1217,28 @@ function NotesSection({
           <NoteLine key={nid} noteId={nid} />
         ))}
       </ul>
-      <InlineAddInput
-        placeholder={
-          allIds.length === 0
-            ? 'No notes yet — add the first one.'
-            : 'New note…'
-        }
-        ariaLabel="New note"
-        onSubmit={addNote}
-      />
     </section>
+  );
+}
+
+/** The "+" in the NOTES section header: reveals a focused input in the
+ * header row itself. Creation lives here (not in NotesSection) because
+ * the header is rendered by MainPane's CollapsibleSection. */
+function AddNoteButton({ areaId, onOpen }: { areaId: string; onOpen: () => void }): React.JSX.Element {
+  const { store } = useDataLayer();
+  return (
+    <InlineAddButton
+      label="Add note"
+      placeholder="New note…"
+      inputAriaLabel="New note"
+      className="area-tab-action-add"
+      onSubmit={(title) =>
+        createNote(store, { title, body: '', entityType: NOTE_ENTITY_TYPE.area, entityId: areaId })
+      }
+      onOpenChange={(open) => {
+        if (open) onOpen();
+      }}
+    />
   );
 }
 
@@ -1678,9 +1738,6 @@ function AreaTasksSection({
     }
     return out;
   }, [topLevelIds, store]);
-  function addTask(title: string): void {
-    createTask(store, { title, placement: { kind: 'area', id: areaId } });
-  }
   function onMove(
     activeId: string,
     parentId: string | null,
@@ -1721,22 +1778,29 @@ function AreaTasksSection({
       count={visibleTopLevel + visibleSubAreaCount}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}
+      trailing={
+        <button
+          type="button"
+          className="area-tab-action area-tab-action-add"
+          aria-label="Add task"
+          title="Add task"
+          onClick={() => {
+            if (collapsed) onToggleCollapse();
+            const id = createTask(store, { title: '', placement: { kind: 'area', id: areaId } });
+            queueTaskTitleFocus(id);
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#add-icon" />
+          </svg>
+        </button>
+      }
     >
       <TaskTreeByStatus
         ids={allIds}
         onMove={onMove}
         ariaLabel="Area tasks"
         showCompleted={showCompleted}
-      />
-      <InlineAddButton
-        label="Add task"
-        placeholder={
-          topLevelIds.length === 0
-            ? 'No area tasks yet — add the first one.'
-            : 'New area task…'
-        }
-        inputAriaLabel="New area task"
-        onSubmit={addTask}
       />
       {subAreas.map((sa) => (
         <SubAreaTaskGroup

@@ -11,8 +11,8 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
-  const input = page.locator('.projects-tab .inline-add-input');
+  await page.locator('button[aria-label="Add project to Active"]').click();
+  const input = page.locator('input[aria-label="New project"]');
   await input.fill(name);
   await input.press('Enter');
   await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
@@ -20,10 +20,10 @@ async function createProject(page: Page, name: string): Promise<void> {
 
 async function addCardTask(page: Page, project: string, title: string): Promise<void> {
   const card = page.locator('li.project-row', { hasText: project });
-  await card.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
-  const input = card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]');
-  await input.fill(title);
-  await input.press('Enter');
+  await card.locator(`button[aria-label="Add task to ${project}"]`).click();
+  await expect(card.locator('.task-line-title:focus')).toBeVisible();
+  await page.keyboard.type(title);
+  await page.keyboard.press('Enter');
 }
 
 test('combined Projects tab: meters, per-project caret, collapse-all, persistence', async ({

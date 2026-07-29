@@ -8,6 +8,10 @@ export default function Group({
   count,
   collapsed,
   onToggleCollapse,
+  trailing,
+  dropRef,
+  dropActive,
+  dropOver,
   children,
 }: {
   /** Status-partition label (Active / Backlog / Done / Area tasks).
@@ -20,13 +24,23 @@ export default function Group({
    * toggle that hides the group's rows. Pure view state. */
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  /** Action pinned next to the title (e.g. an add button). */
+  trailing?: React.ReactNode;
+  /** Droppable header: ref from useDroppable, `dropActive` while a
+   * drag is in flight, `dropOver` when the dragged row hovers. */
+  dropRef?: (node: HTMLElement | null) => void;
+  dropActive?: boolean;
+  dropOver?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const collapsible = title !== undefined && onToggleCollapse !== undefined;
+  const headClasses = ['tab-group-head'];
+  if (dropActive) headClasses.push('tab-group-head-drop-target');
+  if (dropOver) headClasses.push('tab-group-head-drop-over');
   return (
     <div className="tab-group">
       {title !== undefined && (
-        <header className="tab-group-head">
+        <header ref={dropRef} className={headClasses.join(' ')}>
           {collapsible ? (
             <button
               type="button"
@@ -47,6 +61,7 @@ export default function Group({
               <span className="tab-group-count">· {count}</span>
             </>
           )}
+          {trailing}
         </header>
       )}
       {!collapsed && (

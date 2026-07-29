@@ -50,7 +50,7 @@ import { SortableTree } from './SortableTree.tsx';
 import type { SortableTreeNode } from './SortableTree.tsx';
 import type { SortableHandleProps } from './SortableList.tsx';
 import { TaskRow } from './TaskList.tsx';
-import { queueTaskTitleFocus } from './taskTitleFocus.ts';
+import { queueTaskTitleFocus, consumeSectionTitleFocus } from './taskTitleFocus.ts';
 import { useUndo } from './useUndo.ts';
 import EditableTitle from './EditableTitle.tsx';
 import ConfirmModal from './ConfirmModal.tsx';
@@ -96,6 +96,9 @@ function SectionRow({
   const section = useSection(store, sectionId);
   const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Freshly created sections land with an empty name and a queued
+  // focus handoff — the title input grabs focus on first mount.
+  const [autoFocus] = useState(() => consumeSectionTitleFocus(sectionId));
   if (!section) return null;
 
   const classes = ['section-row'];
@@ -128,6 +131,7 @@ function SectionRow({
       <EditableTitle
         value={section.name}
         placeholder="Untitled section"
+        autoFocus={autoFocus}
         onCommit={(next) => updateSection(store, sectionId, { name: next })}
       />
       <button

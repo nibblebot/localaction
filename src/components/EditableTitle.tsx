@@ -5,15 +5,24 @@ export interface EditableTitleProps {
   value: string;
   onCommit: (next: string) => void;
   placeholder?: string;
+  /** Focus the input on mount (freshly created row). */
+  autoFocus?: boolean;
 }
 
 export default function EditableTitle({
   value,
   onCommit,
   placeholder = 'Untitled',
+  autoFocus = false,
 }: EditableTitleProps): React.JSX.Element {
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement>(null);
+
+  // Mount-only in practice: autoFocus is a mount-stable constant
+  // (captured from the focus handoff), so this fires exactly once.
+  useEffect(() => {
+    if (autoFocus) ref.current?.focus();
+  }, [autoFocus]);
 
   useEffect(() => {
     if (document.activeElement !== ref.current) setDraft(value);

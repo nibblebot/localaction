@@ -48,18 +48,19 @@ async function openProject(page: Page, areaName: string, projectName: string): P
   await page.locator('.sidebar-section-add .inline-add-input').fill(areaName);
   await page.locator('.sidebar-section-add .inline-add-input').press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(areaName);
-  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
-  await page.locator('.projects-tab .inline-add-input').fill(projectName);
-  await page.locator('.projects-tab .inline-add-input').press('Enter');
+  await page.locator('button[aria-label="Add project to Active"]').click();
+  const projectInput = page.locator('input[aria-label="New project"]');
+  await projectInput.fill(projectName);
+  await projectInput.press('Enter');
   // The project card is expanded by default — its task tree is ready.
   await expect(page.locator('.project-row-tasks')).toBeVisible();
 }
 
 async function addSection(page: Page, name: string): Promise<void> {
-  await page.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add section"]').click();
-  const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New section"]');
-  await input.fill(name);
-  await input.press('Enter');
+  await page.locator('li.project-row .project-row-action[aria-label^="Add section to "]').first().click();
+  await expect(page.locator('.section-row .editable-title:focus')).toBeVisible();
+  await page.keyboard.type(name);
+  await page.keyboard.press('Enter');
   // New sections append at the end.
   await expect(page.locator('.section-row .editable-title').last()).toHaveValue(name);
 }
@@ -73,9 +74,10 @@ test.describe('Project sections', () => {
   test('add section, fill it with a task, order persists after reload', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
-    await page.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
-    await page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').fill(`Top task ${tok}`);
-    await page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').press('Enter');
+    await page.locator('li.project-row .project-row-action[aria-label^="Add task to "]').first().click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Top task ${tok}`);
+    await page.keyboard.press('Enter');
 
     await addSection(page, `Phase ${tok}`);
 

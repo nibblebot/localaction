@@ -17,17 +17,17 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
-  const input = page.locator('.projects-tab .inline-add-input');
+  await page.locator('button[aria-label="Add project to Active"]').click();
+  const input = page.locator('input[aria-label="New project"]');
   await input.fill(name);
   await input.press('Enter');
 }
 
 async function addPaneTask(page: Page, title: string): Promise<void> {
-  await page.locator('.project-pane-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
-  const input = page.locator('.project-pane-tasks .tasks-tab-footer input[aria-label="New task"]');
-  await input.fill(title);
-  await input.press('Enter');
+  await page.locator('.area-header button[aria-label^="Add task to "]').click();
+  await expect(page.locator('.task-line-title:focus')).toBeVisible();
+  await page.keyboard.type(title);
+  await page.keyboard.press('Enter');
 }
 
 async function openProjectPane(page: Page, area: string, project: string): Promise<void> {
@@ -65,13 +65,11 @@ test.describe('Project detail pane row actions', () => {
 
     // Empty-sections toggle prunes section headers with no visible tasks.
     await page
-      .locator('.project-pane-tasks .tasks-tab-footer button[aria-label="Add section"]')
+      .locator(`.area-header button[aria-label="Add section to ${project}"]`)
       .click();
-    const sectionInput = page.locator(
-      '.project-pane-tasks .tasks-tab-footer input[aria-label="New section"]',
-    );
-    await sectionInput.fill(`Empty ${tok}`);
-    await sectionInput.press('Enter');
+    await expect(page.locator('.section-row .editable-title:focus')).toBeVisible();
+    await page.keyboard.type(`Empty ${tok}`);
+    await page.keyboard.press('Enter');
     await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(1);
     await header.getByRole('button', { name: `Hide empty sections in ${project}` }).click();
     const toggle = header.getByRole('button', { name: `Show empty sections in ${project}` });

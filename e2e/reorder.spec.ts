@@ -39,19 +39,23 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
-  const input = page.locator('.projects-tab .inline-add-input');
+  await page.locator('button[aria-label="Add project to Active"]').click();
+  const input = page.locator('input[aria-label="New project"]');
   await input.fill(name);
   await input.press('Enter');
   await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
 }
 
 async function createTask(page: Page, title: string): Promise<void> {
-  // Single-project contexts: the one project card's footer add button.
-  await page.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').first().click();
-  const input = page.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]').first();
-  await input.fill(title);
-  await input.press('Enter');
+  // Single-project contexts: the one project card's header add-task icon.
+  await page
+    .locator('li.project-row')
+    .first()
+    .locator('button[aria-label^="Add task to "]')
+    .click();
+  await expect(page.locator('.task-line-title:focus')).toBeVisible();
+  await page.keyboard.type(title);
+  await page.keyboard.press('Enter');
 }
 
 // The SortableList reports its current render order back as a list of
@@ -129,5 +133,61 @@ test.describe('Reorder rendering', () => {
       `Task two ${tok}`,
       `Task three ${tok}`,
     ]);
+  });
+
+  test('dropping a project on the Backlog header shelves it', async ({ page }) => {
+    const tok = uniq();
+    await createArea(page, `Shelf-Area ${tok}`);
+    await createProject(page, `Alpha ${tok}`);
+    await createProject(page, `Bravo ${tok}`);
+
+    const alphaCard = page.locator('li.project-row', { hasText: `Alpha ${tok}` });
+    const handle = alphaCard.locator('button[aria-label="Drag to reorder"]');
+    // Scope via the header toggle's accessible name — group text
+    // includes every descendant row, which can false-match.
+    const backlogHead = page.locator('.tab-group-head', {
+      has: page.getByRole('button', { name: /^Backlog/ }),
+    });
+    const backlogGroup = page.locator('.tab-group', {
+      has: page.getByRole('button', { name: /^Backlog/ }),
+    });
+    const activeGroup = page.locator('.tab-group', {
+      has: page.getByRole('button', { name: /^Active/ }),
+    });
+    const hb = await handle.boundingBox();
+    const bb = await backlogHead.boundingBox();
+    expect(hb).not.toBeNull();
+    expect(bb).not.toBeNull();
+
+    await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
+    await page.mouse.down();
+    try {
+      // Intermediate moves: dnd-kit's distance activation and collision
+      // recalculation need real pointer travel, not a single jump.
+      await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + 20, { steps: 5 });
+      await page.mouse.move(bb!.x + bb!.width / 2, bb!.y + bb!.height / 2, { steps: 10 });
+
+      // While the dragged row hovers the header, the header paints the
+      // drop indication (solid accent outline + tinted background).
+      await expect
+        .poll(() => backlogHead.evaluate((el) => getComputedStyle(el).outlineStyle))
+        .toBe('solid');
+    } finally {
+      await page.mouse.up();
+    }
+
+    // Alpha lands in Backlog; Bravo stays Active.
+    await expect(
+      backlogGroup.locator('.project-row-name', { hasText: `Alpha ${tok}` }),
+    ).toBeVisible();
+    await expect(
+      activeGroup.locator('.project-row-name', { hasText: `Bravo ${tok}` }),
+    ).toBeVisible();
+
+    // The status change persists across reload.
+    await page.reload();
+    await expect(
+      backlogGroup.locator('.project-row-name', { hasText: `Alpha ${tok}` }),
+    ).toBeVisible();
   });
 });

@@ -7,14 +7,15 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]').click();
-  const input = page.locator('.projects-tab .inline-add-input');
+  await page.locator('button[aria-label="Add project to Active"]').click();
+  const input = page.locator('input[aria-label="New project"]');
   await input.fill(name);
   await input.press('Enter');
 }
 
 async function createNote(page: Page, title: string): Promise<void> {
-  const input = page.locator('.notes-tab .inline-add-input');
+  await page.locator('section[aria-label="Notes"] button[aria-label="Add note"]').click();
+  const input = page.locator('section[aria-label="Notes"] input[aria-label="New note"]');
   await input.fill(title);
   await input.press('Enter');
 }
@@ -49,7 +50,7 @@ test.describe('LocalAction shell', () => {
     // Create an area so we have something to render.
     await createArea(page, 'Health');
     await expect(page.locator('.projects-tab')).toBeVisible();
-    await expect(page.locator('.projects-tab > .inline-add-button[aria-label="Add project"]')).toBeVisible();
+    await expect(page.locator('button[aria-label="Add project to Active"]')).toBeVisible();
   });
 
   test('caret toggles a project card; clicking the row opens the project detail pane', async ({ page }) => {
@@ -59,11 +60,11 @@ test.describe('LocalAction shell', () => {
     await createProject(page, 'Plan trip');
     const card = page.locator('li.project-row', { hasText: 'Plan trip' });
     await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // Add a task via the card's footer add button.
-    await card.locator('.project-row-tasks .tasks-tab-footer button[aria-label="Add task"]').click();
-    const footer = card.locator('.project-row-tasks .tasks-tab-footer input[aria-label="New task"]');
-    await footer.fill('Book flights');
-    await footer.press('Enter');
+    // Add a task via the card's header add-task icon.
+    await card.locator('button[aria-label="Add task to Plan trip"]').click();
+    await expect(card.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type('Book flights');
+    await page.keyboard.press('Enter');
     await expect(card.locator('.task-line-title').first()).toHaveValue('Book flights');
     // Clicking the project name navigates to the detail pane — it does
     // NOT collapse the card.
@@ -178,7 +179,7 @@ test.describe('LocalAction shell', () => {
   test('notes section renders an inline add input', async ({ page }) => {
     await page.goto('/#/');
     await createArea(page, 'Personal');
-    await expect(page.locator('.notes-tab .inline-add-input')).toBeVisible();
+    await expect(page.locator('section[aria-label="Notes"] button[aria-label="Add note"]')).toBeVisible();
     await createNote(page, 'Quick thought');
     await expect(page.locator('.note-line-title', { hasText: 'Quick thought' })).toBeVisible();
   });

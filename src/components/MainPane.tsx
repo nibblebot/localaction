@@ -826,13 +826,13 @@ function ProjectAddTaskButton({
 }
 
 /**
- * The action cluster on a project row in the area view: add-section,
- * due date, empty-section pruning. The add affordance creates an
- * empty section and hands focus to its title input once the row
- * mounts. Management affordances (notes, rename, delete) live only on
- * the project detail pane — see `ProjectPaneActions`.
+ * The add-section affordance, pinned right next to the add-task "+"
+ * on the project row instead of in the right-edge action cluster.
+ * Creates an empty section and hands focus to its title input once
+ * the row mounts. Shares the card's hover-reveal chrome
+ * (`.project-row-action`).
  */
-function ProjectRowActions({
+function ProjectAddSectionButton({
   projectId,
   display,
   hideEmptySections,
@@ -840,7 +840,7 @@ function ProjectRowActions({
   onEnsureExpanded,
 }: {
   projectId: string;
-  /** Display name for aria-labels. */
+  /** Display name for the aria-label. */
   display: string;
   /** Prune section headers with no visible tasks in the task list. */
   hideEmptySections: boolean;
@@ -850,26 +850,49 @@ function ProjectRowActions({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   return (
+    <button
+      type="button"
+      className="project-row-action icon-button"
+      aria-label={`Add section to ${display}`}
+      title="Add section"
+      onClick={(e) => {
+        e.stopPropagation();
+        onEnsureExpanded?.();
+        // A freshly created (empty) section would be pruned while
+        // empty-section pruning is on, stranding the queued focus.
+        if (hideEmptySections) onToggleEmptySections();
+        const id = createSection(store, { name: '', projectId });
+        queueSectionTitleFocus(id);
+      }}
+    >
+      <svg className="svg-icon" aria-hidden="true">
+        <use href="/icons.svg#add-section-icon" />
+      </svg>
+    </button>
+  );
+}
+
+/**
+ * The action cluster on a project row in the area view: due date and
+ * empty-section pruning. Management affordances (notes, rename,
+ * delete) live only on the project detail pane — see
+ * `ProjectPaneActions`.
+ */
+function ProjectRowActions({
+  projectId,
+  display,
+  hideEmptySections,
+  onToggleEmptySections,
+}: {
+  projectId: string;
+  /** Display name for aria-labels. */
+  display: string;
+  /** Prune section headers with no visible tasks in the task list. */
+  hideEmptySections: boolean;
+  onToggleEmptySections: () => void;
+}): React.JSX.Element {
+  return (
     <>
-      <button
-        type="button"
-        className="project-row-action icon-button"
-        aria-label={`Add section to ${display}`}
-        title="Add section"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEnsureExpanded?.();
-          // A freshly created (empty) section would be pruned while
-          // empty-section pruning is on, stranding the queued focus.
-          if (hideEmptySections) onToggleEmptySections();
-          const id = createSection(store, { name: '', projectId });
-          queueSectionTitleFocus(id);
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#add-section-icon" />
-        </svg>
-      </button>
       <ProjectDueDateButton projectId={projectId} />
       <button
         type="button"
@@ -892,7 +915,7 @@ function ProjectRowActions({
 
 /**
  * The action cluster on the project detail pane header: the shared
- * row actions (add-section, due date, empty-section pruning) plus the
+ * row actions (due date, empty-section pruning) plus the
  * management affordances that only exist here — notes, rename,
  * delete. Delete is confirmed and undoable; `onAfterDelete` lets the
  * pane navigate away from the removed project.
@@ -1062,15 +1085,21 @@ function ProjectRow({
             if (collapsed) onToggleCollapse();
           }}
         />
+        <ProjectAddSectionButton
+          projectId={projectId}
+          display={display}
+          hideEmptySections={hideEmptySections}
+          onToggleEmptySections={onToggleEmptySections}
+          onEnsureExpanded={() => {
+            if (collapsed) onToggleCollapse();
+          }}
+        />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
             display={display}
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
-            onEnsureExpanded={() => {
-              if (collapsed) onToggleCollapse();
-            }}
           />
         </div >
         <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
@@ -1185,15 +1214,21 @@ function SortableProjectRow({
             if (collapsed) onToggleCollapse();
           }}
         />
+        <ProjectAddSectionButton
+          projectId={projectId}
+          display={display}
+          hideEmptySections={hideEmptySections}
+          onToggleEmptySections={onToggleEmptySections}
+          onEnsureExpanded={() => {
+            if (collapsed) onToggleCollapse();
+          }}
+        />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
             display={display}
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
-            onEnsureExpanded={() => {
-              if (collapsed) onToggleCollapse();
-            }}
           />
         </div >
         <ProjectProgressMeter done={done} total={total} />
@@ -1479,7 +1514,15 @@ function ProjectPaneHeader({
         <h1 className="area-header-name">{display}</h1>
       )}
       {actions && !editing && (
-        <ProjectAddTaskButton projectId={projectId} display={display} />
+        <>
+          <ProjectAddTaskButton projectId={projectId} display={display} />
+          <ProjectAddSectionButton
+            projectId={projectId}
+            display={display}
+            hideEmptySections={actions.hideEmptySections}
+            onToggleEmptySections={actions.onToggleEmptySections}
+          />
+        </>
       )}
       {actions && (
         <div className="project-row-actions">

@@ -2093,15 +2093,16 @@ body.sidebar-resizing {
   position: relative;
 }
 
-/* Project task hierarchy: each row carries zero or more `.tree-line`
-   spans (one per ancestor column that keeps descending past this row)
-   plus one `.tree-branch` span at the row's own column. The walker in
-   `SortableTree` populates them so the column for the last child of
-   each subtree terminates at the row's midline instead of running
-   through the empty space below. All spans are absolutely positioned
-   inside the slot's gutter so they never displace the row. */
-.project-task-tree .tree-line,
-.project-task-tree .tree-branch {
+/* Tree hierarchy gutters (project task tree, sidebar area tree): each
+   row carries zero or more `.tree-line` spans (one per ancestor column
+   that keeps descending past this row) plus one `.tree-branch` span at
+   the row's own column. The walker in `SortableTree` populates them so
+   the column for the last child of each subtree terminates at the
+   row's midline instead of running through the empty space below. All
+   spans are absolutely positioned inside the slot's gutter so they
+   never displace the row. */
+:is(.project-task-tree, .sidebar-section-body) .tree-line,
+:is(.project-task-tree, .sidebar-section-body) .tree-branch {
   position: absolute;
   top: 0;
   bottom: 0;
@@ -2120,7 +2121,7 @@ body.sidebar-resizing {
    pseudo positioned on the midline. On the last sibling the span is
    clipped to 50% so the vertical stops at the same midline the
    horizontal lives on. */
-.project-task-tree .tree-branch {
+:is(.project-task-tree, .sidebar-section-body) .tree-branch {
   width: 1px;
   background: var(--border);
   /* `bottom: 0` from the shared rule would force the span to the
@@ -2131,7 +2132,7 @@ body.sidebar-resizing {
   border: 0;
 }
 
-.project-task-tree .tree-branch::after {
+:is(.project-task-tree, .sidebar-section-body) .tree-branch::after {
   content: "";
   position: absolute;
   top: 50%;
@@ -2143,11 +2144,11 @@ body.sidebar-resizing {
 
 /* On the last sibling the span is 50% tall, so the row's midline is
    at the span's *bottom* — pin the horizontal there. */
-.project-task-tree .tree-branch.tree-branch-last::after {
+:is(.project-task-tree, .sidebar-section-body) .tree-branch.tree-branch-last::after {
   top: 100%;
 }
 
-.project-task-tree .tree-branch.tree-branch-last {
+:is(.project-task-tree, .sidebar-section-body) .tree-branch.tree-branch-last {
   height: 50%;
 }
 

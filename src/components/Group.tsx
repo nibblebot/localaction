@@ -12,6 +12,7 @@ export default function Group({
   dropRef,
   dropActive,
   dropOver,
+  hasContent,
   children,
 }: {
   /** Status-partition label (Active / Backlog / Done / Area tasks).
@@ -31,6 +32,11 @@ export default function Group({
   dropRef?: (node: HTMLElement | null) => void;
   dropActive?: boolean;
   dropOver?: boolean;
+  /** Caller's verdict that the list paints something. When false the
+   * <ul> is skipped entirely — an empty list would still uncollapse
+   * the head's bottom margin into real space, so a 0-item group
+   * would grow/shrink on every collapse toggle. Defaults to true. */
+  hasContent?: boolean;
   children: React.ReactNode;
 }): React.JSX.Element {
   const collapsible = title !== undefined && onToggleCollapse !== undefined;
@@ -64,7 +70,7 @@ export default function Group({
           {trailing}
         </header>
       )}
-      {!collapsed && (
+      {!collapsed && hasContent !== false && (
         <ul className="tab-group-list" role="list">
           {children}
         </ul>

@@ -315,14 +315,25 @@ export default function ProjectStatusGroups({
   // renders only mid-drag (labeled by its header) so its name never
   // repeats across groups at rest. With no rows, only the viewed
   // area's two slices render.
+  //
+  // sliceHasContent is the narrower "is there anything to show" verdict:
+  // rows on screen, or the live drop destination of the in-flight
+  // drag. Only then does a slice paint its chrome (sub-area header) —
+  // the viewed area's slice is always in the rendered list, so without
+  // this gate an empty one would paint a stray "Area projects" header
+  // and the group would grow/shrink on every collapse toggle.
+  const sliceHasContent = (
+    s: ProjectStatusSlice,
+    rows: readonly ProjectRollup[],
+    otherGroup: StatusGroupId,
+  ): boolean =>
+    rows.length > 0 ||
+    (draggingSource?.areaId === s.areaId && draggingSource.group === otherGroup);
+
   const activeSliceVisible = (s: ProjectStatusSlice): boolean =>
-    s.name === null ||
-    s.active.length > 0 ||
-    (draggingSource?.areaId === s.areaId && draggingSource.group === 'backlog');
+    s.name === null || sliceHasContent(s, s.active, 'backlog');
   const backlogSliceVisible = (s: ProjectStatusSlice): boolean =>
-    s.name === null ||
-    s.backlog.length > 0 ||
-    (draggingSource?.areaId === s.areaId && draggingSource.group === 'active');
+    s.name === null || sliceHasContent(s, s.backlog, 'active');
 
   const activeSlices = slices.filter(activeSliceVisible);
   const backlogSlices = slices.filter(backlogSliceVisible);
@@ -386,6 +397,7 @@ export default function ProjectStatusGroups({
                 count={activeSlices.reduce((n, s) => n + s.active.length, 0)}
                 collapsed={collapsedGroups.has('active')}
                 onToggleCollapse={() => onToggleGroup('active')}
+                hasContent={activeSlices.some((s) => sliceHasContent(s, s.active, 'backlog'))}
                 trailing={renderGroupAction?.('active')}
                 dropRef={dropProps.dropRef}
                 dropActive={dropProps.dropActive}
@@ -399,7 +411,7 @@ export default function ProjectStatusGroups({
                       group="active"
                       className={s.name === null ? undefined : 'subarea-section'}
                     >
-                      {s.header}
+                      {sliceHasContent(s, s.active, 'backlog') && s.header}
                       {s.active.length > 0 && (
                         <div
                           className="sortable-list"
@@ -433,6 +445,7 @@ export default function ProjectStatusGroups({
                 count={backlogSlices.reduce((n, s) => n + s.backlog.length, 0)}
                 collapsed={collapsedGroups.has('backlog')}
                 onToggleCollapse={() => onToggleGroup('backlog')}
+                hasContent={backlogSlices.some((s) => sliceHasContent(s, s.backlog, 'active'))}
                 trailing={renderGroupAction?.('backlog')}
                 dropRef={dropProps.dropRef}
                 dropActive={dropProps.dropActive}
@@ -446,7 +459,7 @@ export default function ProjectStatusGroups({
                       group="backlog"
                       className={s.name === null ? undefined : 'subarea-section'}
                     >
-                      {s.header}
+                      {sliceHasContent(s, s.backlog, 'active') && s.header}
                       {s.backlog.length > 0 && (
                         <div
                           className="sortable-list"

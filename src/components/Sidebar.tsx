@@ -1,9 +1,10 @@
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   useDataLayer,
   useAreaCounts,
   createArea,
   moveArea,
+  useProject,
   useInboxTaskIds,
   useDueItems,
   type AreaCount,
@@ -161,6 +162,13 @@ export default function Sidebar({
   const counts = useAreaCounts(store);
   const { selection, navigate } = useSelection();
   const newAreaInputRef = useRef<HTMLInputElement>(null);
+  // The "New area" field stays hidden until the section's "+" button
+  // reveals it (focused); Enter commits and collapses, Esc or blurring
+  // an empty field collapses without creating.
+  const [showNewArea, setShowNewArea] = useState(false);
+  useEffect(() => {
+    if (showNewArea) newAreaInputRef.current?.focus();
+  }, [showNewArea]);
   const tree = useMemo(() => buildTree(counts), [counts]);
   const { collapsed, toggle: toggleCollapse, expand: expandArea, replace: replaceCollapsed } =
     useCollapsedAreas();
@@ -185,17 +193,26 @@ export default function Sidebar({
     walk(tree);
     return m;
   }, [tree]);
+  // A project (or its notes tab) selects its parent area, exactly as
+  // if that area itself were being viewed.
+  const selectedProject = useProject(
+    store,
+    selection.kind === 'project' || selection.kind === 'project-notes'
+      ? selection.id
+      : undefined,
+  );
+  const selectedId =
+    selection.kind === 'area'
+      ? selection.id
+      : (selectedProject?.areaId ?? null);
   const activeColor: AreaColorId = useMemo(() => {
-    if (selection.kind !== 'area') return 'gray';
-    const c = counts.find((x) => x.id === selection.id);
+    const c = counts.find((x) => x.id === selectedId);
     return c ? c.color : 'gray';
-  }, [selection, counts]);
+  }, [selectedId, counts]);
 
   const inboxIds = useInboxTaskIds(store);
   const todayItems = useDueItems(store, todayIso(), todayIso());
   const todayOpenCount = todayItems.filter((i) => !i.done).length;
-
-  const selectedId = selection.kind === 'area' ? selection.id : null;
 
   const week = weekBoundsIso();
   const weekItems = useDueItems(store, week.from, week.to);
@@ -318,7 +335,7 @@ export default function Sidebar({
           <button
             type="button"
             className="sidebar-section-title-action"
-            onClick={() => newAreaInputRef.current?.focus()}
+            onClick={() => setShowNewArea(true)}
             aria-label="New area"
             title="New area"
           >
@@ -362,15 +379,33 @@ export default function Sidebar({
             }}
           </SortableTree>
         )}
-        <div className="sidebar-section-add">
-          <InlineAddInput
-            ref={newAreaInputRef}
-            size="sm"
-            placeholder="New area…"
-            ariaLabel="New area"
-            onSubmit={createNew}
-          />
-        </div>
+        {showNewArea && (
+          <div
+            className="sidebar-section-add"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setShowNewArea(false);
+            }}
+            onBlur={(e) => {
+              if (
+                !e.currentTarget.contains(e.relatedTarget as Node | null) &&
+                !newAreaInputRef.current?.value.trim()
+              ) {
+                setShowNewArea(false);
+              }
+            }}
+          >
+            <InlineAddInput
+              ref={newAreaInputRef}
+              size="sm"
+              placeholder="New area…"
+              ariaLabel="New area"
+              onSubmit={(name) => {
+                createNew(name);
+                setShowNewArea(false);
+              }}
+            />
+          </div>
+        )}
       </div>
       <div className="sidebar-footer">
         <SyncStatusBadge />

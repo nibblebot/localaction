@@ -26,6 +26,7 @@ async function seedAreas(page: Page) {
   const token = uniq();
   const names = { P: `P-${token}`, S1: `S1-${token}`, S2: `S2-${token}`, S3: `S3-${token}` };
   await page.goto('/#/');
+  await page.locator('button[aria-label="New area"]').click();
   const addInput = page.locator('.sidebar-section-add .inline-add-input');
   await addInput.fill(names.P);
   await addInput.press('Enter');
@@ -102,6 +103,7 @@ async function seedNestedAreas(page: Page) {
   const token = uniq();
   const names = { P: `P-${token}`, A: `A-${token}`, X: `X-${token}`, Y: `Y-${token}` };
   await page.goto('/#/');
+  await page.locator('button[aria-label="New area"]').click();
   const addInput = page.locator('.sidebar-section-add .inline-add-input');
   await addInput.fill(names.P);
   await addInput.press('Enter');

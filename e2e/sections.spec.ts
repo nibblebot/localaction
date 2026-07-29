@@ -45,6 +45,7 @@ async function treeRows(page: Page, token: string): Promise<string[]> {
 }
 
 async function openProject(page: Page, areaName: string, projectName: string): Promise<void> {
+  await page.locator('button[aria-label="New area"]').click();
   await page.locator('.sidebar-section-add .inline-add-input').fill(areaName);
   await page.locator('.sidebar-section-add .inline-add-input').press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(areaName);

@@ -29,6 +29,7 @@ async function cleanOpfs(page: Page): Promise<void> {
 }
 
 async function createArea(page: Page, name: string): Promise<void> {
+  await page.locator('button[aria-label="New area"]').click();
   const input = page.locator('.sidebar-section-add .inline-add-input');
   await input.fill(name);
   await input.press('Enter');

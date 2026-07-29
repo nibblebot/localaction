@@ -15,6 +15,7 @@ test.beforeEach(async ({ page }) => {
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 async function createArea(page: Page, name: string): Promise<void> {
+  await page.locator('button[aria-label="New area"]').click();
   const input = page.locator('.sidebar-section-add .inline-add-input');
   await input.fill(name);
   await input.press('Enter');

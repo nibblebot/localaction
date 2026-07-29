@@ -160,6 +160,21 @@ export function TaskRow({
   const effective = useEffectiveTaskStatus(store, taskId);
   const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Touch layouts collapse the row actions behind a ⋯ trigger; the
+  // strip slides out to the left of it. Desktop never opens it (the
+  // trigger is display:none under `pointer: fine`).
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
   if (!task || (effectiveStatus && !effective)) return null;
   const done = effectiveStatus
     ? effective === TASK_STATUS.done
@@ -240,34 +255,65 @@ export function TaskRow({
       )}
       {!readOnly && (
         <>
-          <div className="task-line-actions">
-            <TaskDueDateButton taskId={taskId} />
+          {menuOpen && (
+            // Click-away dismiss, same idiom as the due-calendar
+            // backdrop; stopPropagation keeps the tap out of any
+            // clickable ancestor row.
+            <div
+              className="task-menu-backdrop"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+              }}
+            />
+          )}
+          <div className={`task-line-menu${menuOpen ? ' task-line-menu-open' : ''}`}>
+            {/* Any action click also dismisses the strip (capture so
+                the action's own handler still runs). */}
+            <div className="task-line-actions" onClickCapture={() => setMenuOpen(false)}>
+              <TaskDueDateButton taskId={taskId} />
+              <button
+                type="button"
+                className="task-line-action icon-button"
+                aria-label="Add sub-task"
+                title="Add sub-task"
+                onClick={() => {
+                  const childId = createTask(store, {
+                    title: '',
+                    placement: { kind: 'task', id: taskId },
+                  });
+                  queueTaskTitleFocus(childId);
+                }}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#add-icon" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="task-line-action task-line-action-danger icon-button"
+                aria-label="Delete task"
+                title="Delete"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#trash-icon" />
+                </svg>
+              </button>
+            </div>
             <button
               type="button"
-              className="task-line-action icon-button"
-              aria-label="Add sub-task"
-              title="Add sub-task"
-              onClick={() => {
-                const childId = createTask(store, {
-                  title: '',
-                  placement: { kind: 'task', id: taskId },
-                });
-                queueTaskTitleFocus(childId);
+              className="task-line-action task-line-menu-trigger icon-button"
+              aria-label="Task actions"
+              title="Task actions"
+              aria-expanded={menuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((open) => !open);
               }}
             >
               <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#add-icon" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="task-line-action task-line-action-danger icon-button"
-              aria-label="Delete task"
-              title="Delete"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#trash-icon" />
+                <use href="/icons.svg#more-icon" />
               </svg>
             </button>
           </div>

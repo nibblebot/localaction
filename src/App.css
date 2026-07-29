@@ -1308,10 +1308,13 @@ body.sidebar-resizing {
    preview) draw a box.
    `flex-start` alignment keeps the checkbox pinned to the first
    line of a wrapping title instead of floating at the row's
-   vertical centre. */
+   vertical centre.
+   `nowrap`: the title shrinks (min-width: 0) and wraps internally,
+   so the row chrome — including the touch ⋯ trigger — never wraps
+   onto a line of its own. */
 .task-line {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
   align-content: flex-start;
   gap: var(--space-2);
@@ -1328,15 +1331,56 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-/* Right-aligned action cluster on task rows (DueDate,
-   AddSubtask, Trash). One wrapper so the cluster shifts together
-   when items are added/hidden, and only one auto-margin slot
-   consumes the flex space. */
+/* Right-aligned action cluster on task rows (DueDate, AddSubtask,
+   Trash) plus its ⋯ trigger. The wrapper owns the single auto-margin
+   slot so trigger and strip shift together; the strip itself
+   collapses behind the trigger on touch (see the coarse-pointer
+   block). */
+.task-line-menu {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  /* Center the 32px controls on the title's first line — same math
+     as .task-line-check: the line center sits at the title's 2px top
+     padding + 0.75rem (half its 1.5 line box), the button's center
+     at half its 32px control. rem-based: exact at every density.
+     Tracks --icon-button-control and the title's top padding —
+     recheck the -14px (= 2px - 32px/2) if either changes. */
+  margin-top: calc(0.75rem - 14px);
+}
+
+/* Open strip rises above its own click-away backdrop. */
+.task-line-menu-open {
+  position: relative;
+  z-index: var(--z-popover);
+}
+
 .task-line-actions {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-inline-start: auto;
+}
+
+/* Vertical-dots trigger: the sprite's more-icon is a horizontal
+   3-dot row; rotating the (symmetric) glyph turns it vertical.
+   Hidden by default — desktop reveals the strip on row hover, so
+   the trigger only exists on touch (pointer: coarse). Defaulting
+   to hidden also covers pointer:none devices (e.g. headless). */
+.task-line-menu .task-line-menu-trigger {
+  display: none;
+}
+
+.task-line-menu-trigger .svg-icon {
+  transform: rotate(90deg);
+}
+
+/* Click-away backdrop for the open touch strip (same idiom as
+   .due-calendar-backdrop). */
+.task-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-popover-backdrop);
 }
 
 .task-line-check {
@@ -2676,6 +2720,36 @@ button .svg-icon {
   .note-line-action,
   .project-row-action {
     opacity: 1;
+  }
+
+  /* … except the task-row strip, which collapses behind its ⋯
+     trigger; opening slides the strip out to the left of it.
+     visibility rides the transition so the hidden strip stays out
+     of the tab order but the open one animates immediately. */
+  .task-line-menu .task-line-menu-trigger {
+    display: inline-flex;
+  }
+
+  .task-line-actions {
+    overflow: hidden;
+    visibility: hidden;
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(8px);
+    transition:
+      max-width 0.2s ease,
+      opacity 0.15s ease,
+      transform 0.2s ease,
+      visibility 0.2s ease;
+  }
+
+  .task-line-menu-open .task-line-actions {
+    visibility: visible;
+    /* 3 × 32px controls + 2 × 6px gaps — tracks --icon-button-control
+       and the strip's gap; bump if either grows. */
+    max-width: 120px;
+    opacity: 1;
+    transform: none;
   }
 
   .task-line-drag-handle,

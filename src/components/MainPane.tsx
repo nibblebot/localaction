@@ -305,19 +305,17 @@ function AreaHeader({
             className="area-header-crumb"
             onClick={() => onNavigate(p.id)}
           >
-            {i === 0 && (
-              <span
-                className="area-header-name-edit-dot"
-                style={{ background: areaColorHex(p.color) }}
-                aria-hidden="true"
-              />
-            )}
+            <span
+              className="area-header-name-edit-dot"
+              style={{ background: areaColorHex(p.color) }}
+              aria-hidden="true"
+            />
             <span>{p.name || 'Untitled'}</span>
           </button>
         </Fragment>
       ))}
       {parentChain.length > 0 && (
-        <span className="area-header-slash" aria-hidden="true" style={{ color: hex }}>
+        <span className="area-header-slash" aria-hidden="true">
           /
         </span>
       )}
@@ -1458,7 +1456,12 @@ function ProjectPaneHeader({
             className="area-header-crumb"
             onClick={() => navigate({ kind: 'area', id: p.id })}
           >
-            {p.name || 'Untitled'}
+            <span
+              className="area-header-name-edit-dot"
+              style={{ background: areaColorHex(p.color) }}
+              aria-hidden="true"
+            />
+            <span>{p.name || 'Untitled'}</span>
           </button>
         </Fragment>
       ))}

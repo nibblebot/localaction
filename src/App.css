@@ -404,6 +404,7 @@ body.sidebar-resizing {
   font-weight: 600;
   line-height: 1.2;
   font-family: var(--font-sans);
+  color: var(--text-muted);
 }
 .area-header-name {
   font-size: 1.36rem;

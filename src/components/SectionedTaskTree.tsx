@@ -18,7 +18,10 @@
  * - Task dropped under a task → `task:<id>` (sub-task, unchanged).
  * - Section dropped anywhere → reordered among sections. Sections are
  *   pinned to depth 0 via `maxDepthOf`; a drop into the unsectioned
- *   block makes the dragged section the first section.
+ *   block makes the dragged section the first section. A drop over a
+ *   row nested inside another section's block resolves to that
+ *   section's nearest boundary in the drag direction (before it when
+ *   dragging up into the block, after it when dragging down).
  *
  * Every section renders — empty ones included — so the area rollup
  * matches the project view, unless `hideEmptySections` is set (the
@@ -243,7 +246,15 @@ export function SectionedTaskTree({
       }
       return;
     }
-    const placement = parentId ?? projectKey;
+    // `parentId` is a tree node id: section nodes are already placement
+    // strings (`section:<id>`); a bare task id needs the `task:`
+    // encoding — `moveTask` rejects anything it can't parse.
+    const placement =
+      parentId === null
+        ? projectKey
+        : decodeSectionNodeId(parentId) === null
+          ? `task${PLACEMENT_SEP}${parentId}`
+          : parentId;
     // A drop right before a section header lands at the end of the
     // preceding task group — sections are never task siblings.
     const beforeTask =

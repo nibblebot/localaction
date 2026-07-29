@@ -131,6 +131,118 @@ test.describe('Project sections', () => {
       .toEqual([`S:Second ${tok}`, `S:First ${tok}`]);
   });
 
+  test('section drags over another section’s tasks hit the nearest section boundary', async ({ page }) => {
+    const tok = uniq();
+    await openProject(page, `Area ${tok}`, `Project ${tok}`);
+    await page.locator('li.project-row .project-row-action[aria-label^="Add task to "]').first().click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Top task ${tok}`);
+    await page.keyboard.press('Enter');
+    await addSection(page, `First ${tok}`);
+    await page
+      .locator('.section-row')
+      .nth(0)
+      .locator('button[aria-label="Add task to section"]')
+      .click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`First task ${tok}`);
+    await page.keyboard.press('Enter');
+    await addSection(page, `Second ${tok}`);
+    await page
+      .locator('.section-row')
+      .nth(1)
+      .locator('button[aria-label="Add task to section"]')
+      .click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Second task ${tok}`);
+    await page.keyboard.press('Enter');
+
+    const rest = [
+      `T:Top task ${tok}`,
+      `S:First ${tok}`,
+      `T:First task ${tok}`,
+      `S:Second ${tok}`,
+      `T:Second task ${tok}`,
+    ];
+    const flipped = [
+      `T:Top task ${tok}`,
+      `S:Second ${tok}`,
+      `T:Second task ${tok}`,
+      `S:First ${tok}`,
+      `T:First task ${tok}`,
+    ];
+    expect(await treeRows(page, tok)).toEqual(rest);
+
+    const dragOverNestedTask = async (sectionIdx: number): Promise<void> => {
+      const handle = page.locator('.section-row').nth(sectionIdx).locator('.task-line-drag-handle');
+      const target = page.locator('.task-line', { hasText: `First task ${tok}` });
+      const hb = await handle.boundingBox();
+      expect(hb).not.toBeNull();
+      await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(hb!.x + hb!.width / 2, hb!.y - 20, { steps: 5 });
+      // Re-measure mid-drag: the dragged section's child rows unmount
+      // once the drag starts, shifting every row below the handle.
+      const tb = await target.boundingBox();
+      expect(tb).not.toBeNull();
+      await page.mouse.move(tb!.x + tb!.width / 2, tb!.y + 2, { steps: 10 });
+      await page.mouse.up();
+    };
+
+    // Dropping the second section over the first section's nested task
+    // (no root sibling follows the drop point) must still reorder — the
+    // drop resolves to the top of the block the pointer is in.
+    await dragOverNestedTask(1);
+    await expect.poll(() => treeRows(page, tok)).toEqual(flipped);
+
+    // Dragging it back down over the same nested task lands it after
+    // the first section's block — the boundary in the drag direction.
+    await dragOverNestedTask(0);
+    await expect.poll(() => treeRows(page, tok)).toEqual(rest);
+  });
+
+  test('dragging a task onto a sibling nests it, persists after reload', async ({ page }) => {
+    const tok = uniq();
+    await openProject(page, `Area ${tok}`, `Project ${tok}`);
+    const addTask = async (title: string): Promise<void> => {
+      await page.locator('li.project-row .project-row-action[aria-label^="Add task to "]').first().click();
+      await expect(page.locator('.task-line-title:focus')).toBeVisible();
+      await page.keyboard.type(title);
+      await page.keyboard.press('Enter');
+    };
+    await addTask(`Task one ${tok}`);
+    await addTask(`Task two ${tok}`);
+
+    // Drag Task one down onto Task two and to the right — the
+    // horizontal intent makes it Task two's first sub-task.
+    const one = page.locator('.task-line', { hasText: `Task one ${tok}` });
+    const two = page.locator('.task-line', { hasText: `Task two ${tok}` });
+    const hb = await one.locator('.task-line-drag-handle').boundingBox();
+    expect(hb).not.toBeNull();
+    await page.mouse.move(hb!.x + hb!.width / 2, hb!.y + hb!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(hb!.x + hb!.width / 2, hb!.y - 12, { steps: 4 });
+    const tb = await two.boundingBox();
+    expect(tb).not.toBeNull();
+    await page.mouse.move(tb!.x + tb!.width / 2 + 40, tb!.y + tb!.height / 2, { steps: 10 });
+    await page.mouse.up();
+
+    // Task one renders indented under Task two — and stays after reload.
+    await expect.poll(() => treeRows(page, tok)).toEqual([`T:Task two ${tok}`, `T:Task one ${tok}`]);
+    const parentBox = await two.boundingBox();
+    const nestedBox = await one.boundingBox();
+    expect(parentBox).not.toBeNull();
+    expect(nestedBox).not.toBeNull();
+    expect(nestedBox!.x).toBeGreaterThan(parentBox!.x);
+
+    await page.reload();
+    await expect(page.locator('.project-row-tasks')).toBeVisible();
+    expect(await treeRows(page, tok)).toEqual([`T:Task two ${tok}`, `T:Task one ${tok}`]);
+    const reloadedParent = await two.boundingBox();
+    const reloadedNested = await one.boundingBox();
+    expect(reloadedNested!.x).toBeGreaterThan(reloadedParent!.x);
+  });
+
   test('empty sections show in the area view, fully editable', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);

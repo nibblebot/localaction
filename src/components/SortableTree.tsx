@@ -279,6 +279,25 @@ function getProjection<TId extends string>(
       break;
     }
   }
+
+  // A root-pinned row (maxDepth 0, e.g. a project section) dropped over
+  // a row nested inside a trailing subtree finds no root sibling after
+  // the drop point, so the scan above misreads the drop as "end of the
+  // root list". When the dragged row came from BELOW the block the
+  // pointer is in, the intended boundary is the TOP of that block —
+  // resolve beforeId to the over row's root ancestor. (Coming from
+  // above, "end of the root list" is already the right landing.)
+  if (beforeId === undefined && maxDepthLimit === 0 && depth === 0 && overId !== activeId) {
+    let root = overItem;
+    while (root.parentId !== null) {
+      const parent = items.find((i) => i.id === root.parentId);
+      if (!parent) break;
+      root = parent;
+    }
+    if (root.id !== activeId && activeIndex > items.indexOf(root)) {
+      beforeId = root.id;
+    }
+  }
   return { parentId, beforeId, depth };
 }
 

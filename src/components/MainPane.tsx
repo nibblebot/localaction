@@ -1582,6 +1582,23 @@ function ProjectPane({
               <span className="pane-section-title">Tasks</span>
               <span className="tab-group-count">· {taskCount}</span>
             </span>
+            <button
+              type="button"
+              className="area-tab-action area-tab-action-add"
+              aria-label={`Add task to ${projectName}`}
+              title="Add task"
+              onClick={() => {
+                const id = createTask(store, {
+                  title: '',
+                  placement: { kind: 'project', id: projectId },
+                });
+                queueTaskTitleFocus(id);
+              }}
+            >
+              <svg className="svg-icon" aria-hidden="true">
+                <use href="/icons.svg#add-icon" />
+              </svg>
+            </button>
           </div>
           <div className="tasks-tab project-pane-tasks">
             <ProjectTaskList

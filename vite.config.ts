@@ -34,6 +34,39 @@ let outDir = ''
 // out of the service-worker precache — see the localaction-sw plugin and
 // public/sw.js's runtime font caching.
 const LAZY_FONT = /^fonts\/(?!DMSans-)/
+
+// Served by the dev server in place of public/sw.js (see the
+// localaction-sw-dev-cleanup plugin). A prod/preview build served on this
+// origin earlier may have left a service worker registered; SWs persist per
+// origin and keep serving their precached app shell cache-first even after
+// the dev server takes over the port — the page looks permanently stale and
+// HMR never engages. The browser byte-compares /sw.js against the installed
+// worker on every navigation, so serving this self-destructing worker lets
+// the stale registration auto-update into it: it wipes every localaction-*
+// cache, unregisters itself, and reloads controlled tabs. It deliberately
+// has NO fetch handler, so every request falls through to the network.
+const DEV_CLEANUP_SW = String.raw`self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith('localaction-'))
+            .map((key) => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim())
+      .then(() => self.registration.unregister())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
+  );
+});
+`
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -59,6 +92,22 @@ export default defineConfig({
       },
       async configurePreviewServer(server) {
         await attachSyncToVite(server, 'preview', syncDbPath)
+      },
+    },
+    // Dev-only: intercept /sw.js before the static middleware can serve the
+    // placeholder template from public/, and answer with DEV_CLEANUP_SW so a
+    // stale prod service worker on this origin self-destructs (see above).
+    // Only `configureServer` is defined, so preview (configurePreviewServer)
+    // and the prod server keep serving the real baked dist/sw.js — the
+    // offline e2e suite depends on that.
+    {
+      name: 'localaction-sw-dev-cleanup',
+      configureServer(server) {
+        server.middlewares.use('/sw.js', (_req, res) => {
+          res.setHeader('content-type', 'application/javascript; charset=utf-8')
+          res.setHeader('cache-control', 'no-cache')
+          res.end(DEV_CLEANUP_SW)
+        })
       },
     },
     // Bakes the precache manifest into dist/sw.js. Runs after the build has

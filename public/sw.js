@@ -1,8 +1,9 @@
 // localaction app-shell service worker. Two placeholders below are
 // substituted at build time by the `localaction-sw` plugin in vite.config.ts:
 // the cache version (content hash of the dist file set) and the precache
-// list (JSON array of every dist file except sw.js). In dev this file is
-// served verbatim (placeholders intact) and never registered —
+// list (JSON array of every dist file except sw.js). In dev this template
+// never reaches the browser: the `localaction-sw-dev-cleanup` plugin
+// intercepts /sw.js and serves a self-destructing worker instead, and
 // src/serviceWorkerRegistration.ts only registers in prod builds.
 const VERSION = '__CACHE_VERSION__';
 const CACHE = `localaction-${VERSION}`;

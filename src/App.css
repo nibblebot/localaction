@@ -928,7 +928,7 @@ body.sidebar-resizing {
 .project-row-done {
   opacity: 0.7;
 }
-/* Card header row: caret · name · progress · actions. The horizontal
+/* Card header row: caret · name · actions · progress. The horizontal
    padding sits on rem so the density knob rescales the card chrome
    alongside row content. */
 .project-row-line {
@@ -946,8 +946,9 @@ body.sidebar-resizing {
   margin-inline-start: calc(-1 * var(--space-2));
 }
 
-/* Right-aligned action cluster on project rows (DueDate, Notes,
-   Rename, Trash). One wrapper so the cluster shifts together
+/* Right-aligned cluster on project rows (DueDate, Notes, Rename,
+   Trash), followed by the progress meter pinned to the far right
+   edge. One wrapper so the cluster shifts together
    when items are added/hidden, and only one auto-margin slot
    consumes the flex space. */
 .project-row-actions {

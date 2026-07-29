@@ -1055,7 +1055,6 @@ function ProjectRow({
             }}
           />
         )}
-        <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
@@ -1068,6 +1067,7 @@ function ProjectRow({
             }}
           />
         </div >
+        <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
       </div >
       {!collapsed && (
         <div className="project-row-tasks">
@@ -1204,7 +1204,6 @@ function SortableProjectRow({
             }}
           />
         )}
-        <ProjectProgressMeter done={done} total={total} />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
@@ -1217,6 +1216,7 @@ function SortableProjectRow({
             }}
           />
         </div >
+        <ProjectProgressMeter done={done} total={total} />
       </div >
       {!collapsed && (
         <div className="project-row-tasks">
@@ -1503,7 +1503,6 @@ function ProjectPaneHeader({
       )}
       {actions && (
         <div className="project-row-actions">
-          <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
           <ProjectRowActions
             projectId={projectId}
             display={display}
@@ -1514,6 +1513,7 @@ function ProjectPaneHeader({
               navigate(areaId ? { kind: 'area', id: areaId } : INBOX);
             }}
           />
+          <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
         </div>
       )}
       {trailing && <div className="area-header-actions">{trailing}</div>}

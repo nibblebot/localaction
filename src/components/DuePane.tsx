@@ -129,7 +129,7 @@ function ProjectDueRow({
     <div className="today-project-due-row">
       <button
         type="button"
-        className="project-row-caret"
+        className="project-row-caret icon-button"
         aria-label={collapsed ? `Expand ${name}` : `Collapse ${name}`}
         aria-expanded={!collapsed}
         title={collapsed ? 'Expand tasks' : 'Collapse tasks'}

@@ -141,8 +141,6 @@ body.sidebar-resizing {
 
 .sidebar-section-title-action {
   margin-inline-start: auto;
-  width: 20px;
-  height: 20px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -157,11 +155,6 @@ body.sidebar-resizing {
 .sidebar-section-title-action:hover {
   color: var(--text-h);
   background: var(--surface-hover);
-}
-
-.sidebar-section-title-action svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 .sidebar-section-body {
@@ -190,6 +183,7 @@ body.sidebar-resizing {
   flex: 1 1 auto;
   min-width: 0;
 }
+
 
 .sidebar-item {
   display: flex;
@@ -424,8 +418,6 @@ body.sidebar-resizing {
 }
 
 .area-header-add {
-  width: 36px;
-  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -445,11 +437,6 @@ body.sidebar-resizing {
   background: var(--surface-hover);
   border-color: var(--text-muted);
   border-style: solid;
-}
-
-.area-header-add svg {
-  width: var(--icon-md);
-  height: var(--icon-md);
 }
 
 .area-header-add-input {
@@ -555,8 +542,6 @@ body.sidebar-resizing {
 }
 
 .area-edit-delete {
-  width: 28px;
-  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -574,11 +559,6 @@ body.sidebar-resizing {
   color: var(--danger);
   background: var(--danger-bg);
   border-color: var(--danger-border);
-}
-
-.area-edit-delete svg {
-  width: var(--icon-md);
-  height: var(--icon-md);
 }
 
 
@@ -714,12 +694,6 @@ body.sidebar-resizing {
   transition: color 0.15s ease;
 }
 
-.pane-section-toggle svg {
-  width: var(--icon-sm);
-  height: var(--icon-sm);
-  flex-shrink: 0;
-}
-
 .pane-section-title {
   /* One register up from the inner status-group labels (.tab-group-title
      is 0.79rem) so the section header reads as the parent, not a peer.
@@ -751,8 +725,6 @@ body.sidebar-resizing {
    ============================================================ */
 
 .area-tab-action {
-  width: 28px;
-  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -780,11 +752,6 @@ body.sidebar-resizing {
 .area-tab-action-active:hover {
   background: var(--accent-tint);
   color: var(--accent);
-}
-
-.area-tab-action svg {
-  width: var(--icon-sm);
-  height: var(--icon-sm);
 }
 
 /* ============================================================
@@ -838,12 +805,6 @@ body.sidebar-resizing {
 
 .tab-group-toggle:hover .tab-group-title {
   color: inherit;
-}
-
-.tab-group-toggle svg {
-  width: var(--icon-sm);
-  height: var(--icon-sm);
-  flex-shrink: 0;
 }
 
 /* Droppable wrapper around a sortable status group. The default state
@@ -930,8 +891,6 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
   flex-shrink: 0;
   padding: 0;
   border: 0;
@@ -944,11 +903,6 @@ body.sidebar-resizing {
 .project-row-caret:hover {
   color: var(--text-h);
   background: var(--surface-hover);
-}
-
-.project-row-caret svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 /* Expanded task tree, kept inside the card (the row clips it to the
@@ -1044,8 +998,6 @@ body.sidebar-resizing {
 }
 
 .project-row-action {
-  width: 26px;
-  height: 26px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
@@ -1087,11 +1039,6 @@ body.sidebar-resizing {
   background: var(--accent-tint);
   color: var(--accent);
   opacity: 1;
-}
-
-.project-row-action svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 .project-tasks {
@@ -1324,11 +1271,6 @@ body.sidebar-resizing {
   color: inherit;
 }
 
-.today-section-toggle .svg-icon {
-  width: 14px;
-  height: 14px;
-}
-
 /* Overdue section: danger-tinted so past-due items read at a glance. */
 .today-overdue-toggle {
   color: var(--danger);
@@ -1436,8 +1378,6 @@ body.sidebar-resizing {
 }
 
 .task-line-action {
-  width: 22px;
-  height: 22px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
@@ -1468,11 +1408,6 @@ body.sidebar-resizing {
 .task-line-action-danger:hover {
   color: var(--danger);
   background: var(--danger-bg);
-}
-
-.task-line-action svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 /* ============================================================
@@ -1558,8 +1493,6 @@ body.sidebar-resizing {
 }
 
 .note-line-action {
-  width: 22px;
-  height: 22px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
@@ -1587,11 +1520,6 @@ body.sidebar-resizing {
 .note-line-action-danger:hover {
   color: var(--danger);
   background: var(--danger-bg);
-}
-
-.note-line-action svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 .note-line-body {
@@ -2001,6 +1929,26 @@ body.sidebar-resizing {
 }
 
 /* ============================================================
+   Button icons — every SVG inside a button renders at 20px
+   (--icon-button-size, fixed by spec). Buttons whose only content
+   is the glyph carry .icon-button: a 32px square control
+   (--icon-button-control). position: relative anchors the coarse-
+   pointer hit halo; it is layout-neutral at fine pointers.
+   ============================================================ */
+
+button .svg-icon {
+  width: var(--icon-button-size);
+  height: var(--icon-button-size);
+}
+
+.icon-button {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--icon-button-control);
+  height: var(--icon-button-control);
+}
+
+/* ============================================================
    Appearance trigger + popover menu (sidebar footer)
    ============================================================ */
 
@@ -2012,8 +1960,6 @@ body.sidebar-resizing {
 }
 
 .appearance-fab-trigger {
-  width: 40px;
-  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2033,11 +1979,6 @@ body.sidebar-resizing {
 .appearance-fab-trigger:focus-visible {
   outline: 2px solid var(--accent-border);
   outline-offset: 1px;
-}
-
-.appearance-fab-icon {
-  width: var(--icon-md);
-  height: var(--icon-md);
 }
 
 .appearance-menu {
@@ -2296,8 +2237,6 @@ body.sidebar-resizing {
    ------------------------------------------------------------ */
 
 .project-row-drag-handle {
-  width: 32px;
-  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2309,7 +2248,7 @@ body.sidebar-resizing {
   padding: 0;
   flex-shrink: 0;
   /* Negative margin absorbs the grip icon's dead space inside the
-     22px box so the handle→caret gap matches caret→name. */
+     32px box so the handle→caret gap matches caret→name. */
   margin-right: -4px;
   touch-action: none;
   transition: opacity 0.12s ease;
@@ -2324,11 +2263,6 @@ body.sidebar-resizing {
   background: var(--surface-hover);
 }
 
-.project-row-drag-handle svg {
-  width: var(--icon-sm);
-  height: var(--icon-sm);
-}
-
 /* When the user is actively dragging a project row, hide the
    grip and show a faint outline so the preview reads as
    "carried". The DragOverlay copies the row's full chrome. */
@@ -2341,8 +2275,6 @@ body.sidebar-resizing {
    ------------------------------------------------------------ */
 
 .task-line-drag-handle {
-  width: 24px;
-  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2354,11 +2286,11 @@ body.sidebar-resizing {
   padding: 0;
   flex-shrink: 0;
   /* Negative margin absorbs the grip icon's dead space inside the
-     24px box so the handle→checkbox gap matches checkbox→title. */
+     32px box so the handle→checkbox gap matches checkbox→title. */
   margin-right: -2px;
-  /* Same first-line centering as .task-line-check (24px box on the
+  /* Same first-line centering as .task-line-check (32px box on the
      title's 2px + 0.75rem line center). */
-  margin-top: calc(0.75rem - 10px);
+  margin-top: calc(0.75rem - 14px);
   touch-action: none;
   /* Hidden until the row is hovered / focused / being dragged —
      keeps the grip chrome off the resting state. */
@@ -2372,11 +2304,6 @@ body.sidebar-resizing {
 .task-line-drag-handle:hover {
   color: var(--text-h);
   background: var(--surface-hover);
-}
-
-.task-line-drag-handle svg {
-  width: var(--icon-sm);
-  height: var(--icon-sm);
 }
 
 .task-line:hover .task-line-drag-handle,
@@ -2463,24 +2390,20 @@ body.sidebar-resizing {
    Due date (row button + calendar popover; projects and tasks)
    ============================================================ */
 
-.due-date {
+/* Label variant (a set date renders MM/DD instead of the calendar
+   glyph): the control hugs the label, floored at the 32px square. */
+.due-date-set {
   width: auto;
-  min-width: 22px;
+  min-width: var(--icon-button-control);
+  height: var(--icon-button-control);
   padding: 0 4px;
-}
-
-.project-row-action.due-date {
-  min-width: 26px;
+  color: var(--text);
 }
 
 .due-date-label {
   font-size: 0.79rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.due-date-set {
-  color: var(--text);
 }
 
 .due-calendar-backdrop {
@@ -2517,8 +2440,6 @@ body.sidebar-resizing {
   color: var(--text-h);
 }
 .due-calendar-nav {
-  width: 24px;
-  height: 24px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -2533,11 +2454,6 @@ body.sidebar-resizing {
 .due-calendar-nav:hover {
   background: var(--surface-hover);
   color: var(--text-h);
-}
-
-.due-calendar-nav svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
 }
 
 .due-calendar-grid {
@@ -2615,8 +2531,6 @@ body.sidebar-resizing {
     position: fixed;
     top: max(var(--space-2), env(safe-area-inset-top, 0px));
     inset-inline-start: max(var(--space-2), env(safe-area-inset-left, 0px));
-    width: 40px;
-    height: 40px;
     z-index: var(--z-drawer-toggle);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -2624,11 +2538,6 @@ body.sidebar-resizing {
     color: var(--text-secondary);
     cursor: pointer;
     padding: 0;
-  }
-
-  .drawer-toggle svg {
-    width: var(--icon-md);
-    height: var(--icon-md);
   }
 
   /* Sidebar becomes an off-canvas drawer. */
@@ -2664,7 +2573,7 @@ body.sidebar-resizing {
 
   /* Reserve the hamburger lane above pane content. */
   .main-body {
-    padding-top: calc(40px + var(--space-4));
+    padding-top: calc(var(--icon-button-control) + var(--space-4));
   }
 
   /* Long breadcrumb chains wrap instead of colliding with the
@@ -2672,7 +2581,7 @@ body.sidebar-resizing {
      keeps its full width on the next line. */
   .area-header {
     flex-wrap: wrap;
-    margin-inline-end: calc(40px + var(--space-2));
+    margin-inline-end: calc(var(--icon-button-control) + var(--space-2));
     row-gap: var(--space-2);
   }
 
@@ -2758,17 +2667,7 @@ body.sidebar-resizing {
    ============================================================ */
 
 @media (pointer: coarse) {
-  .task-line-action,
-  .note-line-action,
-  .project-row-action,
-  .task-line-drag-handle,
-  .project-row-drag-handle,
-  .task-line-check,
-  .project-row-caret,
-  .area-header-add,
-  .appearance-fab-trigger,
-  .due-calendar-nav,
-  .sidebar-section-title-action {
+  .task-line-check {
     position: relative;
   }
 
@@ -2783,77 +2682,35 @@ body.sidebar-resizing {
   .project-row-drag-handle {
     visibility: visible;
   }
-  .task-line-action::after,
-  .note-line-action::after,
-  .project-row-action::after,
-  .task-line-drag-handle::after,
-  .project-row-drag-handle::after,
-  .task-line-check::after,
-  .project-row-caret::after {
-    content: '';
-    position: absolute;
-    inset: -11px; /* 22px control + 2×11px → 44px hit area */
-  }
 
-  /* Larger controls need smaller halos to reach the same 44px. */
-  .sidebar-section-title-action::after {
-    content: '';
-    position: absolute;
-    inset: -12px;
-  }
 
-  .due-calendar-nav::after {
+  /* Every icon button is a 32px visual control; the invisible halo
+     extends the hit region to the 44px touch minimum. (.icon-button
+     is position: relative at all pointers, so the halo anchors
+     everywhere — the drawer toggle's own fixed position does the
+     same job.) */
+  .icon-button::after {
     content: '';
     position: absolute;
-    inset: -9px;
-  }
-
-  .area-header-add::after {
-    content: '';
-    position: absolute;
-    inset: -4px;
-  }
-
-  .appearance-fab-trigger::after {
-    content: '';
-    position: absolute;
-    inset: -2px;
+    inset: -6px; /* 32px control + 2×6px → 44px hit area */
   }
 
   /* 14px checkbox needs a wider halo. */
   .task-line-check::after {
+    content: '';
+    position: absolute;
     inset: -15px;
   }
 
-  /* Sidebar rows and tab-bar actions grow for real — they're
-     primary navigation, not row-level chrome. */
+  /* Sidebar rows grow for real — they're primary navigation, not
+     row-level chrome. */
   .sidebar-item {
     min-height: 44px;
-  }
-
-  .area-tab-action {
-    width: 44px;
-    height: 44px;
   }
 
   /* Calendar day cells reach ~44px on phones. */
   .due-calendar {
     width: min(320px, calc(100vw - 16px));
-  }
-}
-
-/* The drawer toggle is primary navigation on touch, not row-level
-   chrome — by the doctrine above it grows for real, and the lane
-   reserved above pane content grows with it. Combined query keeps
-   desktop (fine pointer) untouched. */
-@media (max-width: 767px) and (pointer: coarse) {
-  .drawer-toggle {
-    width: 44px;
-    height: 44px;
-  }
-
-  .main-body {
-    padding-top: calc(44px + var(--space-4));
   }
 }
 

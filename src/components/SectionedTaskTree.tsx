@@ -117,7 +117,7 @@ function SectionRow({
         <button
           type="button"
           {...(handle.attributes ?? {})}
-          className="task-line-drag-handle"
+          className="task-line-drag-handle icon-button"
           aria-label="Drag to reorder section"
           title="Drag to reorder section"
           onClick={(e) => e.preventDefault()}
@@ -136,7 +136,7 @@ function SectionRow({
       />
       <button
         type="button"
-        className="task-line-action"
+        className="task-line-action icon-button"
         aria-label="Add task to section"
         title="Add task to section"
         onClick={() => {
@@ -148,12 +148,12 @@ function SectionRow({
         }}
       >
         <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#plus-filled-icon" />
+          <use href="/icons.svg#add-icon" />
         </svg>
       </button>
       <button
         type="button"
-        className="task-line-action task-line-action-danger"
+        className="task-line-action task-line-action-danger icon-button"
         aria-label="Delete section"
         title="Delete"
         onClick={() => setConfirmDelete(true)}

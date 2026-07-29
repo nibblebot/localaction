@@ -211,7 +211,7 @@ Quiet controls that wake on hover. Chrome hides until needed — row actions app
 
 ### Rows and lists
 - **Sidebar row:** Transparent at rest; hover washes surface-hover; active fills the accent wash with Iris text and a tinted count pill. Top-level areas run 600 weight. Dimmed rows (empty areas) drop to 40% opacity, recovering on hover.
-- **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed 22px icon actions. Done state: strikethrough, muted ink, 60% opacity on the row.
+- **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed icon actions (32px controls, 20px glyphs). Done state: strikethrough, muted ink, 60% opacity on the row.
 - **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count. On phone-width viewports the row is a navigation path, not an action bar: caret, name, count, and the stateful due-date chip stay; every other action (notes, rename, delete, empty-sections) lives on the project detail pane the row opens, and long names wrap instead of truncating.
 - **Drag interaction:** Source row dims to 35% and holds its place in the list; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
 
@@ -233,7 +233,7 @@ Every completion and every cascade delete offers a 6-second undo window: a quiet
 The sidebar is the instrument panel: Rail surface, section titles in small caps-weight labels, area rows with user-colored dots and live count pills, the sync badge pinned at the foot. The main pane holds the working view — area or project — with a breadcrumb chain for parent context. There is no top-level chrome beyond this: no app bar, no toolbar strip.
 
 ### Icons
-One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12/14rem — carets, row-level actions), `--icon-sm` (1rem — default chrome and drag grips), `--icon-md` (18/14rem — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.
+One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round caps and joins. Artwork covers ~60–70% of the canvas so every glyph reads at the same optical size; `close-icon` is the one exception, keeping wider margins so it reads as dismiss, not slash. Four render sizes, token-based: `--icon-xs` (12/14rem — carets, row-level actions), `--icon-sm` (1rem — default chrome and drag grips), `--icon-md` (18/14rem — header and FAB actions), `--icon-lg` (fixed 24px — the decorative project-header glyph only). All but `--icon-lg` are rem-based, so the density knob rescales icons with everything else. Button icons are the exception, fixed by spec: every SVG inside a button renders at 20px (`--icon-button-size`), and a button whose only content is the glyph carries `.icon-button` — a 32px square control (`--icon-button-control`). Both are fixed px; the density knob does not rescale functional hit targets. On coarse pointers an invisible ::after halo extends every icon button's hit area to the 44px touch minimum without changing the 32px visual size. The drag affordance is a 2×3 dot grip, symmetric on both axes. New icons join the sprite on the same grid and stroke — never inline SVG, never a second grid.
 
 ## 6. Do's and Don'ts
 
@@ -245,7 +245,7 @@ One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round ca
 - **Do** keep the sync badge visible and plain-spoken — local-first ownership is a feature users can see.
 - **Do** preserve the 2px accent `:focus-visible` outline everywhere; the keyboard is a first-class surface.
 - **Do** size in rem so the density knob rescales everything.
-- **Do** size icons with the four `--icon-*` tokens; a new size outside the scale needs a new token, not a one-off px.
+- **Do** size icons with the four `--icon-*` tokens (button icons use `--icon-button-size` / `--icon-button-control`); a new size outside the scale needs a new token, not a one-off px.
 
 ### Don't:
 - **Don't** build legacy enterprise PM feature walls or side-stripe banners (Asana/Jira) — no colored left borders on rows or callouts, no stacked chrome to advertise capability.

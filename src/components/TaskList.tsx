@@ -182,7 +182,7 @@ export function TaskRow({
         <button
           type="button"
           {...(handle.attributes ?? {})}
-          className="task-line-drag-handle"
+          className="task-line-drag-handle icon-button"
           aria-label="Drag to reorder"
           title="Drag to reorder"
           onClick={(e) => e.preventDefault()}
@@ -244,7 +244,7 @@ export function TaskRow({
             <TaskDueDateButton taskId={taskId} />
             <button
               type="button"
-              className="task-line-action"
+              className="task-line-action icon-button"
               aria-label="Add sub-task"
               title="Add sub-task"
               onClick={() => {
@@ -256,12 +256,12 @@ export function TaskRow({
               }}
             >
               <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#plus-filled-icon" />
+                <use href="/icons.svg#add-icon" />
               </svg>
             </button>
             <button
               type="button"
-              className="task-line-action task-line-action-danger"
+              className="task-line-action task-line-action-danger icon-button"
               aria-label="Delete task"
               title="Delete"
               onClick={() => setConfirmDelete(true)}

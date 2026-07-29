@@ -359,7 +359,7 @@ function AreaHeader({
       ) : (
         <button
           type="button"
-          className="area-header-add"
+          className="area-header-add icon-button"
           onClick={() => setAdding(true)}
           aria-label="Add sub-area"
           title="Add sub-area"
@@ -457,7 +457,7 @@ function CompletedToggle({
   return (
     <button
       type="button"
-      className={`area-tab-action${showCompleted ? ' area-tab-action-active' : ''}`}
+      className={`area-tab-action icon-button${showCompleted ? ' area-tab-action-active' : ''}`}
       aria-label={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
       title={showCompleted ? 'Hide completed tasks' : 'Show completed tasks'}
       aria-pressed={showCompleted}
@@ -555,7 +555,7 @@ function ProjectCollapseAllButton({
   return (
     <button
       type="button"
-      className="area-tab-action"
+      className="area-tab-action icon-button"
       aria-label={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
       title={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
       onClick={() => replace(allCollapsed ? [] : ids)}
@@ -808,7 +808,7 @@ function ProjectAddTaskButton({
   return (
     <button
       type="button"
-      className="project-row-action project-row-add"
+      className="project-row-action project-row-add icon-button"
       aria-label={`Add task to ${display}`}
       title="Add task"
       onClick={(e) => {
@@ -819,7 +819,7 @@ function ProjectAddTaskButton({
       }}
     >
       <svg className="svg-icon" aria-hidden="true">
-        <use href="/icons.svg#plus-filled-icon" />
+        <use href="/icons.svg#add-icon" />
       </svg>
     </button>
   );
@@ -862,7 +862,7 @@ function ProjectRowActions({
     <>
       <button
         type="button"
-        className="project-row-action"
+        className="project-row-action icon-button"
         aria-label={`Add section to ${display}`}
         title="Add section"
         onClick={(e) => {
@@ -882,7 +882,7 @@ function ProjectRowActions({
       <ProjectDueDateButton projectId={projectId} />
       <button
         type="button"
-        className={`project-row-action${hideEmptySections ? ' project-row-action-active' : ''}`}
+        className={`project-row-action icon-button${hideEmptySections ? ' project-row-action-active' : ''}`}
         aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
         aria-pressed={hideEmptySections}
         title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
@@ -897,7 +897,7 @@ function ProjectRowActions({
       </button>
       <button
         type="button"
-        className="project-row-action"
+        className="project-row-action icon-button"
         aria-label={`Open notes for ${display}`}
         title="Notes"
         onClick={(e) => {
@@ -911,7 +911,7 @@ function ProjectRowActions({
       </button>
       <button
         type="button"
-        className="project-row-action"
+        className="project-row-action icon-button"
         aria-label="Rename project"
         title="Rename"
         onClick={(e) => {
@@ -925,7 +925,7 @@ function ProjectRowActions({
       </button>
       <button
         type="button"
-        className="project-row-action project-row-action-danger"
+        className="project-row-action project-row-action-danger icon-button"
         aria-label="Delete project"
         title="Delete"
         onClick={(e) => {
@@ -1000,7 +1000,7 @@ function ProjectRow({
       <div className="project-row-line" onClick={openProject}>
         <button
           type="button"
-          className="project-row-caret"
+          className="project-row-caret icon-button"
           aria-label={collapsed ? `Expand ${display}` : `Collapse ${display}`}
           aria-expanded={!collapsed}
           title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
@@ -1133,7 +1133,7 @@ function SortableProjectRow({
       <div className="project-row-line" onClick={openProject}>
         <button
           type="button"
-          className="project-row-drag-handle"
+          className="project-row-drag-handle icon-button"
           aria-label="Drag to reorder"
           title="Drag to reorder"
           onClick={(e) => {
@@ -1149,7 +1149,7 @@ function SortableProjectRow({
         </button>
         <button
           type="button"
-          className="project-row-caret"
+          className="project-row-caret icon-button"
           aria-label={collapsed ? `Expand ${display}` : `Collapse ${display}`}
           aria-expanded={!collapsed}
           title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
@@ -1313,7 +1313,7 @@ function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
         <span className="note-line-preview">{stripPreview(body) || 'Empty note'}</span>
         <button
           type="button"
-          className="note-line-action note-line-action-danger"
+          className="note-line-action note-line-action-danger icon-button"
           aria-label="Delete note"
           title="Delete"
           onClick={() => setConfirmDelete(true)}
@@ -1844,7 +1844,7 @@ function AreaTasksSection({
       trailing={
         <button
           type="button"
-          className="area-tab-action area-tab-action-add"
+          className="area-tab-action area-tab-action-add icon-button"
           aria-label="Add task"
           title="Add task"
           onClick={() => {

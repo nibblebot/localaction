@@ -57,7 +57,7 @@ function App(): React.JSX.Element {
               <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
                 <button
                   type="button"
-                  className="drawer-toggle"
+                  className="drawer-toggle icon-button"
                   aria-label={drawerOpen ? 'Close navigation' : 'Open navigation'}
                   aria-expanded={drawerOpen}
                   aria-controls="app-sidebar"

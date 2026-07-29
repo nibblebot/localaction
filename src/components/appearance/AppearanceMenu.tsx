@@ -56,7 +56,7 @@ export default function AppearanceMenu(): React.JSX.Element {
     <div className="appearance-fab" ref={rootRef}>
       <button
         type="button"
-        className="appearance-fab-trigger"
+        className="appearance-fab-trigger icon-button"
         aria-label="Appearance settings"
         aria-expanded={open}
         aria-haspopup="dialog"

@@ -135,7 +135,7 @@ export default function AreaEditPopover({
         <div className="area-edit-footer">
           <button
             type="button"
-            className="area-edit-delete"
+            className="area-edit-delete icon-button"
             onClick={onRequestDelete}
             aria-label="Delete area"
             title="Delete area"

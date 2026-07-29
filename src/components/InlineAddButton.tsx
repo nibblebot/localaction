@@ -46,7 +46,7 @@ export default function InlineAddButton({
     return (
       <button
         type="button"
-        className={`area-tab-action${className ? ` ${className}` : ''}`}
+        className={`area-tab-action icon-button${className ? ` ${className}` : ''}`}
         aria-label={label}
         title={label}
         onClick={() => setOpen(true)}

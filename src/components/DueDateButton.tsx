@@ -59,7 +59,7 @@ export default function DueDateButton({
     <>
       <button
         type="button"
-        className={`${className} due-date${dueDate ? ' due-date-set' : ''}`}
+        className={`${className} due-date${dueDate ? ' due-date-set' : ' icon-button'}`}
         aria-label={dueDate ? `Due ${formatDueDate(dueDate)} — change` : 'Set due date'}
         title={dueDate ? `Due ${formatDueDate(dueDate)}` : 'Set due date'}
         aria-haspopup="dialog"
@@ -178,7 +178,7 @@ function DueDateCalendar({
         <div className="due-calendar-header">
           <button
             type="button"
-            className="due-calendar-nav"
+            className="due-calendar-nav icon-button"
             aria-label="Previous month"
             onClick={() => shiftMonth(-1)}
           >
@@ -191,7 +191,7 @@ function DueDateCalendar({
           </span>
           <button
             type="button"
-            className="due-calendar-nav"
+            className="due-calendar-nav icon-button"
             aria-label="Next month"
             onClick={() => shiftMonth(1)}
           >

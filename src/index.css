@@ -131,6 +131,12 @@
   --icon-md: calc(18 / 14 * 1rem);
   --icon-lg: 24px;
 
+  /* Icon buttons — fixed by spec: a 20px glyph on a 32px square control.
+     Fixed px, deliberately outside the rem scale: the density knob does
+     not rescale functional hit targets. */
+  --icon-button-size: 20px;
+  --icon-button-control: 32px;
+
   /* Type */
   --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;

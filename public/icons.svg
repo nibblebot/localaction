@@ -5,12 +5,6 @@
        keeps wider margins (10x10 artwork) so it reads as "dismiss",
        not as a heavy slash, at chip scale. The brand wordmark keeps
        its own 24 grid. -->
-  <symbol id="caret-down-icon" viewBox="0 0 20 20">
-    <path fill="currentColor" d="M4 7 L16 7 L10 14 Z"/>
-  </symbol>
-  <symbol id="caret-right-icon" viewBox="0 0 20 20">
-    <path fill="currentColor" d="M7 4 L14 10 L7 16 Z"/>
-  </symbol>
   <symbol id="leaf-icon" viewBox="0 0 20 20">
     <circle cx="10" cy="10" r="2.5" fill="currentColor"/>
   </symbol>
@@ -26,9 +20,6 @@
   </symbol>
   <symbol id="add-icon" viewBox="0 0 20 20">
     <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M10 4 V16 M4 10 H16"/>
-  </symbol>
-  <symbol id="plus-filled-icon" viewBox="0 0 20 20">
-    <path fill="currentColor" d="M9 3 H11 V9 H17 V11 H11 V17 H9 V11 H3 V9 H9 Z"/>
   </symbol>
 
   <!-- Chrome -->

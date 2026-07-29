@@ -94,6 +94,7 @@ function SortableAreaRow({
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
       <div className="sidebar-item-row">
+
         <button
           type="button"
           {...(handle.attributes ?? {})}
@@ -313,7 +314,7 @@ export default function Sidebar({
           {collapsibleIds.length > 0 && (
             <button
               type="button"
-              className="sidebar-section-title-action"
+              className="sidebar-section-title-action icon-button"
               onClick={toggleAll}
               aria-label={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
               title={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
@@ -325,7 +326,7 @@ export default function Sidebar({
           )}
           <button
             type="button"
-            className="sidebar-section-title-action"
+            className="sidebar-section-title-action icon-button"
             onClick={() => setShowNewArea(true)}
             aria-label="New area"
             title="New area"

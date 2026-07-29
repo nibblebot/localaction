@@ -92,6 +92,14 @@ function TaskTitleInput({
   }, []);
 
   function commit(): void {
+    // Blurring a never-titled task with an empty draft cancels the
+    // creation — the row only existed so the input could take focus.
+    // Covers every add-task flow (project/area "+", sub-task,
+    // Shift+Enter sibling) and Escape on a fresh row.
+    if (title === '' && draft.trim() === '') {
+      deleteTask(store, taskId);
+      return;
+    }
     if (draft !== title) updateTask(store, taskId, { title: draft });
     else setDraft(title);
   }

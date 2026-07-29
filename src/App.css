@@ -942,19 +942,6 @@ body.sidebar-resizing {
   text-decoration: line-through;
 }
 
-.project-row-name-input {
-  flex: 1 1 auto;
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--text-h);
-  background: var(--bg);
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  min-width: 0;
-}
-
 .project-row-progress {
   display: flex;
   align-items: center;

@@ -826,38 +826,29 @@ function ProjectAddTaskButton({
 }
 
 /**
- * The project action cluster shared by the area-view card and the
- * project detail pane: add-section, due date, empty-section pruning,
- * notes, rename, delete. Delete is confirmed and undoable;
- * `onAfterDelete` lets the detail pane navigate away from the removed
- * project. The add affordances create an empty task/section and hand
- * focus to its title input once the row mounts.
+ * The action cluster on a project row in the area view: add-section,
+ * due date, empty-section pruning. The add affordance creates an
+ * empty section and hands focus to its title input once the row
+ * mounts. Management affordances (notes, rename, delete) live only on
+ * the project detail pane — see `ProjectPaneActions`.
  */
 function ProjectRowActions({
   projectId,
   display,
   hideEmptySections,
   onToggleEmptySections,
-  onRename,
-  onAfterDelete,
   onEnsureExpanded,
 }: {
   projectId: string;
-  /** Display name for aria-labels and the delete confirmation. */
+  /** Display name for aria-labels. */
   display: string;
   /** Prune section headers with no visible tasks in the task list. */
   hideEmptySections: boolean;
   onToggleEmptySections: () => void;
-  onRename: () => void;
-  /** Runs after a confirmed delete (panes navigate away; rows omit). */
-  onAfterDelete?: () => void;
   /** Expands a collapsed card so the new row can mount (panes omit). */
   onEnsureExpanded?: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const { navigate } = useSelection();
-  const { offerUndo } = useUndo();
-  const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <>
       <button
@@ -895,6 +886,47 @@ function ProjectRowActions({
           <use href="/icons.svg#sections-icon" />
         </svg>
       </button>
+    </>
+  );
+}
+
+/**
+ * The action cluster on the project detail pane header: the shared
+ * row actions (add-section, due date, empty-section pruning) plus the
+ * management affordances that only exist here — notes, rename,
+ * delete. Delete is confirmed and undoable; `onAfterDelete` lets the
+ * pane navigate away from the removed project.
+ */
+function ProjectPaneActions({
+  projectId,
+  display,
+  hideEmptySections,
+  onToggleEmptySections,
+  onRename,
+  onAfterDelete,
+}: {
+  projectId: string;
+  /** Display name for aria-labels and the delete confirmation. */
+  display: string;
+  /** Prune section headers with no visible tasks in the task list. */
+  hideEmptySections: boolean;
+  onToggleEmptySections: () => void;
+  onRename: () => void;
+  /** Runs after a confirmed delete (the pane navigates away). */
+  onAfterDelete: () => void;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const { navigate } = useSelection();
+  const { offerUndo } = useUndo();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  return (
+    <>
+      <ProjectRowActions
+        projectId={projectId}
+        display={display}
+        hideEmptySections={hideEmptySections}
+        onToggleEmptySections={onToggleEmptySections}
+      />
       <button
         type="button"
         className="project-row-action icon-button"
@@ -952,7 +984,7 @@ function ProjectRowActions({
               restoreSubtree(store, snapshot);
             },
           });
-          onAfterDelete?.();
+          onAfterDelete();
         }}
         onCancel={() => setConfirmDelete(false)}
       />
@@ -987,7 +1019,6 @@ function ProjectRow({
   const { store } = useDataLayer();
   const { navigate } = useSelection();
   const project = useProject(store, projectId);
-  const [editing, setEditing] = useState(false);
 
   const display = (project?.name ?? '') || name || 'Untitled';
 
@@ -1013,55 +1044,30 @@ function ProjectRow({
             <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
           </svg>
         </button>
-        {editing ? (
-          <input
-            type="text"
-            className="project-row-name-input"
-            aria-label="Project name"
-            defaultValue={display}
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) => {
-              const next = e.currentTarget.value.trim() || 'Untitled';
-              if (next !== display) {
-                store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
-              }
-              setEditing(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-              else if (e.key === 'Escape') setEditing(false);
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="project-row-name"
-            title="Open project"
-            onClick={(e) => {
-              e.stopPropagation();
-              openProject();
-            }}
-          >
-            {display}
-          </button>
-        )}
-        {!editing && (
-          <ProjectAddTaskButton
-            projectId={projectId}
-            display={display}
-            onEnsureExpanded={() => {
-              if (collapsed) onToggleCollapse();
-            }}
-          />
-        )}
+        <button
+          type="button"
+          className="project-row-name"
+          title="Open project"
+          onClick={(e) => {
+            e.stopPropagation();
+            openProject();
+          }}
+        >
+          {display}
+        </button>
+        <ProjectAddTaskButton
+          projectId={projectId}
+          display={display}
+          onEnsureExpanded={() => {
+            if (collapsed) onToggleCollapse();
+          }}
+        />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
             display={display}
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
-            onRename={() => setEditing(true)}
             onEnsureExpanded={() => {
               if (collapsed) onToggleCollapse();
             }}
@@ -1110,7 +1116,6 @@ function SortableProjectRow({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
-  const [editing, setEditing] = useState(false);
   const { navigate } = useSelection();
 
   const display = (project?.name ?? '') || name || 'Untitled';
@@ -1162,55 +1167,30 @@ function SortableProjectRow({
             <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
           </svg>
         </button>
-        {editing ? (
-          <input
-            type="text"
-            className="project-row-name-input"
-            aria-label="Project name"
-            defaultValue={display}
-            autoFocus
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) => {
-              const next = e.currentTarget.value.trim() || 'Untitled';
-              if (next !== display) {
-                store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
-              }
-              setEditing(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-              else if (e.key === 'Escape') setEditing(false);
-            }}
-          />
-        ) : (
-          <button
-            type="button"
-            className="project-row-name"
-            title="Open project"
-            onClick={(e) => {
-              e.stopPropagation();
-              openProject();
-            }}
-          >
-            {display}
-          </button>
-        )}
-        {!editing && (
-          <ProjectAddTaskButton
-            projectId={projectId}
-            display={display}
-            onEnsureExpanded={() => {
-              if (collapsed) onToggleCollapse();
-            }}
-          />
-        )}
+        <button
+          type="button"
+          className="project-row-name"
+          title="Open project"
+          onClick={(e) => {
+            e.stopPropagation();
+            openProject();
+          }}
+        >
+          {display}
+        </button>
+        <ProjectAddTaskButton
+          projectId={projectId}
+          display={display}
+          onEnsureExpanded={() => {
+            if (collapsed) onToggleCollapse();
+          }}
+        />
         <div className="project-row-actions">
           <ProjectRowActions
             projectId={projectId}
             display={display}
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
-            onRename={() => setEditing(true)}
             onEnsureExpanded={() => {
               if (collapsed) onToggleCollapse();
             }}
@@ -1416,10 +1396,10 @@ function ProjectPaneHeader({
   /** Extra actions pinned to the header's right edge. */
   trailing?: React.ReactNode;
   /**
-   * Presence opts the header into the project-row chrome the area-view
-   * card carries — progress meter plus the due-date / empty-sections /
-   * notes / rename / delete cluster — so the detail pane is the
-   * standalone form of the card. The notes pane omits it.
+   * Presence opts the header into the full project chrome — progress
+   * meter plus the shared row actions (due date, empty-sections) and
+   * the pane-only management cluster (notes, rename, delete). The
+   * notes pane omits it.
    */
   actions?: {
     hideEmptySections: boolean;
@@ -1503,7 +1483,7 @@ function ProjectPaneHeader({
       )}
       {actions && (
         <div className="project-row-actions">
-          <ProjectRowActions
+          <ProjectPaneActions
             projectId={projectId}
             display={display}
             hideEmptySections={actions.hideEmptySections}
@@ -1524,13 +1504,14 @@ function ProjectPaneHeader({
 /**
  * Project detail pane — the standalone form of an expanded project card
  * in the area view (`#/p/<id>`, reached by clicking a project row). The
- * header carries the area breadcrumb and the same row-action cluster
- * the card shows (progress, due date, empty-sections toggle, notes,
- * rename, delete) next to the shared Completed toggle; the body is the
- * same sectioned `ProjectTaskList` the card expands into. Project-
- * scoped notes stay in the notes pane. The empty-sections state comes
- * from the parent `MainPane` — one hook instance per screen, so the
- * card and this pane never disagree.
+ * header carries the area breadcrumb, the shared row actions
+ * (progress, due date, empty-sections toggle), and the management
+ * cluster that only exists here (notes, rename, delete) next to the
+ * shared Completed toggle; the body is the same sectioned
+ * `ProjectTaskList` the card expands into. Project-scoped notes stay
+ * in the notes pane. The empty-sections state comes from the parent
+ * `MainPane` — one hook instance per screen, so the card and this pane
+ * never disagree.
  */
 function ProjectPane({
   projectId,

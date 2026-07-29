@@ -83,8 +83,15 @@ test.describe('LocalAction shell', () => {
     await expect(card.locator('.project-row-tasks')).toHaveCount(0);
     await card.locator('button[aria-label="Expand Plan trip"]').click();
     await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // The note icon opens the project's notes pane.
-    await card.locator('button[aria-label="Open notes for Plan trip"]').click();
+    // Management affordances (notes, rename, delete) are not on the
+    // card — they live on the project detail pane header only.
+    await expect(card.locator('button[aria-label="Open notes for Plan trip"]')).toHaveCount(0);
+    await expect(card.locator('button[aria-label="Rename project"]')).toHaveCount(0);
+    await expect(card.locator('button[aria-label="Delete project"]')).toHaveCount(0);
+    // Open the detail pane; its header's note icon opens the notes pane.
+    await card.locator('.project-row-name').click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+    await page.locator('button[aria-label="Open notes for Plan trip"]').click();
     await expect(page).toHaveURL(/#\/p\/[^/]+\/notes$/);
     await expect(page.locator('.area-header-name')).toContainText('Plan trip');
     await page.locator('.notes-tab .inline-add-input').fill('Passports');
@@ -109,8 +116,11 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.area-header-name')).toContainText(sub);
     // Now we're on the sub-area pane. Add a project.
     await createProject(page, projectName);
-    // The note icon opens the project's notes pane, whose header shows
-    // a list-based document icon next to the name.
+    // Open the project detail pane; its header's note icon opens the
+    // project's notes pane, whose header shows a list-based document
+    // icon next to the name.
+    await page.locator('li.project-row .project-row-name', { hasText: projectName }).click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
     await page.locator(`button[aria-label="Open notes for ${projectName}"]`).click();
     const projectIcon = page.locator('.area-header-project-icon');
     await expect(projectIcon).toBeVisible();

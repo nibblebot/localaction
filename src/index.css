@@ -136,9 +136,9 @@
   --font-mono: ui-monospace, 'SF Mono', Consolas, 'Liberation Mono', monospace;
 
   /* Layout — sidebar width is driven by useSidebarWidth (clamped 200–260,
-     persisted per-device in localStorage). The default below is the
-     first-paint value before the hook mounts. */
-  --sidebar-w: 200px;
+     default 240, persisted per-device in localStorage). The default below
+     is the first-paint value before the hook mounts. */
+  --sidebar-w: 240px;
 
   --topbar-h: 52px;
 

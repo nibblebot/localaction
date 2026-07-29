@@ -2,18 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 
 export const SIDEBAR_MIN_PX = 200;
 export const SIDEBAR_MAX_PX = 260;
+/** Width applied until the user resizes (nothing stored yet). */
+export const SIDEBAR_DEFAULT_PX = 240;
 const STORAGE_KEY = 'localaction:sidebar-w';
 
 function loadStored(): number {
-  if (typeof localStorage === 'undefined') return SIDEBAR_MIN_PX;
+  if (typeof localStorage === 'undefined') return SIDEBAR_DEFAULT_PX;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SIDEBAR_MIN_PX;
+    if (!raw) return SIDEBAR_DEFAULT_PX;
     const n = Number.parseInt(raw, 10);
-    if (!Number.isFinite(n)) return SIDEBAR_MIN_PX;
+    if (!Number.isFinite(n)) return SIDEBAR_DEFAULT_PX;
     return Math.min(SIDEBAR_MAX_PX, Math.max(SIDEBAR_MIN_PX, n));
   } catch {
-    return SIDEBAR_MIN_PX;
+    return SIDEBAR_DEFAULT_PX;
   }
 }
 

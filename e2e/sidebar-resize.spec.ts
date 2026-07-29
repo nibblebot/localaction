@@ -7,6 +7,7 @@ import { test, expect, type Page } from '@playwright/test';
 
 const MIN_PX = 200;
 const MAX_PX = 260;
+const DEFAULT_PX = 240;
 
 async function readSidebarWidth(page: Page): Promise<number> {
   // The grid template column resolves to a real pixel value; query the
@@ -33,8 +34,8 @@ test.describe('Sidebar resize', () => {
     await expect(page.locator('.sidebar')).toBeVisible();
   });
 
-  test('starts at the default minimum width', async ({ page }) => {
-    await expect.poll(() => readSidebarWidth(page)).toBe(MIN_PX);
+  test('starts at the default width', async ({ page }) => {
+    await expect.poll(() => readSidebarWidth(page)).toBe(DEFAULT_PX);
     await expect(page.getByRole('separator', { name: 'Resize sidebar' })).toBeVisible();
   });
 
@@ -45,19 +46,19 @@ test.describe('Sidebar resize', () => {
     const startX = box!.x + box!.width / 2;
     const startY = box!.y + box!.height / 2;
 
-    // Drag 30px to the right. The committed width should be MIN + 30 = 230.
+    // Drag 15px to the right. The committed width should be DEFAULT + 15 = 255.
     await page.mouse.move(startX, startY);
     await page.mouse.down();
     // A few intermediate moves mirror how a real user drags — the
     // resizer uses pointer events and the read-back is only at the
     // end, so intermediate frames don't need to be checked here.
     for (let i = 1; i <= 5; i++) {
-      await page.mouse.move(startX + (30 * i) / 5, startY);
+      await page.mouse.move(startX + (15 * i) / 5, startY);
     }
     await page.mouse.up();
 
-    await expect.poll(() => readSidebarWidth(page)).toBe(MIN_PX + 30);
-    await expect(readPersistedWidth(page)).resolves.toBe(String(MIN_PX + 30));
+    await expect.poll(() => readSidebarWidth(page)).toBe(DEFAULT_PX + 15);
+    await expect(readPersistedWidth(page)).resolves.toBe(String(DEFAULT_PX + 15));
   });
 
   test('clamped to the maximum of 260px on a long drag', async ({ page }) => {
@@ -110,8 +111,8 @@ test.describe('Sidebar resize', () => {
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press('ArrowRight');
     }
-    await expect.poll(() => readSidebarWidth(page)).toBe(MIN_PX + 12);
-    await expect(readPersistedWidth(page)).resolves.toBe(String(MIN_PX + 12));
+    await expect.poll(() => readSidebarWidth(page)).toBe(DEFAULT_PX + 12);
+    await expect(readPersistedWidth(page)).resolves.toBe(String(DEFAULT_PX + 12));
 
     // End jumps to the max.
     await page.keyboard.press('End');
@@ -131,14 +132,14 @@ test.describe('Sidebar resize', () => {
 
     await page.mouse.move(startX, startY);
     await page.mouse.down();
-    await page.mouse.move(startX + 50, startY, { steps: 5 });
+    await page.mouse.move(startX + 10, startY, { steps: 5 });
     await page.mouse.up();
-    await expect.poll(() => readSidebarWidth(page)).toBe(MIN_PX + 50);
+    await expect.poll(() => readSidebarWidth(page)).toBe(DEFAULT_PX + 10);
 
     // Reload — the hook reads localStorage on mount and reapplies the
     // committed width.
     await page.reload();
     await expect(page.locator('.sidebar')).toBeVisible();
-    await expect.poll(() => readSidebarWidth(page)).toBe(MIN_PX + 50);
+    await expect.poll(() => readSidebarWidth(page)).toBe(DEFAULT_PX + 10);
   });
 });

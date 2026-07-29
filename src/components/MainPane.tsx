@@ -790,9 +790,47 @@ function ProjectProgressMeter({
 }
 
 /**
+ * The add-task "+", pinned right next to the project name — the same
+ * slot the section and group headers give their add affordance —
+ * instead of buried in the right-edge action cluster. Shares the
+ * card's hover-reveal chrome (`.project-row-action`).
+ */
+function ProjectAddTaskButton({
+  projectId,
+  display,
+  onEnsureExpanded,
+}: {
+  projectId: string;
+  /** Display name for the aria-label. */
+  display: string;
+  /** Expands a collapsed card so the new row can mount (panes omit). */
+  onEnsureExpanded?: () => void;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  return (
+    <button
+      type="button"
+      className="project-row-action project-row-add"
+      aria-label={`Add task to ${display}`}
+      title="Add task"
+      onClick={(e) => {
+        e.stopPropagation();
+        onEnsureExpanded?.();
+        const id = createTask(store, { title: '', placement: { kind: 'project', id: projectId } });
+        queueTaskTitleFocus(id);
+      }}
+    >
+      <svg className="svg-icon" aria-hidden="true">
+        <use href="/icons.svg#plus-filled-icon" />
+      </svg>
+    </button>
+  );
+}
+
+/**
  * The project action cluster shared by the area-view card and the
- * project detail pane: add-task, add-section, due date, empty-section
- * pruning, notes, rename, delete. Delete is confirmed and undoable;
+ * project detail pane: add-section, due date, empty-section pruning,
+ * notes, rename, delete. Delete is confirmed and undoable;
  * `onAfterDelete` lets the detail pane navigate away from the removed
  * project. The add affordances create an empty task/section and hand
  * focus to its title input once the row mounts.
@@ -824,22 +862,6 @@ function ProjectRowActions({
   const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <>
-      <button
-        type="button"
-        className="project-row-action"
-        aria-label={`Add task to ${display}`}
-        title="Add task"
-        onClick={(e) => {
-          e.stopPropagation();
-          onEnsureExpanded?.();
-          const id = createTask(store, { title: '', placement: { kind: 'project', id: projectId } });
-          queueTaskTitleFocus(id);
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#plus-filled-icon" />
-        </svg>
-      </button>
       <button
         type="button"
         className="project-row-action"
@@ -1026,6 +1048,15 @@ function ProjectRow({
             {display}
           </button>
         )}
+        {!editing && (
+          <ProjectAddTaskButton
+            projectId={projectId}
+            display={display}
+            onEnsureExpanded={() => {
+              if (collapsed) onToggleCollapse();
+            }}
+          />
+        )}
         <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
         <div className="project-row-actions">
           <ProjectRowActions
@@ -1165,6 +1196,15 @@ function SortableProjectRow({
           >
             {display}
           </button>
+        )}
+        {!editing && (
+          <ProjectAddTaskButton
+            projectId={projectId}
+            display={display}
+            onEnsureExpanded={() => {
+              if (collapsed) onToggleCollapse();
+            }}
+          />
         )}
         <ProjectProgressMeter done={done} total={total} />
         <div className="project-row-actions">
@@ -1454,6 +1494,9 @@ function ProjectPaneHeader({
         />
       ) : (
         <h1 className="area-header-name">{display}</h1>
+      )}
+      {actions && !editing && (
+        <ProjectAddTaskButton projectId={projectId} display={display} />
       )}
       {actions && (
         <div className="project-row-actions">

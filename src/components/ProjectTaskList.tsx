@@ -2,8 +2,9 @@
  * Project task list — the single implementation behind every expanded
  * project card in the area view's combined Projects tab and the
  * project detail pane: a sectioned SortableTree with fully editable
- * sections. The add-task / add-section affordances live in the
- * project-row action cluster (`ProjectRowActions`), not here.
+ * sections. The add-task "+" rides next to the project name
+ * (`ProjectAddTaskButton`) and the remaining affordances live in the
+ * project-row action cluster (`ProjectRowActions`) — not here.
  */
 import { useProjectTaskList } from './useProjectTaskList.ts';
 import { SectionedTaskTree } from './SectionedTaskTree.tsx';

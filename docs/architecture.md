@@ -223,8 +223,11 @@ sequenceDiagram
   `getSyncClient()`). `createWsSynchronizer(store, ws)` connects to
   `${ws|wss}://<host>/ws`. It is **StrictMode-safe**: the singleton is created
   once and is *not* destroyed on the fake unmount — only on `beforeunload`
-  (`destroySyncClient`). Reconnect uses exponential backoff, 500 ms base →
-  15 s cap. Status is a discriminated union surfaced through `SyncStatusBadge`.
+  (`destroySyncClient`). Reconnect backs off linearly, 5 s steps
+  (5/10/15/20 s) across 4 retries — 5 tries total — then gives up with a
+  terminal `error` status; the badge's retry button (`client.retry()`)
+  re-arms the loop. Status is a discriminated union surfaced through
+  `SyncStatusBadge`.
 - **Server** — `attachSyncServer` (in `server/index.ts`) creates a
   `WebSocketServer({ noServer: true })` and hands it to TinyBase's
   `createWsServer` with a persister factory: for each incoming `pathId` it

@@ -10,11 +10,19 @@ import { logInfo, logWarn } from '../log.ts';
 // to the server at ws://…/ws" / "interrupted while the page was
 // loading" in the browser console.
 
-const RECONNECT_BASE_MS = 500;
-const RECONNECT_MAX_MS = 15_000;
+// Linear backoff: 5 s step per retry → 5/10/15/20 s across 4 retries.
+// With the initial connect that's 5 tries total before giving up.
+const RECONNECT_STEP_MS = 5_000;
+const MAX_RECONNECT_ATTEMPTS = 4;
 
 export interface SyncClient {
   start(): void;
+  /**
+   * Manual re-arm after the reconnect loop gives up: resets the attempt
+   * counter and starts a fresh connect. No-op while a connect or retry
+   * timer is already in flight, while connected, or after destroy.
+   */
+  retry(): void;
   destroy(): Promise<void>;
   readonly status: SyncStatus;
   subscribe(listener: (status: SyncStatus) => void): () => void;
@@ -81,6 +89,11 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
   let currentSync: Awaited<ReturnType<typeof createWsSynchronizer>> | undefined;
   let destroyed = false;
   let attempt = 0;
+  // Latched when the reconnect loop gives up: the terminal `error`
+  // status is emitted exactly once even though a failure's paths
+  // (socket error/close, synchronizer rejection) all re-enter
+  // scheduleReconnect. Reset by retry() and by a successful connect.
+  let gaveUp = false;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
   // True while a `connect()` attempt is mid-flight. Prevents React 19
   // StrictMode's double-start from racing a second socket against the
@@ -115,9 +128,24 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
   }
 
   function scheduleReconnect(reason: string): void {
-    if (destroyed) return;
+    // One pending retry at a time. A single failed connect surfaces via
+    // the synchronizer rejection AND the socket's error+close events;
+    // without this guard each path stacked its own timer and the retry
+    // count exploded (observed: Retry #17 within a minute of downtime).
+    if (destroyed || retryTimer !== undefined) return;
+    if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+      // Terminal state — re-armed only by a successful connect or a
+      // manual retry() from the badge's retry button.
+      if (gaveUp) return;
+      gaveUp = true;
+      setStatus({
+        kind: 'error',
+        message: `gave up after ${attempt + 1} tries (${reason})`,
+      });
+      return;
+    }
     attempt += 1;
-    const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** (attempt - 1));
+    const delay = RECONNECT_STEP_MS * attempt;
     setStatus({ kind: 'retrying', attempt, nextDelayMs: delay, reason });
     retryTimer = setTimeout(() => {
       retryTimer = undefined;
@@ -139,7 +167,10 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       ws = new WS(url);
     } catch (err) {
       connecting = false;
-      setStatus({ kind: 'error', message: (err as Error).message });
+      // No error status here — scheduleReconnect emits `retrying` (or the
+      // terminal give-up). A separate `error` first would flash red for
+      // the whole backoff window before each retry fires.
+      logWarn('sync', `socket construction failed: ${(err as Error).message}`);
       scheduleReconnect(reasonForReconnect ?? 'socket-construction-failed');
       return;
     }
@@ -151,7 +182,10 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     // StrictMode tears down the first mount mid-handshake) would otherwise
     // surface as "connection interrupted while the page was loading".
     const earlyClose = (reason: string): void => {
-      if (currentWs === ws) currentWs = undefined;
+      // A refused socket fires 'error' then 'close' for the same
+      // failure — count it once.
+      if (currentWs !== ws) return;
+      currentWs = undefined;
       if (!destroyed) scheduleReconnect(reason);
     };
     ws.addEventListener('error', () => earlyClose('socket-error'));
@@ -172,7 +206,10 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       sync = await (options.synchronizerImpl ?? createWsSynchronizer)(store, ws, 10);
     } catch (err) {
       connecting = false;
-      setStatus({ kind: 'error', message: (err as Error).message });
+      // No error status here either — scheduleReconnect owns the status
+      // (`retrying`, or the terminal give-up error). Setting `error`
+      // first would flash red between yellow retries.
+      logWarn('sync', `connect failed: ${(err as Error).message}`);
       if (!destroyed) {
         try {
           ws.close();
@@ -199,6 +236,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     currentSync = sync;
     await sync.startSync();
     attempt = 0;
+    gaveUp = false;
     connecting = false;
     setStatus({ kind: 'connected' });
     ws.addEventListener('close', () => {
@@ -213,6 +251,14 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       if (destroyed) {
         throw new Error('SyncClient already destroyed');
       }
+      void connect();
+    },
+    retry(): void {
+      if (destroyed || connecting || retryTimer !== undefined || currentSync !== undefined) {
+        return;
+      }
+      attempt = 0;
+      gaveUp = false;
       void connect();
     },
     async destroy(): Promise<void> {

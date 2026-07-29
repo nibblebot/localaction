@@ -73,7 +73,7 @@ The Sidebar section titled "Areas": the **Area tree** (a flattened drag surface 
 
 ## Sidebar Footer
 
-The strip pinned to the bottom of the Sidebar holding the two app-wide status/settings controls: the **Sync Status Badge** (connection state: *Local only* → *Syncing…* → *Synced*, or *Retry #n…* / *Sync error*) and the **Appearance Menu** (theme, font, and density).
+The strip pinned to the bottom of the Sidebar holding the two app-wide status/settings controls: the **Sync Status Badge** (a colored dot — green: synced, yellow: syncing, red: sync failure after the reconnect loop gives up, with a retry button that re-arms it — plus a label: *Local only* → *Syncing…* → *Synced*, or *Retry #n…* / *Sync error*) and the **Appearance Menu** (theme, font, and density).
 
 ## Main Pane
 

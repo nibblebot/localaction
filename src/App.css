@@ -1612,41 +1612,91 @@ body.sidebar-resizing {
 }
 
 /* ============================================================
-   Sync status chip
+   Sync status — colored dot + quiet label
+   green: synced · yellow: syncing · red: sync failure
+   (idle = pre-connect boot state, stays neutral)
    ============================================================ */
 
 .sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 0.79rem;
   font-weight: 500;
   color: var(--text-secondary);
   align-self: center;
-  padding: 3px 6px;
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  border: 1px solid var(--border);
   white-space: nowrap;
   max-width: 220px;
+  overflow: hidden;
+}
+
+.sync-status-label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sync-status-connected {
-  color: var(--success);
-  background: var(--success-bg);
-  border-color: var(--success-border);
+.sync-status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
 }
 
-.sync-status-error {
-  color: var(--danger);
-  background: var(--danger-bg);
-  border-color: var(--danger-border);
+.sync-status-connected .sync-status-dot {
+  background: var(--success);
 }
 
-.sync-status-connecting,
-.sync-status-retrying {
-  color: var(--warning);
-  background: var(--warning-bg);
-  border-color: var(--warning-border);
+.sync-status-connecting .sync-status-dot,
+.sync-status-retrying .sync-status-dot {
+  background: var(--warning);
+  animation: sync-status-pulse 1.2s ease-in-out infinite;
+}
+
+.sync-status-error .sync-status-dot {
+  background: var(--danger);
+}
+
+/* Manual re-arm after the reconnect loop gives up — quiet icon button
+   beside the label, wakes on hover/focus like other row chrome. */
+.sync-status-retry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sync-status-retry:hover {
+  color: var(--text-h);
+  background: var(--surface-hover);
+}
+
+.sync-status-retry:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 1px;
+}
+
+.sync-status-retry .svg-icon {
+  width: 12px;
+  height: 12px;
+}
+
+@keyframes sync-status-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-status-connecting .sync-status-dot,
+  .sync-status-retrying .sync-status-dot {
+    animation: none;
+  }
 }
 
 /* ============================================================

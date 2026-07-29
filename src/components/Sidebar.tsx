@@ -94,37 +94,19 @@ function SortableAreaRow({
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
       <div className="sidebar-item-row">
-        {isTopLevel &&
-          (collapsible ? (
-            <button
-              type="button"
-              className="sidebar-area-caret"
-              aria-label={collapsed ? `Expand ${displayName}` : `Collapse ${displayName}`}
-              aria-expanded={!collapsed}
-              title={collapsed ? 'Expand sub-areas' : 'Collapse sub-areas'}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleCollapse?.(node.count.id);
-              }}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
-              </svg>
-            </button>
-          ) : (
-            // Fixed-width gutter so top-level names align whether or not
-            // the area has a caret.
-            <span className="sidebar-area-caret-spacer" aria-hidden="true" />
-          ))}
         <button
           type="button"
           {...(handle.attributes ?? {})}
           className={classes.join(' ')}
           aria-label={count > 0 ? `${displayName}, ${count}` : displayName}
           aria-current={isActive ? 'page' : undefined}
+          // Rows with children double as the collapse toggle: there is
+          // no separate caret.
+          aria-expanded={collapsible ? !collapsed : undefined}
           onClick={(e) => {
             if (handle.isDragging) return;
             e.preventDefault();
+            if (collapsible) onToggleCollapse?.(node.count.id);
             onSelect(node.count.id);
           }}
           {...(handle.listeners ?? {})}
@@ -170,7 +152,7 @@ export default function Sidebar({
     if (showNewArea) newAreaInputRef.current?.focus();
   }, [showNewArea]);
   const tree = useMemo(() => buildTree(counts), [counts]);
-  const { collapsed, toggle: toggleCollapse, expand: expandArea, replace: replaceCollapsed } =
+  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } =
     useCollapsedAreas();
   // The sortable tree renders the full area tree flattened; collapsed
   // areas contribute their row but not their (hidden) children.
@@ -218,10 +200,19 @@ export default function Sidebar({
   const weekItems = useDueItems(store, week.from, week.to);
   const weekOpenCount = weekItems.filter((i) => !i.done).length;
 
-  const collapsibleIds = useMemo<string[]>(
-    () => tree.filter((n) => n.children.length > 0).map((n) => n.count.id),
-    [tree],
-  );
+  // Every node with children is collapsible, at any depth — the
+  // collapse-all button reaches them all.
+  const collapsibleIds = useMemo<string[]>(() => {
+    const ids: string[] = [];
+    const walk = (ns: AreaNode[]): void => {
+      for (const n of ns) {
+        if (n.children.length > 0) ids.push(n.count.id);
+        walk(n.children);
+      }
+    };
+    walk(tree);
+    return ids;
+  }, [tree]);
 
   const allCollapsed =
     collapsibleIds.length > 0 && collapsibleIds.every((id) => collapsed.has(id));
@@ -350,7 +341,7 @@ export default function Sidebar({
             onMove={onMoveArea}
             ariaLabel="Areas"
             className="sidebar-section-body"
-            indentWidth={26}
+            indentWidth={16}
           >
             {(id, handle, depth) => {
               const node = nodeById.get(id);
@@ -361,15 +352,12 @@ export default function Sidebar({
                   node={node}
                   selectedId={selectedId}
                   onSelect={(sid) => {
-                    // Selecting a collapsed area also expands it so the
-                    // sidebar context matches the main pane.
-                    expandArea(sid);
                     navigate({ kind: 'area', id: sid });
                     onNavigate?.();
                   }}
                   isTopLevel={depth === 0}
                   collapsed={
-                    depth === 0 && node.children.length > 0
+                    node.children.length > 0
                       ? collapsed.has(node.count.id)
                       : null
                   }

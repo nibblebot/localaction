@@ -191,38 +191,6 @@ body.sidebar-resizing {
   min-width: 0;
 }
 
-.sidebar-area-caret {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  padding: 0;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-}
-
-.sidebar-area-caret:hover {
-  color: var(--text-h);
-  background: var(--surface-hover);
-}
-
-.sidebar-area-caret svg {
-  width: var(--icon-xs);
-  height: var(--icon-xs);
-}
-
-/* Keeps top-level names aligned when an area has no caret. */
-.sidebar-area-caret-spacer {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -2745,7 +2713,6 @@ body.sidebar-resizing {
   .task-line-drag-handle,
   .project-row-drag-handle,
   .task-line-check,
-  .sidebar-area-caret,
   .project-row-caret,
   .area-header-add,
   .appearance-fab-trigger,
@@ -2771,7 +2738,6 @@ body.sidebar-resizing {
   .task-line-drag-handle::after,
   .project-row-drag-handle::after,
   .task-line-check::after,
-  .sidebar-area-caret::after,
   .project-row-caret::after {
     content: '';
     position: absolute;

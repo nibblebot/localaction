@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// Selecting a collapsed area's label in the sidebar navigates to the
-// area detail AND expands the area so its sub-areas become visible.
-// Collapse state persists to localStorage, but Playwright gives each
-// test a fresh browser context, so no cross-test cleanup is needed.
+// There is no caret: clicking an area with children navigates to it
+// AND toggles its sub-areas collapsed/expanded; the row's aria-expanded
+// carries the state. Collapse state persists to localStorage, but
+// Playwright gives each test a fresh browser context, so no cross-test
+// cleanup is needed.
 
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -50,27 +51,72 @@ test.describe('Sidebar area collapse', () => {
     await page.goto('/#/');
   });
 
-  test('clicking a collapsed area label navigates and expands it', async ({ page }) => {
+  test('clicking an area with children toggles its sub-areas', async ({ page }) => {
     const token = uniq();
     const parent = `Parent-${token}`;
     const child = `Child-${token}`;
+    const leaf = `Leaf-${token}`;
 
     await createArea(page, parent);
     await createSubArea(page, child);
+    await createArea(page, leaf);
 
     const sidebar = page.locator('.sidebar');
-    const label = sidebar.getByRole('button', { name: parent, exact: true });
-    const childLabel = sidebar.getByRole('button', { name: child, exact: true });
+    const parentRow = sidebar.getByRole('button', { name: parent, exact: true });
+    const childRow = sidebar.getByRole('button', { name: child, exact: true });
+    const leafRow = sidebar.getByRole('button', { name: leaf, exact: true });
 
-    // Collapse via the caret; the sub-area row disappears.
-    await page.getByRole('button', { name: `Collapse ${parent}` }).click();
-    await expect(page.getByRole('button', { name: `Expand ${parent}` })).toBeVisible();
-    await expect(childLabel).toBeHidden();
+    // Expanded by default; a leaf row carries no expand state at all.
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(leafRow).not.toHaveAttribute('aria-expanded');
 
-    // Clicking the collapsed label shows the area detail and re-expands.
-    await label.click();
+    // Clicking the parent navigates to it and collapses its sub-areas.
+    await parentRow.click();
     await expect(page.locator('.area-header-name')).toContainText(parent);
-    await expect(page.getByRole('button', { name: `Collapse ${parent}` })).toBeVisible();
-    await expect(childLabel).toBeVisible();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(childRow).toBeHidden();
+
+    // Clicking again re-expands.
+    await parentRow.click();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(childRow).toBeVisible();
+  });
+
+  test('clicking a sub-area toggles its own children; collapse-all reaches nested areas', async ({
+    page,
+  }) => {
+    const token = uniq();
+    const parent = `Parent-${token}`;
+    const child = `Child-${token}`;
+    const grandchild = `Grand-${token}`;
+
+    await createArea(page, parent);
+    await createSubArea(page, child);
+    await createSubArea(page, grandchild);
+
+    const sidebar = page.locator('.sidebar');
+    const parentRow = sidebar.getByRole('button', { name: parent, exact: true });
+    const childRow = sidebar.getByRole('button', { name: child, exact: true });
+    const grandchildRow = sidebar.getByRole('button', { name: grandchild, exact: true });
+
+    // The sub-area toggles the grandchild, just like a root-level area.
+    await expect(childRow).toHaveAttribute('aria-expanded', 'true');
+    await childRow.click();
+    await expect(page.locator('.area-header-name')).toContainText(child);
+    await expect(childRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(grandchildRow).toBeHidden();
+
+    // Collapse-all reaches nested areas too. Navigate off the tree
+    // first: collapse-all keeps the selected area's ancestors expanded.
+    await page.locator('.sidebar-inbox-link').click();
+    await page.getByRole('button', { name: 'Collapse all areas' }).click();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(childRow).toBeHidden();
+    // Expanding the parent (by clicking it) reveals the sub-area
+    // still collapsed.
+    await parentRow.click();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(childRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(grandchildRow).toBeHidden();
   });
 });

@@ -88,8 +88,14 @@ async function dragRow(
 /** Adds a sub-area under the named area via its header, navigating
  * back to the parent first (creation navigates into the new area). */
 async function createSubArea(page: Page, parentName: string, name: string) {
-  await page.locator('.sidebar-item', { hasText: parentName }).first().click();
+  const parentRow = page.locator('.sidebar-item', { hasText: parentName }).first();
+  await parentRow.click();
   await expect(page.locator('.area-header-name')).toContainText(parentName);
+  // Clicking a parent that already has children also toggles it
+  // collapsed; click again to re-expand so the new sub-area is visible.
+  // A childless parent isn't collapsible, so the second click is a
+  // no-op there.
+  await parentRow.click();
   await page.locator('button[aria-label="Add sub-area"]').click();
   const field = page.locator('input[aria-label="Sub-area name"]');
   await field.fill(name);

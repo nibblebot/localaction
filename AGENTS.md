@@ -65,6 +65,11 @@
 - Lint rules in force: `react/rules-of-hooks` (error), `react/only-export-components` (warn, allows constant exports). Type-aware mode is **not** enabled (`oxlint-tsgolint` not installed).
 - Commit messages follow Conventional Commits: use `type(scope): concise imperative description` (for example, `feat(projects): add collapsible project cards`). Use a lowercase, focused scope naming the affected area or subsystem; keep the subject brief and specific. Common types in this repository include `feat`, `fix`, `refactor`, `test`, `style`, `docs`, and `chore`.
 
+### Mobile layout & touch
+Behavioral layout/interaction rules — distinct from the DESIGN.md visual-token system, which stays normative for brand decisions.
+- **Layout & viewport:** mobile-first single column with a 360px floor; readable measure ≤75ch; never allow horizontal scroll (`overflow-x: clip`, WCAG 1.4.10 reflow). Size full-height regions with `svh`/`dvh`, never `100vh` (mobile URL bar bug). The viewport meta keeps `viewport-fit=cover` + `interactive-widget=resizes-content`; fixed/sticky chrome (header, tab bar, sheets) pads with `env(safe-area-inset-*)` for the notch and home indicator. NEVER set `maximum-scale`/`user-scalable=no` — pinch-zoom is an accessibility requirement (WCAG 1.4.4).
+- **Touch & interaction:** all interactive elements are ≥44px (Apple HIG 44pt; PRODUCT.md documents 44px under coarse pointer) with ≥8px gaps. Note: 48px (Material 48dp) is the stricter general mobile standard and the WCAG 2.2 SC 2.5.8 AA floor is 24×24 CSS px, but this project deliberately ships 44px — use 44px. Primary actions live in the bottom thumb zone (tab bar / bottom sheets), not the top third. Use `touch-action: manipulation` (kills the 300ms tap delay), give immediate `:active` feedback, and never gate functionality behind hover. Honor `prefers-reduced-motion` for every animation.
+
 ## Verification order for changes
 1. `bun run lint`
 2. `bun test` (run-once — fast, blocks on regressions)

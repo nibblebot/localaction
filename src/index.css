@@ -126,8 +126,8 @@
 
      2. Chrome and meta never signal by size alone:
         - UPPERCASE eyebrows (0.06em tracking) mark app chrome:
-          pane sections at --text-sm; sidebar/appearance section
-          labels at --text-label.
+          pane sections at --text-body (700); sidebar/appearance
+          section labels at --text-label.
         - Tabular meta (counts, badges, due chips, calendar cells,
           sync status) sits at --text-label with font-variant-numeric.
 

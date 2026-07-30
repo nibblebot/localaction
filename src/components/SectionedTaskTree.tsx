@@ -69,6 +69,11 @@ function decodeSectionNodeId(id: string): string | null {
     ? id.slice(SECTION_NODE_PREFIX.length)
     : null;
 }
+/** Stable predicate: true for a flattened-tree id that marks a project
+ * section header. Passed to `SortableTree` as `isPhantom` so a section
+ * groups its tasks without an indent level (kept as a module const so
+ * the `flattenTree` memo sees one stable identity across renders). */
+const isSectionNode = (id: string): boolean => decodeSectionNodeId(id) !== null;
 
 /**
  * The placement of a task's top-level ancestor (its ownership root),
@@ -280,6 +285,10 @@ export function SectionedTaskTree({
       ariaLabel={ariaLabel ?? 'Tasks'}
       className="sortable-list project-task-tree"
       indentWidth={22}
+      // Sections group their tasks without an indent level: a section's
+      // tasks render flush with the section header; only true subtasks
+      // (parent = another task) keep the tree gutter.
+      isPhantom={isSectionNode}
       maxDepthOf={(id) =>
         decodeSectionNodeId(id) !== null ? 0 : Number.POSITIVE_INFINITY
       }

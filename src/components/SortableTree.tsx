@@ -80,6 +80,14 @@ const sortableOverlayHandle: SortableHandleProps = {
  * - `maxDepth` clamps how deep a row may be nested (e.g. 1 for a
  *   two-level tree). Depth can never exceed "previous row's depth + 1",
  *   so no level is ever skipped.
+ * - `isPhantom` marks rows that group their children visually WITHOUT
+ *   contributing an indent level: a phantom row renders at its own
+ *   depth, but its children render at that same depth (flush with it)
+ *   and its column never appears in their tree gutters. Grandchildren
+ *   indent one step from the phantom's children as usual. Only the
+ *   rendering depth shifts — logical depth (drag projection, drop
+ *   parent resolution, `maxDepth`) is untouched, so drop semantics
+ *   are identical with or without phantoms.
  * - Dropping a row onto one of its own ancestor rows (an easy
  *   overshoot when dragging up, since the parent row sits directly
  *   above the first sibling) keeps it in the family as the ancestor's
@@ -102,6 +110,13 @@ export interface SortableTreeProps<TId extends string> {
   renderOverlay?: (id: TId, depth: number) => ReactNode | undefined;
   /** Horizontal px per depth level — drives indent + projection. */
   indentWidth?: number;
+  /**
+   * Per-row predicate marking rows whose children render flush with
+   * the row itself instead of one indent level in (see the contract
+   * above). Sections in the project task tree use this so their tasks
+   * align with the section header while subtasks keep the gutter.
+   */
+  isPhantom?: (id: TId) => boolean;
   /** Deepest allowed nesting; default unbounded. */
   maxDepth?: number;
   /**
@@ -117,39 +132,47 @@ export interface SortableTreeProps<TId extends string> {
 interface FlattenedItem<TId extends string> {
   id: TId;
   parentId: TId | null;
+  /** Logical nesting depth — drives drag projection and drop parent
+   * resolution. Never shifted by phantom rows. */
   depth: number;
+  /** Render depth: `depth` minus one per phantom ancestor. Drives the
+   * slot's indent and the tree-gutter columns. */
+  visualDepth: number;
   /**
    * Ancestor columns painted as full-height verticals on this row.
-   * The row's own column (`depth`) is NOT in this set — the
+   * The row's own column (`visualDepth`) is NOT in this set — the
    * dedicated `.tree-branch` span paints it with full or half
    * height depending on `isLastSibling`.
    */
   continues: readonly number[];
-  /** Column for the row's own branch connector. -1 at depth 0. */
+  /** Column for the row's own branch connector. -1 at visual depth 0. */
   parentCol: number;
   /** True when this row is the last sibling under its parent. */
   isLastSibling: boolean;
 }
 function flattenTree<TId extends string>(
   nodes: readonly SortableTreeNode<TId>[],
+  isPhantom?: (id: TId) => boolean,
 ): FlattenedItem<TId>[] {
   const out: FlattenedItem<TId>[] = [];
   const walk = (
     ns: readonly SortableTreeNode<TId>[],
     parentId: TId | null,
     depth: number,
+    visualDepth: number,
     /** Ancestor columns still descending through the parent. */
     inherited: readonly number[],
   ): void => {
     for (let i = 0; i < ns.length; i += 1) {
       const n = ns[i]!;
       const isLast = i === ns.length - 1;
-      const parentCol = depth > 0 ? depth - 1 : -1;
+      const parentCol = visualDepth > 0 ? visualDepth - 1 : -1;
       const continues = inherited;
       // Descendants see this row's own column iff the row has a
-      // sibling below it. Depth-0 sections never push (no parent
-      // column), so the section's gutter terminates at the last
-      // task inside it.
+      // sibling below it. Depth-0 rows never push (no parent column),
+      // so a root-level group's gutter terminates at the last task
+      // inside it. Phantom rows have no column of their own, so they
+      // push nothing either way.
       const passDown = !isLast && parentCol >= 0
         ? [...inherited, parentCol]
         : inherited;
@@ -157,14 +180,19 @@ function flattenTree<TId extends string>(
         id: n.id,
         parentId,
         depth,
+        visualDepth,
         continues,
         parentCol,
-        isLastSibling: depth > 0 && isLast,
+        isLastSibling: visualDepth > 0 && isLast,
       });
-      walk(n.children, n.id, depth + 1, passDown);
+      // Phantom rows group their children without an indent level:
+      // the children walk at the phantom's own visual depth.
+      const childVisual =
+        isPhantom?.(n.id) === true ? visualDepth : visualDepth + 1;
+      walk(n.children, n.id, depth + 1, childVisual, passDown);
     }
   };
-  walk(nodes, null, 0, []);
+  walk(nodes, null, 0, 0, []);
   return out;
 }
 
@@ -330,6 +358,9 @@ function currentPosition<TId extends string>(
 interface SortableTreeSlotProps<TId extends string> {
   id: TId;
   depth: number;
+  /** Render depth (logical depth minus phantom ancestors) — drives
+   * the slot indent and gutter columns. */
+  visualDepth: number;
   indentWidth: number;
   /** Ancestor columns painted full-height on this row's gutter. */
   continues: readonly number[];
@@ -343,6 +374,7 @@ interface SortableTreeSlotProps<TId extends string> {
 function SortableTreeSlot<TId extends string>({
   id,
   depth,
+  visualDepth,
   indentWidth,
   continues,
   parentCol,
@@ -375,13 +407,13 @@ function SortableTreeSlot<TId extends string>({
     <div
       className="sortable-item-slot"
       role="listitem"
-      data-depth={depth}
+      data-depth={visualDepth}
       data-last-sibling={isLastSibling ? 'true' : undefined}
       style={
-        depth > 0
+        visualDepth > 0
           ? ({
-              paddingLeft: depth * indentWidth,
-              '--tree-gutter-width': `${depth * indentWidth}px`,
+              paddingLeft: visualDepth * indentWidth,
+              '--tree-gutter-width': `${visualDepth * indentWidth}px`,
               '--tree-indent-width': `${indentWidth}px`,
             } as CSSProperties)
           : undefined
@@ -415,6 +447,7 @@ export function SortableTree<TId extends string>({
   indentWidth = 24,
   maxDepth = Number.POSITIVE_INFINITY,
   maxDepthOf,
+  isPhantom,
   className,
   ariaLabel,
 }: SortableTreeProps<TId>): ReactElement {
@@ -422,7 +455,7 @@ export function SortableTree<TId extends string>({
   const [overId, setOverId] = useState<TId | null>(null);
   const [offsetX, setOffsetX] = useState(0);
 
-  const flattened = useMemo(() => flattenTree(nodes), [nodes]);
+  const flattened = useMemo(() => flattenTree(nodes, isPhantom), [nodes, isPhantom]);
   // During a drag the active row's descendants leave the target list:
   // the subtree moves with the parent and can't be its own drop target.
   const rendered = useMemo(
@@ -445,6 +478,23 @@ export function SortableTree<TId extends string>({
     activeId === null
       ? 0
       : (projected?.depth ?? flattened.find((i) => i.id === activeId)?.depth ?? 0);
+
+  // Phantom ancestors of the row's (projected) parent — the amount the
+  // render depth shifts below the logical one.
+  const phantomCountOf = (parentId: TId | null): number => {
+    if (parentId === null || !isPhantom) return 0;
+    const parent = flattened.find((i) => i.id === parentId);
+    if (!parent) return 0;
+    return parent.depth - parent.visualDepth + (isPhantom(parent.id) ? 1 : 0);
+  };
+  // Visual counterpart of `activeDepth`: indents the overlay preview so
+  // it matches where the drop will land on screen.
+  const activeVisualDepth =
+    activeId === null
+      ? 0
+      : projected
+        ? projected.depth - phantomCountOf(projected.parentId)
+        : (flattened.find((i) => i.id === activeId)?.visualDepth ?? 0);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
@@ -549,6 +599,7 @@ export function SortableTree<TId extends string>({
               key={item.id}
               id={item.id}
               depth={item.depth}
+              visualDepth={item.visualDepth}
               indentWidth={indentWidth}
               continues={item.continues}
               parentCol={item.parentCol}
@@ -566,7 +617,9 @@ export function SortableTree<TId extends string>({
           ) : (
             <div
               style={
-                activeDepth > 0 ? { paddingLeft: activeDepth * indentWidth } : undefined
+                activeVisualDepth > 0
+                  ? { paddingLeft: activeVisualDepth * indentWidth }
+                  : undefined
               }
             >
               {children(activeId, sortableOverlayHandle, activeDepth)}

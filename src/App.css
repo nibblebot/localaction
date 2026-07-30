@@ -116,7 +116,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-app-name {
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   letter-spacing: -0.005em;
   color: var(--text-h);
@@ -124,7 +124,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-section-title {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -167,7 +167,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-empty {
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-muted);
   padding: 6px 10px;
 }
@@ -191,7 +191,7 @@ body.sidebar-resizing {
   gap: 4px;
   padding: 4px 6px;
   border-radius: var(--radius-sm);
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -214,7 +214,7 @@ body.sidebar-resizing {
 
 .sidebar-item-top {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: var(--text-body);
   padding-block: 6px;
   /* Quick links are quiet navigation rows, not hyperlinks — the
      active wash + count pill carry the affordance. Only Inbox had
@@ -247,7 +247,7 @@ body.sidebar-resizing {
 }
 
 .sidebar-link-count {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   color: var(--sidebar-count-fg);
   background: var(--surface);
@@ -300,7 +300,7 @@ body.sidebar-resizing {
 
 .main-pane-title {
   margin: 0;
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -312,10 +312,10 @@ body.sidebar-resizing {
   margin: 40px auto;
   text-align: center;
   color: var(--text-secondary);
-  font-size: 1rem;
+  font-size: var(--text-body);
 }
 .main-empty h2 {
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -362,14 +362,14 @@ body.sidebar-resizing {
 }
 
 .area-header-slash {
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   font-weight: 600;
   line-height: 1.2;
   font-family: var(--font-sans);
   color: var(--text-muted);
 }
 .area-header-name {
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -402,7 +402,7 @@ body.sidebar-resizing {
   align-items: center;
   gap: 8px;
   font: inherit;
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   font-weight: 500;
   line-height: 1.2;
   color: var(--text-muted);
@@ -441,7 +441,7 @@ body.sidebar-resizing {
 
 .area-header-add-input {
   font: inherit;
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-h);
@@ -574,7 +574,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   background: transparent;
   border: 1px dashed var(--border-strong);
@@ -602,7 +602,7 @@ body.sidebar-resizing {
 }
 
 .inline-add-input-sm {
-  font-size: 0.79rem;
+  font-size: var(--text-body);
   padding: 4px 8px;
   margin: 4px 0 0;
 }
@@ -695,11 +695,10 @@ body.sidebar-resizing {
 }
 
 .pane-section-title {
-  /* One register up from the inner status-group labels (.tab-group-title
-     is 0.79rem) so the section header reads as the parent, not a peer.
-     Uppercase + tracking stay aligned with the other section eyebrows
-     (sidebar, appearance). */
-  font-size: 0.93rem;
+  /* Uppercase chrome eyebrow — the only --text-sm consumer. The
+     status-group headers it contains are body-strong: sentence-case
+     headers signal by size/weight, chrome signals by case. */
+  font-size: var(--text-sm);
   font-weight: 700;
   text-transform: uppercase;
   /* Same tracking as .sidebar-section-title and the appearance
@@ -777,8 +776,8 @@ body.sidebar-resizing {
 }
 
 .tab-group-title {
-  font-size: 0.93rem;
-  font-weight: 700;
+  font-size: var(--text-body);
+  font-weight: 600;
   color: var(--text-muted);
 }
 
@@ -819,7 +818,7 @@ body.sidebar-resizing {
 }
 
 .tab-group-count {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -842,7 +841,7 @@ body.sidebar-resizing {
 
 .area-header-crumb-sep {
   color: var(--text-muted);
-  font-size: 1.36rem;
+  font-size: var(--text-display);
   line-height: 1.2;
   user-select: none;
 }
@@ -920,7 +919,7 @@ body.sidebar-resizing {
      owns the free space via its auto margin. */
   flex: 0 1 auto;
   font: inherit;
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   color: var(--text-h);
   background: transparent;
@@ -977,7 +976,7 @@ body.sidebar-resizing {
 }
 
 .project-row-progress-count {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   min-width: 44px;
@@ -1041,13 +1040,13 @@ body.sidebar-resizing {
 
 .project-tasks-add {
   align-self: flex-start;
-  font-size: 1rem;
+  font-size: var(--text-body);
   padding: 2px 8px;
   margin-top: var(--space-2);
 }
 
 .placeholder-sm {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   padding: 2px 0;
   color: var(--text-muted);
 }
@@ -1071,14 +1070,14 @@ body.sidebar-resizing {
 }
 
 .project-header-name {
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-h);
 }
 
 .project-header-count {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
@@ -1109,9 +1108,10 @@ body.sidebar-resizing {
 
 .subarea-header-name {
   font: inherit;
-  /* Mid-level label: reads above the 0.79rem status-group eyebrow but
-     below the 1.07rem project-row names it groups. */
-  font-size: 0.93rem;
+  /* Body-strong sub-head: same 15px as the rows it groups, signaled
+     by weight 600 — one register below the title-tier project-row
+     names, no longer smaller than its own content. */
+  font-size: var(--text-body);
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -1145,7 +1145,7 @@ body.sidebar-resizing {
    to label which day each item falls on (Week view). */
 .task-line-due-date {
   margin-left: auto;
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
@@ -1156,7 +1156,7 @@ body.sidebar-resizing {
    ============================================================ */
 
 .today-date {
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-muted);
 }
 
@@ -1175,7 +1175,7 @@ body.sidebar-resizing {
   gap: 6px;
   margin: 0 0 var(--space-2);
   padding-inline: 4px;
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   line-height: 1.2;
   color: var(--text-h);
@@ -1184,7 +1184,7 @@ body.sidebar-resizing {
 .today-project-title {
   margin: var(--space-3) 0 var(--space-1);
   padding-inline: 4px;
-  font-size: 1rem;
+  font-size: var(--text-body);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -1229,7 +1229,7 @@ body.sidebar-resizing {
 }
 
 .today-due-badge {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   color: var(--accent);
   background: var(--accent-tint);
@@ -1386,7 +1386,7 @@ body.sidebar-resizing {
 .task-line-title {
   flex: 1 1 auto;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -1478,7 +1478,7 @@ body.sidebar-resizing {
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-muted);
   cursor: text;
   text-align: start;
@@ -1498,8 +1498,8 @@ body.sidebar-resizing {
 
 .note-line-title {
   font: inherit;
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: var(--text-body);
+  font-weight: 600;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -1515,7 +1515,7 @@ body.sidebar-resizing {
 
 .note-line-preview {
   flex: 1 1 auto;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1557,7 +1557,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--accent-border);
@@ -1580,7 +1580,7 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-weight: 500;
   color: var(--text-secondary);
   align-self: center;
@@ -1664,7 +1664,7 @@ body.sidebar-resizing {
 
 .btn {
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   padding: 6px 12px;
   border-radius: var(--radius-md);
   border: 1px solid transparent;
@@ -1740,7 +1740,7 @@ body.sidebar-resizing {
 }
 
 .btn-sm {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   padding: 4px 8px;
 }
 
@@ -1762,7 +1762,7 @@ body.sidebar-resizing {
 }
 
 .pill {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-weight: 500;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
@@ -1828,14 +1828,14 @@ body.sidebar-resizing {
 
 .modal h3 {
   margin: 0 0 var(--space-2);
-  font-size: 1.07rem;
+  font-size: var(--text-title);
   font-weight: 600;
   color: var(--text-h);
 }
 
 .modal-message {
   margin: 0 0 var(--space-4);
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-secondary);
 }
 
@@ -1844,7 +1844,7 @@ body.sidebar-resizing {
   width: 100%;
   box-sizing: border-box;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1877,7 +1877,7 @@ body.sidebar-resizing {
 
 .markdown-body {
   color: var(--text-h);
-  font-size: 1rem;
+  font-size: var(--text-body);
 }
 
 .markdown-body h1,
@@ -1887,9 +1887,12 @@ body.sidebar-resizing {
   color: var(--text-h);
 }
 
-.markdown-body h1 { font-size: 1.36rem; }
-.markdown-body h2 { font-size: 1.07rem; }
-.markdown-body h3 { font-size: 1.07rem; }
+.markdown-body h1 { font-size: var(--text-display); }
+.markdown-body h2 { font-size: var(--text-title); }
+.markdown-body h3 { font-size: var(--text-title); }
+/* Pinned at the pre-rationalization treatment until the Notes heading
+   ladder lands (deferred followup) — the global h4 is now body-strong. */
+.markdown-body h4 { font-size: var(--text-label); line-height: 1.5; text-wrap: wrap; }
 
 .markdown-body p {
   margin: 6px 0;
@@ -1902,7 +1905,7 @@ body.sidebar-resizing {
 }
 
 .markdown-body code {
-  font-size: 0.89rem;
+  font-size: var(--text-code);
   padding: 1px 5px;
   background: var(--code-bg);
   border-radius: var(--radius-sm);
@@ -1914,7 +1917,7 @@ body.sidebar-resizing {
   border-radius: var(--radius-md);
   padding: var(--space-3);
   overflow: auto;
-  font-size: 0.89rem;
+  font-size: var(--text-code);
 }
 
 .markdown-body pre code {
@@ -1940,7 +1943,7 @@ body.sidebar-resizing {
 }
 
 .markdown-body .tag {
-  font-size: 0.89rem;
+  font-size: var(--text-code);
 }
 
 /* ============================================================
@@ -1949,12 +1952,12 @@ body.sidebar-resizing {
 
 .placeholder {
   color: var(--text-secondary);
-  font-size: 1rem;
+  font-size: var(--text-body);
   padding: var(--space-3) 0;
 }
 
 .placeholder code {
-  font-size: 0.89rem;
+  font-size: var(--text-code);
 }
 
 /* ============================================================
@@ -2047,7 +2050,7 @@ button .svg-icon {
 }
 
 .appearance-segment-label {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -2067,7 +2070,7 @@ button .svg-icon {
 
 .appearance-segment-option {
   font: inherit;
-  font-size: 0.79rem;
+  font-size: var(--text-body);
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
@@ -2402,7 +2405,7 @@ button .svg-icon {
   field-sizing: content;
   min-width: 3ch;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   font-weight: 500;
   color: var(--text-h);
   background: transparent;
@@ -2444,7 +2447,7 @@ button .svg-icon {
 }
 
 .due-date-label {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2476,7 +2479,7 @@ button .svg-icon {
 }
 
 .due-calendar-title {
-  font-size: 1rem;
+  font-size: var(--text-body);
   font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
@@ -2506,7 +2509,7 @@ button .svg-icon {
 }
 
 .due-calendar-weekday {
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   color: var(--text-muted);
   text-align: center;
   padding: 2px 0;
@@ -2519,7 +2522,7 @@ button .svg-icon {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.79rem;
+  font-size: var(--text-label);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   padding: 0;
@@ -2832,7 +2835,7 @@ button .svg-icon {
 }
 
 .undo-toast-label {
-  font-size: 1rem;
+  font-size: var(--text-body);
   color: var(--text-h);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2842,7 +2845,7 @@ button .svg-icon {
 .undo-toast-action {
   flex: 0 0 auto;
   font: inherit;
-  font-size: 1rem;
+  font-size: var(--text-body);
   font-weight: 600;
   color: var(--accent);
   background: transparent;

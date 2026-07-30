@@ -108,6 +108,48 @@
   --z-modal: 100;
   --z-toast: 110;
 
+  /* ============================================================
+     TYPOGRAPHY
+
+     One rem-based scale. The density knob rescales everything by
+     changing the root font-size (compact 13px / normal 15px / cozy
+     17px), so the px figures below are approximate at normal density.
+
+     The hierarchy runs on two orthogonal axes:
+
+     1. Sentence-case headers signal by size + weight:
+          display (~20px) > title (~16px) > body-strong (15px/600)
+        "Body-strong" is deliberately NOT a variable — it is
+        --text-body plus font-weight 600 (.today-project-title,
+        .tab-group-title, .subarea-header-name, .note-line-title,
+        .due-calendar-title, h4).
+
+     2. Chrome and meta never signal by size alone:
+        - UPPERCASE eyebrows (0.06em tracking) mark app chrome:
+          pane sections at --text-sm; sidebar/appearance section
+          labels at --text-label.
+        - Tabular meta (counts, badges, due chips, calendar cells,
+          sync status) sits at --text-label with font-variant-numeric.
+
+     Invariants (enforce when adding new text):
+     - Nothing below --text-body is a sentence-case content header.
+       (Exception, intentional and temporary: the pinned
+       .markdown-body h4 — exempt until the Notes ladder followup;
+       do not "fix" it before then.)
+     - Content-entry surfaces (inputs, selectable options) never
+       render below --text-body; compact chrome (.btn-sm, .pill) MAY.
+     - Mono text uses --text-code, which is NOT a header tier —
+       retuning headers must never drag code along.
+     - Rendered notes (.markdown-body) get their own heading ladder;
+       h4 there is pinned until that followup lands.
+     ============================================================ */
+  --text-display: 1.36rem; /* ~20px — page-title row: pane/area titles, breadcrumb chain */
+  --text-title: 1.07rem;   /* ~16px — group headers: projects, today groups, dialog titles, brand */
+  --text-body: 1rem;       /* 15px — content, controls, inputs; + weight 600 = "body-strong" sub-heads */
+  --text-sm: 0.89rem;      /* ~13px — UPPERCASE chrome eyebrows only (pane sections) */
+  --text-label: 0.79rem;   /* ~12px — UPPERCASE section labels, tabular meta (counts, badges, chips), status, compact chrome (btn-sm, pill) */
+  --text-code: 0.89rem;    /* ~13px — mono inline code, tags, pre (split from --text-sm: not a header tier) */
+
   /* Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -305,16 +347,16 @@ h1, h2, h3, h4, h5, h6 {
   margin: 0;
   letter-spacing: -0.005em;
   /* Display + Title tiers sit at 1.2 leading so headings breathe
-     tighter than body (22.5px at 15px root). h4 is a label-tier
-     size and stays at the default 1.5 leading. */
+     tighter than body (22.5px at 15px root). h4 is body-strong and
+     keeps the shared 1.2 heading leading. */
   line-height: 1.2;
   text-wrap: balance;
 }
 
-h1 { font-size: 1.36rem; font-weight: 600; }
-h2 { font-size: 1.07rem; font-weight: 600; }
-h3 { font-size: 1.07rem; font-weight: 600; }
-h4 { font-size: 0.79rem; font-weight: 600; line-height: 1.5; text-wrap: wrap; }
+h1 { font-size: var(--text-display); font-weight: 600; }
+h2 { font-size: var(--text-title); font-weight: 600; }
+h3 { font-size: var(--text-title); font-weight: 600; }
+h4 { font-size: var(--text-body); font-weight: 600; } /* body-strong sub-head (only JSX use: .today-project-title) */
 
 p { margin: 0; }
 
@@ -323,7 +365,7 @@ code, pre {
   color: var(--text-h);
 }
 code {
-  font-size: 0.89rem;
+  font-size: var(--text-code);
   padding: 1px 5px;
   border-radius: var(--radius-sm);
   background: var(--code-bg);

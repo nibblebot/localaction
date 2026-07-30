@@ -881,34 +881,24 @@ function ProjectRowActions({
 }
 
 /**
- * The action cluster on the project detail pane header: the shared
- * row actions (due date, empty-section pruning) plus the notes entry
- * point that only exists here. Rename and delete moved to the header
- * title itself — the name is inline-editable and the trash rides the
- * rename input (see `ProjectPaneHeader`).
+ * The action cluster on the project detail pane header: the due-date
+ * control and the notes entry point that only exists here. The
+ * empty-sections toggle moved to the pane header's `trailing` slot
+ * alongside `CompletedToggle`; the row's card-side actions still live
+ * in `ProjectRowActions` for the area-view cards.
  */
 function ProjectPaneActions({
   projectId,
   display,
-  hideEmptySections,
-  onToggleEmptySections,
 }: {
   projectId: string;
   /** Display name for aria-labels. */
   display: string;
-  /** Prune section headers with no visible tasks in the task list. */
-  hideEmptySections: boolean;
-  onToggleEmptySections: () => void;
 }): React.JSX.Element {
   const { navigate } = useSelection();
   return (
     <>
-      <ProjectRowActions
-        projectId={projectId}
-        display={display}
-        hideEmptySections={hideEmptySections}
-        onToggleEmptySections={onToggleEmptySections}
-      />
+      <ProjectDueDateButton projectId={projectId} />
       {NOTES_ENABLED && (
         <button
           type="button"
@@ -1015,9 +1005,9 @@ function ProjectRow({
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
           />
-        </div >
+        </div>
         <ProjectProgressMeter done={done} total={total} doneGroup={doneGroup} />
-      </div >
+      </div>
       {!collapsed && (
         <div className="project-row-tasks">
           <ProjectTaskList
@@ -1027,9 +1017,8 @@ function ProjectRow({
             hideEmptySections={hideEmptySections}
           />
         </div>
-      )
-      }
-    </li >
+      )}
+    </li>
   );
 }
 
@@ -1153,9 +1142,9 @@ function SortableProjectRow({
             hideEmptySections={hideEmptySections}
             onToggleEmptySections={onToggleEmptySections}
           />
-        </div >
+        </div>
         <ProjectProgressMeter done={done} total={total} />
-      </div >
+      </div>
       {!collapsed && (
         <div className="project-row-tasks">
           <ProjectTaskList
@@ -1165,9 +1154,8 @@ function SortableProjectRow({
             hideEmptySections={hideEmptySections}
           />
         </div>
-      )
-      }
-    </li >
+      )}
+    </li>
   );
 }
 
@@ -1469,25 +1457,9 @@ function ProjectPaneHeader({
       ) : (
         <h1 className="area-header-name">{display}</h1>
       )}
-      {actions && !editing && (
-        <>
-          <ProjectAddTaskButton projectId={projectId} display={display} />
-          <ProjectAddSectionButton
-            projectId={projectId}
-            display={display}
-            hideEmptySections={actions.hideEmptySections}
-            onToggleEmptySections={actions.onToggleEmptySections}
-          />
-        </>
-      )}
       {actions && (
         <div className="project-row-actions">
-          <ProjectPaneActions
-            projectId={projectId}
-            display={display}
-            hideEmptySections={actions.hideEmptySections}
-            onToggleEmptySections={actions.onToggleEmptySections}
-          />
+          <ProjectPaneActions projectId={projectId} display={display} />
           <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
         </div>
       )}
@@ -1570,7 +1542,21 @@ function ProjectPane({
             onToggleEmptySections: () => hiddenEmptySections.toggle(projectId),
           }}
           trailing={
-            <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
+            <div className="area-header-actions">
+              <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
+              <button
+                type="button"
+                className={`area-tab-action${hideEmptySections ? ' area-tab-action-active' : ''}`}
+                aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${projectName}`}
+                aria-pressed={hideEmptySections}
+                title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
+                onClick={() => hiddenEmptySections.toggle(projectId)}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#sections-icon" />
+                </svg>
+              </button>
+            </div>
           }
         />
         <section className="pane-section pane-section-static" aria-label="Tasks">
@@ -1579,23 +1565,15 @@ function ProjectPane({
               <span className="pane-section-title">Tasks</span>
               <span className="tab-group-count">· {taskCount}</span>
             </span>
-            <button
-              type="button"
-              className="area-tab-action area-tab-action-add"
-              aria-label={`Add task to ${projectName}`}
-              title="Add task"
-              onClick={() => {
-                const id = createTask(store, {
-                  title: '',
-                  placement: { kind: 'project', id: projectId },
-                });
-                queueTaskTitleFocus(id);
-              }}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#add-icon" />
-              </svg>
-            </button>
+            <div className="pane-section-head-actions">
+              <ProjectAddTaskButton projectId={projectId} display={projectName} />
+              <ProjectAddSectionButton
+                projectId={projectId}
+                display={projectName}
+                hideEmptySections={hideEmptySections}
+                onToggleEmptySections={() => hiddenEmptySections.toggle(projectId)}
+              />
+            </div>
           </div>
           <div className="tasks-tab project-pane-tasks">
             <ProjectTaskList

@@ -25,7 +25,7 @@ async function createProject(page: Page, name: string): Promise<void> {
 }
 
 async function addPaneTask(page: Page, title: string): Promise<void> {
-  await page.locator('.area-header button[aria-label^="Add task to "]').click();
+  await page.locator('.pane-section-head-actions button[aria-label^="Add task to "]').click();
   await expect(page.locator('.task-line-title:focus')).toBeVisible();
   await page.keyboard.type(title);
   await page.keyboard.press('Enter');
@@ -66,7 +66,7 @@ test.describe('Project detail pane row actions', () => {
 
     // Empty-sections toggle prunes section headers with no visible tasks.
     await page
-      .locator(`.area-header button[aria-label="Add section to ${project}"]`)
+      .locator(`.pane-section-head-actions button[aria-label="Add section to ${project}"]`)
       .click();
     await expect(page.locator('.section-row .editable-title:focus')).toBeVisible();
     await page.keyboard.type(`Empty ${tok}`);

@@ -65,31 +65,3 @@ test('area tasks: add, nest, complete, and persist across reload', async ({ page
   await expect(reloaded.locator('.task-line', { hasText: `Task two ${tok}` })).toBeVisible();
   await expect(reloaded.locator('.task-line', { hasText: `Sub task ${tok}` })).toBeVisible();
 });
-
-test('collapsing a section hides its body and persists across reload', async ({ page }) => {
-  const tok = uniq();
-  const area = `Area ${tok}`;
-  await page.goto('/#/');
-  await createArea(page, area);
-
-  // Collapse Notes: its body disappears. (An empty notes body is
-  // zero-height, so assert DOM presence rather than visibility.)
-  const notesToggle = page.locator('.pane-section-toggle', { hasText: 'Notes' });
-  await expect(page.locator('.notes-tab')).toHaveCount(1);
-  await notesToggle.click();
-  await expect(notesToggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.notes-tab')).toHaveCount(0);
-
-  // The collapse preference survives a reload (localStorage-backed).
-  await page.reload();
-  await expect(
-    page.locator('.pane-section-toggle', { hasText: 'Notes' }),
-  ).toHaveAttribute('aria-expanded', 'false');
-  await expect(page.locator('.notes-tab')).toHaveCount(0);
-
-  // Re-expanding restores the body; the Projects and Area tasks
-  // sections were never affected.
-  await page.locator('.pane-section-toggle', { hasText: 'Notes' }).click();
-  await expect(page.locator('.notes-tab')).toHaveCount(1);
-  await expect(page.locator('.projects-tab')).toBeVisible();
-});

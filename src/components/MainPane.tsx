@@ -67,6 +67,15 @@ import type { CollapsedSet } from './useCollapsedSet.ts';
 // Lazy: carries markdown-it (~100KB min) out of the main chunk —
 // loaded on first note-preview render, never on task-only surfaces.
 const NoteMarkdown = lazy(() => import('./NoteMarkdown.tsx'));
+/**
+ * Notes feature switch — disabled and hidden from the UI. The data
+ * layer (the `notes` table, CRUD, selectors, and WS sync) stays fully
+ * intact so existing note rows and the schema/persistence/sync shape
+ * are unchanged; only the render sites are gated. Flip to `true` to
+ * bring the surface back: the area-view Notes section, the project-row
+ * note icon, and the `#/p/<id>/notes` pane.
+ */
+const NOTES_ENABLED = false;
 
 export default function MainPane(): React.JSX.Element {
   const { store } = useDataLayer();
@@ -118,7 +127,10 @@ export default function MainPane(): React.JSX.Element {
   }
 
   if (selection.kind === 'project-notes') {
-    return <ProjectNotesPane projectId={selection.id} />;
+    if (NOTES_ENABLED) return <ProjectNotesPane projectId={selection.id} />;
+    // Feature hidden: the `#/p/<id>/notes` deep link still resolves (so
+    // back/forward keep working) but renders the project detail pane.
+    return <ProjectPane projectId={selection.id} hiddenEmptySections={hiddenEmptySections} />;
   }
 
   if (selection.kind === 'inbox') {
@@ -152,7 +164,6 @@ export default function MainPane(): React.JSX.Element {
 
   const projectCount = counts.find((c) => c.id === areaId)?.projectCount ?? 0;
   const noteCount = counts.find((c) => c.id === areaId)?.noteCount ?? 0;
-
 
   const goToArea = (id: string): void => {
     navigate({ kind: 'area', id });
@@ -210,6 +221,7 @@ export default function MainPane(): React.JSX.Element {
           collapsed={collapsedSections.collapsed.has('tasks')}
           onToggleCollapse={() => collapsedSections.toggle('tasks')}
         />
+        {NOTES_ENABLED && (
         <CollapsibleSection
           title="Notes"
           icon="notes"
@@ -227,6 +239,7 @@ export default function MainPane(): React.JSX.Element {
         >
           <NotesSection areaId={areaId} />
         </CollapsibleSection>
+        )}
       </div>
     </main>
   );
@@ -904,6 +917,7 @@ function ProjectPaneActions({
         hideEmptySections={hideEmptySections}
         onToggleEmptySections={onToggleEmptySections}
       />
+      {NOTES_ENABLED && (
       <button
         type="button"
         className="project-row-action icon-button"
@@ -918,6 +932,7 @@ function ProjectPaneActions({
           <use href="/icons.svg#notes-icon" />
         </svg>
       </button>
+      )}
       <button
         type="button"
         className="project-row-action icon-button"

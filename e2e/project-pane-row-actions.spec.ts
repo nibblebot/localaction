@@ -4,7 +4,7 @@ import { test, expect, type Page } from '@playwright/test';
  * The project detail pane (`#/p/<id>`) is the standalone form of an
  * expanded project card — its header carries the same row actions the
  * area-view card shows: progress meter, due date, empty-sections
- * toggle, notes, rename, delete. Empty-section state is per project,
+ * toggle, rename, delete. Empty-section state is per project,
  * so toggling it on one surface applies to the other.
  */
 
@@ -88,18 +88,12 @@ test.describe('Project detail pane row actions', () => {
     ).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('notes, rename, and delete work from the pane header', async ({ page }) => {
+  test('rename and delete work from the pane header', async ({ page }) => {
     const tok = uniq();
     const area = `Area ${tok}`;
     const project = `Project ${tok}`;
     await openProjectPane(page, area, project);
     const header = page.locator('.area-header');
-
-    // Notes opens the project's notes pane; back returns to the detail pane.
-    await header.getByRole('button', { name: `Open notes for ${project}` }).click();
-    await expect(page).toHaveURL(/#\/p\/[^/]+\/notes$/);
-    await page.goBack();
-    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
 
     // Rename swaps the header title for an inline input.
     await header.getByRole('button', { name: 'Rename project' }).click();

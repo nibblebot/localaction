@@ -7,6 +7,10 @@ export interface EditableTitleProps {
   placeholder?: string;
   /** Focus the input on mount (freshly created row). */
   autoFocus?: boolean;
+  /** Notify when the input gains/loses focus — lets the parent
+   * surface chrome (e.g. a delete button riding the input) only
+   * while the user is actually editing. */
+  onEditingChange?: (editing: boolean) => void;
 }
 
 export default function EditableTitle({
@@ -14,6 +18,7 @@ export default function EditableTitle({
   onCommit,
   placeholder = 'Untitled',
   autoFocus = false,
+  onEditingChange,
 }: EditableTitleProps): React.JSX.Element {
   const [draft, setDraft] = useState(value);
   const ref = useRef<HTMLInputElement>(null);
@@ -27,6 +32,22 @@ export default function EditableTitle({
   useEffect(() => {
     if (document.activeElement !== ref.current) setDraft(value);
   }, [value]);
+
+  // Keep the editing-change callback in sync with the actual focus
+  // state of the input — focus / blur are the only real signals
+  // (the component is always an <input>, so "editing" == "focused").
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !onEditingChange) return;
+    const onFocus = (): void => onEditingChange(true);
+    const onBlur = (): void => onEditingChange(false);
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    return () => {
+      el.removeEventListener('focus', onFocus);
+      el.removeEventListener('blur', onBlur);
+    };
+  }, [onEditingChange]);
 
   function commit(): void {
     const next = draft.trim();

@@ -1009,12 +1009,16 @@ body.sidebar-resizing {
 }
 
 /* Row chrome wakes on hover/focus (DESIGN.md: quiet controls) — on the
-   card itself, and on the pane header that mirrors the card's actions.
-   Data — a set due date, assigned avatars — stays visible at rest. */
+   card itself, the pane header that mirrors the card's actions, and
+   the standalone Tasks section of the project pane (which also hosts
+   the same add-task / add-section affordances). Data — a set due date,
+   assigned avatars — stays visible at rest. */
 .project-row:hover .project-row-action,
 .project-row:focus-within .project-row-action,
 .area-header:hover .project-row-action,
 .area-header:focus-within .project-row-action,
+.pane-section-static:hover .project-row-action,
+.pane-section-static:focus-within .project-row-action,
 .project-row-action.due-date-set {
   opacity: 1;
 }
@@ -2479,6 +2483,23 @@ button .svg-icon {
 .section-row .editable-title:focus {
   background: var(--bg);
   box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+
+/* Add-task "+" — pushed to the far right with margin-left: auto so
+   the title can shrink naturally without the "+" drifting. Stays
+   quiet at rest on desktop (the row's existing hover/focus reveal
+   rule below handles it) and is held visible on touch by the
+   coarse-pointer mediaquery. */
+.section-row .section-row-add {
+  margin-left: auto;
+}
+
+/* Trash rides the rename input and only mounts while editing, so the
+   quiet-at-rest reveal rule below never applies to it. Force the
+   visible state explicitly — same pattern as .area-header-name-delete
+   on the project pane header. */
+.section-row .section-row-trash {
+  opacity: 1;
 }
 
 /* Action icons stay quiet until the row is hovered (task rows reveal

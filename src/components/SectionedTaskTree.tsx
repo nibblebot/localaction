@@ -104,6 +104,10 @@ function SectionRow({
   const section = useSection(store, sectionId);
   const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Mirror the input's focus state so the trash icon rides the
+  // rename input only while the user is actually editing — the
+  // project pane header's inline pattern (see MainPane).
+  const [editing, setEditing] = useState(false);
   // Freshly created sections land with an empty name and a queued
   // focus handoff — the title input grabs focus on first mount.
   const [autoFocus] = useState(() => consumeSectionTitleFocus(sectionId));
@@ -133,7 +137,7 @@ function SectionRow({
       {handle && (
         <button
           type="button"
-          {...(handle.attributes ?? {})}
+          {...(handle?.attributes ?? {})}
           className="task-line-drag-handle icon-button"
           aria-label="Drag to reorder section"
           title="Drag to reorder section"
@@ -149,11 +153,31 @@ function SectionRow({
         value={section.name}
         placeholder="Untitled section"
         autoFocus={autoFocus}
+        onEditingChange={setEditing}
         onCommit={(next) => updateSection(store, sectionId, { name: next })}
       />
+      {editing && (
+        // The trash rides the rename input and only renders while
+        // editing. mousedown is suppressed so this click lands
+        // instead of blurring the input first and unmounting the
+        // button; the confirm dialog steals focus on open, which
+        // blurs the input and ends edit mode.
+        <button
+          type="button"
+          className="task-line-action task-line-action-danger icon-button section-row-trash"
+          aria-label="Delete section"
+          title="Delete"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setConfirmDelete(true)}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#trash-icon" />
+          </svg>
+        </button>
+      )}
       <button
         type="button"
-        className="task-line-action icon-button"
+        className="task-line-action icon-button section-row-add"
         aria-label="Add task to section"
         title="Add task to section"
         onClick={() => {
@@ -166,17 +190,6 @@ function SectionRow({
       >
         <svg className="svg-icon" aria-hidden="true">
           <use href="/icons.svg#add-icon" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        className="task-line-action task-line-action-danger icon-button"
-        aria-label="Delete section"
-        title="Delete"
-        onClick={() => setConfirmDelete(true)}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#trash-icon" />
         </svg>
       </button>
       <ConfirmModal

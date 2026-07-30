@@ -249,12 +249,17 @@ test.describe('Project sections', () => {
     await addSection(page, `Empty ${tok}`);
 
     // The section header lives inside the expanded project card — the
-    // same editable row everywhere: rename input plus add-task and
-    // delete actions (the project has no other sections).
+    // same editable row everywhere: rename input plus an add-task "+".
+    // The delete trash only renders while the user is editing the
+    // title (the same pattern the project pane header uses).
     const header = page.locator('.section-row');
     await expect(header).toHaveCount(1);
     await expect(header.locator('.editable-title')).toHaveValue(`Empty ${tok}`);
     await expect(header.locator('button[aria-label="Add task to section"]')).toBeAttached();
+    await expect(header.locator('button[aria-label="Delete section"]')).toHaveCount(0);
+
+    // Focus the title to enter rename mode — the trash rides the input.
+    await header.locator('.editable-title').click();
     await expect(header.locator('button[aria-label="Delete section"]')).toBeAttached();
   });
 
@@ -270,6 +275,9 @@ test.describe('Project sections', () => {
     await page.keyboard.type(`Doomed task ${tok}`);
     await page.keyboard.press('Enter');
 
+    // The delete trash only renders while the title is focused; click
+    // the title to enter rename mode, then click the trash.
+    await page.locator('.section-row .editable-title').click();
     await page.locator('.section-row button[aria-label="Delete section"]').click();
     await expect(page.locator('.modal')).toContainText('and its tasks will be deleted');
     await page.locator('.modal .btn-danger').click();

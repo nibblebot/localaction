@@ -285,6 +285,18 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  /* Reflow guarantee: content never scrolls horizontally (WCAG 1.4.10). */
+  overflow-x: clip;
+}
+
+/* Touch baseline: no legacy 300ms tap delay on activation surfaces;
+   double-tap zoom off, pinch-zoom preserved. Drag/resizer handles opt
+   out with their own class-level touch-action: none, which outranks
+   these element selectors. */
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
 }
 
 h1, h2, h3, h4, h5, h6 {

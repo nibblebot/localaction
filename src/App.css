@@ -1749,6 +1749,18 @@ body.sidebar-resizing {
   justify-content: center;
 }
 
+/* Press feedback — touch has no hover, so the tap itself must
+   acknowledge instantly. A fast layout-neutral scale on press; the
+   base transition resumes on release. */
+.btn:active,
+.icon-button:active,
+.area-tab-action:active,
+.tab-group-toggle:active,
+.drawer-toggle:active {
+  transform: scale(0.96);
+  transition: transform 90ms ease-out;
+}
+
 .pill {
   font-size: 0.79rem;
   font-weight: 500;
@@ -2560,8 +2572,10 @@ button .svg-icon {
     align-items: center;
     justify-content: center;
     position: fixed;
-    top: max(var(--space-2), env(safe-area-inset-top, 0px));
-    inset-inline-start: max(var(--space-2), env(safe-area-inset-left, 0px));
+    /* Additive offset (never max()): the open drawer's app-name row
+       mirrors this exact calc so both share one header row. */
+    top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+    inset-inline-start: calc(env(safe-area-inset-left, 0px) + var(--space-2));
     z-index: var(--z-drawer-toggle);
     background: var(--surface);
     border: 1px solid var(--border);
@@ -2586,6 +2600,25 @@ button .svg-icon {
 
   .app-shell.drawer-open .sidebar {
     transform: translateX(0);
+    /* Same top offset as the toggle: the app-name row below centers
+       on the toggle's row instead of sitting under it. */
+    padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+  }
+
+  /* Logo + app name share the hamburger's row: the fixed toggle owns
+     the inline-start slot, the row's min-height centers it on the
+     toggle, and its inline padding clears safe inset + toggle + gap. */
+  .app-shell.drawer-open .sidebar-app-name-row {
+    min-height: var(--icon-button-control);
+    padding-top: 0;
+    padding-inline-start: calc(env(safe-area-inset-left, 0px) + var(--space-2) + var(--icon-button-control) + var(--space-2));
+  }
+
+  /* The open drawer's close affordance is the toggle itself (its
+     aria-label flips to "Close navigation") — it must sit above the
+     drawer surface, not under it. */
+  .app-shell.drawer-open .drawer-toggle {
+    z-index: calc(var(--z-drawer) + 1);
   }
 
   /* No resize handle in the drawer — the sidebar is a fixed-width
@@ -2781,7 +2814,8 @@ button .svg-icon {
 
 .undo-toast {
   position: fixed;
-  bottom: var(--space-5);
+  /* Clears the home indicator: toast floats above the safe area. */
+  bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-toast);

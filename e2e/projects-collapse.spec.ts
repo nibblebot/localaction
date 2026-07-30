@@ -27,7 +27,7 @@ async function addCardTask(page: Page, project: string, title: string): Promise<
   await page.keyboard.press('Enter');
 }
 
-test('combined Projects tab: meters, per-project caret, collapse-all, persistence', async ({
+test('combined Projects tab: meters, per-project caret, persistence', async ({
   page,
 }) => {
   const tok = uniq();
@@ -72,13 +72,9 @@ test('combined Projects tab: meters, per-project caret, collapse-all, persistenc
   await expect(page.locator('.project-row-tasks')).toHaveCount(0);
   await expect(card.locator('.project-row-line .project-row-progress-count')).toHaveText('2 / 3');
 
-  // Re-expand via the caret, then collapse-all / expand-all from the
-  // tab bar.
+  // Re-expand via the caret; per-card collapse is the only bulk
+  // affordance now (the header collapse-all button was removed).
   await card.locator(`button[aria-label="Expand ${project}"]`).click();
-  await expect(page.locator('.project-row-tasks')).toHaveCount(1);
-  await page.locator('button[aria-label="Collapse all projects"]').click();
-  await expect(page.locator('.project-row-tasks')).toHaveCount(0);
-  await page.locator('button[aria-label="Expand all projects"]').click();
   await expect(page.locator('.project-row-tasks')).toHaveCount(1);
 
   // Collapse state persists across reloads (localStorage).

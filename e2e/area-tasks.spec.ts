@@ -33,7 +33,7 @@ test('area tasks: add, nest, complete, and persist across reload', async ({ page
   // Add two area-rooted tasks; the header count tracks them.
   await addAreaTask(page, `Task one ${tok}`);
   await addAreaTask(page, `Task two ${tok}`);
-  await expect(section.locator('.pane-section-toggle')).toContainText('· 2');
+  await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('2');
 
   // Sub-tasks nest under their parent instead of rendering flush-left.
   const taskTwo = section.locator('.task-line', { hasText: `Task two ${tok}` });
@@ -53,7 +53,7 @@ test('area tasks: add, nest, complete, and persist across reload', async ({ page
   // Completing a task prunes it from the default (hide-completed) view.
   await page.locator(`input[aria-label="Mark “Task one ${tok}” done"]`).click();
   await expect(section.locator('.task-line', { hasText: `Task one ${tok}` })).toHaveCount(0);
-  await expect(section.locator('.pane-section-toggle')).toContainText('· 1');
+  await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('1');
 
   // The area-wide show-completed toggle (in the area header) brings it back.
   await page.locator('.area-header-actions button[aria-label="Show completed tasks"]').click();

@@ -24,14 +24,14 @@ test('blurring a fresh task title with no content removes the row', async ({ pag
   // cancelled, not persisted, and the header count never saw it.
   await page.keyboard.press('Tab');
   await expect(section.locator('.task-line')).toHaveCount(0);
-  await expect(section.locator('.pane-section-toggle')).toContainText('· 0');
+  await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('0');
 
   // Escape on a fresh row cancels the same way.
   await section.locator('button[aria-label="Add task"]').click();
   await expect(section.locator('.task-line-title:focus')).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(section.locator('.task-line')).toHaveCount(0);
-  await expect(section.locator('.pane-section-toggle')).toContainText('· 0');
+  await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('0');
 });
 
 test('typing a title then blurring keeps the task', async ({ page }) => {
@@ -45,5 +45,5 @@ test('typing a title then blurring keeps the task', async ({ page }) => {
   await page.keyboard.press('Tab');
 
   await expect(section.locator('.task-line', { hasText: `Kept ${tok}` })).toBeVisible();
-  await expect(section.locator('.pane-section-toggle')).toContainText('· 1');
+  await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('1');
 });

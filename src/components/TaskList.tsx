@@ -186,12 +186,21 @@ export function TaskRow({
   if (handle?.isDragging) classes.push('sortable-row-active');
   if (handle?.isOver) classes.push('sortable-row-over');
 
+  // Long-press touch drag activates from anywhere on the row (grips
+  // are hidden on coarse pointers); mouse + keyboard stay on the grip.
+  // Stripping onTouchStart from the grip keeps a touch landing on it
+  // from registering a second activation via event bubbling.
+  const { onTouchStart, ...gripListeners } = (handle?.listeners ?? {}) as {
+    onTouchStart?: React.TouchEventHandler;
+  } & Record<string, unknown>;
+
   return (
     <div
       ref={handle?.ref}
       style={handle?.style}
       className={classes.join(' ')}
       data-drag-over={handle?.isOver ? 'true' : undefined}
+      {...(onTouchStart ? { onTouchStart } : {})}
     >
       {handle && (
         <button
@@ -201,7 +210,7 @@ export function TaskRow({
           aria-label="Drag to reorder"
           title="Drag to reorder"
           onClick={(e) => e.preventDefault()}
-          {...(handle.listeners ?? {})}
+          {...gripListeners}
         >
           <svg className="svg-icon" aria-hidden="true">
             <use href="/icons.svg#drag-icon" />

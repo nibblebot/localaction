@@ -162,7 +162,7 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await expect(group.locator('.task-line-title').nth(1)).toHaveValue(taskB);
     await expect(page.locator('.projects-tab .task-line-title')).toHaveCount(0);
     // The section count includes the sub-area's tasks.
-    await expect(section.locator('.pane-section-toggle')).toContainText('· 2');
+    await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('2');
 
     // Drag-reorder inside the group: the second task moves above the first.
     const second = group.locator('.task-line').nth(1);
@@ -188,7 +188,7 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     // the count drops.
     await page.locator(`input[aria-label="Mark “${taskB}” done"]`).click();
     await expect(group.locator('.task-line-title')).toHaveCount(1);
-    await expect(section.locator('.pane-section-toggle')).toContainText('· 1');
+    await expect(section.locator('.pane-section-toggle .tab-group-count')).toHaveText('1');
   });
 });
 

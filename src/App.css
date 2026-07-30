@@ -422,21 +422,19 @@ body.sidebar-resizing {
   align-items: center;
   justify-content: center;
   background: transparent;
-  border: 1px dashed var(--border-strong);
-  color: var(--text-muted);
-  border-radius: var(--radius-md);
+  border: 0;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   padding: 0;
   font-family: inherit;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .area-header-add:hover {
   color: var(--text-h);
   background: var(--surface-hover);
-  border-color: var(--text-muted);
-  border-style: solid;
 }
 
 .area-header-add-input {
@@ -781,18 +779,20 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-/* Collapsible status-group header (Active / Backlog / Done). Mirrors
-   .pane-section-toggle one register down: quiet until hovered, chevron
-   carries the expand state. */
+/* Collapsible status-group header (Active / Backlog / Done). A plain
+   label row — the register step down from .pane-section-toggle is
+   carried by size/weight, not a boxed pill (DESIGN.md: hierarchy from
+   the two eyebrow registers, never from chrome). Drop scoping lives
+   on .tab-group-head (unchanged); only the box went away. */
 .tab-group-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin: 0;
   margin-inline-start: calc(-1 * var(--space-2));
-  padding: 6px;
-  border: 1px solid var(--accent-border);
-  border-radius: 6px;
+  padding: 6px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
   background: none;
   cursor: pointer;
   color: var(--text-muted);
@@ -2192,11 +2192,43 @@ button .svg-icon {
 .sortable-row {
   position: relative;
   cursor: grab;
-  touch-action: none; /* prevent browser intercepting touch drags */
+  /* Rows scroll normally on touch (pan-y); the TouchSensor's 250ms
+     long-press delay + 8px tolerance arbitrates scroll vs. drag —
+     movement inside the window cancels the pending drag, and once
+     active dnd-kit preventDefaults touchmove to block scrolling.
+     Grips keep their own touch-action: none for mouse-free drags. */
+  touch-action: pan-y;
 }
 
 .sortable-row:active {
   cursor: grabbing;
+}
+
+/* Long-press arming feedback (touch only): while the TouchSensor's
+   250ms activation delay runs, `.arming` (set by longPressArming.ts,
+   which mirrors the sensor's own 250ms / 8px rules) washes the row
+   toward surface-active on the same clock — ease-in keeps the first
+   ~100ms faint so ordinary taps barely register, the fill completes
+   the moment the drag activates, and releasing or scrolling early
+   cancels both. A class, not `:active` — iOS applies `:active` to
+   touch inconsistently and headless emulation never sets it. */
+.sortable-row.arming {
+  animation: row-long-press-arm 250ms ease-in forwards;
+}
+
+/* No `from` keyframe: the wash starts from each row's own computed
+   background (transparent task rows, elevated project cards). */
+@keyframes row-long-press-arm {
+  to {
+    background-color: var(--surface-active);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sortable-row.arming {
+    animation: none;
+    background-color: var(--surface-active);
+  }
 }
 
 .sortable-row-active {
@@ -2368,18 +2400,17 @@ button .svg-icon {
    hover-revealed actions like task rows.
    ============================================================ */
 
-/* Section header inside a project card's task tree — a quiet filled
-   chip (near-white lavender, light grey border) so the section reads
-   as its own surface inside the card. */
+/* Section header inside a project card's task tree — a plain label
+   row, not a filled chip: the project card is the only bordered
+   surface; inside it, separation comes from weight (500) and
+   whitespace. Also drops the untokened #fcf9ff fill, which had no
+   dark-theme counterpart. */
 .section-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-2) var(--space-1);
-  background: #fcf9ff;
-  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  transition: border-color 0.15s ease;
 }
 
 /* A quiet, layout-stable border wakes up around project section and task
@@ -2390,14 +2421,8 @@ button .svg-icon {
   transition: box-shadow 0.15s ease;
 }
 
-.project-task-tree .task-line:hover {
+.project-task-tree :is(.section-row, .task-line):hover {
   box-shadow: inset 0 0 0 1px var(--border);
-}
-
-/* The section chip already carries a real border at rest; hover just
-   deepens it instead of doubling up the inset outline. */
-.project-task-tree .section-row:hover {
-  border-color: var(--border-strong);
 }
 
 .section-row .editable-title {
@@ -2775,9 +2800,13 @@ button .svg-icon {
     transform: none;
   }
 
+  /* Long-press drag on touch activates from the row itself, so the
+     grip glyphs leave the screen entirely. display (not visibility)
+     so the hover-reveal rules at rest can't resurrect them on a
+     sticky :hover tap, and no gutter space is reserved. */
   .task-line-drag-handle,
   .project-row-drag-handle {
-    visibility: visible;
+    display: none;
   }
 
 

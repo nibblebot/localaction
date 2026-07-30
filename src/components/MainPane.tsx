@@ -190,14 +190,6 @@ export default function MainPane(): React.JSX.Element {
           count={projectCount}
           collapsed={collapsedSections.collapsed.has('projects')}
           onToggleCollapse={() => collapsedSections.toggle('projects')}
-          trailing={
-            <ProjectCollapseAllButton
-              areaId={areaId}
-              subAreas={subAreas}
-              collapsed={collapsedProjects.collapsed}
-              replace={collapsedProjects.replace}
-            />
-          }
         >
           <ProjectsSection
             areaId={areaId}
@@ -514,7 +506,7 @@ function CollapsibleSection({
             </svg>
           )}
           <span className="pane-section-title">{title}</span>
-          <span className="tab-group-count">· {count}</span>
+          <span className="tab-group-count">{count}</span>
         </button>
         {trailing}
       </div>
@@ -527,44 +519,6 @@ interface SubAreaRef {
   id: string;
   name: string;
   color: AreaColorId;
-}
-
-/**
- * Collapse-all / expand-all for the combined Projects tab. Operates on
- * every project rolled into the view (the area plus its sub-areas).
- */
-function ProjectCollapseAllButton({
-  areaId,
-  subAreas,
-  collapsed,
-  replace,
-}: {
-  areaId: string;
-  subAreas: readonly SubAreaRef[];
-  collapsed: ReadonlySet<string>;
-  replace: (ids: Iterable<string>) => void;
-}): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const rollups = useProjectRollups(store);
-  const ids = useMemo(() => {
-    const areaIds = new Set([areaId, ...subAreas.map((sa) => sa.id)]);
-    return rollups.filter((r) => r.areaId !== null && areaIds.has(r.areaId)).map((r) => r.projectId);
-  }, [rollups, areaId, subAreas]);
-  if (ids.length === 0) return null;
-  const allCollapsed = ids.every((id) => collapsed.has(id));
-  return (
-    <button
-      type="button"
-      className="area-tab-action icon-button"
-      aria-label={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
-      title={allCollapsed ? 'Expand all projects' : 'Collapse all projects'}
-      onClick={() => replace(allCollapsed ? [] : ids)}
-    >
-      <svg className="svg-icon" aria-hidden="true">
-        <use href={`/icons.svg#${allCollapsed ? 'expand-all-icon' : 'collapse-all-icon'}`} />
-      </svg>
-    </button>
-  );
 }
 
 function ProjectsSection({
@@ -1157,12 +1111,21 @@ function SortableProjectRow({
     navigate({ kind: 'project', id: projectId });
   };
 
+  // Long-press touch drag activates from anywhere on the row (grips
+  // are hidden on coarse pointers); mouse + keyboard stay on the grip.
+  // Stripping onTouchStart from the grip keeps a touch landing on it
+  // from registering a second activation via event bubbling.
+  const { onTouchStart, ...gripListeners } = (handle.listeners ?? {}) as {
+    onTouchStart?: React.TouchEventHandler;
+  } & Record<string, unknown>;
+
   return (
     <li
       ref={handle.ref}
       style={handle.style}
       className={classes.join(' ')}
       data-drag-over={handle.isOver ? 'true' : undefined}
+      {...(onTouchStart ? { onTouchStart } : {})}
     >
       <div className="project-row-line" onClick={openProject}>
         <button
@@ -1175,7 +1138,7 @@ function SortableProjectRow({
             e.stopPropagation();
           }}
           {...(handle.attributes ?? {})}
-          {...(handle.listeners ?? {})}
+          {...gripListeners}
         >
           <svg className="svg-icon" aria-hidden="true">
             <use href="/icons.svg#drag-icon" />

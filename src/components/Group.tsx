@@ -59,12 +59,12 @@ export default function Group({
                 <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
               </svg>
               <span className="tab-group-title">{title}</span>
-              <span className="tab-group-count">· {count}</span>
+              <span className="tab-group-count">{count}</span>
             </button>
           ) : (
             <>
               <span className="tab-group-title">{title}</span>
-              <span className="tab-group-count">· {count}</span>
+              <span className="tab-group-count">{count}</span>
             </>
           )}
           {trailing}

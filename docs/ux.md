@@ -137,9 +137,8 @@ add-sub-area button sits beside the name. The header's action row holds the
   unsectioned tasks and every section — tasks drag within/between groups
   and nest as sub-tasks; section rows (inline-renamable, deletable) drag
   to reorder, never nest, and always follow the unsectioned group. The
-  card footer holds *Add task* / *Add section* inline-add buttons. A
-  collapse-all / expand-all button in the section header operates on every
-  card at once; per-card collapse state persists per device.
+  card footer holds *Add task* / *Add section* inline-add buttons.
+  Per-card collapse state persists per device.
   An *Add project* button closes the section.
 - **Area tasks** — the area-rooted task tree (draggable, sub-tasks nest)
   with an *Add task* button, followed by one labeled, editable group per

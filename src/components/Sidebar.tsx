@@ -215,22 +215,31 @@ export default function Sidebar({
     return ids;
   }, [tree]);
 
-  const allCollapsed =
-    collapsibleIds.length > 0 && collapsibleIds.every((id) => collapsed.has(id));
-
-  function toggleAll(): void {
-    if (allCollapsed) {
-      replaceCollapsed([]);
-      return;
-    }
-    // Collapse-all keeps the area shown in the main pane (and its
-    // ancestors) expanded so the current context stays visible.
+  // Collapse-all keeps the area shown in the main pane (and its
+  // ancestors) expanded so the current context stays visible. The
+  // kept set is shared with the all-collapsed predicate below so the
+  // button flips to expand-all once everything else is collapsed —
+  // otherwise a selected area with sub-areas would pin the button on
+  // "Collapse all" forever.
+  const keepExpanded = useMemo<ReadonlySet<string>>(() => {
     const keep = new Set<string>();
     for (let cur = selectedId; cur; ) {
       keep.add(cur);
       cur = counts.find((c) => c.id === cur)?.parentId ?? null;
     }
-    replaceCollapsed(collapsibleIds.filter((id) => !keep.has(id)));
+    return keep;
+  }, [selectedId, counts]);
+
+  const collapseTargets = useMemo<readonly string[]>(
+    () => collapsibleIds.filter((id) => !keepExpanded.has(id)),
+    [collapsibleIds, keepExpanded],
+  );
+
+  const allCollapsed =
+    collapseTargets.length > 0 && collapseTargets.every((id) => collapsed.has(id));
+
+  function toggleAll(): void {
+    replaceCollapsed(allCollapsed ? [] : collapseTargets);
   }
 
   function createNew(name: string): void {

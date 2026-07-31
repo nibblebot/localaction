@@ -119,4 +119,39 @@ test.describe('Sidebar area collapse', () => {
     await expect(childRow).toHaveAttribute('aria-expanded', 'false');
     await expect(grandchildRow).toBeHidden();
   });
+
+  test('collapse-all flips to expand-all while the selected area stays open', async ({ page }) => {
+    const token = uniq();
+    const parent = `Parent-${token}`;
+    const child = `Child-${token}`;
+    const other = `Other-${token}`;
+    const otherChild = `OtherChild-${token}`;
+
+    // The selected area (`other`, created last) is the kept-open
+    // context; `parent` is the collapsible tree outside it.
+    await createArea(page, parent);
+    await createSubArea(page, child);
+    await createArea(page, other);
+    await createSubArea(page, otherChild);
+
+    const sidebar = page.locator('.sidebar');
+    const parentRow = sidebar.getByRole('button', { name: parent, exact: true });
+    const childRow = sidebar.getByRole('button', { name: child, exact: true });
+    const otherRow = sidebar.getByRole('button', { name: other, exact: true });
+    const otherChildRow = sidebar.getByRole('button', { name: otherChild, exact: true });
+
+    // Collapse-all collapses every tree except the selected area's.
+    await page.getByRole('button', { name: 'Collapse all areas' }).click();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'false');
+    await expect(childRow).toBeHidden();
+    await expect(otherRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(otherChildRow).toBeVisible();
+
+    // With everything outside the kept-open context collapsed, the
+    // button becomes expand-all — and clicking it expands again.
+    await page.getByRole('button', { name: 'Expand all areas' }).click();
+    await expect(parentRow).toHaveAttribute('aria-expanded', 'true');
+    await expect(childRow).toBeVisible();
+    await expect(otherRow).toHaveAttribute('aria-expanded', 'true');
+  });
 });

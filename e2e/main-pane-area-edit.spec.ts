@@ -85,7 +85,8 @@ test.describe('Area header editing', () => {
     await page.keyboard.press('Escape');
 
     await expect(page.locator('.area-header-name')).toContainText(renamed);
-    // The parent crumb keeps its name.
-    await expect(page.locator('.area-header-crumb')).toContainText(parent);
+    // The ../ crumb still points at the parent.
+    await expect(page.locator('.area-header-crumb')).toHaveText('..');
+    await expect(page.locator('.area-header-crumb')).toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
   });
 });

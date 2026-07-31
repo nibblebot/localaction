@@ -35,7 +35,7 @@ import {
   getAreaTaskIds,
   useAreaTaskIds,
 } from '../data/index.ts';
-import type { Area, AreaCount } from '../data/index.ts';
+import type { Area } from '../data/index.ts';
 import type { MergeableStore } from 'tinybase';
 import { useSelection } from './useSelection.ts';
 import { useUndo } from './useUndo.ts';
@@ -90,9 +90,12 @@ export default function MainPane(): React.JSX.Element {
   const collapsedProjectGroups = useCollapsedProjectGroups();
   const hiddenEmptySections = useHiddenEmptySections();
 
-  const parentChain = useMemo<readonly HeaderArea[]>(() => {
-    if (!areaId) return [];
-    return buildParentChainFromCounts(counts, areaId);
+  const parent = useMemo<HeaderArea | null>(() => {
+    if (!areaId) return null;
+    const byId = new Map(counts.map((area) => [area.id, area]));
+    const current = byId.get(areaId);
+    const p = current?.parentId ? byId.get(current.parentId) : undefined;
+    return p ? { id: p.id, name: p.name } : null;
   }, [counts, areaId]);
 
   // Depth-first list of every descendant area (sub-areas, recursively),
@@ -179,7 +182,7 @@ export default function MainPane(): React.JSX.Element {
           areaId={areaId}
           name={area.name}
           color={area.color}
-          parentChain={parentChain}
+          parent={parent}
           showCompleted={showCompleted}
           onToggleCompleted={toggleCompleted}
           onNavigate={goToArea}
@@ -239,14 +242,14 @@ function AreaHeader({
   areaId,
   name,
   color,
-  parentChain,
+  parent,
   showCompleted,
   onToggleCompleted,
   onNavigate,
   onDeleteArea,
 }: {
   areaId: string;
-  parentChain: readonly HeaderArea[];
+  parent: HeaderArea | null;
   name: string;
   color: AreaColorId;
   showCompleted: boolean;
@@ -267,31 +270,21 @@ function AreaHeader({
 
   return (
     <div className="area-header">
-      {parentChain.map((p, i) => (
-        <Fragment key={p.id}>
-          {i > 0 && (
-            <span className="area-header-crumb-sep" aria-hidden="true">
-              /
-            </span>
-          )}
+      {parent && (
+        <>
           <button
             type="button"
             className="area-header-crumb"
-            onClick={() => onNavigate(p.id)}
+            onClick={() => onNavigate(parent.id)}
+            aria-label={`Go to parent area: ${parent.name || 'Untitled'}`}
+            title={parent.name || 'Untitled'}
           >
-            <span
-              className="area-header-name-edit-dot"
-              style={{ background: areaColorHex(p.color) }}
-              aria-hidden="true"
-            />
-            <span>{p.name || 'Untitled'}</span>
+            ..
           </button>
-        </Fragment>
-      ))}
-      {parentChain.length > 0 && (
-        <span className="area-header-slash" aria-hidden="true">
-          /
-        </span>
+          <span className="area-header-slash" aria-hidden="true">
+            /
+          </span>
+        </>
       )}
       <h1 className="area-header-name">
         <button
@@ -349,25 +342,7 @@ function AreaHeader({
   );
 }
 
-type HeaderArea = Pick<Area, 'id' | 'name' | 'color'>;
-
-function buildParentChainFromCounts(
-  counts: readonly AreaCount[],
-  areaId: string,
-): HeaderArea[] {
-  const byId = new Map(counts.map((area) => [area.id, area]));
-  const chain: HeaderArea[] = [];
-  const seen = new Set<string>([areaId]);
-  let current = byId.get(areaId);
-  while (current?.parentId && !seen.has(current.parentId)) {
-    const parent = byId.get(current.parentId);
-    if (!parent) break;
-    chain.push({ id: parent.id, name: parent.name, color: parent.color });
-    seen.add(parent.id);
-    current = parent;
-  }
-  return chain.reverse();
-}
+type HeaderArea = Pick<Area, 'id' | 'name'>;
 
 function buildParentChain(store: MergeableStore, areaId: string): Area[] {
   const chain: Area[] = [];

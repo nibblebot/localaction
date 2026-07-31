@@ -85,7 +85,7 @@ The Main Pane view for a selected Area: an [Area header](#area-header) above thr
 
 ## Area Header
 
-The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a breadcrumb of the parent chain, the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
+The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a `..` link back to the parent area (with `/` separator) when the area has a parent, the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
 
 ## Area Tasks Section
 

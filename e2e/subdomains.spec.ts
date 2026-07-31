@@ -36,7 +36,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await input1.press('Enter');
     await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
     // Back on the parent: the sub-area project rolls up under a header.
-    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    // '..' crumb: the sole breadcrumb links back to the parent.
+    await page.locator('.area-header-crumb').click();
     await expect(page.locator('.area-header-name')).toContainText(parent);
     await expect(page.locator('.subarea-header-name', { hasText: child })).toBeVisible();
     await expect(page.locator('.project-row-name', { hasText: project })).toBeVisible();
@@ -71,7 +72,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await input3.press('Enter');
     // Back on the parent: a single Active group holds the parent's
     // project AND the sub-area slice (header + project) below it.
-    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    // '..' crumb: the sole breadcrumb links back to the parent.
+    await page.locator('.area-header-crumb').click();
     const active = page.locator('.tab-group').filter({
       has: page.locator('.tab-group-title', { hasText: 'Active' }),
     });
@@ -120,7 +122,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
     await page.keyboard.press('Enter');
     // Back on the parent (default Projects tab): the sub-area task
     // rolls up under a header, inside its project card.
-    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    // '..' crumb: the sole breadcrumb links back to the parent.
+    await page.locator('.area-header-crumb').click();
     await expect(page.locator('.subarea-header-name', { hasText: child })).toBeVisible();
     await expect(
       page.locator('.subarea-section .task-line-title').last(),
@@ -153,7 +156,8 @@ test.describe('Sub-area roll-up into the parent area view', () => {
 
     // Back on the parent: both tasks sit in the Area tasks section under
     // a group labeled with the sub-area's name — not in Projects.
-    await page.locator('.area-header-crumb', { hasText: parent }).click();
+    // '..' crumb: the sole breadcrumb links back to the parent.
+    await page.locator('.area-header-crumb').click();
     const section = page.locator('.pane-section', { hasText: 'Area tasks' });
     const group = section.locator('.tab-group', {
       has: page.locator('.tab-group-title', { hasText: child }),
@@ -214,8 +218,9 @@ test.describe('Sub-areas (inline create)', () => {
     await page.locator('.area-header-add-input').press('Enter');
     // Navigates into the new sub-area.
     await expect(page.locator('.area-header-name')).toContainText(child);
-    // Breadcrumb back to parent present.
-    await expect(page.locator('.area-header-crumb', { hasText: parent })).toBeVisible();
+    // '../' breadcrumb back to the parent present.
+    await expect(page.locator('.area-header-crumb')).toHaveText('..');
+    await expect(page.locator('.area-header-crumb')).toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
   });
 
   test('Escape cancels the inline input without creating', async ({ page }) => {
@@ -240,7 +245,7 @@ test.describe('Sub-areas (inline create)', () => {
     await expect(page.locator('.area-header-name')).toContainText(parent);
   });
 
-  test('a sub-area pane keeps the root marker and can add another sub-area', async ({ page }) => {
+  test('a sub-area pane keeps the ../ marker and can add another sub-area', async ({ page }) => {
     const parent = `Family ${uniq()}`;
     const child = `Daughter ${uniq()}`;
     const grandchild = `School ${uniq()}`;
@@ -250,26 +255,34 @@ test.describe('Sub-areas (inline create)', () => {
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(child);
 
-    const rootCrumb = page.locator('.area-header-crumb', { hasText: parent });
+    const rootCrumb = page.locator('.area-header-crumb');
     await expect(rootCrumb).toBeVisible();
-    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toBeVisible();
+    await expect(rootCrumb).toHaveText('..');
+    await expect(rootCrumb).toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
+    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toHaveCount(0);
     await expect(page.locator('.area-header-add', { hasTitle: 'Add sub-area' })).toBeVisible();
 
     await page.reload();
     await expect(page.getByText('Synced', { exact: true })).toBeVisible();
     await expect(rootCrumb).toBeVisible();
-    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toBeVisible();
+    await expect(rootCrumb).toHaveText('..');
+    await expect(rootCrumb).toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
+    await expect(rootCrumb.locator('.area-header-name-edit-dot')).toHaveCount(0);
     await expect(page.locator('.area-header-add', { hasTitle: 'Add sub-area' })).toBeVisible();
 
     await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
     await page.locator('.area-header-add-input').fill(grandchild);
     await page.locator('.area-header-add-input').press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(grandchild);
-    await expect(page.locator('.area-header-crumb', { hasText: parent })).toBeVisible();
-    await expect(page.locator('.area-header-crumb', { hasText: child })).toBeVisible();
+    // Exactly one '..' crumb, naming the immediate parent (child) — the
+    // grandparent's name never appears in a crumb.
+    await expect(page.locator('.area-header-crumb')).toHaveCount(1);
+    await expect(page.locator('.area-header-crumb')).toHaveText('..');
+    await expect(page.locator('.area-header-crumb')).toHaveAttribute('aria-label', `Go to parent area: ${child}`);
+    await expect(page.locator('.area-header-crumb')).not.toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
 
     const crumbSize = await page
-      .locator('.area-header-crumb', { hasText: parent })
+      .locator('.area-header-crumb')
       .evaluate((el) => getComputedStyle(el).fontSize);
     const headingSize = await page
       .locator('.area-header-name')

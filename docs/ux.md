@@ -97,8 +97,8 @@ An `AreaHeader` above three collapsible sections — **Projects**, **Area
 tasks**, **Notes** — each with a live count and a caret; section collapse
 state persists per device.
 
-The header: a breadcrumb of the parent chain (each crumb navigates), the
-area name with its colour dot. Clicking the name opens an `AreaEditPopover`
+The header: a `..` link back to the parent area followed by a `/` separator
+(shown only when the area has a parent), the area name with its colour dot. Clicking the name opens an `AreaEditPopover`
 — rename (commits on blur/Enter), palette swatch (commits immediately), and
 delete (gated by a confirm modal the header owns, with undo). An inline
 add-sub-area button sits beside the name. The header's action row holds the

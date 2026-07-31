@@ -18,10 +18,9 @@ Intended for multi-device use with no authorization logic.
 - **Projects** — bounded goals inside areas, grouped Active/Backlog/Done; Done is derived from task completion, never stored.
 - **Sections** — group tasks within a project.
 - **Tasks** — arbitrarily nested sub-tasks.
-- **Notes** — markdown notes attachable to areas, projects, and tasks.
-- Drag-anywhere trees: reorder, nest, and unnest in one flattened drag surface.
-- Inbox / Today / Week views with recursive open-task rollups across area subtrees.
-- Themes (light/dark/system), five fonts, three densities; per-device view state stays out of sync.
+- **Drag and Drop Trees**: reorder, nest, and unnest in one flattened drag surface.
+- **Inbox / Today / Week views** with recursive open-task rollups across area subtrees.
+- **Themes** (light/dark/system), five fonts, three densities; per-device view state stays out of sync.
 
 ## Data sync & persistence
 

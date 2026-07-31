@@ -1,43 +1,49 @@
 # LocalAction
 
-**A calm, self-owned place for everything that matters.**
+**Offline-first, self-hosted task manager with multi-device sync.**
 
-LocalAction is an offline-first personal productivity app with genuine GTD depth — areas, sub-areas, projects, sections, nested sub-tasks, and notes — backed by storage you actually own: SQLite on your disk, OPFS in your browser, and a sync server you run yourself.
+Perists work locally for offline use and syncs w/ server for automatic conflict resolution.
 
-<!-- TODO: hero demo — add a short screen recording of the core loop:
-     create an area → add a project → drag tasks → watch the sync badge flip to Synced -->
+OPFS storage in browser, websocket sync and SQLite persistence on the server. 
 
-## Why LocalAction
+Intended for multi-device use with no authorization logic.
 
-Most productivity tools make you choose: serious structure **or** data ownership. LocalAction refuses the trade.
+<!-- gif loop and images -->
 
-| | Typical SaaS tools | Local-first notes apps | **LocalAction** |
-| --- | --- | --- | --- |
-| Works fully offline | ✗ | ✓ | ✓ |
-| Data you own (SQLite file, no export dance) | ✗ | ✓ | ✓ |
-| Multi-device sync you run yourself | — | partial | ✓ |
-| GTD depth (areas → projects → sections → sub-tasks) | partial | ✗ | ✓ |
-| Live rollups across deep trees | ✗ | ✗ | ✓ |
+## Features
 
-- **Offline-first by construction.** The entire app runs against an in-browser MergeableStore persisted to OPFS. No network, no account, no login wall — open the tab and work.
-- **Multi-device sync you self-host.** A small Bun server holds the authoritative SQLite copy and converges every connected client over WebSocket via CRDT-style merge (per-cell HLC timestamps, last-writer-wins). No conflict dialogs, no manual merges — edit on two devices and they converge.
-- **Real GTD structure.** Ongoing *areas* with recursive *sub-areas*, bounded *projects* grouped Active/Backlog/Done, *sections* inside projects, and tasks that nest as deep as you need. Markdown notes attach at every level.
-- **Depth that stays legible.** Recursive open-task counts on every sidebar row, rollups across whole area subtrees, and a Today/Week view that groups due work by area — deep structure, readable at a glance.
-- **Sync you can see.** The sidebar's sync badge (*Local only → Syncing… → Synced*) makes ownership legible instead of hidden. Local-first is a feature, not an implementation detail.
-- **Calm precision.** One accent color, quiet surfaces, instant interaction feedback — designed for solo power users who live in the tool all day. Full keyboard support, drag-anywhere trees, `Shift+A` quick-add.
+### UX
 
-## Feature tour
+- **Areas** — ongoing spheres of responsibility, with recursive sub-areas as deep as you need.
+- **Projects** — bounded goals inside areas, grouped Active/Backlog/Done; Done is derived from task completion, never stored.
+- **Sections** — group tasks within a project.
+- **Tasks** — arbitrarily nested sub-tasks.
+- **Notes** — markdown notes attachable to areas, projects, and tasks.
+- Drag-anywhere trees: reorder, nest, and unnest in one flattened drag surface.
+- Inbox / Today / Week views with recursive open-task rollups across area subtrees.
+- Themes (light/dark/system), five fonts, three densities; per-device view state stays out of sync.
 
-<!-- TODO: one short clip per flow below; see "Showcasing demos" notes or docs/assets/ -->
-- **Drag-anywhere trees** — reorder, nest, and unnest areas and tasks in one flattened drag surface; horizontal drag intent reparents.
-- **Inbox / Today / Week** — unassociated tasks land in the Inbox; due work groups under area headings with collapsible Overdue and Done sections.
-- **Projects with real states** — drag a project to Backlog to shelve it; Done is derived from task completion (every task done), never stored — an empty project stays Active.
-- **Markdown notes everywhere** — attach notes to areas, projects, or tasks; area views roll up every note in the subtree.
-- **Your workspace, your way** — light/dark/system themes, five fonts, three densities; per-device view state that never pollutes sync.
+## Data sync & persistence
+
+- **Offline-first.** The entire app runs against an in-browser store persisted to OPFS — no account, no login, works without a network.
+- **Self-hosted.** The entire backend is a single Bun process — static files, WebSocket sync, and one SQLite DB file. Nothing else to deploy, and your data never leaves machines you control.
+- **Multi-device sync.** Clients converge over WebSocket via CRDT-style merge (per-cell HLC timestamps, last-writer-wins) — no conflict dialogs. A sidebar badge shows sync state (Local only → Syncing… → Synced).
+
+
+The client keeps all state in a [TinyBase](https://tinybase.org/) **MergeableStore** persisted to OPFS in the browser. A `WsSynchronizer` merges it with the server's authoritative SQLite copy, so edits on multiple devices converge automatically. The same sync handler serves dev, preview, and prod.
+
+```text
+Browser                        Server                            Browser
+┌────────────────────┐         ┌───────────────────────────┐       ┌────────────────────┐
+│ React SPA          │         │ static file server        │       │ React SPA          │
+│ MergeableStore ◄───┼── /ws ──┤► sync (createWsServer)   ◄┼─ /ws ─┼──► MergeableStore  │
+│ OPFS persister     │         │ persist (SQLite)          │       │ OPFS persister     │
+└────────────────────┘         └───────────────────────────┘       └────────────────────┘
+```
 
 ## Quick start
 
-Requires [Bun](https://bun.sh/) — the package manager *and* the runtime (the server and all scripts run on Bun's built-in SQLite driver).
+Requires [Bun](https://bun.sh/) (package manager *and* runtime — the server uses `bun:sqlite`).
 
 ```bash
 bun install
@@ -48,29 +54,17 @@ Production:
 
 ```bash
 bun run build
-bun run start
+bun run start   # port 7373, SQLite in the platform user-data dir
 ```
 
-Without flags, `bun run start` listens on port 7373 and stores its SQLite file in the platform user-data dir (e.g. `~/.local/share/localaction/data-prod.db` on Linux). Pass `--port <n>` and `--db <path>` to override either; `--help` prints the defaults.
+`bun run start` accepts `--port <n>` and `--db <path>`; `--help` prints defaults.
 
-Sync between devices: run `bun run start` on a machine reachable from your other devices, set `LOCALACTION_SYNC_SECRET` on the server (and `VITE_LOCALACTION_SYNC_SECRET` for the client build), and point every client at the same host. An empty secret means open access on your network.
+**Multi-device sync:** run `bun run start` on a reachable host and point every client at that host. No auth at the moment.
 
-## How it works
+## Stack & testing
 
-The client is a single-page React 19 app whose state lives in a [TinyBase](https://tinybase.org/) **MergeableStore**, persisted locally to OPFS. A `WsSynchronizer` keeps it convergent with a Bun server that holds the authoritative SQLite copy — the same sync handler serves dev, preview, and prod, so behavior never drifts between modes.
-
-```text
-Browser                          Server
-┌───────────────────────┐        ┌────────────────────────┐
-│ React 19 (Compiler)   │        │ static file server     │
-│ MergeableStore  ◄─────┼── WS ──┼► createWsServer        │
-│ OPFS persister        │  /ws   │ SQLite persister       │
-└───────────────────────┘        └────────────────────────┘
-```
-
-- **Stack:** Vite 8 · React 19 (Compiler enabled) · TypeScript · TinyBase 9 · SQLite (`bun:sqlite`) · `ws` · dnd-kit · markdown-it
-- **Tooling:** Bun (package manager + runtime) · oxlint · Playwright
-- **Testing:** `bun test` (data-layer, markdown, and router unit suites + Node integration against the real server), Playwright e2e, a WS/SQLite smoke script (`bun run smoke`)
+- Vite 8 · React 19 (Compiler) · TypeScript · TinyBase 9 · SQLite (`bun:sqlite`) · `ws` · dnd-kit · markdown-it
+- `bun test` — unit + integration suites; `bun run smoke` — WS/SQLite round-trip; Playwright e2e (`bun run test:e2e`)
 
 ## Docs
 
@@ -81,5 +75,4 @@ Browser                          Server
 
 ## License
 
-<!-- TODO: pick a license before making the repo public -->
-TBD
+AGPL-3.0-or-later

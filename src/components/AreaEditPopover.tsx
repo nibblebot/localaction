@@ -131,8 +131,6 @@ export default function AreaEditPopover({
               aria-label={`Use color ${c.label}`}
             />
           ))}
-        </div>
-        <div className="area-edit-footer">
           <button
             type="button"
             className="area-edit-delete icon-button"

@@ -494,6 +494,7 @@ body.sidebar-resizing {
 .area-edit-colors {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
 }
 
@@ -509,16 +510,9 @@ body.sidebar-resizing {
 .area-edit-color-swatch[data-active='true'] {
   border-color: var(--accent);
 }
-.area-edit-footer {
-  display: flex;
-  justify-content: flex-end;
-  border-top: 1px solid var(--border);
-  padding-top: var(--space-2);
-  margin-top: var(--space-1);
-}
-
 .area-edit-delete {
   display: inline-flex;
+  margin-left: auto;
   align-items: center;
   justify-content: center;
   background: transparent;

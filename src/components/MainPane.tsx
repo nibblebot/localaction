@@ -16,7 +16,6 @@ import {
   createNote,
   createSection,
   updateProject,
-  createArea,
   getArea,
   deleteProject,
   deleteArea,
@@ -169,14 +168,6 @@ export default function MainPane(): React.JSX.Element {
     navigate({ kind: 'area', id });
   };
 
-  const addSubArea = (subName: string): void => {
-    const id = createArea(store, {
-      name: subName,
-      parentId: areaId,
-      color: area.color,
-    });
-    navigate({ kind: 'area', id });
-  };
   const goToInbox = (): void => {
     navigate(INBOX);
   };
@@ -192,7 +183,6 @@ export default function MainPane(): React.JSX.Element {
           showCompleted={showCompleted}
           onToggleCompleted={toggleCompleted}
           onNavigate={goToArea}
-          onCreateSubArea={addSubArea}
           onDeleteArea={goToInbox}
         />
         <CollapsibleSection
@@ -253,7 +243,6 @@ function AreaHeader({
   showCompleted,
   onToggleCompleted,
   onNavigate,
-  onCreateSubArea,
   onDeleteArea,
 }: {
   areaId: string;
@@ -263,13 +252,10 @@ function AreaHeader({
   showCompleted: boolean;
   onToggleCompleted: () => void;
   onNavigate: (id: string) => void;
-  onCreateSubArea: (name: string) => void;
   onDeleteArea: () => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const hex = areaColorHex(color);
-  const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editAnchor, setEditAnchor] = useState<{ x: number; y: number } | null>(null);
   const { offerUndo } = useUndo();
@@ -277,23 +263,6 @@ function AreaHeader({
   function openEditor(e: MouseEvent<HTMLElement>): void {
     const rect = e.currentTarget.getBoundingClientRect();
     setEditAnchor({ x: rect.left, y: rect.bottom + 6 });
-  }
-
-  function commit(): void {
-    const trimmed = draft.trim();
-    if (!trimmed) {
-      setAdding(false);
-      setDraft('');
-      return;
-    }
-    onCreateSubArea(trimmed);
-    setAdding(false);
-    setDraft('');
-  }
-
-  function cancel(): void {
-    setAdding(false);
-    setDraft('');
   }
 
   return (
@@ -341,39 +310,6 @@ function AreaHeader({
           <span className="area-header-name-edit-text">{name || 'Untitled'}</span>
         </button>
       </h1>
-      {adding ? (
-        <input
-          type="text"
-          className="area-header-add-input"
-          placeholder="Sub-area name…"
-          aria-label="Sub-area name"
-          value={draft}
-          autoFocus
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-            } else if (e.key === 'Escape') {
-              e.preventDefault();
-              cancel();
-            }
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          className="area-header-add icon-button"
-          onClick={() => setAdding(true)}
-          aria-label="Add sub-area"
-          title="Add sub-area"
-        >
-          <svg className="svg-icon" aria-hidden="true">
-            <use href="/icons.svg#add-icon" />
-          </svg>
-        </button>
-      )}
       <div className="area-header-actions">
         <CompletedToggle showCompleted={showCompleted} onToggle={onToggleCompleted} />
       </div>

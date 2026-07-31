@@ -417,26 +417,6 @@ body.sidebar-resizing {
   text-decoration: underline;
 }
 
-.area-header-add {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0;
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  padding: 0;
-  font-family: inherit;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.area-header-add:hover {
-  color: var(--text-h);
-  background: var(--surface-hover);
-}
-
 .area-header-add-input {
   font: inherit;
   font-size: var(--text-display);
@@ -455,8 +435,6 @@ body.sidebar-resizing {
 .area-header-add-input::placeholder {
   color: var(--text-muted);
 }
-
-
 
 /* ============================================================
    Area edit popover (rename + recolor from the area header)

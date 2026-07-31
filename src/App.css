@@ -711,7 +711,7 @@ body.sidebar-resizing {
      eyebrows — every uppercase label reads with one consistent
      voice. */
   letter-spacing: 0.06em;
-  color: black;
+  color: var(--text-h);
 }
 .pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label):not(.area-tab-action-add) {
   margin-left: auto;

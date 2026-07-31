@@ -70,14 +70,9 @@ async function createTask(page: Page, title: string): Promise<void> {
 // sensor doesn't compose with these focused buttons, so drags are
 // simulated with raw mouse events.
 async function dragHandle(page: Page, locator: Locator, dy: number): Promise<void> {
-  // The handle is `opacity: 0` until self-hovered (so the row
-  // doesn't show chrome at rest). Playwright's `locator.hover()`
-  // waits for `isVisible()` and treats `opacity: 0` as not
-  // visible, so it retries forever. Read the geometry from the
-  // DOM directly (`opacity: 0` keeps a non-null rect) and drive
-  // `page.mouse.move` onto the center — that fires the real
-  // `mouseover` whose CSS `:hover` rule flips opacity to 1 and
-  // lights the dnd-kit sensor.
+  // Drive the drag with raw mouse geometry instead of locator.hover():
+  // direct mouse moves skip Playwright's actionability scrolling and
+  // fire the mouseover that lights the dnd-kit PointerSensor.
   const center = await locator.evaluate((el) => {
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };

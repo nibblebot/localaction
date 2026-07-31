@@ -18,6 +18,7 @@ colors:
   ink-body: "#5b5670"
   ink-secondary: "#4a4458"
   ink-muted: "#6c6783"
+  icon-quiet: "#cbc6ce"
   danger: "#be123c"
   danger-bg: "#ffe4e6"
   success: "#047857"
@@ -139,6 +140,7 @@ A violet-tinted neutral ladder with a single vivid accent; the whole system sits
 - **Ink Body** (#5b5670): Default reading text.
 - **Ink Secondary** (#4a4458): Supporting text that must carry more weight than body (messages, ghost-button labels).
 - **Ink Muted** (#6c6783): Placeholders, counts, metadata. Reserved for short, non-critical text — never long-form body. Meets WCAG AA (≥4.5:1) on every light surface.
+- **Icon Quiet** (#cbc6ce · dark #8e97a1): Resting tone for row-level icon chrome (task/project/note actions, drag grips). Always visible — never gated on hover — and ramps to Ink Heading on hover/focus, which is where the identify-the-control contrast lives.
 
 ### Semantic
 - **Success** (#047857 · dark #4caf50): Completed progress fills, *Synced* badge. Deepened from #10b981 so badge text meets AA on the success tint.
@@ -194,7 +196,7 @@ Elevation-by-tone, not by shadow. Surfaces are flat at rest; layering is express
 
 ## 5. Components
 
-Quiet controls that wake on hover. Chrome hides until needed — row actions appear on hover, inputs look like text until focused, and the dashed inline-add input is the recurring invitation to create.
+Quiet controls that wake under the hand. Row-level icon chrome is always visible in Icon Quiet ink and ramps to full ink on hover/focus; inputs look like text until focused, and the dashed inline-add input is the recurring invitation to create.
 
 ### Buttons
 - **Shape:** Gently rounded (10px radius; 6px padding rhythm `6px 12px`).
@@ -211,7 +213,7 @@ Quiet controls that wake on hover. Chrome hides until needed — row actions app
 
 ### Rows and lists
 - **Sidebar row:** Transparent at rest; hover washes surface-hover; active fills the accent wash with Iris text and a tinted count pill. Top-level areas run 600 weight. Dimmed rows (empty areas) drop to 40% opacity, recovering on hover.
-- **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and hover-revealed icon actions (32px controls, 20px glyphs). Done state: strikethrough, muted ink, 60% opacity on the row.
+- **Task row:** A 14px native checkbox (accent-colored), an inline-editable title that looks like plain text, and always-visible quiet icon actions that darken on hover (32px controls, 20px glyphs). Done state: strikethrough, muted ink, 60% opacity on the row.
 - **Project row:** Name, a 90px × 6px pill progress bar (Iris fill, flips to success green at 100%), and a tabular done/total count. On phone-width viewports the row is a navigation path, not an action bar: caret, name, count, and the stateful due-date chip stay; every other action (notes, rename, delete, empty-sections) lives on the project detail pane the row opens, and long names wrap instead of truncating.
 - **Drag interaction:** Source row dims to 35% and holds its place in the list; the drop target gets a 2px dashed Iris outline; insertion shows a 2px solid Iris line above or below; the floating preview is a surface card under the Lift shadow. Dragging right nests, left unnests — horizontal intent, vertical position.
 
@@ -254,5 +256,5 @@ One sprite (`public/icons.svg`), one 20×20 grid, one 1.5px stroke with round ca
 - **Don't** ship gray-spreadsheet utilitarianism — flat #808080-family grays, default browser controls, and unstyled tables are all off-system; the violet tint is the personality.
 - **Don't** introduce a second accent hue into chrome; non-violet hues belong only to the user's area dots.
 - **Don't** put drop shadows on cards, rows, or buttons at rest (The Flat-by-Default Rule); lift exists only while dragging.
-- **Don't** hide controls behind ellipsis menus when a hover-revealed icon or inline edit would do — but never reveal on hover what a keyboard user cannot reach.
+- **Don't** hide controls behind ellipsis menus when a quiet always-visible icon or inline edit would do — but never make a control keyboard-inaccessible.
 - **Don't** use display type above 1.43rem in the app shell (The Small Display Rule); the workspace never shouts.

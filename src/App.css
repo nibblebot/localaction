@@ -998,29 +998,13 @@ body.sidebar-resizing {
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
-  color: var(--text-muted);
+  color: var(--icon-quiet);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-/* Row chrome wakes on hover/focus (DESIGN.md: quiet controls) — on the
-   card itself, the pane header that mirrors the card's actions, and
-   the standalone Tasks section of the project pane (which also hosts
-   the same add-task / add-section affordances). Data — a set due date,
-   assigned avatars — stays visible at rest. */
-.project-row:hover .project-row-action,
-.project-row:focus-within .project-row-action,
-.area-header:hover .project-row-action,
-.area-header:focus-within .project-row-action,
-.pane-section-static:hover .project-row-action,
-.pane-section-static:focus-within .project-row-action,
-.project-row-action.due-date-set {
-  opacity: 1;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .project-row-action:hover {
@@ -1031,13 +1015,6 @@ body.sidebar-resizing {
 .project-row-action-danger:hover {
   color: var(--danger);
   background: var(--danger-bg);
-}
-
-/* The delete control rides the inline rename input on the project
-   pane header — it only renders while editing, so keep it visible
-   instead of the usual quiet-at-rest `opacity: 0` reveal. */
-.area-header-name-delete {
-  opacity: 1;
 }
 
 /* The rename input and its trash form one atomic row: the project
@@ -1058,7 +1035,6 @@ body.sidebar-resizing {
 .project-row-action.project-row-action-active:hover {
   background: var(--accent-tint);
   color: var(--accent);
-  opacity: 1;
 }
 
 .project-tasks {
@@ -1448,23 +1424,14 @@ body.sidebar-resizing {
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
-  color: var(--text-muted);
+  color: var(--icon-quiet);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-/* Quiet at rest, awake under the hand — actions reveal on row
-   hover/focus; a set due date (data, not chrome) stays visible. */
-.task-line:hover .task-line-action,
-.task-line:focus-within .task-line-action,
-.task-line-action.due-date-set {
-  opacity: 1;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .task-line-action:hover {
@@ -1563,20 +1530,14 @@ body.sidebar-resizing {
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;
-  color: var(--text-muted);
+  color: var(--icon-quiet);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
   flex-shrink: 0;
-  opacity: 0;
-  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-
-.note-line:hover .note-line-action,
-.note-line:focus-within .note-line-action {
-  opacity: 1;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .note-line-action:hover {
@@ -2356,7 +2317,7 @@ button .svg-icon {
   justify-content: center;
   background: transparent;
   border: 0;
-  color: var(--text-muted);
+  color: var(--icon-quiet);
   border-radius: var(--radius-sm);
   cursor: grab;
   padding: 0;
@@ -2394,7 +2355,7 @@ button .svg-icon {
   justify-content: center;
   background: transparent;
   border: 0;
-  color: var(--text-muted);
+  color: var(--icon-quiet);
   border-radius: var(--radius-sm);
   cursor: grab;
   padding: 0;
@@ -2406,9 +2367,6 @@ button .svg-icon {
      title's 2px + 0.75rem line center). */
   margin-top: calc(0.75rem - 14px);
   touch-action: none;
-  /* Hidden until the row is hovered / focused / being dragged —
-     keeps the grip chrome off the resting state. */
-  visibility: hidden;
 }
 
 .task-line-drag-handle:active {
@@ -2418,15 +2376,6 @@ button .svg-icon {
 .task-line-drag-handle:hover {
   color: var(--text-h);
   background: var(--surface-hover);
-}
-
-.task-line:hover .task-line-drag-handle,
-.task-line:focus-within .task-line-drag-handle,
-.section-row:hover .task-line-drag-handle,
-.section-row:focus-within .task-line-drag-handle,
-.task-line-drag-handle:focus-visible,
-.sortable-row-active .task-line-drag-handle {
-  visibility: visible;
 }
 
 /* ============================================================
@@ -2486,31 +2435,9 @@ button .svg-icon {
 }
 
 /* Add-task "+" — pushed to the far right with margin-left: auto so
-   the title can shrink naturally without the "+" drifting. Stays
-   quiet at rest on desktop (the row's existing hover/focus reveal
-   rule below handles it) and is held visible on touch by the
-   coarse-pointer mediaquery. */
+   the title can shrink naturally without the "+" drifting. */
 .section-row .section-row-add {
   margin-left: auto;
-}
-
-/* Trash rides the rename input and only mounts while editing, so the
-   quiet-at-rest reveal rule below never applies to it. Force the
-   visible state explicitly — same pattern as .area-header-name-delete
-   on the project pane header. */
-.section-row .section-row-trash {
-  opacity: 1;
-}
-
-/* Action icons stay quiet until the row is hovered (task rows reveal
-   theirs on focus/hover of the row itself). */
-.section-row .task-line-action {
-  opacity: 0;
-}
-
-.section-row:hover .task-line-action,
-.section-row:focus-within .task-line-action {
-  opacity: 1;
 }
 
 /* ============================================================
@@ -2828,15 +2755,8 @@ button .svg-icon {
     position: relative;
   }
 
-  /* Touch has no hover — row actions and grip handles stay revealed. */
-  .task-line-action,
-  .note-line-action,
-  .project-row-action {
-    opacity: 1;
-  }
-
-  /* … except the task-row strip, which collapses behind its ⋯
-     trigger; opening slides the strip out to the left of it.
+  /* The task-row action strip collapses behind its ⋯ trigger;
+     opening slides the strip out to the left of it.
      visibility rides the transition so the hidden strip stays out
      of the tab order but the open one animates immediately. */
   .task-line-menu .task-line-menu-trigger {

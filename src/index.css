@@ -52,6 +52,9 @@
   --text-muted: #6c6783;
   --text-h: #1f1b2e;
   --text-on-accent: #ffffff;
+  /* Resting tone for row-level icon chrome — quieter than muted ink;
+     hover/focus ramps the glyph to --text-h. */
+  --icon-quiet: #cbc6ce;
   /* Sidebar count pill — derived per-theme below */
   --sidebar-count-fg: var(--text-muted);
 
@@ -218,6 +221,7 @@
   --text-muted: #7d8790;
   --text-h: #ededed;
   --text-on-accent: #ffffff;
+  --icon-quiet: #8e97a1;
   --sidebar-count-fg: var(--text);
 
   --accent: #a78bfa;
@@ -267,6 +271,7 @@
     --text-muted: #7d8790;
     --text-h: #ededed;
     --text-on-accent: #ffffff;
+    --icon-quiet: #8e97a1;
     --sidebar-count-fg: var(--text);
 
     --accent: #a78bfa;

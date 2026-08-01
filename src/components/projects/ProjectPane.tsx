@@ -1,4 +1,4 @@
-import { useDataLayer, useProject, useTasksForProjectDeep } from '../../data/index.ts';
+import { useDataLayer, useProject } from '../../data/index.ts';
 import { useShowCompleted } from '../hooks/useShowCompleted.ts';
 import { useShowEmptySections } from '../hooks/useShowEmptySections.ts';
 import EmptyState from '../shared/EmptyState.tsx';
@@ -10,10 +10,11 @@ import ProjectTaskList from './ProjectTaskList.tsx';
 /**
  * Project detail pane — the standalone form of an expanded project card
  * in the area view (`#/p/<id>`, reached by clicking a project row). The
- * header carries the area breadcrumb, the shared row actions
- * (progress, due date, empty-sections toggle), and the management
- * cluster that only exists here (notes, rename, delete) next to the
- * shared Completed toggle; the body is the same sectioned
+ * header carries the area breadcrumb, the progress meter, the due
+ * date, and the management cluster that only exists here (notes,
+ * rename, delete); the task-list head row carries add-task/add-section
+ * on the left with the shared Completed toggle and the empty-sections
+ * toggle floated right. The body is the same sectioned
  * `ProjectTaskList` the card expands into. Project-scoped notes stay
  * in the notes pane. The empty-sections toggle is the same device-local
  * preference the area-view card reads, so a toggle here persists and
@@ -26,7 +27,6 @@ export default function ProjectPane({
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const project = useProject(store, projectId);
-  const taskCount = useTasksForProjectDeep(store, projectId).length;
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
   const showEmptySections = useShowEmptySections();
   const hideEmptySections = !showEmptySections.collapsed.has(projectId);
@@ -42,18 +42,24 @@ export default function ProjectPane({
           areaId={project.areaId}
           projectId={projectId}
           name={projectName}
-          actions={{
-            hideEmptySections,
-            onToggleEmptySections: () => showEmptySections.toggle(projectId),
-          }}
-          trailing={
-            <div className="area-header-actions">
+          management
+        />
+        <section className="pane-section pane-section-static" aria-label="Tasks">
+          <div className="pane-section-head">
+            <div className="pane-section-head-actions">
+              <ProjectAddTaskButton projectId={projectId} display={projectName} />
+              <ProjectAddSectionButton
+                projectId={projectId}
+                display={projectName}
+                hideEmptySections={hideEmptySections}
+                onToggleEmptySections={() => showEmptySections.toggle(projectId)}
+              />
+            </div>
+            <div className="pane-section-head-toggles">
               <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
-              {/* Pressed/active state is the toggle's ON state: showing
-                  empty sections. Hidden-by-default renders it unchecked. */}
               <button
                 type="button"
-                className={`area-tab-action${hideEmptySections ? '' : ' area-tab-action-active'}`}
+                className={`area-tab-action icon-button${hideEmptySections ? '' : ' area-tab-action-active'}`}
                 aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${projectName}`}
                 aria-pressed={!hideEmptySections}
                 title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
@@ -63,23 +69,6 @@ export default function ProjectPane({
                   <use href="/icons.svg#sections-icon" />
                 </svg>
               </button>
-            </div>
-          }
-        />
-        <section className="pane-section pane-section-static" aria-label="Tasks">
-          <div className="pane-section-head">
-            <span className="pane-section-static-label">
-              <span className="pane-section-title">Tasks</span>
-              <span className="tab-group-count">· {taskCount}</span>
-            </span>
-            <div className="pane-section-head-actions">
-              <ProjectAddTaskButton projectId={projectId} display={projectName} />
-              <ProjectAddSectionButton
-                projectId={projectId}
-                display={projectName}
-                hideEmptySections={hideEmptySections}
-                onToggleEmptySections={() => showEmptySections.toggle(projectId)}
-              />
             </div>
           </div>
           <div className="tasks-tab project-pane-tasks">

@@ -336,7 +336,7 @@ body.sidebar-resizing {
   align-items: center;
   gap: 4px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: var(--space-5);
+  /* margin-bottom: var(--space-5); */
 }
 
 /* Area-wide action slot (e.g. show/hide completed). Pinned to the
@@ -644,14 +644,27 @@ body.sidebar-resizing {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-2);
+  /* margin-bottom: var(--space-2); */
 }
+/* Left-aligned add-affordance cluster (AddTask / AddSection) in a
+   section head — the head's trailing toggle cluster owns the right
+   edge. */
 .pane-section-head-actions {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Right-aligned toggle cluster in a section head (Completed, empty
+   sections) — the add affordances sit on the left, these float
+   right against the head's edge. */
+.pane-section-head-toggles {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .pane-section-toggle {
@@ -685,16 +698,8 @@ body.sidebar-resizing {
   letter-spacing: 0.06em;
   color: var(--text-h);
 }
-.pane-section-head > :last-child:not(.pane-section-toggle):not(.pane-section-static-label):not(.area-tab-action-add) {
+.pane-section-head > :last-child:not(.pane-section-toggle):not(.area-tab-action-add) {
   margin-left: auto;
-}
-
-/* Static (non-collapsible) section label — same inline rhythm as the
-   toggle (title + count), without being a button. */
-.pane-section-static-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* ============================================================
@@ -852,14 +857,18 @@ body.sidebar-resizing {
 }
 
 /* The add-task "+" pinned next to the project name: close the row gap
-   down to the snug spacing the header add-affordances use. */
-.project-row-add {
+   down to the snug spacing the header add-affordances use. Scoped to
+   the card header row — the same button renders in the project-pane
+   section head, where the parent has no padding and the outdent would
+   push it past the pane's content edge. */
+.project-row-line .project-row-add {
   margin-inline-start: calc(-1 * var(--space-2));
 }
 
-/* Right-aligned cluster on project rows (DueDate, Notes, Rename,
-   Trash), followed by the progress meter pinned to the far right
-   edge. One wrapper so the cluster shifts together
+/* Right-aligned cluster on project rows. In the project pane header
+   it holds (Notes) plus the progress meter, with the due-date
+   control hugging the project title; card rows still carry DueDate
+   via ProjectRowActions. One wrapper so the cluster shifts together
    when items are added/hidden, and only one auto-margin slot
    consumes the flex space. */
 .project-row-actions {
@@ -1395,11 +1404,16 @@ body.sidebar-resizing {
 }
 
 .task-line-check {
-  width: 14px;
-  height: 14px;
+  width: 20px;
+  height: 20px;
   cursor: pointer;
   accent-color: var(--accent);
   flex-shrink: 0;
+  /* Zero the UA checkbox margins (Chrome ships 3px 3px 3px 4px) so
+     the box hugs the row's leading chain — handle, gap, checkbox,
+     gap — and every sibling column (task titles, section titles)
+     derives from the same tokens instead of UA defaults. */
+  margin: 0;
   /* Center the 14px box on the title's first line: title is 1rem with
      a 1.5 line box and 2px top padding, so the line center sits at
      2px + 0.75rem from the row's top. rem-based: exact at every
@@ -2406,10 +2420,11 @@ button .svg-icon {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  /* No inline padding: section tasks render flush with the header
-     (sections contribute no tree-gutter level), so the row starts at
-     the same x as the .task-line rows around it. */
-  padding: var(--space-2) 0 var(--space-1);
+  /* Vertical rhythm only, matching .task-line. Uniform side padding
+     would inset the drag handle, the title column and the trailing
+     "+" off the shared row edges — the checkbox slot below carries
+     the left inset instead. */
+  padding: var(--space-1) 0;
   border-radius: var(--radius-sm);
 }
 
@@ -2429,6 +2444,9 @@ button .svg-icon {
   flex: 0 1 auto;
   field-sizing: content;
   min-width: 3ch;
+  /* Reserve the task checkbox slot (14px box + row gap) so the
+     section title lands on the task-title column, not the checkbox
+     column, next to the task lines it heads. */
   font: inherit;
   font-size: var(--text-body);
   font-weight: 500;
@@ -2661,6 +2679,11 @@ button .svg-icon {
   /* Reserve the hamburger lane above pane content. */
   .main-body {
     padding-top: calc(var(--icon-button-control) + var(--space-4));
+    /* Anchor pane content to the hamburger's left edge: the fixed
+       drawer toggle positions itself at safe-area + --space-2, so
+       every element below (header rows, section heads, task lines)
+       starts on the same vertical line. */
+    padding-inline-start: calc(env(safe-area-inset-left, 0px) + var(--space-2));
   }
 
   /* Long breadcrumb chains wrap instead of colliding with the
@@ -2668,7 +2691,7 @@ button .svg-icon {
      keeps its full width on the next line. */
   .area-header {
     flex-wrap: wrap;
-    margin-inline-end: calc(var(--icon-button-control) + var(--space-2));
+    /* margin-inline-end: calc(var(--icon-button-control) + var(--space-2)); */
     row-gap: var(--space-2);
   }
 
@@ -2691,7 +2714,8 @@ button .svg-icon {
 
   /* The progress cluster yields to the row title on narrow panes:
      the tabular count carries the rollup (it's the precise half of
-     the readout); the approximate bar is what's expendable. */
+     the readout); the bar shrinks to a compact 48px instead of
+     disappearing. */
   .project-row-progress {
     min-width: 0;
   }
@@ -2701,14 +2725,14 @@ button .svg-icon {
   }
 
   .project-row-progress-bar {
-    display: none;
+    width: 48px;
   }
 
   /* On phone widths the project name is the primary task path —
      squeeze the row title cluster's hard `flex: 0 0 auto` minimums
      so the title keeps room to wrap instead of being ellipsised
      to "Website redes…". The progress count still carries the
-     precise rollup. */
+     precise rollup while the bar keeps its compact 48px. */
   .project-row-actions {
     gap: var(--space-2);
   }

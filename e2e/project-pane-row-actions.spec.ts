@@ -3,9 +3,11 @@ import { test, expect, type Page } from '@playwright/test';
 /**
  * The project detail pane (`#/p/<id>`) is the standalone form of an
  * expanded project card — its header carries the same row actions the
- * area-view card shows: progress meter, due date, empty-sections
- * toggle, rename, delete. Empty-section state is per project,
- * so toggling it on one surface applies to the other.
+ * area-view card shows: progress meter, due date, rename, delete.
+ * The empty-sections and show-completed toggles live in the task-list
+ * head row, floated right beside Add task / Add section. Empty-section
+ * state is per project, so toggling it on one surface applies to the
+ * other.
  */
 
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
@@ -72,15 +74,20 @@ test.describe('Project detail pane row actions', () => {
     await page.keyboard.type(`Empty ${tok}`);
     await page.keyboard.press('Enter');
     await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(1);
-    await header.getByRole('button', { name: `Hide empty sections in ${project}` }).click();
-    const toggle = header.getByRole('button', { name: `Show empty sections in ${project}` });
+    await page
+      .locator('.pane-section-head-toggles')
+      .getByRole('button', { name: `Hide empty sections in ${project}` })
+      .click();
+    const toggle = page
+      .locator('.pane-section-head-toggles')
+      .getByRole('button', { name: `Show empty sections in ${project}` });
     // Pressed means showing; hidden-by-default renders the toggle unchecked.
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(0);
 
     // The state is per project: back on the area view the card hides the
     // empty section too, and its toggle reads pressed.
-    await page.locator('.area-header-crumb', { hasText: area }).click();
+    await page.locator(`.area-header-crumb[title="${area}"]`).click();
     await expect(page).toHaveURL(/#\/a\/[^/]+$/);
     const card = page.locator('li.project-row', { hasText: project });
     await expect(card.locator('.section-row')).toHaveCount(0);

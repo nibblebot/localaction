@@ -67,7 +67,7 @@ test.describe('LocalAction shell', () => {
     // The detail pane shows the same task surface as the expanded card.
     await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
     // The breadcrumb returns to the area, where the card stayed expanded.
-    await page.locator('.area-header-crumb', { hasText: 'Family' }).click();
+    await page.locator('.area-header-crumb[title="Family"]').click();
     await expect(page).toHaveURL(/#\/a\/[^/]+$/);
     await expect(card.locator('.project-row-tasks')).toBeVisible();
     // Only the caret toggles the card; again expands it.

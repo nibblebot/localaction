@@ -137,11 +137,12 @@ export function ProjectRowActions({
 }
 
 /**
- * The action cluster on the project detail pane header: the due-date
- * control and the notes entry point that only exists here. The
- * empty-sections toggle moved to the pane header's `trailing` slot
- * alongside `CompletedToggle`; the row's card-side actions still live
- * in `ProjectRowActions` for the area-view cards.
+ * The action cluster on the project detail pane header: the notes
+ * entry point, which only exists here. The due-date control sits
+ * directly against the project title in the pane header, and the
+ * empty-sections toggle and `CompletedToggle` live in the task-list
+ * head row; the row's card-side actions still live in
+ * `ProjectRowActions` for the area-view cards.
  */
 export function ProjectPaneActions({
   projectId,
@@ -154,7 +155,6 @@ export function ProjectPaneActions({
   const { navigate } = useSelection();
   return (
     <>
-      <ProjectDueDateButton projectId={projectId} />
       {NOTES_ENABLED && (
         <button
           type="button"

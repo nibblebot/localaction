@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRowIds } from 'tinybase/ui-react';
 import {
   useDataLayer,
@@ -11,52 +11,30 @@ import {
   COLUMNS,
   NOTE_ENTITY_TYPE,
 } from '../../data/index.ts';
-import type { Area } from '../../data/index.ts';
-import type { MergeableStore } from 'tinybase';
-import { areaColorHex } from '../../data/colors.ts';
+import type { HeaderArea } from '../area/types.ts';
 import { useUndo } from '../context/useUndo.ts';
 import { useSelection } from '../context/useSelection.ts';
 import ConfirmModal from '../shared/ConfirmModal.tsx';
+import ProjectDueDateButton from './ProjectDueDateButton.tsx';
 import { ProjectPaneActions } from './ProjectActions.tsx';
 import ProjectProgressMeter from './ProjectProgressMeter.tsx';
 import { INBOX } from '../../router.ts';
-
-function buildParentChain(store: MergeableStore, areaId: string): Area[] {
-  const chain: Area[] = [];
-  const seen = new Set<string>([areaId]);
-  let current = getArea(store, areaId);
-  while (current?.parentId && !seen.has(current.parentId)) {
-    const parent = getArea(store, current.parentId);
-    if (!parent) break;
-    chain.push(parent);
-    seen.add(parent.id);
-    current = parent;
-  }
-  return chain.reverse();
-}
 
 export default function ProjectPaneHeader({
   areaId,
   projectId,
   name,
-  trailing,
-  actions,
+  management,
 }: {
   areaId: string | null;
   projectId: string;
   name: string;
-  /** Extra actions pinned to the header's right edge. */
-  trailing?: React.ReactNode;
   /**
    * Presence opts the header into the full project chrome — progress
-   * meter plus the shared row actions (due date, empty-sections) and
-   * the pane-only management cluster (notes, rename, delete). The
-   * notes pane omits it.
+   * meter, due-date control, and the pane-only management cluster
+   * (notes, rename, delete). The notes pane omits it.
    */
-  actions?: {
-    hideEmptySections: boolean;
-    onToggleEmptySections: () => void;
-  };
+  management?: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const { navigate } = useSelection();
@@ -65,44 +43,34 @@ export default function ProjectPaneHeader({
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const { offerUndo } = useUndo();
-  const chain = useMemo<readonly Area[]>(() => {
-    if (!areaId) return [];
+  // A single `..` crumb back to the project's own area (its name rides
+  // in title/aria-label); ancestors above it are not shown. Mirrors the
+  // area header's up-crumb, and clicking returns to the area view.
+  const area = useMemo<HeaderArea | null>(() => {
+    if (!areaId) return null;
     void areaRowIds.length;
     const direct = getArea(store, areaId);
-    if (!direct) return [];
-    const ancestors = buildParentChain(store, direct.id);
-    return [...ancestors, direct];
+    return direct ? { id: direct.id, name: direct.name } : null;
   }, [store, areaId, areaRowIds]);
-  const showSlash = chain.length > 0;
   const display = name || 'Untitled';
   const rollup = rollups.find((r) => r.projectId === projectId);
   return (
     <div className="area-header">
-      {chain.map((p, i) => (
-        <Fragment key={p.id}>
-          {i > 0 && (
-            <span className="area-header-crumb-sep" aria-hidden="true">
-              /
-            </span>
-          )}
+      {area && (
+        <>
           <button
             type="button"
             className="area-header-crumb"
-            onClick={() => navigate({ kind: 'area', id: p.id })}
+            onClick={() => navigate({ kind: 'area', id: area.id })}
+            aria-label={`Go to parent area: ${area.name || 'Untitled'}`}
+            title={area.name || 'Untitled'}
           >
-            <span
-              className="area-header-name-edit-dot"
-              style={{ background: areaColorHex(p.color) }}
-              aria-hidden="true"
-            />
-            <span>{p.name || 'Untitled'}</span>
+            ..
           </button>
-        </Fragment>
-      ))}
-      {showSlash && (
-        <span className="area-header-crumb-sep" aria-hidden="true">
-          /
-        </span>
+          <span className="area-header-slash" aria-hidden="true">
+            /
+          </span>
+        </>
       )}
       <svg
         className="svg-icon area-header-project-icon"
@@ -110,7 +78,7 @@ export default function ProjectPaneHeader({
       >
         <use href="/icons.svg#project-list-icon" />
       </svg>
-      {editing && actions ? (
+      {editing && management ? (
         <div className="area-header-edit-row">
           <input
             type="text"
@@ -148,7 +116,7 @@ export default function ProjectPaneHeader({
             </svg>
           </button>
         </div>
-      ) : actions ? (
+      ) : management ? (
         <h1 className="area-header-name">
           <button
             type="button"
@@ -163,13 +131,14 @@ export default function ProjectPaneHeader({
       ) : (
         <h1 className="area-header-name">{display}</h1>
       )}
-      {actions && (
+      {management && <ProjectDueDateButton projectId={projectId} />}
+      {management && (
         <div className="project-row-actions">
           <ProjectPaneActions projectId={projectId} display={display} />
           <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
         </div>
       )}
-      {actions && (
+      {management && (
         <ConfirmModal
           open={confirmDelete}
           title="Delete project?"
@@ -190,7 +159,6 @@ export default function ProjectPaneHeader({
           onCancel={() => setConfirmDelete(false)}
         />
       )}
-      {trailing && <div className="area-header-actions">{trailing}</div>}
     </div>
   );
 }

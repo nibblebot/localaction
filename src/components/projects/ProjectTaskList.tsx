@@ -14,13 +14,13 @@ export default function ProjectTaskList({
   projectId,
   projectName,
   showCompleted,
-  hideEmptySections = false,
+  hideEmptySections = true,
 }: {
   projectId: string;
   projectName: string;
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted: boolean;
-  /** Skip section headers with no visible tasks under them. */
+  /** Skip section headers with no visible tasks under them (default). */
   hideEmptySections?: boolean;
 }): React.JSX.Element | null {
   const { visibleIds, subtaskProgress } = useProjectTaskList(projectId);

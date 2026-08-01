@@ -10,7 +10,7 @@ import { useShowCompleted } from '../hooks/useShowCompleted.ts';
 import { useCollapsedProjects } from '../hooks/useCollapsedProjects.ts';
 import { useCollapsedSections } from '../hooks/useCollapsedSections.ts';
 import { useCollapsedProjectGroups } from '../hooks/useCollapsedProjectGroups.ts';
-import { useHiddenEmptySections } from '../hooks/useHiddenEmptySections.ts';
+import { useShowEmptySections } from '../hooks/useShowEmptySections.ts';
 import AreaHeader from './AreaHeader.tsx';
 import CollapsibleSection from './CollapsibleSection.tsx';
 import ProjectsSection from './ProjectsSection.tsx';
@@ -38,7 +38,7 @@ export default function AreaView({ areaId }: { areaId: string }): React.JSX.Elem
   const collapsedProjects = useCollapsedProjects();
   const collapsedSections = useCollapsedSections();
   const collapsedProjectGroups = useCollapsedProjectGroups();
-  const hiddenEmptySections = useHiddenEmptySections();
+  const showEmptySections = useShowEmptySections();
 
   const parent = useMemo<HeaderArea | null>(() => {
     if (!areaId) return null;
@@ -124,8 +124,8 @@ export default function AreaView({ areaId }: { areaId: string }): React.JSX.Elem
             onToggleCollapse={collapsedProjects.toggle}
             collapsedGroups={collapsedProjectGroups.collapsed}
             onToggleGroup={collapsedProjectGroups.toggle}
-            hiddenEmptySections={hiddenEmptySections.collapsed}
-            onToggleEmptySections={hiddenEmptySections.toggle}
+            showEmptySections={showEmptySections.collapsed}
+            onToggleEmptySections={showEmptySections.toggle}
           />
         </CollapsibleSection>
         <AreaTasksSection

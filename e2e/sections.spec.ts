@@ -220,11 +220,15 @@ test.describe('Project sections', () => {
     expect(reloadedNested!.x).toBeGreaterThan(reloadedParent!.x);
   });
 
-  test('empty sections show in the area view, fully editable', async ({ page }) => {
+  test('adding a section from the hidden default keeps its header visible and editable', async ({ page }) => {
     const tok = uniq();
     await openProject(page, `Area ${tok}`, `Project ${tok}`);
     await addSection(page, `Empty ${tok}`);
 
+    // Empty section headers are hidden by default; this one renders only
+    // because the add-section affordance opted the project into showing
+    // them (so a freshly added empty section appears with its title
+    // focused instead of being pruned away).
     // The section header lives inside the expanded project card — the
     // same editable row everywhere: rename input plus an add-task "+".
     // The delete trash only renders while the user is editing the
@@ -277,7 +281,9 @@ test.describe('Project sections', () => {
     await page.keyboard.type(`Section task ${tok}`);
     await page.keyboard.press('Enter');
 
-    // Default: every section header renders, empty ones included.
+    // The add-section guard flipped this project into showing empty
+    // sections, so the empty header renders here — the default hides it.
+    // The toggle's pressed state means showing, so it reads pressed.
     expect(await treeRows(page, tok)).toEqual([
       `S:Empty ${tok}`,
       `S:Full ${tok}`,
@@ -285,11 +291,11 @@ test.describe('Project sections', () => {
     ]);
 
     const toggle = page.getByRole('button', { name: /empty sections in/ });
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
     await toggle.click();
 
     // Hidden: the empty header is pruned, the filled section stays.
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     expect(await treeRows(page, tok)).toEqual([
       `S:Full ${tok}`,
       `T:Section task ${tok}`,

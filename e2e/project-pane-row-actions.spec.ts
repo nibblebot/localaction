@@ -74,7 +74,8 @@ test.describe('Project detail pane row actions', () => {
     await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(1);
     await header.getByRole('button', { name: `Hide empty sections in ${project}` }).click();
     const toggle = header.getByRole('button', { name: `Show empty sections in ${project}` });
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    // Pressed means showing; hidden-by-default renders the toggle unchecked.
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
     await expect(page.locator('.project-pane-tasks .section-row')).toHaveCount(0);
 
     // The state is per project: back on the area view the card hides the
@@ -85,7 +86,7 @@ test.describe('Project detail pane row actions', () => {
     await expect(card.locator('.section-row')).toHaveCount(0);
     await expect(
       card.getByRole('button', { name: `Show empty sections in ${project}` }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    ).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('rename and delete work from the pane header', async ({ page }) => {

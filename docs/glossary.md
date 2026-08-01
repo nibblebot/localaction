@@ -101,7 +101,7 @@ The Area view section rolling up every [Note](#note) attached to the Area, its s
 
 ## Project Row
 
-A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (hides [Section](#section) headers with no visible tasks in the expanded card; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), rename, and delete behind a confirm. Clicking the row body opens the [Project detail pane](#project-detail-pane); the caret is the expand toggle.
+A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (section headers with no visible tasks are hidden by default; the toggle shows them for that project; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), rename, and delete behind a confirm. Clicking the row body opens the [Project detail pane](#project-detail-pane); the caret is the expand toggle.
 
 ## Project Card
 
@@ -125,7 +125,7 @@ The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project
 
 ## Project Detail Pane
 
-The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
+The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card; hidden by default), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
 
 ## Today / Week View
 

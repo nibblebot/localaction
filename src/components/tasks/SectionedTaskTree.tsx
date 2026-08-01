@@ -23,9 +23,9 @@
  *   section's nearest boundary in the drag direction (before it when
  *   dragging up into the block, after it when dragging down).
  *
- * Every section renders — empty ones included — so the area rollup
- * matches the project view, unless `hideEmptySections` is set (the
- * Today view), which skips sections with no visible tasks.
+ * Empty section headers are skipped by default (`hideEmptySections`),
+ * so the area rollup matches the project view; pass
+ * `hideEmptySections={false}` to render every section header.
  */
 import { useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -216,7 +216,7 @@ export function SectionedTaskTree({
   projectId,
   ids,
   showCompleted = false,
-  hideEmptySections = false,
+  hideEmptySections = true,
   ariaLabel,
   taskProgress,
 }: {
@@ -225,7 +225,7 @@ export function SectionedTaskTree({
   ids: readonly string[];
   /** Show done tasks in place instead of pruning their subtrees. */
   showCompleted?: boolean;
-  /** Skip section headers with no visible tasks under them. */
+  /** Skip section headers with no visible tasks under them (default). */
   hideEmptySections?: boolean;
   ariaLabel?: string;
   /** Per-ancestor subtask progress rendered as a meter on each row. */

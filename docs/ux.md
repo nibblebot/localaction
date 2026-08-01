@@ -123,8 +123,9 @@ add-sub-area button sits beside the name. The header's action row holds the
   Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
   affordance (calendar icon, or the date once set), an empty-sections
-  toggle (prunes section headers with no visible tasks from the
-  expanded card; per-project, persisted per device), a note icon
+  toggle (section headers with no visible tasks are hidden by
+  default; the toggle shows them for that project; per-project,
+  persisted per device), a note icon
   that opens the project's notes pane, and rename and delete (the
   delete confirmed and undoable). Only the
   caret expands the card in place; clicking anywhere else on the row
@@ -184,7 +185,8 @@ Clicking a project row (`#/p/<id>`) opens the standalone form of an
 expanded project card: the project header (area breadcrumb, Completed
 toggle) carries the same actions the card's row
 shows — the done/total progress meter, the due-date affordance, the
-empty-sections toggle (per-project state shared with the card), the
+empty-sections toggle (per-project state shared with the card;
+hidden by default), the
 note icon, rename, and delete (which returns to the owning area) —
 above the same sectioned task tree the card expands into, with
 *Add task* / *Add section* inline-add buttons.

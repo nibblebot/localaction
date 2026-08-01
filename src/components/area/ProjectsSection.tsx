@@ -24,7 +24,7 @@ export default function ProjectsSection({
   onToggleCollapse,
   collapsedGroups,
   onToggleGroup,
-  hiddenEmptySections,
+  showEmptySections,
   onToggleEmptySections,
 }: {
   areaId: string;
@@ -34,8 +34,8 @@ export default function ProjectsSection({
   onToggleCollapse: (id: string) => void;
   collapsedGroups: ReadonlySet<string>;
   onToggleGroup: (id: string) => void;
-  /** Project ids whose empty section headers are pruned. */
-  hiddenEmptySections: ReadonlySet<string>;
+  /** Project ids whose empty section headers are kept visible. */
+  showEmptySections: ReadonlySet<string>;
   onToggleEmptySections: (id: string) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -133,7 +133,7 @@ export default function ProjectsSection({
             showCompleted={showCompleted}
             collapsed={collapsed.has(p.projectId)}
             onToggleCollapse={() => onToggleCollapse(p.projectId)}
-            hideEmptySections={hiddenEmptySections.has(p.projectId)}
+            hideEmptySections={!showEmptySections.has(p.projectId)}
             onToggleEmptySections={() => onToggleEmptySections(p.projectId)}
           />
         )}
@@ -148,7 +148,7 @@ export default function ProjectsSection({
             showCompleted={showCompleted}
             collapsed={collapsed.has(p.projectId)}
             onToggleCollapse={() => onToggleCollapse(p.projectId)}
-            hideEmptySections={hiddenEmptySections.has(p.projectId)}
+            hideEmptySections={!showEmptySections.has(p.projectId)}
             onToggleEmptySections={() => onToggleEmptySections(p.projectId)}
           />
         )}

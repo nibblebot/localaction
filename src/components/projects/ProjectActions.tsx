@@ -115,11 +115,13 @@ export function ProjectRowActions({
   return (
     <>
       <ProjectDueDateButton projectId={projectId} />
+      {/* Pressed/active state is the toggle's ON state: showing empty
+          sections. Hidden-by-default renders it unchecked. */}
       <button
         type="button"
-        className={`project-row-action icon-button${hideEmptySections ? ' project-row-action-active' : ''}`}
+        className={`project-row-action icon-button${hideEmptySections ? '' : ' project-row-action-active'}`}
         aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${display}`}
-        aria-pressed={hideEmptySections}
+        aria-pressed={!hideEmptySections}
         title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
         onClick={(e) => {
           e.stopPropagation();

@@ -1,6 +1,6 @@
 import { useDataLayer, useProject, useTasksForProjectDeep } from '../../data/index.ts';
 import { useShowCompleted } from '../hooks/useShowCompleted.ts';
-import { useHiddenEmptySections } from '../hooks/useHiddenEmptySections.ts';
+import { useShowEmptySections } from '../hooks/useShowEmptySections.ts';
 import EmptyState from '../shared/EmptyState.tsx';
 import ProjectPaneHeader from './ProjectPaneHeader.tsx';
 import CompletedToggle from '../area/CompletedToggle.tsx';
@@ -28,8 +28,8 @@ export default function ProjectPane({
   const project = useProject(store, projectId);
   const taskCount = useTasksForProjectDeep(store, projectId).length;
   const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
-  const hiddenEmptySections = useHiddenEmptySections();
-  const hideEmptySections = hiddenEmptySections.collapsed.has(projectId);
+  const showEmptySections = useShowEmptySections();
+  const hideEmptySections = !showEmptySections.collapsed.has(projectId);
 
   if (!project) return <EmptyState message="This project no longer exists." />;
 
@@ -44,18 +44,20 @@ export default function ProjectPane({
           name={projectName}
           actions={{
             hideEmptySections,
-            onToggleEmptySections: () => hiddenEmptySections.toggle(projectId),
+            onToggleEmptySections: () => showEmptySections.toggle(projectId),
           }}
           trailing={
             <div className="area-header-actions">
               <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
+              {/* Pressed/active state is the toggle's ON state: showing
+                  empty sections. Hidden-by-default renders it unchecked. */}
               <button
                 type="button"
-                className={`area-tab-action${hideEmptySections ? ' area-tab-action-active' : ''}`}
+                className={`area-tab-action${hideEmptySections ? '' : ' area-tab-action-active'}`}
                 aria-label={`${hideEmptySections ? 'Show' : 'Hide'} empty sections in ${projectName}`}
-                aria-pressed={hideEmptySections}
+                aria-pressed={!hideEmptySections}
                 title={hideEmptySections ? 'Show empty sections' : 'Hide empty sections'}
-                onClick={() => hiddenEmptySections.toggle(projectId)}
+                onClick={() => showEmptySections.toggle(projectId)}
               >
                 <svg className="svg-icon" aria-hidden="true">
                   <use href="/icons.svg#sections-icon" />
@@ -76,7 +78,7 @@ export default function ProjectPane({
                 projectId={projectId}
                 display={projectName}
                 hideEmptySections={hideEmptySections}
-                onToggleEmptySections={() => hiddenEmptySections.toggle(projectId)}
+                onToggleEmptySections={() => showEmptySections.toggle(projectId)}
               />
             </div>
           </div>

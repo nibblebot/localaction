@@ -49,9 +49,14 @@ import { weekdayWithDate } from '../shared/dates.ts';
 function TaskTitleInput({
   taskId,
   title,
+  onEditingChange,
 }: {
   taskId: string;
   title: string;
+  /** Notify when the input gains/loses focus — lets the parent
+   * surface chrome (e.g. the delete trash riding the input) only
+   * while the user is actually editing (the section-row pattern). */
+  onEditingChange?: (editing: boolean) => void;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   const [draft, setDraft] = useState(title);
@@ -90,6 +95,22 @@ function TaskTitleInput({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Keep the editing-change callback in sync with the input's focus
+  // state — focus / blur are the only real signals (same idiom as
+  // EditableTitle's onEditingChange).
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !onEditingChange) return;
+    const onFocus = (): void => onEditingChange(true);
+    const onBlur = (): void => onEditingChange(false);
+    el.addEventListener('focus', onFocus);
+    el.addEventListener('blur', onBlur);
+    return () => {
+      el.removeEventListener('focus', onFocus);
+      el.removeEventListener('blur', onBlur);
+    };
+  }, [onEditingChange]);
 
   function commit(): void {
     // Blurring a never-titled task with an empty draft cancels the
@@ -160,6 +181,10 @@ export function TaskRow({
   const effective = useEffectiveTaskStatus(store, taskId);
   const { offerUndo } = useUndo();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Mirror the input's focus state so the trash icon rides the
+  // title input only while the user is actually editing — the
+  // section row's inline pattern (see SectionRow).
+  const [editing, setEditing] = useState(false);
   // Touch layouts collapse the row actions behind a ⋯ trigger; the
   // strip slides out to the left of it. Desktop never opens it (the
   // trigger is display:none under `pointer: fine`).
@@ -237,7 +262,26 @@ export function TaskRow({
       {readOnly ? (
         <span className="task-line-title">{task.title}</span>
       ) : (
-        <TaskTitleInput taskId={taskId} title={task.title} />
+        <TaskTitleInput taskId={taskId} title={task.title} onEditingChange={setEditing} />
+      )}
+      {!readOnly && editing && (
+        // The trash rides the title input and only renders while
+        // editing (the section-row pattern). mousedown is suppressed
+        // so this click lands instead of blurring the input first and
+        // unmounting the button; the confirm dialog steals focus on
+        // open, which blurs the input and ends edit mode.
+        <button
+          type="button"
+          className="task-line-action task-line-action-danger icon-button task-line-trash"
+          aria-label="Delete task"
+          title="Delete"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => setConfirmDelete(true)}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#trash-icon" />
+          </svg>
+        </button>
       )}
       {showDueDate && task.dueDate && (
         <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
@@ -296,17 +340,6 @@ export function TaskRow({
               >
                 <svg className="svg-icon" aria-hidden="true">
                   <use href="/icons.svg#add-icon" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className="task-line-action task-line-action-danger icon-button"
-                aria-label="Delete task"
-                title="Delete"
-                onClick={() => setConfirmDelete(true)}
-              >
-                <svg className="svg-icon" aria-hidden="true">
-                  <use href="/icons.svg#trash-icon" />
                 </svg>
               </button>
             </div>

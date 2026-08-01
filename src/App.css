@@ -1331,8 +1331,10 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
-/* Right-aligned action cluster on task rows (DueDate, AddSubtask,
-   Trash) plus its ⋯ trigger. The wrapper owns the single auto-margin
+/* Right-aligned action cluster on task rows (DueDate, AddSubtask)
+   plus its ⋯ trigger. The delete trash lives beside the title input
+   in edit mode instead (see .task-line-trash below). The wrapper owns
+   the single auto-margin
    slot so trigger and strip shift together; the strip itself
    collapses behind the trigger on touch (see the coarse-pointer
    block). */
@@ -1360,6 +1362,15 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+/* Edit-mode trash: rides the title input's first line only while the
+   textarea is focused (the section-row pattern). .task-line aligns
+   items to flex-start, so center the 32px control on the title's
+   first line — same math as .task-line-menu; recheck the -14px if
+   --icon-button-control or the title's top padding changes. */
+.task-line-trash {
+  margin-top: calc(0.75rem - 14px);
 }
 
 /* Vertical-dots trigger: the sprite's more-icon is a horizontal
@@ -2779,8 +2790,9 @@ button .svg-icon {
 
   .task-line-menu-open .task-line-actions {
     visibility: visible;
-    /* 3 × 32px controls + 2 × 6px gaps — tracks --icon-button-control
-       and the strip's gap; bump if either grows. */
+    /* 2 × 32px controls + 1 × 6px gap (due-date button widens past
+       32px when a date is set) — tracks --icon-button-control and
+       the strip's gap; bump if either grows. */
     max-width: 120px;
     opacity: 1;
     transform: none;

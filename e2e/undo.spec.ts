@@ -50,7 +50,10 @@ test.describe('Undo toast', () => {
     await createTask(page, 'Delete me');
 
     const row = page.locator('.task-line', { hasText: 'Delete me' });
-    await row.hover();
+    // The delete trash only renders while the title is focused (the
+    // section-row pattern); focus the input to enter edit mode, then
+    // click the trash.
+    await row.locator('.task-line-title').click();
     await row.locator('button[aria-label="Delete task"]').click();
     await page.locator('.modal button', { hasText: 'Delete' }).click();
     await expect(page.locator('.task-line-title', { hasText: 'Delete me' })).toHaveCount(0);

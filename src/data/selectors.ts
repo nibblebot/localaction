@@ -2,22 +2,34 @@ import type { MergeableStore } from 'tinybase';
 import { COLUMNS, PROJECT_STATUS, TABLES, TASK_STATUS } from './schema.ts';
 import type { ProjectStatus } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
-import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus, childTaskIds } from './tasks.ts';
-import { useTableVersion } from './internal.ts';
+import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus, childTaskIds, normalizeCompletedAt } from './tasks.ts';
+import { useTableVersion, localDayOf } from './internal.ts';
 import type { Area } from './types.ts';
 
 /**
  * The area a task ultimately belongs to (resolved through its placement
  * chain), or null for Inbox-rooted / orphaned tasks.
  */
-function taskOwningArea(store: MergeableStore, taskId: string): string | null {
+/**
+ * Resolve a task's owning area and project through its placement chain
+ * (shared by the due-item and completed-item selectors so the two can
+ * never drift). A section root resolves through the section's project;
+ * Inbox-rooted or orphaned tasks return nulls.
+ */
+function taskOwnership(
+  store: MergeableStore,
+  taskId: string,
+): { areaId: string | null; projectId: string | null } {
   const root = getRootPlacement(store, taskId);
-  if (root.kind === 'area') return root.id;
+  if (root.kind === 'area') return { areaId: root.id, projectId: null };
   if (root.kind === 'project') {
-    const a = store.getCell(TABLES.projects, root.id, COLUMNS.projects.areaId);
-    return typeof a === 'string' ? a : null;
+    const areaRaw = store.getCell(TABLES.projects, root.id, COLUMNS.projects.areaId);
+    return {
+      areaId: typeof areaRaw === 'string' ? areaRaw : null,
+      projectId: root.id,
+    };
   }
-  return null;
+  return { areaId: null, projectId: null };
 }
 
 export interface AreaCount {
@@ -58,7 +70,7 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
   }
   const taskArea = new Map<string, string | null>();
   for (const tid of taskIds) {
-    taskArea.set(tid, taskOwningArea(store, tid));
+    taskArea.set(tid, taskOwnership(store, tid).areaId);
   }
 
   const allAreaIds = getAllAreaIdsFlat(store);
@@ -222,7 +234,7 @@ export function getNotesForAreaTree(
         projectNotes.push(nid);
       }
     } else if (type === 'task') {
-      const aId = taskOwningArea(store, eId);
+      const aId = taskOwnership(store, eId).areaId;
       if (typeof aId === 'string' && descendants.has(aId)) {
         taskNotes.push(nid);
       }
@@ -348,16 +360,7 @@ export function getDueItems(
   for (const tid of store.getRowIds(TABLES.tasks)) {
     const due = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.dueDate);
     if (typeof due !== 'string' || due < from || due > to) continue;
-    const root = getRootPlacement(store, tid);
-    let areaId: string | null = null;
-    let projectId: string | null = null;
-    if (root.kind === 'area') {
-      areaId = root.id;
-    } else if (root.kind === 'project') {
-      projectId = root.id;
-      const areaRaw = store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId);
-      areaId = typeof areaRaw === 'string' ? areaRaw : null;
-    }
+    const { areaId, projectId } = taskOwnership(store, tid);
     items.push({
       kind: 'task',
       id: tid,
@@ -394,4 +397,79 @@ export function useDueItems(store: MergeableStore, from: string, to: string): Du
     useTableVersion(store, TABLES.projects) +
     useTableVersion(store, TABLES.sections);
   return getDueItems(store, from, to, v);
+}
+
+export interface CompletedItem {
+  taskId: string;
+  /** ISO timestamp captured when the task transitioned to `done`. */
+  completedAt: string;
+  /** Local-calendar day (`YYYY-MM-DD`) the task completed on. */
+  localDay: string;
+  /** Owning area id (resolved through the placement chain), or null. */
+  areaId: string | null;
+  /** Owning project id, or null for Inbox / area-rooted tasks. */
+  projectId: string | null;
+}
+
+/**
+ * Every task completed within the local-day window `[from, to]` —
+ * windowed on `completedAt` alone, never on the task's `dueDate`, so a
+ * task with no due date (or a due date far outside the view) still
+ * shows under "Done today" / "Done this week" on the day it was
+ * checked off. Reactive counterpart: `useCompletedItemsInRange`.
+ *
+ * Rows with an absent or empty `completedAt` (e.g. pre-migration data)
+ * are dropped so the history view never blanks out on an upgrade.
+ */
+export function getCompletedItemsInRange(
+  store: MergeableStore,
+  from: string,
+  to: string,
+  _version = 0,
+): CompletedItem[] {
+  const items: CompletedItem[] = [];
+  for (const tid of store.getRowIds(TABLES.tasks)) {
+    const completedRaw = store.getCell(
+      TABLES.tasks,
+      tid,
+      COLUMNS.tasks.completedAt,
+    );
+    const completedAt = normalizeCompletedAt(completedRaw);
+    if (completedAt === null) continue;
+    const localDay = localDayOf(completedAt);
+    if (localDay < from || localDay > to) continue;
+    if (getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done) continue;
+    const { areaId, projectId } = taskOwnership(store, tid);
+    items.push({
+      taskId: tid,
+      completedAt,
+      localDay,
+      areaId,
+      projectId,
+    });
+  }
+  items.sort((a, b) => {
+    if (a.localDay !== b.localDay) return a.localDay < b.localDay ? -1 : 1;
+    if (a.completedAt !== b.completedAt) return a.completedAt < b.completedAt ? -1 : 1;
+    return a.taskId.localeCompare(b.taskId);
+  });
+  return items;
+}
+
+/**
+ * Reactive counterpart of `getCompletedItemsInRange`. Watches the same
+ * table set as `useDueItems` — tasks (status, completedAt, dueDate,
+ * placements), projects (area links), and sections (section-rooted
+ * tasks resolve their project through the section row).
+ */
+export function useCompletedItemsInRange(
+  store: MergeableStore,
+  from: string,
+  to: string,
+): CompletedItem[] {
+  const v =
+    useTableVersion(store, TABLES.tasks) +
+    useTableVersion(store, TABLES.projects) +
+    useTableVersion(store, TABLES.sections);
+  return getCompletedItemsInRange(store, from, to, v);
 }

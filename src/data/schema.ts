@@ -63,6 +63,13 @@ export const COLUMNS = {
      * Absent (cell deleted) means no due date — null is never stored.
      */
     dueDate: 'dueDate',
+    /**
+     * ISO timestamp (`new Date().toISOString()`) captured the moment
+     * a task transitions to `done`. Cleared (cell deleted) on reopen
+     * and on tasks that were never completed. Drives the completed
+     * history view; absent = never done.
+     */
+    completedAt: 'completedAt',
     order: 'order',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',

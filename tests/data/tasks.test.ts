@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'bun:test';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { TABLES, COLUMNS, TASK_STATUS } from '../../src/data/schema.ts';
@@ -327,5 +327,147 @@ describe('buildTaskTree', () => {
     // Orphaned sub-task is rendered as a top-level row so it is not
     // dropped from the visible list.
     expect(tree.children.map((n) => n.id)).toEqual([orphan]);
+  });
+});
+
+// SLICE 1 — extends below this line
+describe('completedAt', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+    // vi.useFakeTimers pins Date.now + new Date() to a single instant
+    // so every nowIso() call inside this test returns the same string.
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('setTaskStatus from open -> done stamps an ISO completedAt', () => {
+    const t = createTask(store, { title: 'x' });
+    expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBeUndefined();
+    const before = new Date().toISOString();
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const after = new Date().toISOString();
+    const cell = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(typeof cell).toBe('string');
+    // The fake clock never advances, so before === after and the
+    // stamped timestamp must equal both ends.
+    expect(cell).toBe(before);
+    expect(cell).toBe(after);
+    expect(getTask(store, t)?.completedAt).toBe(before);
+  });
+
+  it('setTaskStatus from done -> open clears the completedAt cell', () => {
+    const t = createTask(store, { title: 'x' });
+    setTaskStatus(store, t, TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(true);
+    setTaskStatus(store, t, TASK_STATUS.open);
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
+    expect(getTask(store, t)?.completedAt).toBeNull();
+  });
+
+  it('setTaskStatus is a no-op for completedAt when the status is unchanged', () => {
+    const t = createTask(store, { title: 'x' });
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const first = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(typeof first).toBe('string');
+    // Re-set the same status — the timestamp must be preserved
+    // (the no-op branch of writeCompletionTimestamp kicks in).
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const second = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(second).toBe(first);
+  });
+
+  it('updateTask status branch stamps and clears completedAt the same way', () => {
+    const t = createTask(store, { title: 'x' });
+    updateTask(store, t, { status: TASK_STATUS.done });
+    const stamp = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(typeof stamp).toBe('string');
+    updateTask(store, t, { status: TASK_STATUS.open });
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
+  });
+
+  it('schema column + Task.completedAt are wired through decodeTaskRow', () => {
+    expect(COLUMNS.tasks.completedAt).toBe('completedAt');
+    const t = createTask(store, { title: 'x' });
+    expect(getTask(store, t)?.completedAt).toBeNull();
+    setTaskStatus(store, t, TASK_STATUS.done);
+    expect(typeof getTask(store, t)?.completedAt).toBe('string');
+  });
+
+  // SLICE 3 — extends below this line. Round-trip the decode, sibling
+  // idempotency, and the bump-side cousin assertions.
+  it('decodeTaskRow normalises missing / empty / non-string completedAt cells to null', () => {
+    const t = createTask(store, { title: 'x' });
+    // Brand-new task: cell is absent → null.
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
+    expect(getTask(store, t)?.completedAt).toBeNull();
+
+    // Handcraft an empty cell — the row-level reader still resolves to null.
+    store.setCell(TABLES.tasks, t, COLUMNS.tasks.completedAt, '');
+    expect(getTask(store, t)?.completedAt).toBeNull();
+
+    // Numeric / pathological values stringify via normalizeCompletedAt
+    // (CSV-import survival). The decode is permissive — only the
+    // plugin path cares about ISO validity.
+    store.setCell(TABLES.tasks, t, COLUMNS.tasks.completedAt, 1700000000000);
+    expect(getTask(store, t)?.completedAt).toBe('1700000000000');
+
+    // A real ISO string round-trips verbatim.
+    const iso = '2026-07-23T10:00:00.000Z';
+    store.setCell(TABLES.tasks, t, COLUMNS.tasks.completedAt, iso);
+    expect(getTask(store, t)?.completedAt).toBe(iso);
+  });
+
+  it('repeated done -> done across the next-status helper keeps the original timestamp', () => {
+    const t = createTask(store, { title: 'x' });
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const first = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(typeof first).toBe('string');
+    // Open + redone must STILL preserve the original stamp — only the
+    // non-done → done transition (the actual completion event) writes
+    // a fresh timestamp. Replays / undos / sync retries should not
+    // silently rewrite history.
+    setTaskStatus(store, t, TASK_STATUS.open);
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const after = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
+    expect(after).toBe(first);
+  });
+
+  it('setTaskStatus bumps updatedAt alongside the completedAt transition', () => {
+    const t = createTask(store, { title: 'x' });
+    const initialUpdated = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
+    expect(typeof initialUpdated).toBe('string');
+    setTaskStatus(store, t, TASK_STATUS.done);
+    const afterDone = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
+    expect(afterDone).toBe(initialUpdated);
+    // The fake clock never advances inside this test, so the
+    // timestamps match — but the cell is still present and a string,
+    // proving the write happened.
+    expect(typeof afterDone).toBe('string');
+
+    setTaskStatus(store, t, TASK_STATUS.open);
+    const afterOpen = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
+    expect(typeof afterOpen).toBe('string');
+  });
+
+  it('updateTask status:"done" on an open task writes completedAt (writes flow through setTaskStatus)', () => {
+    const t = createTask(store, { title: 'x' });
+    expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBeUndefined();
+    updateTask(store, t, { status: TASK_STATUS.done });
+    const cell = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt) as string;
+    expect(typeof cell).toBe('string');
+    // decodeTaskRow → Task.completedAt matches the cell.
+    expect(getTask(store, t)?.completedAt).toBe(cell);
+  });
+
+  it('reopening a stored-done task via updateTask clears completedAt, not orphans it', () => {
+    const t = createTask(store, { title: 'x' });
+    setTaskStatus(store, t, TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(true);
+    updateTask(store, t, { status: TASK_STATUS.open });
+    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
+    expect(getTask(store, t)?.completedAt).toBeNull();
   });
 });

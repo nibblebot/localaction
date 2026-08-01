@@ -4,12 +4,13 @@ import {
   useAreaCounts,
   useProjectRollups,
   useDueItems,
+  useCompletedItemsInRange,
   areaColorHex,
 } from '../../data/index.ts';
-import type { DueItem } from '../../data/index.ts';
+import type { CompletedItem, DueItem } from '../../data/index.ts';
 import { useSelection } from '../context/useSelection.ts';
 import { useCollapsedSet } from '../hooks/useCollapsedSet.ts';
-import { todayIso } from '../shared/dates.ts';
+import { todayIso, weekdayWithDate } from '../shared/dates.ts';
 import { TaskList } from '../tasks/TaskList.tsx';
 import ProjectTaskList from '../projects/ProjectTaskList.tsx';
 import type { AreaColorId } from '../../data/colors.ts';
@@ -177,6 +178,7 @@ export default function DuePane({
   const counts = useAreaCounts(store);
   const rollups = useProjectRollups(store);
   const { collapsed, toggle } = useCollapsedSet(storageKey);
+  const { collapsed: collapsedDays, toggle: toggleDay } = useCollapsedSet(`${storageKey}:days`);
 
   const today = todayIso();
   const open = useMemo(() => items.filter((i) => !i.done), [items]);
@@ -190,13 +192,16 @@ export default function DuePane({
   );
   const overdueProjects = useMemo(() => overdue.filter((i) => i.kind === 'project'), [overdue]);
   const inRange = useMemo(() => open.filter((i) => i.dueDate >= today), [open, today]);
-  const doneTaskIds = useMemo(
-    () =>
-      items
-        .filter((i) => i.done && i.kind === 'task' && i.dueDate >= from)
-        .map((i) => i.id),
-    [items, from],
-  );
+  const completed = useCompletedItemsInRange(store, from, to);
+  const doneByDay = useMemo(() => {
+    const buckets = new Map<string, CompletedItem[]>();
+    for (const item of completed) {
+      const bucket = buckets.get(item.localDay);
+      if (bucket) bucket.push(item);
+      else buckets.set(item.localDay, [item]);
+    }
+    return buckets;
+  }, [completed]);
 
   const groups = useMemo(() => {
     const areaMeta = new Map(counts.map((c) => [c.id, { name: c.name, color: c.color, order: c.order }]));
@@ -216,7 +221,7 @@ export default function DuePane({
         <header className="main-pane-header">
           <h2 className="main-pane-title">{title}</h2>
         </header>
-        {groups.length === 0 && overdue.length === 0 && doneTaskIds.length === 0 ? (
+        {groups.length === 0 && overdue.length === 0 && completed.length === 0 ? (
           <p className="today-empty">Nothing in this view.</p>
         ) : (
           <>
@@ -320,7 +325,7 @@ export default function DuePane({
           ))}
           </>
         )}
-        {doneTaskIds.length > 0 && (
+        {completed.length > 0 && (
           <section className="today-group today-done" aria-label="Done">
             <button
               type="button"
@@ -334,16 +339,53 @@ export default function DuePane({
                 />
               </svg>
               <h3 className="today-group-title">Done</h3>
-              <span className="sidebar-link-count">{doneTaskIds.length}</span>
+              <span className="sidebar-link-count">{completed.length}</span>
             </button>
-            {!doneCollapsed && (
-              <TaskList
-                ids={doneTaskIds}
-                readOnly
-                effectiveStatus
-                showDueDate={showRowDates}
-              />
-            )}
+            {!doneCollapsed &&
+              (showRowDates ? (
+                [...doneByDay].map(([day, dayItems]) => {
+                  const dayCollapsed = collapsedDays.has(day);
+                  const dayLabel = weekdayWithDate(day);
+                  return (
+                    <section key={day} className="today-done-day" aria-label={dayLabel}>
+                      <button
+                        type="button"
+                        className="today-done-day-toggle"
+                        aria-expanded={!dayCollapsed}
+                        onClick={() => toggleDay(day)}
+                      >
+                        <svg className="svg-icon" aria-hidden="true">
+                          <use
+                            href={`/icons.svg#${dayCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
+                          />
+                        </svg>
+                        <h4 className="today-group-title">{dayLabel}</h4>
+                        <span className="sidebar-link-count">{dayItems.length}</span>
+                      </button>
+                      {!dayCollapsed && (
+                        <TaskList
+                          ids={dayItems.map((item) => item.taskId)}
+                          readOnly
+                          effectiveStatus
+                          showDueDate={showRowDates}
+                        />
+                      )}
+                    </section>
+                  );
+                })
+              ) : (
+                <section
+                  className="today-done-day today-done-day--single"
+                  aria-label="Done today"
+                >
+                  <TaskList
+                    ids={completed.map((item) => item.taskId)}
+                    readOnly
+                    effectiveStatus
+                    showDueDate={showRowDates}
+                  />
+                </section>
+              ))}
           </section>
         )}
       </div>

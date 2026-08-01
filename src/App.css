@@ -1256,6 +1256,35 @@ body.sidebar-resizing {
   color: var(--danger);
 }
 
+.today-done-day {
+  padding-left: 12px;
+}
+
+.today-done-day--single {
+  padding-left: 0;
+}
+
+.today-done-day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: 0 4px;
+  font: inherit;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.today-done-day-toggle .today-group-title {
+  margin: 0;
+  padding-inline: 0;
+  font-size: var(--text-label);
+  color: inherit;
+}
+
 .today-done .task-list {
   opacity: 0.6;
 }

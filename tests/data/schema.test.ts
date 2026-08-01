@@ -32,6 +32,10 @@ describe('schema constants', () => {
     expect(COLUMNS.notes.slug).toBe('slug');
   });
 
+  it('declares the completedAt column on tasks (regression: spec for completedAt history)', () => {
+    expect(COLUMNS.tasks.completedAt).toBe('completedAt');
+  });
+
   it('keeps the task status enum consistent', () => {
     expect(TASK_STATUS).toEqual({ open: 'open', done: 'done' });
   });

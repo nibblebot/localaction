@@ -21,7 +21,7 @@ export type {
 
 export { getStore } from './store.ts';
 
-export { useTableVersion } from './internal.ts';
+export { useTableVersion, localDayOf } from './internal.ts';
 
 export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
 export type { LocalActionDebug } from './DataLayerProvider.tsx';
@@ -84,6 +84,7 @@ export {
   createTaskAfter,
   updateTask,
   setTaskStatus,
+  writeCompletionTimestamp,
   getTask,
   useTask,
   PLACEMENT_SEP,
@@ -106,6 +107,7 @@ export {
   useInboxTaskIds,
   getAreaTaskIds,
   useAreaTaskIds,
+  normalizeCompletedAt,
 } from './tasks.ts';
 export type { TaskTreeNode } from './tasks.ts';
 
@@ -161,5 +163,7 @@ export {
   useProjectRollups,
   getDueItems,
   useDueItems,
+  getCompletedItemsInRange,
+  useCompletedItemsInRange,
 } from './selectors.ts';
-export type { AreaCount, ProjectRollup, DueItem } from './selectors.ts';
+export type { AreaCount, ProjectRollup, DueItem, CompletedItem } from './selectors.ts';

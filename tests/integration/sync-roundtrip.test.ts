@@ -33,6 +33,9 @@ import {
 import { startServer, type RunningServer } from '../../server/index.ts';
 import { openDatabase } from '../../server/db.ts';
 import { createServerTabularPersister } from '../../server/persister.ts';
+import { createTask, updateTask, setTaskStatus } from '../../src/data/tasks.ts';
+import { TASK_STATUS } from '../../src/data/schema.ts';
+import { toIso } from '../../src/components/shared/dates.ts';
 
 // TinyBase's public types don't name the synchronizer class returned by
 // `createWsSynchronizer`; aliasing it here keeps callsites off the
@@ -245,5 +248,76 @@ describe('sync server round-trip', () => {
     } finally {
       await freshSync.destroy();
     }
+  }, 30000);
+
+  it('completedAt round-trips: client A sets it, client B sees it, fresh client reads it from SQLite', async () => {
+    const a = createMergeableStore();
+    const b = createMergeableStore();
+
+    const syncA = await connectClient(a);
+    const syncB = await connectClient(b);
+
+    let taskId = '';
+    let completedOnB: unknown = undefined;
+    try {
+      // Client A creates a task due tomorrow and marks it done via the
+      // typed writer. The helper stamps a real `completedAt` cell.
+      taskId = createTask(a, { title: 'completed-roundtrip' });
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const dueTomorrow = toIso(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth(),
+        tomorrow.getDate(),
+      );
+      updateTask(a, taskId, { dueDate: dueTomorrow });
+      setTaskStatus(a, taskId, TASK_STATUS.done);
+
+      // Client B observes the completedAt cell.
+      await waitForCell(b, 'tasks', taskId, 'status', TASK_STATUS.done);
+      completedOnB = b.getCell('tasks', taskId, 'completedAt');
+      expect(typeof completedOnB).toBe('string');
+      expect((completedOnB as string).length).toBeGreaterThan(0);
+
+      await waitForPersisted(
+        dbPath,
+        'tasks',
+        taskId,
+        'completedAt',
+        completedOnB,
+      );
+    } finally {
+      await syncA.destroy();
+      await syncB.destroy();
+    }
+
+    // A fresh client as a MergeableStore reads the cell from the
+    // server-side buffer. Server is the source of truth, so the
+    // replica carries the same value client B observed.
+    const fresh = createMergeableStore();
+    const freshSync = await connectClient(fresh);
+    try {
+      await waitForCell(
+        fresh,
+        'tasks',
+        taskId,
+        'completedAt',
+        completedOnB,
+      );
+      expect(fresh.getCell('tasks', taskId, 'completedAt')).toBe(completedOnB as string);
+    } finally {
+      await freshSync.destroy();
+    }
+
+    // Round-trip via SQLite: open the SQLite file directly and confirm
+    // the completedAt cell is still readable after the server's in-memory
+    // store has been destroyed.
+    const reload = createStore();
+    const reloadDb = await openDatabase(dbPath, { readonly: true });
+    const reloadPersister = createServerTabularPersister(reload, reloadDb);
+    await reloadPersister.load();
+    reloadDb.close();
+    expect(typeof reload.getCell('tasks', taskId, 'completedAt')).toBe('string');
+    expect(reload.getCell('tasks', taskId, 'status')).toBe(TASK_STATUS.done);
   }, 30000);
 });

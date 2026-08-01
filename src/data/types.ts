@@ -71,6 +71,12 @@ export interface Task {
   status: TaskStatus;
   /** Date-only ISO string (`YYYY-MM-DD`), or null when no due date. */
   dueDate: string | null;
+  /**
+   * ISO timestamp (`YYYY-MM-DDTHH:mm:ss.sssZ`) captured the moment the
+   * task transitioned to `done`, or null when the task has never been
+   * completed (or was reopened). Backs the completed history view.
+   */
+  completedAt: string | null;
   order: number;
   createdAt: string;
   updatedAt: string;

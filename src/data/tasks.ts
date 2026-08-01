@@ -8,6 +8,17 @@ import { moveTask, readSiblingOrders } from './order.ts';
 import { getSectionIdsForProject } from './sections.ts';
 
 /**
+ * Normalize a stored `completedAt` cell. Empty strings, `undefined`,
+ * and `null` all map to `null` (never completed). Other primitives are
+ * coerced via `String(...)` so e.g. a numeric `Date.now()` survives a
+ * round-trip through a CSV import.
+ */
+export function normalizeCompletedAt(raw: unknown): string | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  return String(raw);
+}
+
+/**
  * Placement reference encoding. A task's single `placement`
  * cell holds `${kind}:${id}` for project/section/area/task roots, or is
  * absent for an Inbox root. Parts are UUIDs, so `:` is a safe
@@ -96,6 +107,13 @@ export function createTaskAfter(
 
 export function updateTask(store: MergeableStore, id: string, patch: TaskPatch): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
+  // Stamp / clear the completion timestamp BEFORE the status write so
+  // the helper observes the previous (pre-patch) status. Calling
+  // afterward would read the just-written `done` and treat the open →
+  // done transition as a no-op.
+  if (patch.status !== undefined) {
+    writeCompletionTimestamp(store, id, patch.status);
+  }
   const next: Record<string, string | number | null | undefined> = {
     [COLUMNS.tasks.updatedAt]: nowIso(),
   };
@@ -119,6 +137,37 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
 }
 
 /**
+ * Side-effect helper: keep the `completedAt` cell in sync with a status
+ * transition. Called by both `setTaskStatus` and the `status` arm of
+ * `updateTask` so the timestamp writes stay co-located (no risk of one
+ * path diverging). No-ops when the stored status already matches the
+ * next value (idempotent re-set) so a touch that doesn't actually
+ * change completion doesn't bump the timestamp.
+ *
+ * - transitioning to `done` from non-done → stamp `nowIso()`.
+ * - transitioning from `done` to non-done → `delCell` (absent cell).
+ * - unchanged → no-op (preserves the original timestamp).
+ */
+export function writeCompletionTimestamp(
+  store: MergeableStore,
+  id: string,
+  next: TaskStatus,
+): void {
+  if (!store.hasRow(TABLES.tasks, id)) return;
+  const current = store.getCell(TABLES.tasks, id, COLUMNS.tasks.status);
+  const currentIsDone = current === TASK_STATUS.done;
+  if (next === TASK_STATUS.done && !currentIsDone) {
+    store.setPartialRow(
+      TABLES.tasks,
+      id,
+      row({ [COLUMNS.tasks.completedAt]: nowIso() }),
+    );
+  } else if (next !== TASK_STATUS.done && currentIsDone) {
+    store.delCell(TABLES.tasks, id, COLUMNS.tasks.completedAt);
+  }
+}
+
+/**
  * Set a task's stored status. The read-time invariant
  * ("done ⟺ all descendants done") is enforced by `getEffectiveTaskStatus`,
  * a read-time-derivation pattern (no write cascade):
@@ -130,6 +179,11 @@ export function updateTask(store: MergeableStore, id: string, patch: TaskPatch):
  */
 export function setTaskStatus(store: MergeableStore, id: string, status: TaskStatus): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
+  // Stamp / clear the completion timestamp BEFORE the status write so
+  // the helper observes the previous stored status — calling it
+  // afterward would read the just-written `done` and treat the open →
+  // done transition as a no-op.
+  writeCompletionTimestamp(store, id, status);
   store.setPartialRow(
     TABLES.tasks,
     id,
@@ -369,6 +423,7 @@ function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
     placement: decodePlacement(r[COLUMNS.tasks.placement]),
     status: (String(r[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
     dueDate: normalizeRelation(r[COLUMNS.tasks.dueDate]),
+    completedAt: normalizeCompletedAt(r[COLUMNS.tasks.completedAt]),
     order: Number(r[COLUMNS.tasks.order] ?? 0),
     createdAt: String(r[COLUMNS.tasks.createdAt] ?? ''),
     updatedAt: String(r[COLUMNS.tasks.updatedAt] ?? ''),

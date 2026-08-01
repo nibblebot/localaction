@@ -13,6 +13,31 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
+/**
+ * Convert an ISO timestamp (UTC, written by `nowIso`) into the local
+ * calendar day `YYYY-MM-DD`. Uses the host's local timezone via
+ * `getFullYear`/`getMonth`/`getDate` rather than UTC slicing so the
+ * result matches what a user would call "today" on their wall clock.
+ * Invalid / empty input falls back to today's local date so misuse
+ * degrades gracefully and surfaces in tests rather than crashing.
+ */
+export function localDayOf(iso: string): string {
+  if (typeof iso === 'string' && iso !== '') {
+    const d = new Date(iso);
+    if (!Number.isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+  }
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function row(
   cells: Record<string, string | number | boolean | null | undefined>,
 ): Row {

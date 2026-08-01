@@ -21,7 +21,7 @@ flowchart TB
   Shell --- Insp
 ```
 
-- **Sidebar** (`Sidebar.tsx`) — the navigation column. Top to bottom: the
+- **Sidebar** (`sidebar/Sidebar.tsx`) — the navigation column. Top to bottom: the
   app-name row, the Inbox / Today / Week quick links, the
   Areas section, and the footer holding the sync status badge and the
   appearance menu. A resizer on its trailing edge drags to set its width

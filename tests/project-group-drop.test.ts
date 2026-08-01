@@ -4,8 +4,8 @@ import {
   headerContainerId,
   parseContainerId,
   resolveProjectDrop,
-} from '../src/components/projectGroupDrop.ts';
-import type { SlicePosition } from '../src/components/projectGroupDrop.ts';
+} from '../src/components/dnd/projectGroupDrop.ts';
+import type { SlicePosition } from '../src/components/dnd/projectGroupDrop.ts';
 
 // Slice layout used by the resolveProjectDrop cases: area A has
 // active [p1, p2, p3] and backlog [p4]; area B has active [p5].

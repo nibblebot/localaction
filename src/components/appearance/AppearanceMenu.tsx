@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppearance } from './useAppearance.ts';
-import { useFocusTrap } from '../useFocusTrap.ts';
+import { useFocusTrap } from '../hooks/useFocusTrap.ts';
 import type { Density, FontFamily, ThemeMode } from './AppearanceProvider.tsx';
 interface SegmentedOption<T extends string> {
   id: T;

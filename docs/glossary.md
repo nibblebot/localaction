@@ -65,7 +65,7 @@ The two-pane workspace (`.app-shell`): [Sidebar](#sidebar) on the left, [Main Pa
 
 ## Sidebar
 
-The left-hand navigation column (`Sidebar.tsx`). From top to bottom: the app-name row (the "LocalAction" title), the quick links (Inbox, [Today, Week](#today--week-view) — each with a live count), the Areas section, and the [Sidebar footer](#sidebar-footer). A resizer on its trailing edge drags to set its width.
+The left-hand navigation column (`sidebar/Sidebar.tsx`). From top to bottom: the app-name row (the "LocalAction" title), the quick links (Inbox, [Today, Week](#today--week-view) — each with a live count), the Areas section, and the [Sidebar footer](#sidebar-footer). A resizer on its trailing edge drags to set its width.
 
 ## Areas Section
 
@@ -109,7 +109,7 @@ A [Project row](#project-row) plus its expanded inline body — the [Project tas
 
 ## Project Task List
 
-The body of an expanded [Project card](#project-card) (`ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons).
+The body of an expanded [Project card](#project-card) (`projects/ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons).
 
 ## Section Row
 

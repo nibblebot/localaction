@@ -1,0 +1,438 @@
+/**
+ * Core task list — the single renderer for task rows across the
+ * inbox, area, and project views. View-specific differences are
+ * flags on TaskRow / the list wrappers, never separate components:
+ *
+ * - `readOnly`        — area flat list: span title, no row
+ *                       actions (add sub-task, delete).
+ * - `showDueDate`     — optional static date label after the title
+ *                       (e.g. "Mon · 7/20"); surfaces calendar days
+ *                       in cross-day views without exposing the
+ *                       editable DueDateButton actions.
+ * - `effectiveStatus` — flat lists show ancestor-aware effective
+ *                       status; trees use the task's own status.
+ * - `handle`          — SortableList/SortableTree handle; presence
+ *                       enables the drag handle and sortable chrome.
+ * - `showCompleted`   — TaskTreeByStatus only: render done tasks in
+ *                       place (checked + strikethrough) instead of
+ *                       pruning their subtrees from the tree.
+ * - `progress`        — optional subtask progress meter (done/total
+ *                       over all transitive descendants) rendered
+ *                       after the title.
+ */
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useDataLayer,
+  useTask,
+  useEffectiveTaskStatus,
+  createTask,
+  createTaskAfter,
+  updateTask,
+  setTaskStatus,
+  deleteTask,
+  captureSubtree,
+  restoreSubtree,
+  buildTaskTree,
+  pruneDoneTasks,
+  TASK_STATUS,
+  NOTE_ENTITY_TYPE,
+} from '../../data/index.ts';
+import type { TaskTreeNode } from '../../data/index.ts';
+import { useUndo } from '../context/useUndo.ts';
+import { SortableTree } from '../dnd/SortableTree.tsx';
+import type { SortableHandleProps } from '../dnd/SortableList.tsx';
+import { consumeTaskTitleFocus, queueTaskTitleFocus } from '../hooks/taskTitleFocus.ts';
+import TaskDueDateButton from './TaskDueDateButton.tsx';
+import ConfirmModal from '../shared/ConfirmModal.tsx';
+import { weekdayWithDate } from '../shared/dates.ts';
+
+function TaskTitleInput({
+  taskId,
+  title,
+}: {
+  taskId: string;
+  title: string;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const [draft, setDraft] = useState(title);
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (consumeTaskTitleFocus(taskId)) {
+      ref.current?.focus();
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    if (document.activeElement !== ref.current) setDraft(title);
+  }, [title]);
+
+  // Auto-grow: collapse then measure so the textarea wraps at the row
+  // width instead of scrolling horizontally like a single-line input.
+  // ResizeObserver re-fits when the row width changes (window resize)
+  // even though the draft text did not.
+  const fitRef = useRef<() => void>(() => {});
+  fitRef.current = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = '0px';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  useLayoutEffect(() => {
+    fitRef.current();
+  }, [draft]);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => fitRef.current());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  function commit(): void {
+    // Blurring a never-titled task with an empty draft cancels the
+    // creation — the row only existed so the input could take focus.
+    // Covers every add-task flow (project/area "+", sub-task,
+    // Shift+Enter sibling) and Escape on a fresh row.
+    if (title === '' && draft.trim() === '') {
+      deleteTask(store, taskId);
+      return;
+    }
+    if (draft !== title) updateTask(store, taskId, { title: draft });
+    else setDraft(title);
+  }
+
+  return (
+    <textarea
+      ref={ref}
+      className="task-line-title"
+      rows={1}
+      value={draft}
+      placeholder="New task…"
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          // Shift+Enter: save this title (via blur) and open a fresh
+          // empty sibling immediately below, focused for quick entry.
+          if (e.shiftKey) {
+            const nextId = createTaskAfter(store, taskId, '');
+            if (nextId) queueTaskTitleFocus(nextId);
+          }
+          e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setDraft(title);
+          e.currentTarget.blur();
+        }
+      }}
+      aria-label="Task title"
+    />
+  );
+}
+export interface TaskRowProps {
+  taskId: string;
+  /** Inbox/area flat lists: read-only title, no row actions. */
+  readOnly?: boolean;
+  /** Render the task's due date as a static label after the title. */
+  showDueDate?: boolean;
+  /** Use ancestor-aware effective status for the checkbox and dimming. */
+  effectiveStatus?: boolean;
+  /** Sortable handle — presence enables the drag handle and chrome. */
+  handle?: SortableHandleProps;
+  /** Subtask progress meter (all transitive descendants, effective status). */
+  progress?: { done: number; total: number };
+}
+
+export function TaskRow({
+  taskId,
+  readOnly,
+  showDueDate,
+  effectiveStatus,
+  handle,
+  progress,
+}: TaskRowProps): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const task = useTask(store, taskId);
+  const effective = useEffectiveTaskStatus(store, taskId);
+  const { offerUndo } = useUndo();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  // Touch layouts collapse the row actions behind a ⋯ trigger; the
+  // strip slides out to the left of it. Desktop never opens it (the
+  // trigger is display:none under `pointer: fine`).
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+  if (!task || (effectiveStatus && !effective)) return null;
+  const done = effectiveStatus
+    ? effective === TASK_STATUS.done
+    : task.status === TASK_STATUS.done;
+
+  const classes = ['task-line'];
+  if (handle) classes.push('sortable-row');
+  if (done) classes.push('task-line-done');
+  if (handle?.isDragging) classes.push('sortable-row-active');
+  if (handle?.isOver) classes.push('sortable-row-over');
+
+  // Long-press touch drag activates from anywhere on the row (grips
+  // are hidden on coarse pointers); mouse + keyboard stay on the grip.
+  // Stripping onTouchStart from the grip keeps a touch landing on it
+  // from registering a second activation via event bubbling.
+  const { onTouchStart, ...gripListeners } = (handle?.listeners ?? {}) as {
+    onTouchStart?: React.TouchEventHandler;
+  } & Record<string, unknown>;
+
+  return (
+    <div
+      ref={handle?.ref}
+      style={handle?.style}
+      className={classes.join(' ')}
+      data-drag-over={handle?.isOver ? 'true' : undefined}
+      {...(onTouchStart ? { onTouchStart } : {})}
+    >
+      {handle && (
+        <button
+          type="button"
+          {...(handle.attributes ?? {})}
+          className="task-line-drag-handle icon-button"
+          aria-label="Drag to reorder"
+          title="Drag to reorder"
+          onClick={(e) => e.preventDefault()}
+          {...gripListeners}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#drag-icon" />
+          </svg>
+        </button>
+      )}
+      <input
+        type="checkbox"
+        className="task-line-check"
+        checked={done}
+        onChange={() => {
+          if (done) {
+            setTaskStatus(store, taskId, TASK_STATUS.open);
+            return;
+          }
+          setTaskStatus(store, taskId, TASK_STATUS.done);
+          offerUndo({
+            label: `Completed “${task.title || 'Untitled'}”`,
+            onUndo: () => setTaskStatus(store, taskId, TASK_STATUS.open),
+          });
+        }}
+        aria-label={done ? `Mark “${task.title}” not done` : `Mark “${task.title}” done`}
+      />
+      {readOnly ? (
+        <span className="task-line-title">{task.title}</span>
+      ) : (
+        <TaskTitleInput taskId={taskId} title={task.title} />
+      )}
+      {showDueDate && task.dueDate && (
+        <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
+          {weekdayWithDate(task.dueDate)}
+        </span>
+      )}
+      {progress !== undefined && progress.total > 0 && (
+        <div
+          className="project-row-progress"
+          aria-label={`${progress.done} of ${progress.total} subtasks done`}
+        >
+          <div className="project-row-progress-bar">
+            <div
+              className="project-row-progress-fill"
+              style={{
+                transform: `scaleX(${Math.round((progress.done / progress.total) * 100) / 100})`,
+              }}
+            />
+          </div>
+          <span className="project-row-progress-count">
+            {progress.done} / {progress.total}
+          </span>
+        </div>
+      )}
+      {!readOnly && (
+        <>
+          {menuOpen && (
+            // Click-away dismiss, same idiom as the due-calendar
+            // backdrop; stopPropagation keeps the tap out of any
+            // clickable ancestor row.
+            <div
+              className="task-menu-backdrop"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+              }}
+            />
+          )}
+          <div className={`task-line-menu${menuOpen ? ' task-line-menu-open' : ''}`}>
+            {/* Any action click also dismisses the strip (capture so
+                the action's own handler still runs). */}
+            <div className="task-line-actions" onClickCapture={() => setMenuOpen(false)}>
+              <TaskDueDateButton taskId={taskId} />
+              <button
+                type="button"
+                className="task-line-action icon-button"
+                aria-label="Add sub-task"
+                title="Add sub-task"
+                onClick={() => {
+                  const childId = createTask(store, {
+                    title: '',
+                    placement: { kind: 'task', id: taskId },
+                  });
+                  queueTaskTitleFocus(childId);
+                }}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#add-icon" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="task-line-action task-line-action-danger icon-button"
+                aria-label="Delete task"
+                title="Delete"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#trash-icon" />
+                </svg>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="task-line-action task-line-menu-trigger icon-button"
+              aria-label="Task actions"
+              title="Task actions"
+              aria-expanded={menuOpen}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((open) => !open);
+              }}
+            >
+              <svg className="svg-icon" aria-hidden="true">
+                <use href="/icons.svg#more-icon" />
+              </svg>
+            </button>
+          </div>
+          <ConfirmModal
+            open={confirmDelete}
+            title="Delete task?"
+            message={`"${task.title || 'Untitled'}" will be deleted.`}
+            confirmLabel="Delete"
+            onConfirm={() => {
+              const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.task, taskId);
+              deleteTask(store, taskId);
+              setConfirmDelete(false);
+              offerUndo({
+                label: `Deleted “${task.title || 'Untitled'}”`,
+                onUndo: () => restoreSubtree(store, snapshot),
+              });
+            }}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Flat task list (inbox, area tasks). Rows render in the given
+ * order with no drag-and-drop.
+ */
+export function TaskList({
+  ids,
+  readOnly,
+  showDueDate,
+  effectiveStatus,
+}: {
+  ids: readonly string[];
+  readOnly?: boolean;
+  showDueDate?: boolean;
+  effectiveStatus?: boolean;
+}): React.JSX.Element {
+  return (
+    <ul className="task-list">
+      {ids.map((tid) => (
+        <li key={tid}>
+          <TaskRow taskId={tid} readOnly={readOnly} showDueDate={showDueDate} effectiveStatus={effectiveStatus} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Task tree rendered through a single flattened SortableTree — one
+ * DndContext spans every depth, so a drag can reorder within a sibling
+ * group or reparent a task under another task / back to the root.
+ * Indentation is the slot's `depth * indentWidth` left padding.
+ */
+export function TaskTree({
+  nodes,
+  onMove,
+  ariaLabel,
+}: {
+  nodes: readonly TaskTreeNode[];
+  /**
+   * Drop handler. `newParentId` is the new parent task (`null` = root
+   * of this tree — the caller maps that to the view's own placement).
+   */
+  onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
+  ariaLabel?: string;
+}): React.JSX.Element | null {
+  if (nodes.length === 0) return null;
+  return (
+    <SortableTree
+      nodes={nodes}
+      onMove={onMove ?? (() => {})}
+      ariaLabel={ariaLabel ?? 'Tasks'}
+      className="sortable-list"
+      indentWidth={22}
+    >
+      {(tid, handle) => <TaskRow handle={handle} taskId={tid} />}
+    </SortableTree>
+  );
+}
+
+/**
+ * Project/area task tree: build the tree from `ids` and render it in
+ * stored order. With `showCompleted` off, done tasks (and their
+ * subtrees) are pruned; with it on, done rows stay in place with a
+ * checked checkbox and strikethrough title.
+ */
+export function TaskTreeByStatus({
+  ids,
+  onMove,
+  ariaLabel,
+  showCompleted = false,
+}: {
+  ids: readonly string[];
+  onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
+  ariaLabel?: string;
+  /** Show done tasks in place instead of hiding them. */
+  showCompleted?: boolean;
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const tree = buildTaskTree(store, ids);
+  const nodes = showCompleted ? tree.children : pruneDoneTasks(store, tree.children);
+  return (
+    <TaskTree
+      nodes={nodes}
+      onMove={onMove}
+      ariaLabel={ariaLabel}
+    />
+  );
+}

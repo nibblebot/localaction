@@ -1,13 +1,13 @@
 import { Provider } from 'tinybase/ui-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { DataLayerProvider, getStore } from './data/index.ts';
-import SelectionProvider from './components/selection.tsx';
-import UndoProvider from './components/undo.tsx';
-import Sidebar from './components/Sidebar.tsx';
+import SelectionProvider from './components/context/selection.tsx';
+import UndoProvider from './components/context/undo.tsx';
+import Sidebar from './components/sidebar/Sidebar.tsx';
 import MainPane from './components/MainPane.tsx';
-import { useFocusTrap } from './components/useFocusTrap.ts';
+import { useFocusTrap } from './components/hooks/useFocusTrap.ts';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
-import QuickAddModal from './components/QuickAddModal.tsx';
+import QuickAddModal from './components/shared/QuickAddModal.tsx';
 import './App.css';
 
 // Dev-only TinyBase Inspector: `import.meta.env.DEV` is statically replaced

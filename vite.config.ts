@@ -158,9 +158,22 @@ export default defineConfig({
       },
     },
   ],
+  resolve: {
+    // Force a single React/React-DOM instance across every importer — app
+    // code and pre-bundled deps alike. @dnd-kit (and any dependency that
+    // gets served un-optimized) does a bare `import 'react'`; without dedupe
+    // a stale dep-optimizer cache can resolve that to a different realpath
+    // than the app's React, yielding two React copies and the classic
+    // "Invalid hook call / resolveDispatcher() is null" crash. Dedupe is
+    // resolved at the module level, independent of the optimizer's state.
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    // Always pre-bundle the @dnd-kit packages so they are never served as
+    // raw ESM (which keeps their `import 'react'` on the deduped path).
+    include: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+  },
 })
-// Attach the TinyBase WS sync handler to a Vite dev/preview HTTP server.
-// `attachSyncServer` only needs an EventEmitter to register the `upgrade`
 // listener, so gate on the `.on` capability rather than checking for any
 // `http.Server`-specific property. The DB path (`--db`) is read from
 // `process.argv` — `scripts/dev.ts` moves it past Vite's `--` separator so

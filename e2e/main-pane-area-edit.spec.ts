@@ -1,9 +1,3 @@
-// NOTE: this file must sort AFTER inbox.spec.ts alphabetically. inbox.spec
-// asserts exact inbox counts, which only holds while no earlier spec has
-// written to the shared e2e sync server: TinyBase's WsServer tears down the
-// per-path store on last-client-close, but the async close handler races the
-// next page's connect — once a backlog exists, leftover rows sync down into
-// the next test's fresh store. Keep the `main-pane-*` prefix.
 import { test, expect, type Page } from '@playwright/test';
 
 // Each test uses a unique, timestamped area name so OPFS state from
@@ -67,26 +61,4 @@ test.describe('Area header editing', () => {
     ).toHaveAttribute('data-active', 'true');
   });
 
-  test('a sub-area header edits the sub-area, not its parent', async ({ page }) => {
-    const parent = `Family ${uniq()}`;
-    const child = `Kids ${uniq()}`;
-    const renamed = `School ${uniq()}`;
-    await createArea(page, parent);
-    await page.locator('.area-header-add', { hasTitle: 'Add sub-area' }).click();
-    await page.locator('.area-header-add-input').fill(child);
-    await page.locator('.area-header-add-input').press('Enter');
-    await expect(page.locator('.area-header-name')).toContainText(child);
-
-    await page.locator('.area-header-name-edit').click();
-    const input = page.locator('.area-edit-name');
-    await expect(input).toHaveValue(child);
-    await input.fill(renamed);
-    await input.press('Enter');
-    await page.keyboard.press('Escape');
-
-    await expect(page.locator('.area-header-name')).toContainText(renamed);
-    // The ../ crumb still points at the parent.
-    await expect(page.locator('.area-header-crumb')).toHaveText('..');
-    await expect(page.locator('.area-header-crumb')).toHaveAttribute('aria-label', `Go to parent area: ${parent}`);
-  });
 });

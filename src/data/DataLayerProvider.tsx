@@ -30,11 +30,13 @@ export interface LocalActionDebug {
 export interface DataLayerProviderProps {
   children: ReactNode;
   offline?: boolean;
+  syncEnabled?: boolean;
 }
 
 export function DataLayerProvider({
   children,
   offline = false,
+  syncEnabled = true,
 }: DataLayerProviderProps): ReactElement {
   const store = useMemo(() => getStore(), []);
   const [persistenceReady, setPersistenceReady] = useState(false);
@@ -78,9 +80,27 @@ export function DataLayerProvider({
     // page-load handshake. Without this, the first socket gets closed
     // mid-handshake on the fake unmount and Firefox logs "connection
     // interrupted while the page was loading" for ws://…/ws.
-    const client = getSyncClient();
-    setSync(client);
-    const unsubscribe = client.subscribe(setSyncStatus);
+    //
+    // Skip sync entirely when disabled (e.g. Playwright runs): the
+    // OPFS layer above stays wired so persisted state still loads,
+    // but no WebSocket is opened and no peer traffic is generated.
+    let unsubscribe: (() => void) | undefined;
+    let onBeforeUnload: (() => void) | undefined;
+    if (syncEnabled) {
+      const client = getSyncClient();
+      setSync(client);
+      unsubscribe = client.subscribe(setSyncStatus);
+      // Tear down the WebSocket only when the page itself is going away.
+      // React's StrictMode fake-unmount cleanup does NOT destroy the
+      // client — that was the bug. `beforeunload` covers tab close,
+      // navigation, and full reloads.
+      onBeforeUnload = (): void => {
+        void destroySyncClient();
+      };
+      if (typeof window !== 'undefined') {
+        window.addEventListener('beforeunload', onBeforeUnload);
+      }
+    }
 
     const exposeDevHook =
       typeof import.meta !== 'undefined' &&
@@ -100,30 +120,16 @@ export function DataLayerProvider({
       });
     }
 
-    // Tear down the WebSocket only when the page itself is going away.
-    // React's StrictMode fake-unmount cleanup does NOT destroy the
-    // client — that was the bug. `beforeunload` covers tab close,
-    // navigation, and full reloads.
-    const onBeforeUnload = (): void => {
-      void destroySyncClient();
-    };
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', onBeforeUnload);
-    }
     return () => {
       cancelled = true;
       uninstallReconciler();
-      unsubscribe();
-      if (exposeDevHook && typeof window !== 'undefined') {
-        const w = window as Window & { __LOCALACTION?: unknown };
-        delete w.__LOCALACTION;
-      }
-      if (typeof window !== 'undefined') {
+      unsubscribe?.();
+      if (onBeforeUnload && typeof window !== 'undefined') {
         window.removeEventListener('beforeunload', onBeforeUnload);
       }
       // Intentionally NOT calling destroySyncClient() here — see above.
     };
-  }, [offline, store]);
+  }, [offline, syncEnabled, store]);
 
   const value = useMemo<DataLayerValue>(
     () => ({ store, sync, syncStatus, persistenceReady }),

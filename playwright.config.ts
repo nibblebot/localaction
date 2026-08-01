@@ -12,16 +12,16 @@ export default defineConfig({
     '**/offline-global-setup.ts',
     '**/offline-global-teardown.ts',
   ],
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env['CI'],
-  retries: process.env['CI'] ? 2 : 0,
-  workers: 1,
+  retries: 0,
+  workers: process.env['CI'] ? 2 : undefined,
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
   use: {
     baseURL: 'http://localhost:5180',
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   projects: [
@@ -35,5 +35,8 @@ export default defineConfig({
     url: 'http://localhost:5180',
     reuseExistingServer: false,
     timeout: 60_000,
+    env: {
+      VITE_LOCALACTION_SYNC_ENABLED: 'false',
+    },
   },
 });

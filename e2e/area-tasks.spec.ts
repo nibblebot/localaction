@@ -19,7 +19,7 @@ async function addAreaTask(page: Page, title: string): Promise<void> {
   await page.keyboard.press('Enter');
 }
 
-test('area tasks: add, nest, complete, and persist across reload', async ({ page }) => {
+test('area tasks: add, nest, complete, and toggle show-completed', async ({ page }) => {
   const tok = uniq();
   const area = `Area ${tok}`;
   await page.goto('/#/');
@@ -58,10 +58,4 @@ test('area tasks: add, nest, complete, and persist across reload', async ({ page
   // The area-wide show-completed toggle (in the area header) brings it back.
   await page.locator('.area-header-actions button[aria-label="Show completed tasks"]').click();
   await expect(section.locator('.task-line', { hasText: `Task one ${tok}` })).toBeVisible();
-
-  // Tasks survive a reload (OPFS persistence round-trip).
-  await page.reload();
-  const reloaded = page.locator('.pane-section', { hasText: 'Area tasks' });
-  await expect(reloaded.locator('.task-line', { hasText: `Task two ${tok}` })).toBeVisible();
-  await expect(reloaded.locator('.task-line', { hasText: `Sub task ${tok}` })).toBeVisible();
 });

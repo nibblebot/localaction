@@ -3,31 +3,9 @@ import { test, expect, type Page } from '@playwright/test';
 // Journey: project sections. A section groups top-level tasks inside a
 // project; the user adds one via the new-section input under the
 // new-task input in the card footer, renames it inline, drags it to
-// reorder, and deletes it (with its tasks) after confirmation. See
-// reorder.spec.ts for the shared
-// OPFS-cleaning / unique-token conventions.
+// reorder, and deletes it (with its tasks) after confirmation.
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-async function cleanOpfs(page: Page): Promise<void> {
-  await page.goto('/#/');
-  await page.evaluate(async () => {
-    try {
-      type OpfsRoot = FileSystemDirectoryHandle & {
-        entries(): AsyncIterable<[string, FileSystemHandle]>;
-      };
-      const opfsRoot: OpfsRoot = await navigator.storage.getDirectory();
-      for await (const [name] of opfsRoot.entries()) {
-        try {
-          await opfsRoot.removeEntry(name, { recursive: true });
-        } catch {
-          /* best effort */
-        }
-      }
-    } catch {
-      /* OPFS may be unavailable */
-    }
-  });
-}
 
 /** Rows of the project task tree in render order: `S:name` for section
  * headers, `T:title` for tasks. */
@@ -68,7 +46,6 @@ async function addSection(page: Page, name: string): Promise<void> {
 
 test.describe('Project sections', () => {
   test.beforeEach(async ({ page }) => {
-    await cleanOpfs(page);
     await page.goto('/#/');
   });
 

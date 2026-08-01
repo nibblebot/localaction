@@ -1,42 +1,8 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
 
-// NOTE: this file must sort AFTER `inbox.spec.ts` alphabetically. The
-// dev server's sync store (sqlite-backed) is shared by every test in a
-// run and replays accumulated state into each fresh browser context;
-// `inbox.spec.ts` asserts absolute inbox counts and only passes while
-// it runs first. Every other spec (this one included) uses unique
-// tokens so replayed leftovers are harmless.
-
-// Each test uses a unique, timestamped token so OPFS / sync-server
-// state from prior runs is harmless — we only inspect the rows that
-// match our token.
+// Each test uses a unique, timestamped token so state from prior runs
+// is harmless — we only inspect the rows that match our token.
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
-// Drop everything that survived from prior runs: in-memory OPFS in the
-// browser context.
-async function cleanOpfs(page: Page): Promise<void> {
-  await page.goto('/#/');
-  await page.evaluate(async () => {
-    try {
-      // FileSystemDirectoryHandle is a real DOM type; this file's
-      // ambient types only declare the sync methods we need, so we
-      // extend the type locally instead of casting at the use site.
-      type OpfsRoot = FileSystemDirectoryHandle & {
-        entries(): AsyncIterable<[string, FileSystemHandle]>;
-      };
-      const opfsRoot: OpfsRoot = await navigator.storage.getDirectory();
-      for await (const [name] of opfsRoot.entries()) {
-        try {
-          await opfsRoot.removeEntry(name, { recursive: true });
-        } catch {
-          /* best effort */
-        }
-      }
-    } catch {
-      /* OPFS may be unavailable */
-    }
-  });
-}
 
 async function createArea(page: Page, name: string): Promise<void> {
   await page.locator('button[aria-label="New area"]').click();
@@ -86,7 +52,6 @@ async function dragHandle(page: Page, locator: Locator, dy: number): Promise<voi
 
 test.describe('Drag overlay preview', () => {
   test.beforeEach(async ({ page }) => {
-    await cleanOpfs(page);
     await page.goto('/#/');
   });
 

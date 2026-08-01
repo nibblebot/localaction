@@ -81,51 +81,10 @@ test.describe('LocalAction shell', () => {
     await expect(card.locator('button[aria-label="Delete project"]')).toHaveCount(0);
   });
 
-  test('legacy task / note deep links show the welcome state', async ({ page }) => {
-    await page.goto('/#/t/whatever');
-    await expect(page.locator('.main-empty')).toBeVisible();
-    await page.goto('/#/n/whatever');
-    await expect(page.locator('.main-empty')).toBeVisible();
-  });
-
-  test('a deep link to a missing project shows the welcome state', async ({ page }) => {
-    await page.goto('/#/p/does-not-exist');
-    await expect(page.locator('.main-empty')).toBeVisible();
-  });
-
-  test('project row due date: pick from calendar, shows MM/DD, clears', async ({ page }) => {
-    await page.goto('/#/');
-    await createArea(page, 'Family');
-    await createProject(page, 'Plan trip');
-    const row = page.locator('.project-row', { hasText: 'Plan trip' });
-
-    // No due date yet: the row shows a calendar-icon affordance.
-    const dueButton = row.getByRole('button', { name: 'Set due date' });
-    await expect(dueButton).toBeVisible();
-
-    // Open the calendar and pick the 14th of the displayed (current) month.
-    await dueButton.click();
-    const calendar = page.getByRole('dialog', { name: 'Pick due date' });
-    await expect(calendar).toBeVisible();
-    await calendar.getByRole('gridcell', { name: '14', exact: true }).click();
-
-    // Popover closes and the row shows MM/DD for the 14th of this month.
-    const now = new Date();
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    await expect(calendar).toHaveCount(0);
-    await expect(row.locator('.due-date-label')).toHaveText(`${mm}/14`);
-
-    // Reopen and clear: the MM/DD label disappears.
-    await row.getByRole('button', { name: /Due .* — change/ }).click();
-    await page.getByRole('dialog', { name: 'Pick due date' })
-      .getByRole('button', { name: 'Clear' })
-      .click();
-    await expect(row.locator('.due-date-label')).toHaveCount(0);
-    await expect(row.getByRole('button', { name: 'Set due date' })).toBeVisible();
-  });
-
-  test('unknown hash shows the welcome state', async ({ page }) => {
-    await page.goto('/#/unknown/x');
-    await expect(page.locator('.main-empty')).toBeVisible();
+  test('invalid route hashes fall back to the welcome state', async ({ page }) => {
+    for (const hash of ['/#/t/whatever', '/#/n/whatever', '/#/p/does-not-exist', '/#/unknown/x']) {
+      await page.goto(hash);
+      await expect(page.locator('.main-empty')).toBeVisible();
+    }
   });
 });

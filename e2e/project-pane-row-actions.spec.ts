@@ -95,14 +95,15 @@ test.describe('Project detail pane row actions', () => {
     await openProjectPane(page, area, project);
     const header = page.locator('.area-header');
 
-    // Rename swaps the header title for an inline input.
-    await header.getByRole('button', { name: 'Rename project' }).click();
+    // Clicking the name swaps the header title for an inline input.
+    await header.getByRole('button', { name: `Rename ${project}` }).click();
     const rename = header.getByRole('textbox', { name: 'Project name' });
     await rename.fill(`Renamed ${tok}`);
     await rename.press('Enter');
     await expect(page.locator('.area-header-name')).toContainText(`Renamed ${tok}`);
 
-    // Delete confirms, then navigates back to the area without the project.
+    // The trash rides the rename input: re-enter edit mode, then delete.
+    await header.getByRole('button', { name: `Rename Renamed ${tok}` }).click();
     await header.getByRole('button', { name: 'Delete project' }).click();
     await page.getByRole('dialog', { name: 'Delete project?' })
       .getByRole('button', { name: 'Delete' })
@@ -110,5 +111,47 @@ test.describe('Project detail pane row actions', () => {
     await expect(page).toHaveURL(/#\/a\/[^/]+$/);
     await expect(page.locator('.area-header-name')).toContainText(area);
     await expect(page.locator('.project-row-name', { hasText: `Renamed ${tok}` })).toHaveCount(0);
+  });
+});
+
+
+// The rename input and its trash must stay on one row at phone
+// widths — the pane header wraps on mobile, but the trash riding the
+// input is a single atomic group (`.area-header-edit-row`). Regression
+// guard for the flex-wrap / min-width interaction at the ≤700px break.
+test.describe('Project detail pane row actions @ mobile', () => {
+  test.use({ viewport: { width: 360, height: 800 } });
+
+  test('rename input and trash share a row at 360px', async ({ page }) => {
+    const tok = uniq();
+    const area = `Area ${tok}`;
+    const project = `Project ${tok}`;
+    // Mobile sidebar is an off-canvas drawer — open it to reach the
+    // area/project affordances before the shared setup helpers run.
+    await page.goto('/#/');
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await createArea(page, area);
+    await createProject(page, project);
+    await page.locator('li.project-row', { hasText: project }).locator('.project-row-name').click();
+    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+
+    // Enter edit mode by clicking the name.
+    await page.locator('.area-header').getByRole('button', { name: `Rename ${project}` }).click();
+    const editRow = page.locator('.area-header-edit-row');
+    const input = editRow.locator('input[aria-label="Project name"]');
+    const trash = editRow.locator('button[aria-label="Delete project"]');
+    await expect(input).toBeVisible();
+    await expect(trash).toBeVisible();
+
+    const inputBox = (await input.boundingBox())!;
+    const trashBox = (await trash.boundingBox())!;
+    // Same row: the trash vertically overlaps the input. A wrap would
+    // sit it a full row below; center-aligned elements of different
+    // heights can differ a few px at the top without wrapping.
+    expect(trashBox.y).toBeLessThan(inputBox.y + inputBox.height);
+    expect(trashBox.y + trashBox.height).toBeGreaterThan(inputBox.y);
+    // Trash sits to the right of the input, fully in view (no clip).
+    expect(trashBox.x).toBeGreaterThan(inputBox.x + inputBox.width);
+    expect(trashBox.x + trashBox.width).toBeLessThanOrEqual(360);
   });
 });

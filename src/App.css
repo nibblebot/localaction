@@ -1022,6 +1022,25 @@ body.sidebar-resizing {
   background: var(--danger-bg);
 }
 
+/* The delete control rides the inline rename input on the project
+   pane header — it only renders while editing, so keep it visible
+   instead of the usual quiet-at-rest `opacity: 0` reveal. */
+.area-header-name-delete {
+  opacity: 1;
+}
+
+/* The rename input and its trash form one atomic row: the project
+   pane header wraps on mobile, but these two must stay together so
+   the trash never lands on its own line. nowrap + min-width: 0 lets
+   the group shrink as a unit (the input flexes on narrow screens). */
+.area-header-edit-row {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 /* Empty-sections toggle in the "hide empty" mode: a set state, so it
    stays visible at rest and takes the accent, like `.due-date-set`. */
 .project-row-action.project-row-action-active,
@@ -2684,6 +2703,15 @@ button .svg-icon {
     flex-wrap: wrap;
     margin-inline-end: calc(var(--icon-button-control) + var(--space-2));
     row-gap: var(--space-2);
+  }
+
+  /* The edit-row group never wraps, so on a 360px pane the input
+     must yield instead of holding its 220px floor and clipping the
+     trash — flex it so the group shrinks as one unit. */
+  .area-header-edit-row .area-header-add-input {
+    min-width: 0;
+    flex: 1 1 auto;
+    width: auto;
   }
 
   .area-header-crumb,

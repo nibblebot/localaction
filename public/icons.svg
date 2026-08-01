@@ -125,10 +125,6 @@
   <symbol id="add-section-icon" viewBox="0 0 20 20">
     <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M3 5 H12 M6 9 H15 M3 13 H9 M13.5 11 V17 M10.5 14 H16.5"/>
   </symbol>
-  <symbol id="edit-icon" viewBox="0 0 20 20">
-    <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M3 17 L4 13 L13 4 L16 7 L7 16 Z"/>
-    <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" d="M12 5 L15 8"/>
-  </symbol>
   <symbol id="palette-icon" viewBox="0 0 20 20">
     <path fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" d="M10 3 a7 7 0 1 0 0 14 a2 2 0 0 0 2 -2 v-1 a2 2 0 0 1 2 -2 h1 a2 2 0 0 0 2 -2 a7 7 0 0 0 -7 -7 Z"/>
     <circle cx="7.5" cy="9.5" r="1" fill="currentColor"/>

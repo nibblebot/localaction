@@ -882,33 +882,25 @@ function ProjectRowActions({
 
 /**
  * The action cluster on the project detail pane header: the shared
- * row actions (due date, empty-section pruning) plus the
- * management affordances that only exist here — notes, rename,
- * delete. Delete is confirmed and undoable; `onAfterDelete` lets the
- * pane navigate away from the removed project.
+ * row actions (due date, empty-section pruning) plus the notes entry
+ * point that only exists here. Rename and delete moved to the header
+ * title itself — the name is inline-editable and the trash rides the
+ * rename input (see `ProjectPaneHeader`).
  */
 function ProjectPaneActions({
   projectId,
   display,
   hideEmptySections,
   onToggleEmptySections,
-  onRename,
-  onAfterDelete,
 }: {
   projectId: string;
-  /** Display name for aria-labels and the delete confirmation. */
+  /** Display name for aria-labels. */
   display: string;
   /** Prune section headers with no visible tasks in the task list. */
   hideEmptySections: boolean;
   onToggleEmptySections: () => void;
-  onRename: () => void;
-  /** Runs after a confirmed delete (the pane navigates away). */
-  onAfterDelete: () => void;
 }): React.JSX.Element {
-  const { store } = useDataLayer();
   const { navigate } = useSelection();
-  const { offerUndo } = useUndo();
-  const [confirmDelete, setConfirmDelete] = useState(false);
   return (
     <>
       <ProjectRowActions
@@ -918,68 +910,21 @@ function ProjectPaneActions({
         onToggleEmptySections={onToggleEmptySections}
       />
       {NOTES_ENABLED && (
-      <button
-        type="button"
-        className="project-row-action icon-button"
-        aria-label={`Open notes for ${display}`}
-        title="Notes"
-        onClick={(e) => {
-          e.stopPropagation();
-          navigate({ kind: 'project-notes', id: projectId });
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#notes-icon" />
-        </svg>
-      </button>
+        <button
+          type="button"
+          className="project-row-action icon-button"
+          aria-label={`Open notes for ${display}`}
+          title="Notes"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate({ kind: 'project-notes', id: projectId });
+          }}
+        >
+          <svg className="svg-icon" aria-hidden="true">
+            <use href="/icons.svg#notes-icon" />
+          </svg>
+        </button>
       )}
-      <button
-        type="button"
-        className="project-row-action icon-button"
-        aria-label="Rename project"
-        title="Rename"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRename();
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#edit-icon" />
-        </svg>
-      </button>
-      <button
-        type="button"
-        className="project-row-action project-row-action-danger icon-button"
-        aria-label="Delete project"
-        title="Delete"
-        onClick={(e) => {
-          e.stopPropagation();
-          setConfirmDelete(true);
-        }}
-      >
-        <svg className="svg-icon" aria-hidden="true">
-          <use href="/icons.svg#trash-icon" />
-        </svg>
-      </button>
-      <ConfirmModal
-        open={confirmDelete}
-        title="Delete project?"
-        message={`"${display}" will be deleted along with its tasks and notes.`}
-        confirmLabel="Delete"
-        onConfirm={() => {
-          const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
-          deleteProject(store, projectId);
-          setConfirmDelete(false);
-          offerUndo({
-            label: `Deleted project “${display}”`,
-            onUndo: () => {
-              restoreSubtree(store, snapshot);
-            },
-          });
-          onAfterDelete();
-        }}
-        onCancel={() => setConfirmDelete(false)}
-      />
     </>
   );
 }
@@ -1424,6 +1369,8 @@ function ProjectPaneHeader({
   const areaRowIds = useRowIds(TABLES.areas, store);
   const rollups = useProjectRollups(store);
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const { offerUndo } = useUndo();
   const chain = useMemo<readonly Area[]>(() => {
     if (!areaId) return [];
     void areaRowIds.length;
@@ -1470,24 +1417,55 @@ function ProjectPaneHeader({
         <use href="/icons.svg#project-list-icon" />
       </svg>
       {editing && actions ? (
-        <input
-          type="text"
-          className="area-header-add-input"
-          aria-label="Project name"
-          defaultValue={display}
-          autoFocus
-          onBlur={(e) => {
-            const next = e.currentTarget.value.trim() || 'Untitled';
-            if (next !== display) {
-              store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
-            }
-            setEditing(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur();
-            else if (e.key === 'Escape') setEditing(false);
-          }}
-        />
+        <div className="area-header-edit-row">
+          <input
+            type="text"
+            className="area-header-add-input"
+            aria-label="Project name"
+            defaultValue={display}
+            autoFocus
+            onBlur={(e) => {
+              const next = e.currentTarget.value.trim() || 'Untitled';
+              if (next !== display) {
+                store.setCell(TABLES.projects, projectId, COLUMNS.projects.name, next);
+              }
+              setEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              else if (e.key === 'Escape') setEditing(false);
+            }}
+          />
+          {/* The trash rides the rename input and only renders while
+              editing. mousedown is suppressed so this click lands
+              instead of blurring the input first and unmounting the
+              button; the confirm dialog steals focus on open, which
+              blurs the input and ends edit mode. */}
+          <button
+            type="button"
+            className="project-row-action project-row-action-danger icon-button area-header-name-delete"
+            aria-label="Delete project"
+            title="Delete"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setConfirmDelete(true)}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#trash-icon" />
+            </svg>
+          </button>
+        </div>
+      ) : actions ? (
+        <h1 className="area-header-name">
+          <button
+            type="button"
+            className="area-header-name-edit"
+            onClick={() => setEditing(true)}
+            title="Rename project"
+            aria-label={`Rename ${display}`}
+          >
+            <span className="area-header-name-edit-text">{display}</span>
+          </button>
+        </h1>
       ) : (
         <h1 className="area-header-name">{display}</h1>
       )}
@@ -1509,13 +1487,30 @@ function ProjectPaneHeader({
             display={display}
             hideEmptySections={actions.hideEmptySections}
             onToggleEmptySections={actions.onToggleEmptySections}
-            onRename={() => setEditing(true)}
-            onAfterDelete={() => {
-              navigate(areaId ? { kind: 'area', id: areaId } : INBOX);
-            }}
           />
           <ProjectProgressMeter done={rollup?.done ?? 0} total={rollup?.total ?? 0} />
         </div>
+      )}
+      {actions && (
+        <ConfirmModal
+          open={confirmDelete}
+          title="Delete project?"
+          message={`"${display}" will be deleted along with its tasks and notes.`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.project, projectId);
+            deleteProject(store, projectId);
+            setConfirmDelete(false);
+            offerUndo({
+              label: `Deleted project “${display}”`,
+              onUndo: () => {
+                restoreSubtree(store, snapshot);
+              },
+            });
+            navigate(areaId ? { kind: 'area', id: areaId } : INBOX);
+          }}
+          onCancel={() => setConfirmDelete(false)}
+        />
       )}
       {trailing && <div className="area-header-actions">{trailing}</div>}
     </div>

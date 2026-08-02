@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import InlineAddInput from './InlineAddInput.tsx';
+import { useState } from 'react';
+import InlineAddField from './InlineAddField.tsx';
 
 export interface InlineAddButtonProps {
   /** aria-label and title of the closed "+" button, e.g. "Add note". */
@@ -17,10 +17,11 @@ export interface InlineAddButtonProps {
 
 /**
  * A compact "+" icon button for a section/group header that reveals an
- * InlineAddInput in place (focused, inside the header row itself).
+ * InlineAddField in place (focused, inside the header row itself).
  * Enter commits and collapses back to the button; Esc or blurring an
- * empty input also collapses. InlineAddInput itself stays untouched —
- * the toggle lives here.
+ * empty input also collapses. When the revealed input must render
+ * somewhere other than the header (e.g. appended at the end of the
+ * list), keep the button and compose InlineAddField directly instead.
  */
 export default function InlineAddButton({
   label,
@@ -31,16 +32,11 @@ export default function InlineAddButton({
   onOpenChange,
 }: InlineAddButtonProps): React.JSX.Element {
   const [open, setOpenState] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   function setOpen(next: boolean): void {
     setOpenState(next);
     onOpenChange?.(next);
   }
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
 
   if (!open) {
     return (
@@ -59,29 +55,11 @@ export default function InlineAddButton({
   }
 
   return (
-    <div
-      className="inline-add-wrap"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') setOpen(false);
-      }}
-      onBlur={(e) => {
-        if (
-          !e.currentTarget.contains(e.relatedTarget as Node | null) &&
-          !inputRef.current?.value.trim()
-        ) {
-          setOpen(false);
-        }
-      }}
-    >
-      <InlineAddInput
-        ref={inputRef}
-        placeholder={placeholder}
-        ariaLabel={inputAriaLabel}
-        onSubmit={(value) => {
-          onSubmit(value);
-          setOpen(false);
-        }}
-      />
-    </div>
+    <InlineAddField
+      placeholder={placeholder}
+      ariaLabel={inputAriaLabel}
+      onSubmit={onSubmit}
+      onClose={() => setOpen(false)}
+    />
   );
 }

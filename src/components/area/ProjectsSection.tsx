@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useDataLayer,
   useArea,
@@ -13,7 +13,8 @@ import { useSelection } from '../context/useSelection.ts';
 import ProjectStatusGroups from '../projects/ProjectStatusGroups.tsx';
 import type { ProjectStatusSlice } from '../projects/ProjectStatusGroups.tsx';
 import ProjectRow from '../projects/ProjectRow.tsx';
-import InlineAddButton from '../shared/InlineAddButton.tsx';
+import InlineAddField from '../shared/InlineAddField.tsx';
+import type { StatusGroupId } from '../dnd/projectGroupDrop.ts';
 import type { SubAreaRef } from './types.ts';
 
 export default function ProjectsSection({
@@ -104,6 +105,16 @@ export default function ProjectsSection({
     if (group === 'backlog') updateProject(store, id, { status: PROJECT_STATUS.backlog });
   }
 
+  // Which group's add-project input is open. The "+" trigger stays in
+  // the hoisted group header, but the revealed input renders appended
+  // at the end of the viewed area's slice of that group — where
+  // createProject's next-order placement lands the new row — instead
+  // of up in the header at the top of the list.
+  const [addingGroup, setAddingGroup] = useState<StatusGroupId | null>(null);
+
+  const addLabel = (group: 'active' | 'backlog'): string =>
+    group === 'active' ? 'Add project to Active' : 'Add project to Backlog';
+
   return (
     <section className="projects-tab" aria-label="Projects">
       <ProjectStatusGroups
@@ -111,17 +122,31 @@ export default function ProjectsSection({
         collapsedGroups={collapsedGroups}
         onToggleGroup={onToggleGroup}
         renderGroupAction={(group) => (
-          <InlineAddButton
-            label={group === 'active' ? 'Add project to Active' : 'Add project to Backlog'}
-            placeholder="New project…"
-            inputAriaLabel="New project"
-            className="area-tab-action-add"
-            onSubmit={(name) => addProject(name, group)}
-            onOpenChange={(open) => {
-              if (open && collapsedGroups.has(group)) onToggleGroup(group);
+          <button
+            type="button"
+            className="area-tab-action icon-button area-tab-action-add"
+            aria-label={addLabel(group)}
+            title={addLabel(group)}
+            onClick={() => {
+              if (collapsedGroups.has(group)) onToggleGroup(group);
+              setAddingGroup(addingGroup === group ? null : group);
             }}
-          />
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#add-icon" />
+            </svg>
+          </button>
         )}
+        renderGroupFooter={(group) =>
+          addingGroup === group ? (
+            <InlineAddField
+              placeholder="New project…"
+              ariaLabel="New project"
+              onSubmit={(name) => addProject(name, group)}
+              onClose={() => setAddingGroup(null)}
+            />
+          ) : null
+        }
         renderSortableRow={(p, handle) => (
           <ProjectRow
             key={p.projectId}

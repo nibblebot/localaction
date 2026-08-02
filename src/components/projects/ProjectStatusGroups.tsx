@@ -217,6 +217,7 @@ export default function ProjectStatusGroups({
   collapsedGroups,
   onToggleGroup,
   renderGroupAction,
+  renderGroupFooter,
   renderSortableRow,
   renderRow,
 }: {
@@ -228,6 +229,11 @@ export default function ProjectStatusGroups({
   /** Action rendered at the right edge of the Active / Backlog group
    * headers (e.g. the per-group add-project "+"). Done gets none. */
   renderGroupAction?: (group: StatusGroupId) => ReactNode;
+  /** Appended after the viewed area's slice of the group (e.g. the
+   * open add-project input). A non-null return also counts as group
+   * content, so an otherwise-empty expanded group keeps its list (and
+   * the input) mounted instead of swapping in the ghost hint. */
+  renderGroupFooter?: (group: StatusGroupId) => ReactNode;
   renderSortableRow: (p: ProjectRollup, handle: SortableHandleProps) => ReactNode;
   renderRow: (p: ProjectRollup) => ReactNode;
 }): ReactElement {
@@ -352,6 +358,13 @@ export default function ProjectStatusGroups({
   const sortableListLabel = (s: ProjectStatusSlice, title: string): string =>
     s.name === null ? `${title} projects` : `${title} projects in ${s.name}`;
 
+  // Render props, not hooks — safe to call once up front. The footers
+  // (the open add-project input) pin their group open: a non-null
+  // footer counts as content so an empty expanded group doesn't swap
+  // the input for the ghost hint.
+  const activeFooter = renderGroupFooter?.('active') ?? null;
+  const backlogFooter = renderGroupFooter?.('backlog') ?? null;
+
   return (
     <DndContext
       sensors={sensors}
@@ -399,7 +412,10 @@ export default function ProjectStatusGroups({
                 count={activeSlices.reduce((n, s) => n + s.active.length, 0)}
                 collapsed={collapsedGroups.has('active')}
                 onToggleCollapse={() => onToggleGroup('active')}
-                hasContent={activeSlices.some((s) => sliceHasContent(s, s.active, 'backlog'))}
+                hasContent={
+                  activeFooter !== null ||
+                  activeSlices.some((s) => sliceHasContent(s, s.active, 'backlog'))
+                }
                 emptyHint="No active projects"
                 trailing={renderGroupAction?.('active')}
                 dropRef={dropProps.dropRef}
@@ -428,6 +444,7 @@ export default function ProjectStatusGroups({
                           ))}
                         </div>
                       )}
+                      {s.name === null && activeFooter}
                     </SliceDropZone>
                   );
                 })}
@@ -448,7 +465,10 @@ export default function ProjectStatusGroups({
                 count={backlogSlices.reduce((n, s) => n + s.backlog.length, 0)}
                 collapsed={collapsedGroups.has('backlog')}
                 onToggleCollapse={() => onToggleGroup('backlog')}
-                hasContent={backlogSlices.some((s) => sliceHasContent(s, s.backlog, 'active'))}
+                hasContent={
+                  backlogFooter !== null ||
+                  backlogSlices.some((s) => sliceHasContent(s, s.backlog, 'active'))
+                }
                 emptyHint="No backlog projects"
                 trailing={renderGroupAction?.('backlog')}
                 dropRef={dropProps.dropRef}
@@ -477,6 +497,7 @@ export default function ProjectStatusGroups({
                           ))}
                         </div>
                       )}
+                      {s.name === null && backlogFooter}
                     </SliceDropZone>
                   );
                 })}

@@ -583,25 +583,15 @@ body.sidebar-resizing {
   display: contents;
 }
 
-/* Header-revealed inline-add input (InlineAddButton open state). In a
-   pane-section head it flexes inline next to the title; in a tab-group
-   head it wraps onto its own row, indented under the title text. */
+/* Header-revealed inline-add input (InlineAddButton open state): in a
+   pane-section head it flexes inline next to the title. The project
+   status groups reveal their input appended at the end of the list
+   instead, where it uses the base .inline-add-input block styling. */
 .pane-section-head .inline-add-input {
   flex: 1 1 0;
   min-width: 0;
   margin: 0;
   align-self: center;
-}
-
-.tab-group-head .inline-add-wrap {
-  display: block;
-  flex: 0 0 100%;
-}
-
-.tab-group-head .inline-add-input {
-  margin: var(--space-1) 0;
-  margin-inline-start: calc(var(--icon-sm) + 6px);
-  width: calc(100% - var(--icon-sm) - 6px);
 }
 
 /* Group header as a drop target: a quiet dashed outline while a drag

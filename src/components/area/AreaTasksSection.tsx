@@ -68,7 +68,6 @@ export default function AreaTasksSection({
   return (
     <CollapsibleSection
       title="Area tasks"
-      icon="tasks"
       count={visibleTopLevel + visibleSubAreaCount}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}

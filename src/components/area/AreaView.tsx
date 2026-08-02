@@ -111,7 +111,6 @@ export default function AreaView({ areaId }: { areaId: string }): React.JSX.Elem
         />
         <CollapsibleSection
           title="Projects"
-          icon="project-list"
           count={projectCount}
           collapsed={collapsedSections.collapsed.has('projects')}
           onToggleCollapse={() => collapsedSections.toggle('projects')}

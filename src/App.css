@@ -905,6 +905,12 @@ body.sidebar-resizing {
   padding: var(--space-3) var(--space-3) var(--space-2);
 }
 
+/* The tree returns null for a task-less project, leaving this wrapper
+   empty — it must not still spend its divider and padding on layout. */
+.project-row-tasks:empty {
+  display: none;
+}
+
 .project-row-name {
   /* Shrink-to-fit so the add-task "+" rides directly on the name text
      (the header add-affordance pattern); the right-edge cluster still

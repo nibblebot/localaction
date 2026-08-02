@@ -2473,14 +2473,35 @@ button .svg-icon {
    Due date (row button + calendar popover; projects and tasks)
    ============================================================ */
 
-/* Label variant (a set date renders MM/DD instead of the calendar
-   glyph): the control hugs the label, floored at the 32px square. */
+/* Label variant (a set date renders the calendar glyph beside the
+   "Aug 2" label): the control hugs its content, floored at the 32px
+   square. Overdue/today tint both glyph and label via currentColor. */
 .due-date-set {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   width: auto;
   min-width: var(--icon-button-control);
   height: var(--icon-button-control);
   padding: 0 4px;
   color: var(--text);
+}
+
+/* The glyph inside a set-date button shrinks below the 20px button-icon
+   default so the control stays compact next to the progress meter. */
+.due-date-set .svg-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Overdue matches the Today pane's Overdue section convention
+   (--danger, see .today-overdue); today takes the accent. */
+.due-date-overdue {
+  color: var(--danger);
+}
+
+.due-date-today {
+  color: var(--accent);
 }
 
 .due-date-label {
@@ -2605,6 +2626,14 @@ button .svg-icon {
 @media (max-width: 767px) {
   .app-shell {
     grid-template-columns: 1fr;
+  }
+
+  /* Progress count hidden on narrow rows: the bar already encodes the
+     ratio and the container's aria-label keeps the numbers for AT, so
+     the width goes to the due-date control instead — and the count can
+     no longer be mistaken for the due-date label. */
+  .project-row-progress-count {
+    display: none;
   }
 
   /* Hamburger — fixed in the top-inline-start corner, above pane

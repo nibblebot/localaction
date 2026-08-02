@@ -160,7 +160,12 @@ function weekdayShort(iso: string): string {
   return days[new Date(y, m - 1, d).getDay()];
 }
 
+// Mirror of src/components/shared/dates.ts `weekdayWithDate` — kept
+// local so e2e stays self-contained (no src imports in this tree).
 function weekdayWithDate(iso: string): string {
-  const [, month, day] = iso.split('-');
-  return `${weekdayShort(iso)} · ${Number(month)}/${Number(day)}`;
+  const [y, m, d] = iso.split('-').map(Number);
+  const monthDay = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
+    new Date(y, m - 1, d),
+  );
+  return `${weekdayShort(iso)}, ${monthDay}`;
 }

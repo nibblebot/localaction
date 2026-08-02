@@ -6,7 +6,7 @@
  * - `readOnly`        — area flat list: span title, no row
  *                       actions (add sub-task, delete).
  * - `showDueDate`     — optional static date label after the title
- *                       (e.g. "Mon · 7/20"); surfaces calendar days
+ *                       (e.g. "Mon, Jul 20"); surfaces calendar days
  *                       in cross-day views without exposing the
  *                       editable DueDateButton actions.
  * - `effectiveStatus` — flat lists show ancestor-aware effective

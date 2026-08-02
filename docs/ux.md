@@ -122,7 +122,7 @@ add-sub-area button sits beside the name. The header's action row holds the
   Group headers collapse their rows (state persisted per device).
   Each project row shows an
   expand caret, the name, a done/total progress meter, a due-date
-  affordance (calendar icon, or the date once set), an empty-sections
+  affordance (calendar icon; the date appears next to it once set), an empty-sections
   toggle (section headers with no visible tasks are hidden by
   default; the toggle shows them for that project; per-project,
   persisted per device), a note icon

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap.ts';
-import { toIso, todayIso } from '../shared/dates.ts';
+import { toIso, todayIso, monthDayShort } from '../shared/dates.ts';
 
 interface Anchor {
   x: number;
@@ -13,12 +13,6 @@ const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ] as const;
-
-/** Format a date-only ISO string (`YYYY-MM-DD`) as `MM/DD` without timezone math. */
-function formatDueDate(iso: string): string {
-  const [, mm, dd] = iso.split('-');
-  return `${mm}/${dd}`;
-}
 
 function parseIso(iso: string | null): { year: number; month: number; day: number } | null {
   if (!iso) return null;
@@ -37,8 +31,9 @@ function monthCells(year: number, month: number): (number | null)[] {
 }
 
 /**
- * Entity-agnostic due-date control. Shows `MM/DD` when a due date is
- * set (calendar icon otherwise); clicking opens a monthly calendar
+ * Entity-agnostic due-date control. Shows a calendar icon plus the
+ * date (e.g. "Aug 2") when a due date is set (icon alone otherwise),
+ * tinted for today/overdue; clicking opens a monthly calendar
  * popover to pick or clear the date. `className` carries the
  * row-context action styling (`project-row-action`, `task-line-action`);
  * the generic `due-date` classes size the label variant. Data-bound
@@ -55,14 +50,22 @@ export default function DueDateButton({
   className: string;
 }): React.JSX.Element {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const today = todayIso();
+  const modifier = dueDate
+    ? dueDate < today
+      ? ' due-date-overdue'
+      : dueDate === today
+        ? ' due-date-today'
+        : ''
+    : '';
 
   return (
     <>
       <button
         type="button"
-        className={`${className} due-date${dueDate ? ' due-date-set' : ' icon-button'}`}
-        aria-label={dueDate ? `Due ${formatDueDate(dueDate)} — change` : 'Set due date'}
-        title={dueDate ? `Due ${formatDueDate(dueDate)}` : 'Set due date'}
+        className={`${className} due-date${dueDate ? ` due-date-set${modifier}` : ' icon-button'}`}
+        aria-label={dueDate ? `Due ${monthDayShort(dueDate)} — change` : 'Set due date'}
+        title={dueDate ? `Due ${monthDayShort(dueDate)}` : 'Set due date'}
         aria-haspopup="dialog"
         aria-expanded={anchor !== null}
         onClick={(e) => {
@@ -72,7 +75,12 @@ export default function DueDateButton({
         }}
       >
         {dueDate ? (
-          <span className="due-date-label">{formatDueDate(dueDate)}</span>
+          <>
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#calendar-icon" />
+            </svg>
+            <span className="due-date-label">{monthDayShort(dueDate)}</span>
+          </>
         ) : (
           <svg className="svg-icon" aria-hidden="true">
             <use href="/icons.svg#calendar-icon" />

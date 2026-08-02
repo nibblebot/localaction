@@ -59,12 +59,12 @@ test.describe('Project detail pane row actions', () => {
     await page.locator(`input[aria-label="Mark “Task one ${tok}” done"]`).click();
     await expect(header.locator('.project-row-progress-count')).toHaveText('1 / 2');
 
-    // Due date: pick the 14th from the calendar popover, label shows MM/DD.
+    // Due date: pick the 14th from the calendar popover, label shows "Aug 14" shape.
     await header.getByRole('button', { name: 'Set due date' }).click();
     const calendar = page.getByRole('dialog', { name: 'Pick due date' });
     await calendar.getByRole('gridcell', { name: '14', exact: true }).click();
-    const mm = String(new Date().getMonth() + 1).padStart(2, '0');
-    await expect(header.locator('.due-date-label')).toHaveText(`${mm}/14`);
+    const monthShort = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(new Date());
+    await expect(header.locator('.due-date-label')).toHaveText(`${monthShort} 14`);
 
     // Empty-sections toggle prunes section headers with no visible tasks.
     await page

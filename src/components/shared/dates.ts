@@ -32,12 +32,22 @@ export function weekdayShort(iso: string): string {
 }
 
 /**
- * Weekday + day-of-month label (e.g. "Mon · 7/20") for a local-date ISO
+ * Month + day-of-month label (e.g. "Aug 2") for a local-date ISO
+ * string, locale-formatted via `Intl.DateTimeFormat`.
+ */
+export function monthDayShort(iso: string): string {
+  const { year, month, day } = partsOf(iso);
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
+    new Date(year, month, day),
+  );
+}
+
+/**
+ * Weekday + month/day label (e.g. "Mon, Jul 20") for a local-date ISO
  * string. Lets a row carry its calendar day inside any cross-day view.
  */
 export function weekdayWithDate(iso: string): string {
-  const { month, day } = partsOf(iso);
-  return `${weekdayShort(iso)} · ${month + 1}/${day}`;
+  return `${weekdayShort(iso)}, ${monthDayShort(iso)}`;
 }
 
 /**

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../hooks/useFocusTrap.ts';
 import { toIso, todayIso } from '../shared/dates.ts';
 
@@ -141,6 +142,16 @@ function DueDateCalendar({
     const el = dialogRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
+    // Touch gets a centered modal, not an anchored popover: the anchor
+    // usually lives in the collapsing task-menu strip, and a thumb
+    // reach to a row edge is worse than a stable center target.
+    if (window.matchMedia('(pointer: coarse)').matches) {
+      setPos({
+        top: Math.max(8, (window.innerHeight - rect.height) / 2),
+        left: Math.max(8, (window.innerWidth - rect.width) / 2),
+      });
+      return;
+    }
     setPos({
       top: Math.max(8, Math.min(anchor.y, window.innerHeight - rect.height - 8)),
       left: Math.max(8, Math.min(anchor.x, window.innerWidth - rect.width - 8)),
@@ -154,14 +165,22 @@ function DueDateCalendar({
     });
   }
 
-  return (
+  // Portal to <body>: inside a task row this popover would otherwise
+  // inherit the touch menu strip's transform/visibility — the
+  // transform becomes the fixed-position containing block (dialog
+  // lands in the wrong place) and the strip's collapse transition
+  // hides the dialog mid-tap. Picking, clearing, backdrop-tapping, or
+  // Escaping all close the dialog while the row's capture handler
+  // closes the strip, so the pair always dismisses together.
+  return createPortal(
     <>
       <div
         className="due-calendar-backdrop"
         onClick={(e) => {
-          // The popover renders inline inside clickable rows (project
-          // row → detail pane) — keep backdrop/dialog clicks from
-          // bubbling into the row's own click target.
+          // Portal events still bubble through the React tree into
+          // clickable rows (project row → detail pane) — keep
+          // backdrop/dialog clicks from reaching the row's own click
+          // target.
           e.stopPropagation();
           onClose();
         }}
@@ -246,6 +265,7 @@ function DueDateCalendar({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   );
 }

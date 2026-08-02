@@ -16,7 +16,7 @@ test('blurring a fresh task title with no content removes the row', async ({ pag
   await page.goto('/#/');
   await createArea(page, `Area ${tok}`);
 
-  const section = page.locator('.pane-section', { hasText: 'Area tasks' });
+  const section = page.locator('.pane-section', { hasText: 'Tasks' });
   await section.locator('button[aria-label="Add task"]').click();
   await expect(section.locator('.task-line-title:focus')).toBeVisible();
 
@@ -39,7 +39,7 @@ test('typing a title then blurring keeps the task', async ({ page }) => {
   await page.goto('/#/');
   await createArea(page, `Area ${tok}`);
 
-  const section = page.locator('.pane-section', { hasText: 'Area tasks' });
+  const section = page.locator('.pane-section', { hasText: 'Tasks' });
   await section.locator('button[aria-label="Add task"]').click();
   await page.keyboard.type(`Kept ${tok}`);
   await page.keyboard.press('Tab');

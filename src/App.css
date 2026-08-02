@@ -630,7 +630,7 @@ body.sidebar-resizing {
 }
 
 /* ============================================================
-   Collapsible sections (Projects / Area tasks / Notes)
+   Collapsible sections (Projects / Tasks / Notes)
    ============================================================ */
 
 .pane-section-head {
@@ -2771,7 +2771,7 @@ button .svg-icon {
   }
 
   /* One uniform header rhythm: the area header, the pane section
-     heads (PROJECTS / Area tasks), and the status-group heads
+     heads (PROJECTS / Tasks), and the status-group heads
      (Active / Backlog / Done) all take the project-row header line's
      intrinsic height (32px icon control + 2 × --space-2 padding), so
      headers and project rows land on the same row height. */

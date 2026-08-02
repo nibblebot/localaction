@@ -67,7 +67,7 @@ export default function AreaTasksSection({
   }, [store, tasksV, subAreas, showCompleted]);
   return (
     <CollapsibleSection
-      title="Area tasks"
+      title="Tasks"
       count={visibleTopLevel + visibleSubAreaCount}
       collapsed={collapsed}
       onToggleCollapse={onToggleCollapse}

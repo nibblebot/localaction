@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /**
- * Top-level area-view section (Area tasks / Projects / Notes) with a
+ * Top-level area-view section (Tasks / Projects / Notes) with a
  * collapsible header. Header chrome reuses the `.tab-group-*` label
  * styles so sections read like the inner ACTIVE / DONE groups, one
  * register up.

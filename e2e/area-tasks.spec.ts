@@ -11,8 +11,8 @@ async function createArea(page: Page, name: string): Promise<void> {
   await expect(page.locator('.area-header-name')).toContainText(name);
 }
 
-async function addAreaTask(page: Page, title: string): Promise<void> {
-  const section = page.locator('.pane-section', { hasText: 'Area tasks' });
+async function addAreaTask(page: Page, title: string): Promise {
+  const section = page.locator('.pane-section', { hasText: 'Tasks' });
   await section.locator('button[aria-label="Add task"]').click();
   await expect(section.locator('.task-line-title:focus')).toBeVisible();
   await page.keyboard.type(title);
@@ -25,9 +25,9 @@ test('area tasks: add, nest, complete, and toggle show-completed', async ({ page
   await page.goto('/#/');
   await createArea(page, area);
 
-  // The Area tasks band is always visible, even when empty.
-  const section = page.locator('.pane-section', { hasText: 'Area tasks' });
-  await expect(section.locator('.pane-section-toggle')).toContainText('Area tasks');
+  // The Tasks band is always visible, even when empty.
+  const section = page.locator('.pane-section', { hasText: 'Tasks' });
+  await expect(section.locator('.pane-section-toggle')).toContainText('Tasks');
   await expect(section.locator('button[aria-label="Add task"]')).toBeVisible();
 
   // Add two area-rooted tasks; the header count tracks them.

@@ -34,7 +34,7 @@ test.describe('LocalAction shell', () => {
     await createArea(page, 'Work');
     await expect(page).toHaveURL(/#\/a\//);
     await expect(page.locator('.area-header-name')).toContainText('Work');
-    await expect(page.locator('.pane-section-toggle', { hasText: 'Area tasks' })).toBeVisible();
+    await expect(page.locator('.pane-section-toggle', { hasText: 'Tasks' })).toBeVisible();
     await expect(page.locator('.pane-section-toggle', { hasText: 'Projects' })).toBeVisible();
   });
 

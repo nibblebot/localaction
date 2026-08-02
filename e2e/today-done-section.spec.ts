@@ -15,7 +15,7 @@ async function createArea(page: Page, name: string): Promise<void> {
 }
 
 async function addAreaTask(page: Page, title: string): Promise<void> {
-  const section = page.locator('.pane-section', { hasText: 'Area tasks' });
+  const section = page.locator('.pane-section', { hasText: 'Tasks' });
   await section.locator('button[aria-label="Add task"]').click();
   await expect(section.locator('.task-line-title:focus')).toBeVisible();
   await page.keyboard.type(title);

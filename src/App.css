@@ -1343,10 +1343,9 @@ body.sidebar-resizing {
 /* Right-aligned action cluster on task rows (DueDate, AddSubtask)
    plus its ⋯ trigger. The delete trash lives beside the title input
    in edit mode instead (see .task-line-trash below). The wrapper owns
-   the single auto-margin
-   slot so trigger and strip shift together; the strip itself
-   collapses behind the trigger on touch (see the coarse-pointer
-   block). */
+   the single auto-margin slot; on touch the strip floats out of flow
+   as an overlay left of the trigger (see the coarse-pointer block),
+   so opening it never shifts the row's layout. */
 .task-line-menu {
   display: inline-flex;
   align-items: center;
@@ -2791,22 +2790,45 @@ button .svg-icon {
     position: relative;
   }
 
-  /* The task-row action strip collapses behind its ⋯ trigger;
-     opening slides the strip out to the left of it.
+  /* The task-row action strip floats as an overlay on touch:
+     absolutely positioned out of the row's flow, it slides out to the
+     left of its ⋯ trigger without shifting any other element. The
+     trigger stays in flow at the row's right edge, but the open
+     menu's z-popover layer (.task-line-menu-open) lifts it together
+     with the strip, so the pair reads as one elevated chip.
      visibility rides the transition so the hidden strip stays out
      of the tab order but the open one animates immediately. */
+  .task-line-menu {
+    position: relative;
+  }
+
   .task-line-menu .task-line-menu-trigger {
     display: inline-flex;
   }
 
   .task-line-actions {
-    overflow: hidden;
+    position: absolute;
+    /* Dock to the menu's right edge — the surface extends *under*
+       the in-flow ⋯ trigger (padding reserves its 32px slot), so
+       trigger and strip read as one continuous panel. */
+    inset-inline-end: 0;
+    top: 50%;
     visibility: hidden;
-    max-width: 0;
     opacity: 0;
-    transform: translateX(8px);
+    transform: translate(8px, -50%);
+    padding: 2px;
+    padding-inline-end: calc(var(--icon-button-control) + 2px);
+    /* Matches the lavender row-hover tint it floats over (one step
+       quieter than --surface-active — the user asked for the lighter
+       purple; DESIGN.md tonal elevation, not the white card surface). */
+    background: var(--surface-hover);
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    /* Float cue: slight shadow spilling left + below lifts the panel
+       off the row layer (user-requested exception to DESIGN.md's
+       no-shadows-at-rest rule — this is a raised overlay, not rest). */
+    box-shadow: -2px 3px 8px rgba(76, 29, 149, 0.12);
     transition:
-      max-width 0.2s ease,
       opacity 0.15s ease,
       transform 0.2s ease,
       visibility 0.2s ease;
@@ -2814,12 +2836,17 @@ button .svg-icon {
 
   .task-line-menu-open .task-line-actions {
     visibility: visible;
-    /* 2 × 32px controls + 1 × 6px gap (due-date button widens past
-       32px when a date is set) — tracks --icon-button-control and
-       the strip's gap; bump if either grows. */
-    max-width: 120px;
     opacity: 1;
-    transform: none;
+    transform: translate(0, -50%);
+  }
+
+  /* Keep the ⋯ glyph above the strip surface that extends beneath
+     it. (.icon-button is already position: relative, so DOM order
+     wins today; the explicit z-index keeps the trigger on top even
+     if that ever changes.) */
+  .task-line-menu-open .task-line-menu-trigger {
+    position: relative;
+    z-index: 1;
   }
 
   /* Long-press drag on touch activates from the row itself, so the

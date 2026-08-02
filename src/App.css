@@ -2748,6 +2748,17 @@ button .svg-icon {
     white-space: nowrap;
   }
 
+  /* One uniform header rhythm: the area header, the pane section
+     heads (PROJECTS / Area tasks), and the status-group heads
+     (Active / Backlog / Done) all take the project-row header line's
+     intrinsic height (32px icon control + 2 × --space-2 padding), so
+     headers and project rows land on the same row height. */
+  .area-header,
+  .pane-section-head,
+  .tab-group-head {
+    min-height: calc(var(--icon-button-control) + 2 * var(--space-2));
+  }
+
   /* The progress cluster yields to the row title on narrow panes:
      the tabular count carries the rollup (it's the precise half of
      the readout); the bar shrinks to a compact 48px instead of

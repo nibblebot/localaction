@@ -8,6 +8,7 @@ import MainPane from './components/MainPane.tsx';
 import { useFocusTrap } from './components/hooks/useFocusTrap.ts';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import QuickAddModal from './components/shared/QuickAddModal.tsx';
+import SyncStatusBadge from './components/shared/SyncStatusBadge.tsx';
 import './App.css';
 
 // Dev-only TinyBase Inspector: `import.meta.env.DEV` is statically replaced
@@ -69,6 +70,13 @@ function App(): React.JSX.Element {
                     <use href="/icons.svg#menu-icon" />
                   </svg>
                 </button>
+                {/* Mobile-only sync indicator: fixed top-right below
+                    768px (CSS hides the slot at ≥768px, where the
+                    sidebar-footer badge serves). Each badge instance
+                    manages its own popover. */}
+                <div className="shell-sync-slot">
+                  <SyncStatusBadge />
+                </div>
                 <Sidebar
                   ref={sidebarRef}
                   drawerOpen={drawerOpen}

@@ -12,6 +12,12 @@ import { logWarn } from '../log.ts';
 import { backfillOrder } from './order.ts';
 import { installTombstoneReconciler } from './deletion.ts';
 import {
+  getSyncLog,
+  installSyncLogCapture,
+  recordConnectionEvent,
+  setPushCaptureEnabled,
+} from './syncLog.ts';
+import {
   getSyncClient,
   destroySyncClient,
   type SyncClient,
@@ -52,12 +58,23 @@ export function DataLayerProvider({
     // subtree rooted at a tombstoned target.
     const uninstallReconciler = installTombstoneReconciler(store);
 
+    // Attach sync capture to the store: inbound merges log `pull` events,
+    // local commits log `push`/`sweep`. The log lives outside the store
+    // (module ring buffer), so this can never feed back into sync.
+    const uninstallSyncLog = installSyncLogCapture(store, getSyncLog());
+
     if (offline) {
       // Offline mode skips persistence + sync; still normalise the
       // store once so any seeded rows from dev tests pick up `order`.
       backfillOrder(store);
+      // Gate opens only after the one-time normalisation above, so the
+      // backfill itself never appears in the sync log.
+      setPushCaptureEnabled(true);
       setPersistenceReady(true);
-      return uninstallReconciler;
+      return () => {
+        uninstallReconciler();
+        uninstallSyncLog();
+      };
     }
 
     let cancelled = false;
@@ -67,6 +84,11 @@ export function DataLayerProvider({
         // After OPFS has loaded the persisted snapshot, fill in any
         // missing `order` cells. Idempotent — re-running is a no-op.
         backfillOrder(store);
+        // Open the push gate only now: the OPFS load transaction and the
+        // backfill must never appear in the sync log. Not disabled in
+        // cleanup — module-level flag, matching the never-destroyed sync
+        // client lifecycle.
+        setPushCaptureEnabled(true);
       } catch (err) {
         logWarn('persistence', `disabled: ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -89,7 +111,10 @@ export function DataLayerProvider({
     if (syncEnabled) {
       const client = getSyncClient();
       setSync(client);
-      unsubscribe = client.subscribe(setSyncStatus);
+      unsubscribe = client.subscribe((s) => {
+        setSyncStatus(s);
+        recordConnectionEvent(getSyncLog(), s);
+      });
       // Tear down the WebSocket only when the page itself is going away.
       // React's StrictMode fake-unmount cleanup does NOT destroy the
       // client — that was the bug. `beforeunload` covers tab close,
@@ -123,6 +148,7 @@ export function DataLayerProvider({
     return () => {
       cancelled = true;
       uninstallReconciler();
+      uninstallSyncLog();
       unsubscribe?.();
       if (onBeforeUnload && typeof window !== 'undefined') {
         window.removeEventListener('beforeunload', onBeforeUnload);

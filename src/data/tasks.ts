@@ -107,33 +107,39 @@ export function createTaskAfter(
 
 export function updateTask(store: MergeableStore, id: string, patch: TaskPatch): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
-  // Stamp / clear the completion timestamp BEFORE the status write so
-  // the helper observes the previous (pre-patch) status. Calling
-  // afterward would read the just-written `done` and treat the open →
-  // done transition as a no-op.
-  if (patch.status !== undefined) {
-    writeCompletionTimestamp(store, id, patch.status);
-  }
-  const next: Record<string, string | number | null | undefined> = {
-    [COLUMNS.tasks.updatedAt]: nowIso(),
-  };
-  if (patch.title !== undefined) next[COLUMNS.tasks.title] = patch.title;
-  if (patch.status !== undefined) next[COLUMNS.tasks.status] = patch.status;
-  if (patch.placement !== undefined) {
-    const encoded = encodePlacement(patch.placement);
-    if (encoded === null) {
-      store.delCell(TABLES.tasks, id, COLUMNS.tasks.placement);
-    } else {
-      next[COLUMNS.tasks.placement] = encoded;
+  // One explicit transaction for the whole patch: the completion-timestamp
+  // helper, the delCell side-effects, and the final row write are separate
+  // implicit transactions otherwise — non-atomic, and read as several
+  // changes downstream (e.g. one sync-log push per transaction).
+  store.transaction(() => {
+    // Stamp / clear the completion timestamp BEFORE the status write so
+    // the helper observes the previous (pre-patch) status. Calling
+    // afterward would read the just-written `done` and treat the open →
+    // done transition as a no-op.
+    if (patch.status !== undefined) {
+      writeCompletionTimestamp(store, id, patch.status);
     }
-  }
-  if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
-  if (patch.dueDate === null) {
-    store.delCell(TABLES.tasks, id, COLUMNS.tasks.dueDate);
-  } else if (patch.dueDate !== undefined) {
-    next[COLUMNS.tasks.dueDate] = patch.dueDate;
-  }
-  store.setPartialRow(TABLES.tasks, id, row(next));
+    const next: Record<string, string | number | null | undefined> = {
+      [COLUMNS.tasks.updatedAt]: nowIso(),
+    };
+    if (patch.title !== undefined) next[COLUMNS.tasks.title] = patch.title;
+    if (patch.status !== undefined) next[COLUMNS.tasks.status] = patch.status;
+    if (patch.placement !== undefined) {
+      const encoded = encodePlacement(patch.placement);
+      if (encoded === null) {
+        store.delCell(TABLES.tasks, id, COLUMNS.tasks.placement);
+      } else {
+        next[COLUMNS.tasks.placement] = encoded;
+      }
+    }
+    if (patch.order !== undefined) next[COLUMNS.tasks.order] = patch.order;
+    if (patch.dueDate === null) {
+      store.delCell(TABLES.tasks, id, COLUMNS.tasks.dueDate);
+    } else if (patch.dueDate !== undefined) {
+      next[COLUMNS.tasks.dueDate] = patch.dueDate;
+    }
+    store.setPartialRow(TABLES.tasks, id, row(next));
+  });
 }
 
 /**
@@ -179,19 +185,24 @@ export function writeCompletionTimestamp(
  */
 export function setTaskStatus(store: MergeableStore, id: string, status: TaskStatus): void {
   if (!store.hasRow(TABLES.tasks, id)) return;
-  // Stamp / clear the completion timestamp BEFORE the status write so
-  // the helper observes the previous stored status — calling it
-  // afterward would read the just-written `done` and treat the open →
-  // done transition as a no-op.
-  writeCompletionTimestamp(store, id, status);
-  store.setPartialRow(
-    TABLES.tasks,
-    id,
-    row({
-      [COLUMNS.tasks.status]: status,
-      [COLUMNS.tasks.updatedAt]: nowIso(),
-    }),
-  );
+  // One explicit transaction: the timestamp stamp and the status write
+  // are two implicit transactions otherwise — non-atomic, and observed
+  // downstream as two separate changes (e.g. two sync-log pushes).
+  store.transaction(() => {
+    // Stamp / clear the completion timestamp BEFORE the status write so
+    // the helper observes the previous stored status — calling it
+    // afterward would read the just-written `done` and treat the open →
+    // done transition as a no-op.
+    writeCompletionTimestamp(store, id, status);
+    store.setPartialRow(
+      TABLES.tasks,
+      id,
+      row({
+        [COLUMNS.tasks.status]: status,
+        [COLUMNS.tasks.updatedAt]: nowIso(),
+      }),
+    );
+  });
 }
 
 export function getTask(store: MergeableStore, id: string): Task | undefined {

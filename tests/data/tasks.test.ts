@@ -471,3 +471,54 @@ describe('completedAt', () => {
     expect(getTask(store, t)?.completedAt).toBeNull();
   });
 });
+
+describe('completion write atomicity', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  // Completion must be ONE transaction: the completedAt stamp and the
+  // status/updatedAt write land together. Downstream observers (the sync
+  // log's push capture) record one event per transaction — two implicit
+  // transactions here read as "2 Tasks" for a single completion.
+  const changedCellsFor = (
+    s: MergeableStore,
+    rowId: string,
+    run: () => void,
+  ): { finishes: number; cells: string[] } => {
+    let finishes = 0;
+    let cells: string[] = [];
+    const listenerId = s.addDidFinishTransactionListener(() => {
+      finishes += 1;
+      const [changedTables] = s.getTransactionChanges();
+      cells = Object.keys(changedTables[TABLES.tasks]?.[rowId] ?? {});
+    });
+    run();
+    s.delListener(listenerId);
+    return { finishes, cells };
+  };
+
+  it('setTaskStatus writes completedAt + status + updatedAt in one transaction', () => {
+    const t = createTask(store, { title: 'x' });
+    const { finishes, cells } = changedCellsFor(store, t, () =>
+      setTaskStatus(store, t, TASK_STATUS.done),
+    );
+    expect(finishes).toBe(1);
+    // updatedAt only appears in the net changes when the clock advanced
+    // since creation — suite-wide fake timers can freeze it — so assert
+    // the two transition cells and let updatedAt be incidental.
+    expect(cells).toContain(COLUMNS.tasks.completedAt);
+    expect(cells).toContain(COLUMNS.tasks.status);
+  });
+
+  it('updateTask with a status patch completes in one transaction', () => {
+    const t = createTask(store, { title: 'x' });
+    const { finishes, cells } = changedCellsFor(store, t, () =>
+      updateTask(store, t, { status: TASK_STATUS.done }),
+    );
+    expect(finishes).toBe(1);
+    expect(cells).toContain(COLUMNS.tasks.completedAt);
+    expect(cells).toContain(COLUMNS.tasks.status);
+  });
+});

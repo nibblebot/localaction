@@ -1626,7 +1626,8 @@ body.sidebar-resizing {
   align-self: center;
   white-space: nowrap;
   max-width: 220px;
-  overflow: hidden;
+  /* No overflow: hidden here — it would clip the anchored popover;
+     label ellipsis lives on .sync-status-toggle instead. */
 }
 
 .sync-status-label {
@@ -1662,6 +1663,7 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  position: relative; /* anchors the coarse-pointer hit halo */
   padding: 2px;
   border: none;
   border-radius: var(--radius-sm);
@@ -1696,6 +1698,234 @@ body.sidebar-resizing {
   .sync-status-retrying .sync-status-dot {
     animation: none;
   }
+}
+
+/* ------------------------------------------------------------
+   Sync popover — the badge's recent-activity notifications.
+   The badge root anchors the popover (position: relative).
+   ------------------------------------------------------------ */
+
+.sync-popover-root {
+  position: relative;
+}
+
+/* The badge is a toggle button; dot + label visuals stay identical
+   to the old read-only badge, with a quiet hover wash as the only
+   affordance cue. */
+.sync-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative; /* anchors the coarse-pointer hit halo */
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+.sync-status-toggle:hover {
+  background: var(--surface-hover);
+}
+
+.sync-status-toggle:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 1px;
+}
+
+.sync-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: var(--z-popover);
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  background: var(--surface);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  /* Rest shadow — the one separation cue popovers are allowed. */
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sync-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: min(320px, 50svh);
+  overflow-y: auto;
+}
+
+.sync-popover-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-label);
+}
+
+.sync-popover-item-time {
+  flex: none;
+  width: 60px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-popover-item-line {
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.sync-popover-empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-3);
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sync-popover-footer {
+  border-top: 1px solid var(--border);
+  padding: 4px;
+}
+
+/* The one Iris affordance in the popover: the link into the full log. */
+.sync-popover-open {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--accent);
+  text-align: center;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  padding: 8px var(--space-2);
+}
+
+.sync-popover-open:hover {
+  background: var(--accent-bg);
+}
+
+/* ------------------------------------------------------------
+   Sync log viewer (#/sync-log) — the full debug list. Data-event
+   chips stay neutral; connection chips carry the semantic tints
+   (the same vocabulary as the badge dot).
+   ------------------------------------------------------------ */
+
+.sync-log-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.sync-log-list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  max-width: 75ch;
+}
+
+.sync-log-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px var(--space-2);
+  padding: 6px var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.sync-log-event:hover {
+  background: var(--surface);
+}
+
+.sync-log-time {
+  flex: none;
+  min-width: 96px;
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-log-chip {
+  flex: none;
+  font-size: var(--text-label);
+  font-weight: 500;
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sync-log-chip-connected {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: var(--success-border);
+}
+
+.sync-log-chip-connecting,
+.sync-log-chip-retrying {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: var(--warning-border);
+}
+
+.sync-log-chip-error {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
+}
+
+.sync-log-detail {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.sync-log-line {
+  font-size: var(--text-body);
+  color: var(--text-h);
+}
+
+.sync-log-breakdown {
+  font-size: var(--text-label);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.sync-log-raw {
+  margin-top: 2px;
+}
+
+.sync-log-raw summary {
+  display: inline-block;
+  font-size: var(--text-label);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.sync-log-raw pre {
+  margin: 4px 0 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-code);
+  /* Long JSON scrolls inside the block, never the page. */
+  overflow-x: auto;
 }
 
 /* ============================================================
@@ -2635,9 +2865,11 @@ button .svg-icon {
    Mobile (≤767px) — drawer navigation, single-column pane
    ============================================================ */
 
-/* Desktop: no drawer chrome at all. */
+/* Desktop: no drawer chrome at all; the sidebar-footer sync badge
+   serves, so the mobile indicator slot stays hidden too. */
 .drawer-toggle,
-.drawer-backdrop {
+.drawer-backdrop,
+.shell-sync-slot {
   display: none;
 }
 
@@ -2708,6 +2940,32 @@ button .svg-icon {
      drawer surface, not under it. */
   .app-shell.drawer-open .drawer-toggle {
     z-index: calc(var(--z-drawer) + 1);
+  }
+
+  /* Mobile sync indicator — fixed top-inline-end, sharing the
+     hamburger's header row (same additive top offset). Same z layer
+     as the toggle, so the open drawer (one layer up) covers it and
+     the drawer footer's own badge takes over. */
+  .shell-sync-slot {
+    display: block;
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+    inset-inline-end: calc(env(safe-area-inset-right, 0px) + var(--space-2));
+    z-index: var(--z-drawer-toggle);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 4px var(--space-2);
+  }
+
+  /* Its popover anchors under the fixed chip, end-aligned so it
+     stays inside the viewport — never horizontal overflow. */
+  .shell-sync-slot .sync-popover {
+    top: calc(100% + 8px);
+    bottom: auto;
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    width: min(320px, calc(100vw - 2 * var(--space-3)));
   }
 
   /* No resize handle in the drawer — the sidebar is a fixed-width
@@ -2929,6 +3187,15 @@ button .svg-icon {
     content: '';
     position: absolute;
     inset: -6px; /* 32px control + 2×6px → 44px hit area */
+  }
+
+  /* The sync badge toggle and its retry button are smaller than
+     32px; a wider halo lifts them to the 44px touch minimum. */
+  .sync-status-toggle::after,
+  .sync-status-retry::after {
+    content: '';
+    position: absolute;
+    inset: -12px -8px;
   }
 
   /* 14px checkbox needs a wider halo. */

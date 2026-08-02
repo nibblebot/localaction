@@ -200,6 +200,17 @@ export function reconcileTombstones(store: MergeableStore): boolean {
 
 const installed = new WeakSet<MergeableStore>();
 
+// True while the reconciler's microtask sweep is executing. The sync log
+// reads this to classify the sweep's transactions as 'sweep' rather than
+// user 'push'. `reconcileTombstones` is only ever invoked from the `run`
+// closure below, so wrapping it there covers exactly the reconciler's
+// sweeps and nothing else.
+let sweepActive = false;
+
+export function isReconcileSweepActive(): boolean {
+  return sweepActive;
+}
+
 /**
  * Idempotently attaches the tombstone reconciler to a store. Schedules a
  * `reconcileTombstones` sweep after every transaction (local or merged),
@@ -213,7 +224,12 @@ export function installTombstoneReconciler(store: MergeableStore): () => void {
   let scheduled = false;
   const run = (): void => {
     scheduled = false;
-    reconcileTombstones(store);
+    sweepActive = true;
+    try {
+      reconcileTombstones(store);
+    } finally {
+      sweepActive = false;
+    }
   };
   const schedule = (): void => {
     if (scheduled) return;

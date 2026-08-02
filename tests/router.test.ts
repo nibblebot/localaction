@@ -34,6 +34,14 @@ describe('parseRoute', () => {
     expect(parseRoute('#/inbox')).toEqual<Selection>({ kind: 'inbox' });
   });
 
+  it('parses a sync-log route', () => {
+    expect(parseRoute('#/sync-log')).toEqual<Selection>({ kind: 'sync-log' });
+  });
+
+  it('parses a sync-log route without the leading hash', () => {
+    expect(parseRoute('/sync-log')).toEqual<Selection>({ kind: 'sync-log' });
+  });
+
   it('parses a project route', () => {
     expect(parseRoute('#/p/proj1')).toEqual<Selection>({ kind: 'project', id: 'proj1' });
   });
@@ -65,6 +73,7 @@ describe('formatRoute', () => {
     expect(formatRoute({ kind: 'inbox' })).toBe('#/inbox');
     expect(formatRoute({ kind: 'today' })).toBe('#/today');
     expect(formatRoute({ kind: 'week' })).toBe('#/week');
+    expect(formatRoute({ kind: 'sync-log' })).toBe('#/sync-log');
     expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
     expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
     expect(formatRoute({ kind: 'project-notes', id: 'p1' })).toBe('#/p/p1/notes');
@@ -108,5 +117,15 @@ describe('routeEquals', () => {
   it('treats two inbox selections as equal', () => {
     expect(routeEquals({ kind: 'inbox' }, { kind: 'inbox' })).toBe(true);
     expect(routeEquals({ kind: 'inbox' }, { kind: 'home' })).toBe(false);
+  });
+
+  it('treats two sync-log selections as equal', () => {
+    expect(routeEquals({ kind: 'sync-log' }, { kind: 'sync-log' })).toBe(true);
+    expect(routeEquals({ kind: 'sync-log' }, { kind: 'home' })).toBe(false);
+  });
+
+  it('round-trips the sync-log route through parse and format', () => {
+    const sel: Selection = { kind: 'sync-log' };
+    expect(parseRoute(formatRoute(sel))).toEqual<Selection>(sel);
   });
 });

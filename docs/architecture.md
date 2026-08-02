@@ -228,6 +228,33 @@ sequenceDiagram
   terminal `error` status; the badge's retry button (`client.retry()`)
   re-arms the loop. Status is a discriminated union surfaced through
   `SyncStatusBadge`.
+- **Sync log** — `syncLog.ts` keeps a session-only, in-memory ring buffer
+  (~500 events) of sync activity: `pull` (inbound merges), `push` (local
+  commits), `sweep` (tombstone-reconciler cascades), and `connection`
+  status transitions. TinyBase persists no oplog — only per-cell HLC
+  stamps — so the log is captured live, and it lives *outside* the store
+  (a plain module array): writing log rows into the MergeableStore would
+  sync them to peers and loop. Capture has two seams, both installed by
+  `DataLayerProvider` via `installSyncLogCapture(store, log)`:
+  - Pulls: the synchronizer never calls the public
+    `applyMergeableChanges` — inbound diffs (the initial hash drill-down
+    and live ContentDiffs alike) funnel synchronously through the store's
+    internal encoded-apply slot `store.__[4]`. The wrapper counts the
+    apply transaction's **net** changes (`getTransactionMergeableChanges()`
+    stashed from `didFinishTransaction`, classified against pre-apply
+    `hasRow`), so echo/re-applied diffs that merge to zero net changes
+    never double-count.
+  - Pushes: a `didFinishTransaction` listener parses
+    `getTransactionMergeableChanges()`, gated by `setPushCaptureEnabled`
+    (opened only after the OPFS load + order backfill, so boot
+    transactions never appear) and attributed to `sweep` while
+    `isReconcileSweepActive()`.
+  One transaction = one event — no coalescing; multi-write operations
+  that should read as a single change are made atomic at the writer
+  instead (`setTaskStatus` / `updateTask` wrap the `completedAt` stamp
+  and the status write in one explicit transaction). The UI consumes the
+  log via the badge popover and the `#/sync-log` viewer; the log is lost
+  on reload by design.
 - **Server** — `attachSyncServer` (in `server/index.ts`) creates a
   `WebSocketServer({ noServer: true })` and hands it to TinyBase's
   `createWsServer` with a persister factory: for each incoming `pathId` it

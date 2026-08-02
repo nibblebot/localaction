@@ -138,7 +138,25 @@ export {
   cascadeDeleteSubtree,
   reconcileTombstones,
   installTombstoneReconciler,
+  isReconcileSweepActive,
 } from './deletion.ts';
+
+export {
+  createSyncLog,
+  getSyncLog,
+  installSyncLogCapture,
+  setPushCaptureEnabled,
+  recordConnectionEvent,
+  summarizeTables,
+  totalRows,
+} from './syncLog.ts';
+export type {
+  SyncLog,
+  SyncLogEvent,
+  SyncLogOptions,
+  SyncTableStat,
+  SyncTableStats,
+} from './syncLog.ts';
 
 export { captureSubtree, restoreSubtree } from './undo.ts';
 export type { SubtreeSnapshot } from './undo.ts';

@@ -26,7 +26,8 @@ flowchart TB
   Areas section, and the footer holding the sync status badge and the
   appearance menu. A resizer on its trailing edge drags to set its width
   (persisted per device). Below 768px the sidebar becomes a modal drawer —
-  hamburger toggle, backdrop tap or Escape to close, focus trapped while open.
+  hamburger toggle, backdrop tap or Escape to close, focus trapped while open;
+  the sync status badge moves to a fixed top-right slot.
   In the drawer the appearance menu presents as a bottom sheet pinned above
   the footer so every segment stays reachable at phone widths.
 - **MainPane** (`MainPane.tsx`) — the working area. Renders the welcome
@@ -80,7 +81,14 @@ Areas are top-level containers; each may hold nested **sub-areas**
 ### Footer
 
 - **SyncStatusBadge** — connection state: *Local only* → *Syncing…* →
-  *Synced* (or *Retry #n…* / *Sync error*).
+  *Synced* (or *Retry #n…* / *Sync error*). The badge is a toggle: clicking
+  it opens the sync-activity popover — the recent pull/push/connection
+  events (*"Pulled 8 Tasks, 3 Projects, 1 Area"*, *"Pushed 2 Tasks"*,
+  *Connected*) with relative times and an *"Open full sync log"* link to
+  the `#/sync-log` viewer (absolute timestamps, per-table
+  added/updated/removed breakdowns, raw event JSON, copy/clear actions).
+  Below 768px a second badge instance pins to the shell's top-right corner
+  so sync state stays visible while the sidebar is a closed drawer.
 - **AppearanceMenu** — theme, font, and density controls (see
   [Appearance](#appearance)).
 

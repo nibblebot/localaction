@@ -400,6 +400,7 @@ export default function ProjectStatusGroups({
                 collapsed={collapsedGroups.has('active')}
                 onToggleCollapse={() => onToggleGroup('active')}
                 hasContent={activeSlices.some((s) => sliceHasContent(s, s.active, 'backlog'))}
+                emptyHint="No active projects"
                 trailing={renderGroupAction?.('active')}
                 dropRef={dropProps.dropRef}
                 dropActive={dropProps.dropActive}
@@ -448,6 +449,7 @@ export default function ProjectStatusGroups({
                 collapsed={collapsedGroups.has('backlog')}
                 onToggleCollapse={() => onToggleGroup('backlog')}
                 hasContent={backlogSlices.some((s) => sliceHasContent(s, s.backlog, 'active'))}
+                emptyHint="No backlog projects"
                 trailing={renderGroupAction?.('backlog')}
                 dropRef={dropProps.dropRef}
                 dropActive={dropProps.dropActive}

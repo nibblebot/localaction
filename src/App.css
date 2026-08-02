@@ -633,13 +633,6 @@ body.sidebar-resizing {
    Collapsible sections (Projects / Area tasks / Notes)
    ============================================================ */
 
-.pane-section {
-  /* Top-level rhythm: Projects / Area tasks / Notes read as distinct
-     scopes of the subarea pane, not adjacent paragraphs. Generous. */
-  margin-bottom: var(--space-6);
-}
-
-
 .pane-section-head {
   display: flex;
   align-items: center;
@@ -674,8 +667,10 @@ body.sidebar-resizing {
   font: inherit;
   background: transparent;
   border: 0;
-  /* Outdented like .tab-group-toggle so the section chevrons align
-     with the Active / Backlog / Done chevrons one register down. */
+  /* Outdented so the toggle box bleeds past the pane edge and the
+     section chevron starts at the rail; the group titles one register
+     down align with the section title text by left padding, not by a
+     chevron of their own. */
   margin-inline-start: calc(-1 * var(--space-2));
   padding: 2px var(--space-2);
   cursor: pointer;
@@ -687,8 +682,9 @@ body.sidebar-resizing {
 .pane-section-title {
   /* Uppercase section header at body size — it must read as the
      parent of the status-group headers it contains (Active / Backlog
-     / Done), which are body-size sentence-case at weight 600 muted.
-     Hierarchy comes from case + weight + color, not a size step. */
+     / Done), which render one register down as label-tier uppercase
+     at weight 600 muted. Hierarchy comes from the two eyebrow
+     registers (case + tracking + weight), not a size step alone. */
   font-size: var(--text-body);
   font-weight: 700;
   text-transform: uppercase;
@@ -742,14 +738,21 @@ body.sidebar-resizing {
 
 /* Groups (Active / Backlog / Done / Area tasks) inside the pane
    sections. Flat boxes — separation comes from the surrounding
-   whitespace and the group chrome, not from margins of their own.
-   No horizontal inset: the pane hierarchy (section → group → card)
-   scans flush down the left edge instead of stair-stepping in per
-   level; the card boxes carry the grouping cue. */
+   whitespace and the group chrome, not from margins of their own;
+   sibling groups sit one --space-1 step apart so the cluster reads
+   tighter than the inter-section gap. No horizontal inset: the
+   pane hierarchy (section → group → card) scans flush down the
+   left edge instead of stair-stepping in per level; the rail is
+   carried by alignment (group titles start at the section title
+   x), not by chevrons, and the card boxes carry the grouping cue. */
 .tab-group {
   margin-bottom: 0;
-  padding: 4px 0;
+  padding: 0;
   border-radius: 4px;
+}
+
+.tab-group + .tab-group {
+  margin-top: var(--space-1);
 }
 
 .tab-group-head {
@@ -762,23 +765,28 @@ body.sidebar-resizing {
 }
 
 .tab-group-title {
-  font-size: var(--text-body);
+  font-size: var(--text-label);
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 
-/* Collapsible status-group header (Active / Backlog / Done). A plain
-   label row — the register step down from .pane-section-toggle is
-   carried by size/weight, not a boxed pill (DESIGN.md: hierarchy from
-   the two eyebrow registers, never from chrome). Drop scoping lives
-   on .tab-group-head (unchanged); only the box went away. */
+/* Collapsible status-group header (Active / Backlog / Done). A
+   caretless label row — the register step down from
+   .pane-section-toggle is carried by the label-tier uppercase
+   title, not a caret glyph or a boxed pill (DESIGN.md: hierarchy
+   from the two eyebrow registers, never from chrome). The left
+   padding lands the title text at exactly the x of the section
+   title text (--icon-sm + 6px), so section → group scans flush
+   down one rail. Drop scoping lives on .tab-group-head
+   (unchanged); only the box went away. */
 .tab-group-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin: 0;
-  margin-inline-start: calc(-1 * var(--space-2));
-  padding: 6px var(--space-2);
+  padding: 6px;
   border: 0;
   border-radius: var(--radius-sm);
   background: none;
@@ -821,6 +829,20 @@ body.sidebar-resizing {
   padding: 0 0 16px;
   display: flex;
   flex-direction: column;
+}
+
+/* Empty-group ghost row: the dashed hairline + italic muted
+   "invitation" convention (same voice as the inline-add
+   placeholder), rendered in place of the list when an expanded
+   status group has no projects. */
+.tab-group-ghost {
+  margin: 0 0 var(--space-2);
+  padding: 6px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: var(--text-body);
 }
 
 /* ============================================================

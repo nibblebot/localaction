@@ -128,13 +128,16 @@
           display (~20px) > title (~16px) > body-strong (15px/600)
         "Body-strong" is deliberately NOT a variable — it is
         --text-body plus font-weight 600 (.today-project-title,
-        .tab-group-title, .subarea-header-name, .note-line-title,
+        .subarea-header-name, .note-line-title,
         .due-calendar-title, h4).
 
      2. Chrome and meta never signal by size alone:
         - UPPERCASE eyebrows (0.06em tracking) mark app chrome:
           pane sections at --text-body (700); sidebar/appearance
-          section labels at --text-label.
+          section labels at --text-label. Pane status-group labels
+          (Active / Backlog / Done) are label-tier uppercase
+          eyebrows too, one register below the pane-section
+          eyebrow they nest under.
         - Tabular meta (counts, badges, due chips, calendar cells,
           sync status) sits at --text-label with font-variant-numeric.
 
@@ -170,6 +173,7 @@
   --space-4: 1.14rem;
   --space-5: 1.43rem;
   --space-6: 1.71rem;
+  --space-7: 2.06rem;
 
   /* Icon sizes — one 20x20 sprite grid rendered at four steps. rem-based so
      the density knob rescales icons with everything else; the calc forms hit

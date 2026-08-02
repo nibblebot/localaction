@@ -2501,7 +2501,9 @@ button .svg-icon {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow);
+  /* Raised-overlay float cue shared with the slide-out action strip
+     (left+bottom spill), not the quieter rest shadow. */
+  box-shadow: var(--shadow-panel);
   width: min(232px, calc(100vw - 16px));
   padding: var(--space-3);
   display: flex;
@@ -2824,10 +2826,11 @@ button .svg-icon {
     background: var(--surface-hover);
     border: 1px solid var(--border-strong);
     border-radius: 4px;
-    /* Float cue: slight shadow spilling left + below lifts the panel
-       off the row layer (user-requested exception to DESIGN.md's
-       no-shadows-at-rest rule — this is a raised overlay, not rest). */
-    box-shadow: -2px 3px 8px rgba(76, 29, 149, 0.12);
+    /* Float cue shared with .due-calendar: slight shadow spilling
+       left + below lifts the panel off the row layer (user-requested
+       exception to DESIGN.md's no-shadows-at-rest rule — this is a
+       raised overlay, not rest). */
+    box-shadow: var(--shadow-panel);
     transition:
       opacity 0.15s ease,
       transform 0.2s ease,

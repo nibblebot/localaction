@@ -93,9 +93,13 @@
 
   /* Shadow — barely there, elevation-by-tone preferred. Tinted toward the
      violet ink family (Single Hue Family Rule), never warm.
-     Rest: modals and popovers only. Lift: the drag overlay only. */
+     Rest: modals and popovers only. Lift: the drag overlay only.
+     Panel: raised overlays that float directionally (slide-out action
+     strips, popover calendars) — the left+bottom spill reads as a
+     float cue; reuse for any raised modal surface. */
   --shadow: 0 1px 2px rgba(31, 27, 46, 0.06);
   --shadow-lift: 0 8px 24px rgba(15, 17, 21, 0.18);
+  --shadow-panel: -2px 3px 8px rgba(76, 29, 149, 0.12);
 
   /* Modal / drawer scrim */
   --backdrop: rgba(0, 0, 0, 0.5);
@@ -252,6 +256,7 @@
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-panel: -2px 3px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* "System" follows the OS preference until the user pins light/dark. */
@@ -301,6 +306,7 @@
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-panel: -2px 3px 8px rgba(0, 0, 0, 0.4);
   }
 }
 

@@ -223,11 +223,11 @@ sequenceDiagram
   `getSyncClient()`). `createWsSynchronizer(store, ws)` connects to
   `${ws|wss}://<host>/ws`. It is **StrictMode-safe**: the singleton is created
   once and is *not* destroyed on the fake unmount — only on `beforeunload`
-  (`destroySyncClient`). Reconnect backs off linearly, 5 s steps
-  (5/10/15/20 s) across 4 retries — 5 tries total — then gives up with a
-  terminal `error` status; the badge's retry button (`client.retry()`)
-  re-arms the loop. Status is a discriminated union surfaced through
-  `SyncStatusBadge`.
+  (`destroySyncClient`). Reconnect runs a fixed ladder — ten 1 s retries,
+  then 5 s and 10 s — across 12 retries (13 tries total), then gives up
+  with a terminal `error` status; the badge's retry button
+  (`client.retry()`) re-arms the loop. Status is a discriminated union
+  surfaced through `SyncStatusBadge`.
 - **Sync log** — `syncLog.ts` keeps a session-only, in-memory ring buffer
   (~500 events) of sync activity: `pull` (inbound merges), `push` (local
   commits), `sweep` (tombstone-reconciler cascades), and `connection`

@@ -1,7 +1,7 @@
 // Reconnect policy: a refused connection must retry on a calm, bounded
-// ladder — exactly one timer per failed attempt, delays stepping
-// 5s→10s→15s→20s across 4 retries (5 tries total), then a terminal
-// give-up emitted exactly once. The badge's retry button calls
+// ladder — exactly one timer per failed attempt, delays stepping ten
+// 1 s retries then 5/10 s across 12 retries (13 tries total), then a
+// terminal give-up emitted exactly once. The badge's retry button calls
 // `client.retry()`, which re-arms the loop from attempt 0.
 // Regression: the old wiring scheduled a timer on the synchronizer
 // rejection AND on the socket's error+close events (three per failure,
@@ -21,9 +21,12 @@ import type { SyncStatus } from '../../src/data/sync.ts';
 const rejectingSynchronizer = (() =>
   Promise.reject(new Error('handshake failed'))) as unknown as typeof createWsSynchronizer;
 
-// The production ladder this test locks in: 5s step, linear, 4 retries
-// (with the initial connect, 5 tries total) before the terminal give-up.
-const EXPECTED_DELAYS = [5_000, 10_000, 15_000, 20_000];
+// The production ladder this test locks in: ten fast 1s retries, then
+// 5s and 10s — 12 retries (with the initial connect, 13 tries total)
+// before the terminal give-up.
+const EXPECTED_DELAYS = [
+  1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 5_000, 10_000,
+];
 
 // Simulates a connection-refused socket: construction succeeds, then
 // 'error' and 'close' fire asynchronously (after listeners attach).
@@ -96,7 +99,7 @@ describe('startSync reconnect policy', () => {
     vi.useRealTimers();
   });
 
-  it('steps 5s→20s across 4 retries, then gives up exactly once', async () => {
+  it('steps ten 1s retries then 5/10s across 12 retries, then gives up exactly once', async () => {
     const fake = makeRefusedWebSocket();
     const statuses: SyncStatus[] = [];
     const client = startSync({
@@ -126,18 +129,18 @@ describe('startSync reconnect policy', () => {
         vi.advanceTimersByTime(delay);
       }
     }
-    await flushMicrotasks(); // 4th retry's refusal lands → give-up
+    await flushMicrotasks(); // final retry's refusal lands → give-up
 
-    // Exactly one retrying status per failure, attempts climbing 1→4.
+    // Exactly one retrying status per failure, attempts climbing 1→12.
     const retryAttempts = statuses.flatMap((s) => (s.kind === 'retrying' ? [s.attempt] : []));
-    expect(retryAttempts).toEqual([1, 2, 3, 4]);
+    expect(retryAttempts).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 
     // Terminal state is the give-up error, emitted exactly once even
     // though socket error + close + rejection all re-enter scheduling.
     const last = statuses.at(-1);
     expect(last?.kind).toBe('error');
     if (last?.kind === 'error') {
-      expect(last.message).toContain('gave up after 5 tries');
+      expect(last.message).toContain('gave up after 13 tries');
     }
     expect(gaveUpCount(statuses)).toBe(1);
 
@@ -146,7 +149,7 @@ describe('startSync reconnect policy', () => {
     const statusCount = statuses.length;
     vi.advanceTimersByTime(120_000);
     await flushMicrotasks();
-    expect(fake.instances.length).toBe(5); // 1 initial + 4 retries
+    expect(fake.instances.length).toBe(13); // 1 initial + 12 retries
     expect(statuses.length).toBe(statusCount);
 
     await client.destroy();
@@ -166,19 +169,21 @@ describe('startSync reconnect policy', () => {
 
     await driveLadder();
     expect(gaveUpCount(statuses)).toBe(1);
-    expect(fake.instances.length).toBe(5);
+    expect(fake.instances.length).toBe(13);
 
     // The badge's retry button: reset to attempt 0 and connect again.
     client.retry();
     expect(statuses.at(-1)).toMatchObject({ kind: 'connecting' });
-    expect(fake.instances.length).toBe(6);
+    expect(fake.instances.length).toBe(14);
 
     // The full ladder runs again from a fresh attempt counter.
     await driveLadder();
     expect(gaveUpCount(statuses)).toBe(2);
-    expect(fake.instances.length).toBe(10);
+    expect(fake.instances.length).toBe(26);
     const retryAttempts = statuses.flatMap((s) => (s.kind === 'retrying' ? [s.attempt] : []));
-    expect(retryAttempts).toEqual([1, 2, 3, 4, 1, 2, 3, 4]);
+    expect(retryAttempts).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    ]);
 
     await client.destroy();
   });

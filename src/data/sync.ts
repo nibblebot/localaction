@@ -10,10 +10,12 @@ import { logInfo, logWarn } from '../log.ts';
 // to the server at ws://…/ws" / "interrupted while the page was
 // loading" in the browser console.
 
-// Linear backoff: 5 s step per retry → 5/10/15/20 s across 4 retries.
-// With the initial connect that's 5 tries total before giving up.
-const RECONNECT_STEP_MS = 5_000;
-const MAX_RECONNECT_ATTEMPTS = 4;
+// Backoff ladder: ten fast 1 s retries (a server restart or blip
+// reconnects almost immediately), then 5/10 s. With the initial connect
+// that's 13 tries total before giving up.
+const RECONNECT_DELAYS_MS = [
+  1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 5_000, 10_000,
+] as const;
 
 // TinyBase rejects createWsSynchronizer with its internal error codes
 // (`new Error('tinybase:<code>')`) rather than descriptive messages.
@@ -150,7 +152,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     // without this guard each path stacked its own timer and the retry
     // count exploded (observed: Retry #17 within a minute of downtime).
     if (destroyed || retryTimer !== undefined) return;
-    if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+    if (attempt >= RECONNECT_DELAYS_MS.length) {
       // Terminal state — re-armed only by a successful connect or a
       // manual retry() from the badge's retry button.
       if (gaveUp) return;
@@ -162,7 +164,8 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       return;
     }
     attempt += 1;
-    const delay = RECONNECT_STEP_MS * attempt;
+    // In bounds: the guard above caps attempt at the ladder length.
+    const delay = RECONNECT_DELAYS_MS[attempt - 1]!;
     setStatus({ kind: 'retrying', attempt, nextDelayMs: delay, reason });
     retryTimer = setTimeout(() => {
       retryTimer = undefined;

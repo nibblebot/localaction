@@ -53,12 +53,13 @@ Production:
 
 ```bash
 bun run build
-bun run start   # port 7373, SQLite in the platform user-data dir
+bun run prod     # port 7373, SQLite in the platform user-data dir
+bun run preview  # port 7474, preview store (data-preview.db)
 ```
 
-`bun run start` accepts `--port <n>` and `--db <path>`; `--help` prints defaults.
+`bun run prod`/`bun run preview` accept `--port <n>` and `--db <path>`; `--help` prints defaults.
 
-**Multi-device sync:** run `bun run start` on a reachable host and point every client at that host. No auth at the moment.
+**Multi-device sync:** run `bun run prod` on a reachable host and point every client at that host. No auth at the moment.
 
 ## Stack & testing
 

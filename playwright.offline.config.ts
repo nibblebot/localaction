@@ -27,7 +27,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bun run start --port 5181 --db "${OFFLINE_TEST_DB_PATH}"`,
+    command: `bun run prod --port 5181 --db "${OFFLINE_TEST_DB_PATH}"`,
     url: 'http://localhost:5181',
     reuseExistingServer: false,
     timeout: 60_000,

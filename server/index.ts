@@ -6,10 +6,12 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-import { openDatabase, defaultProdDbPath, type ServerDatabase } from './db.ts';
+import { defaultPreviewDbPath, defaultProdDbPath, openDatabase, type ServerDatabase } from './db.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
 export const DEFAULT_PORT = 7373;
+// Default port for `bun run preview` (plain `bun run prod` uses `DEFAULT_PORT`).
+export const PREVIEW_PORT = 7474;
 export const WS_PATH = '/ws';
 export const STATIC_ROOT_NAME = 'dist';
 
@@ -279,16 +281,18 @@ interface CliArgs {
   dbPath?: string;
   port?: number;
   help: boolean;
+  preview: boolean;
 }
 
-// CLI flag parsing for the prod-server entrypoint (`bun run start`).
+// CLI flag parsing for the prod-server entrypoint (`bun run prod`).
 // `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
 // the entry (`bun server/index.ts`) pick them at runtime. When `--db` is
-// absent the entry falls back to `defaultProdDbPath()` (platform user-data dir);
-// `startServer` itself has no fallback. Unknown flags are ignored so the
-// entry is robust to stray args.
+// absent the entry falls back to `defaultProdDbPath()` (platform user-data
+// dir), or to `defaultPreviewDbPath()` under `--preview`; `startServer`
+// itself has no fallback. Unknown flags are ignored so the entry is robust
+// to stray args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
-  const out: CliArgs = { help: false };
+  const out: CliArgs = { help: false, preview: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--help' || arg === '-h') {
@@ -305,6 +309,8 @@ function parseServerArgs(argv: readonly string[]): CliArgs {
     } else if (arg.startsWith('--port=')) {
       const parsed = Number(arg.slice('--port='.length));
       if (Number.isFinite(parsed)) out.port = parsed;
+    } else if (arg === '--preview') {
+      out.preview = true;
     }
   }
   return out;
@@ -317,6 +323,8 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
       `                   Default: ${defaultProdDbPath()}\n` +
       '  --port <n>       TCP port to listen on. Default: 7373\n' +
+      '  --preview        Preview mode: port defaults to 7474 and the db to\n' +
+      `                   ${defaultPreviewDbPath()} (explicit --port/--db win).\n` +
       '  -h, --help       Show this help and exit.\n',
   );
 }
@@ -327,5 +335,8 @@ if (isMain) {
     printServerUsage(process.stdout);
     process.exit(0);
   }
-  await startServer({ dbPath: cli.dbPath ?? defaultProdDbPath(), port: cli.port });
+  await startServer({
+    dbPath: cli.dbPath ?? (cli.preview ? defaultPreviewDbPath() : defaultProdDbPath()),
+    port: cli.port ?? (cli.preview ? PREVIEW_PORT : DEFAULT_PORT),
+  });
 }

@@ -285,7 +285,8 @@ One unified server serves both static assets and the sync socket:
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
 | dev | `bun run dev` (`scripts/dev.ts` → `bun --bun vite --configLoader runner`) | `vite.config.ts` plugin → `configureServer` |
-| prod | `bun run start` (`bun server/index.ts`) | `startServer` directly (module `isMain`) |
+| prod | `bun run prod` (`bun server/index.ts`) | `startServer` directly (module `isMain`) |
+| preview | `bun run preview` (`bun server/index.ts --preview`) | `startServer` directly (module `isMain`) |
 
 Vite runs under Bun because `vite.config.ts` statically
 imports `server/index.ts` → `server/db.ts` → `bun:sqlite`. The
@@ -294,8 +295,9 @@ rolldown config bundler breaks `ws` upgrade handling under Bun (the bundled
 handler accepts the socket server-side but its 101 response never reaches
 the wire); the native module runner skips bundling and the handshake works.
 
-Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). Dev and prod use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db`) so dev runs never share the production store; a pre-split `data.db` is left untouched:
-- prod (`bun run start`): `--port` > `7373`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
+Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). Dev, prod, and preview use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db` / `data-preview.db`) so dev and preview runs never share the production store; a pre-split `data.db` is left untouched:
+- prod (`bun run prod`): `--port` > `7373`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
+- preview (`bun run preview`): `--port` > `7474`; `--db` > `defaultPreviewDbPath()` (`data-preview.db` in the same platform user-data dir), explicit flags win.
 - dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
 
 ## Build & toolchain

@@ -75,7 +75,7 @@ export default defineConfig({
     {
       // Wires the TinyBase WS sync handler into Vite's HTTP server upgrade
       // events in `bun run dev` (configureServer); the prod server
-      // (`bun run start`) calls the same `attachSyncServer` directly.
+      // (`bun run prod`) calls the same `attachSyncServer` directly.
       // Keeps the WS code in one place and avoids drift between modes.
       // The server module imports `bun:sqlite`, which only resolves under
       // the Bun runtime — every Vite invocation must be `bun --bun vite`.

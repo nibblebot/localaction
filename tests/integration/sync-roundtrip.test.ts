@@ -1,7 +1,7 @@
 /**
  * Sync-server round-trip integration test.
  *
- * Boots the same prod server that `bun run start` uses, then connects two
+ * Boots the same prod server that `bun run prod` uses, then connects two
  * TinyBase MergeableStores to it as if they were two browser tabs.
  * Asserts that:
  *

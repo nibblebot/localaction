@@ -4,7 +4,7 @@
 //   bun run backup-db --db /tmp/localaction-test-x.db --out ./backups/snapshot.db
 //
 // Uses SQLite's online backup form `VACUUM INTO`: the copy runs inside a
-// read transaction on the source, so a running `bun run dev` / `bun run start`
+// read transaction on the source, so a running `bun run dev` / `bun run prod`
 // server keeps serving (and writing) while the backup is taken — the result
 // is a consistent snapshot as of backup start, never a torn file. As a bonus
 // the destination comes out fully compacted.

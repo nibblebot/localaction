@@ -15,6 +15,23 @@ import { logInfo, logWarn } from '../log.ts';
 const RECONNECT_STEP_MS = 5_000;
 const MAX_RECONNECT_ATTEMPTS = 4;
 
+// TinyBase rejects createWsSynchronizer with its internal error codes
+// (`new Error('tinybase:<code>')`) rather than descriptive messages.
+// Translate the codes a failed connect can actually surface into
+// something actionable; unknown codes keep a generic label.
+const TINYBASE_CONNECT_ERRORS: Record<string, string> = {
+  // ERROR_MULTIPLEX_SOCKET: the socket errored or closed before the sync
+  // handshake completed — the normal signature of an unreachable server.
+  '5': 'server unreachable (socket failed before the sync handshake)',
+};
+
+function describeConnectFailure(err: unknown): string {
+  const message = (err as Error).message ?? String(err);
+  const match = /^tinybase:(\d+)$/.exec(message);
+  if (!match) return message;
+  return TINYBASE_CONNECT_ERRORS[match[1]] ?? `TinyBase sync error ${match[1]}`;
+}
+
 export interface SyncClient {
   start(): void;
   /**
@@ -209,14 +226,15 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       // No error status here either — scheduleReconnect owns the status
       // (`retrying`, or the terminal give-up error). Setting `error`
       // first would flash red between yellow retries.
-      logWarn('sync', `connect failed: ${(err as Error).message}`);
+      const message = describeConnectFailure(err);
+      logWarn('sync', `connect failed: ${message}`);
       if (!destroyed) {
         try {
           ws.close();
         } catch {
         }
         currentWs = undefined;
-        scheduleReconnect(reasonForReconnect ?? (err as Error).message);
+        scheduleReconnect(reasonForReconnect ?? message);
       }
       return;
     }

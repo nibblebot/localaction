@@ -180,16 +180,29 @@ export function createStaticFileServer(staticRoot: string) {
       res.end('Bad request');
       return;
     }
+    // Check the raw request target before URL parsing: WHATWG URL
+    // normalization resolves `..` away, so a traversal attempt like
+    // `/../secret` would otherwise read as a plain missing path. Only the
+    // path part counts — a query string may legitimately contain `..`.
+    const rawPath = req.url.split('?')[0] ?? req.url;
+    if (rawPath.includes('..') || rawPath.includes('\0')) {
+      res.writeHead(403);
+      res.end('Forbidden');
+      return;
+    }
     const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
     if (url.pathname === WS_PATH) {
       res.writeHead(426, { Upgrade: 'websocket' });
       res.end();
       return;
     }
+    // A missing file is a 404, not a permission error. (403 here used to
+    // make Firefox report devtools-extension source-map requests for paths
+    // we don't serve — e.g. installHook.js.map — as "Forbidden".)
     const target = resolveStaticPath(staticRoot, url.pathname);
     if (!target) {
-      res.writeHead(403);
-      res.end('Forbidden');
+      res.writeHead(404);
+      res.end('Not found');
       return;
     }
     try {

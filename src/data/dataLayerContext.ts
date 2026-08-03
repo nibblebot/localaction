@@ -7,6 +7,7 @@ export interface DataLayerValue {
   sync: SyncClient | undefined;
   syncStatus: SyncStatus;
   persistenceReady: boolean;
+  hasUnsyncedChanges: boolean;
 }
 
 export const DataLayerContext = createContext<DataLayerValue | undefined>(undefined);

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useDataLayer } from '../../data/index.ts';
-import type { SyncStatus } from '../../data/index.ts';
 import SyncLogPopover from '../sync/SyncLogPopover.tsx';
+import { badgeLabel, badgeTitle } from '../sync/syncLogFormat.ts';
 import { getSyncLogEvents, subscribeSyncLog } from '../sync/syncLogStore.ts';
 
 /**
@@ -14,11 +14,12 @@ import { getSyncLogEvents, subscribeSyncLog } from '../sync/syncLogStore.ts';
  * its own popover state.
  */
 export default function SyncStatusBadge(): React.JSX.Element {
-  const { syncStatus, sync } = useDataLayer();
+  const { syncStatus, sync, hasUnsyncedChanges } = useDataLayer();
   const events = useSyncExternalStore(subscribeSyncLog, getSyncLogEvents);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const label = labelFor(syncStatus);
+  const label = badgeLabel(syncStatus, hasUnsyncedChanges);
+  const title = badgeTitle(syncStatus, hasUnsyncedChanges);
 
   // Close on Escape and on any press outside the badge + popover
   // (AppearanceMenu pattern). Focus containment lives in the popover.
@@ -42,13 +43,13 @@ export default function SyncStatusBadge(): React.JSX.Element {
 
   return (
     <div
-      className={`sync-status sync-popover-root sync-status-${syncStatus.kind}`}
+      className={`sync-status sync-popover-root sync-status-${syncStatus.kind}${hasUnsyncedChanges ? ' sync-status-dirty' : ''}`}
       ref={rootRef}
     >
       <button
         type="button"
         className="sync-status-toggle"
-        title={label}
+        title={title}
         aria-label={`${label} — show sync activity`}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -80,19 +81,4 @@ export default function SyncStatusBadge(): React.JSX.Element {
       {open && <SyncLogPopover events={events} onClose={() => setOpen(false)} />}
     </div>
   );
-}
-
-function labelFor(status: SyncStatus): string {
-  switch (status.kind) {
-    case 'idle':
-      return 'Local only';
-    case 'connecting':
-      return 'Syncing…';
-    case 'connected':
-      return 'Synced';
-    case 'retrying':
-      return `Retry #${status.attempt}…`;
-    case 'error':
-      return 'Sync error';
-  }
 }

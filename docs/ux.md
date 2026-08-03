@@ -80,8 +80,11 @@ Areas are top-level containers; each may hold nested **sub-areas**
 
 ### Footer
 
-- **SyncStatusBadge** — connection state: *Local only* → *Syncing…* →
-  *Synced* (or *Retry #n…* / *Sync error*). The badge is a toggle: clicking
+- **SyncStatusBadge** — connectivity + freshness: *Local only* →
+  *Connecting…* → *Synced* (or *Syncing…* while online with unsent
+  changes; *Offline · synced* / *Offline · unsynced changes* while
+  reconnecting; *Offline · sync error* after the reconnect loop gives
+  up). The badge is a toggle: clicking
   it opens the sync-activity popover — the recent pull/push/connection
   events (*"Pulled 8 Tasks, 3 Projects, 1 Area"*, *"Pushed 2 Tasks"*,
   *Connected*) with relative times and an *"Open full sync log"* link to

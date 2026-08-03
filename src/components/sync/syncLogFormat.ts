@@ -20,6 +20,44 @@ export const KIND_PRESENTATION: Record<SyncLogEvent['kind'], KindPresentation> =
   connection: { label: 'Connection', tone: 'connection' },
 };
 
+/** Compact badge label combining connectivity + freshness. */
+export function badgeLabel(status: SyncStatus, hasUnsyncedChanges: boolean): string {
+  switch (status.kind) {
+    case 'idle':
+      return 'Local only';
+    case 'connecting':
+      return 'Connecting…';
+    case 'connected':
+      return hasUnsyncedChanges ? 'Syncing…' : 'Synced';
+    case 'retrying':
+      return hasUnsyncedChanges ? 'Offline · unsynced changes' : 'Offline · synced';
+    case 'error':
+      return hasUnsyncedChanges ? 'Offline · unsynced changes' : 'Offline · sync error';
+  }
+}
+
+/** Tooltip detail: carries retry/error specifics the compact label drops. */
+export function badgeTitle(status: SyncStatus, hasUnsyncedChanges: boolean): string {
+  const label = badgeLabel(status, hasUnsyncedChanges);
+  switch (status.kind) {
+    case 'idle':
+    case 'connecting':
+      return label;
+    case 'connected':
+      return label;
+    case 'retrying': {
+      const base = `retry #${status.attempt} in ${Math.round(status.nextDelayMs / 1000)}s (${status.reason})`;
+      return hasUnsyncedChanges
+        ? `${label} — ${base} — changes will sync when reconnected`
+        : `${label} — ${base}`;
+    }
+    case 'error':
+      return hasUnsyncedChanges
+        ? `${label} — ${status.message} — changes will sync when reconnected`
+        : `${label} — ${status.message}`;
+  }
+}
+
 /** Chip label for a connection event, keyed off the status itself. */
 export function connectionChip(status: SyncStatus): KindPresentation {
   switch (status.kind) {

@@ -146,6 +146,7 @@ export {
   getSyncLog,
   installSyncLogCapture,
   setPushCaptureEnabled,
+  subscribeLocalCommits,
   recordConnectionEvent,
   summarizeTables,
   totalRows,
@@ -157,6 +158,14 @@ export type {
   SyncTableStat,
   SyncTableStats,
 } from './syncLog.ts';
+
+export {
+  createUnsyncedTracker,
+  getUnsyncedTracker,
+  subscribeUnsynced,
+  getHasUnsyncedChanges,
+} from './unsynced.ts';
+export type { UnsyncedTracker } from './unsynced.ts';
 
 export { captureSubtree, restoreSubtree } from './undo.ts';
 export type { SubtreeSnapshot } from './undo.ts';

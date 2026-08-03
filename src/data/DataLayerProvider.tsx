@@ -3,6 +3,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -16,7 +17,13 @@ import {
   installSyncLogCapture,
   recordConnectionEvent,
   setPushCaptureEnabled,
+  subscribeLocalCommits,
 } from './syncLog.ts';
+import {
+  getHasUnsyncedChanges,
+  getUnsyncedTracker,
+  subscribeUnsynced,
+} from './unsynced.ts';
 import {
   getSyncClient,
   destroySyncClient,
@@ -48,6 +55,10 @@ export function DataLayerProvider({
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [sync, setSync] = useState<SyncClient | undefined>(undefined);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ kind: 'idle' });
+  const hasUnsyncedChanges = useSyncExternalStore(
+    subscribeUnsynced,
+    getHasUnsyncedChanges,
+  );
 
   const persistenceReadyRef = useRef(persistenceReady);
   persistenceReadyRef.current = persistenceReady;
@@ -63,6 +74,18 @@ export function DataLayerProvider({
     // (module ring buffer), so this can never feed back into sync.
     const uninstallSyncLog = installSyncLogCapture(store, getSyncLog());
 
+    // Feed local commits to the unsynced tracker. `client` is only
+    // defined in the syncEnabled branch below (the closure reads the
+    // current value at commit time); when undefined, connected: false —
+    // dirty then accumulates in offline mode, but the badge's `idle`
+    // label ignores it, which is fine.
+    let client: SyncClient | undefined;
+    const unsubscribeLocalCommits = subscribeLocalCommits(() => {
+      getUnsyncedTracker().noteLocalCommit(
+        client?.status.kind === 'connected',
+      );
+    });
+
     if (offline) {
       // Offline mode skips persistence + sync; still normalise the
       // store once so any seeded rows from dev tests pick up `order`.
@@ -74,6 +97,7 @@ export function DataLayerProvider({
       return () => {
         uninstallReconciler();
         uninstallSyncLog();
+        unsubscribeLocalCommits();
       };
     }
 
@@ -109,7 +133,7 @@ export function DataLayerProvider({
     let unsubscribe: (() => void) | undefined;
     let onBeforeUnload: (() => void) | undefined;
     if (syncEnabled) {
-      const client = getSyncClient();
+      client = getSyncClient();
       setSync(client);
       unsubscribe = client.subscribe((s) => {
         setSyncStatus(s);
@@ -149,6 +173,7 @@ export function DataLayerProvider({
       cancelled = true;
       uninstallReconciler();
       uninstallSyncLog();
+      unsubscribeLocalCommits();
       unsubscribe?.();
       if (onBeforeUnload && typeof window !== 'undefined') {
         window.removeEventListener('beforeunload', onBeforeUnload);
@@ -157,9 +182,15 @@ export function DataLayerProvider({
     };
   }, [offline, syncEnabled, store]);
 
+  // Dirty clears on the transition into `connected` (the mergeable
+  // handshake converges both sides); other statuses keep state.
+  useEffect(() => {
+    getUnsyncedTracker().noteStatus(syncStatus);
+  }, [syncStatus]);
+
   const value = useMemo<DataLayerValue>(
-    () => ({ store, sync, syncStatus, persistenceReady }),
-    [store, sync, syncStatus, persistenceReady],
+    () => ({ store, sync, syncStatus, persistenceReady, hasUnsyncedChanges }),
+    [store, sync, syncStatus, persistenceReady, hasUnsyncedChanges],
   );
 
   return (

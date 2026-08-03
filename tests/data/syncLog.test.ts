@@ -34,10 +34,15 @@ import {
   installSyncLogCapture,
   recordConnectionEvent,
   setPushCaptureEnabled,
+  subscribeLocalCommits,
   summarizeTables,
   totalRows,
 } from '../../src/data/syncLog.ts';
-import type { SyncLog, SyncLogEvent } from '../../src/data/syncLog.ts';
+import type {
+  SyncLog,
+  SyncLogEvent,
+  SyncTableStats,
+} from '../../src/data/syncLog.ts';
 
 // TinyBase's public types don't name the synchronizer returned by
 // `createWsSynchronizer`; `connectClient` lets inference carry it.
@@ -262,6 +267,152 @@ describe('push and sweep capture (local store)', () => {
 
     uninstallCapture();
     uninstallReconciler();
+  });
+});
+
+describe('subscribeLocalCommits', () => {
+  it('fires with the classified tables on a gated local commit', () => {
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    const uninstall = installSyncLogCapture(store, log);
+    const received: SyncTableStats[] = [];
+    const unsubscribe = subscribeLocalCommits((tables) => {
+      received.push(tables);
+    });
+
+    setPushCaptureEnabled(true);
+    store.setRow(TABLES.tasks, 't1', { title: 'one' });
+    expect(received).toHaveLength(1);
+    expect(received[0]?.[TABLES.tasks]).toEqual({
+      added: 0,
+      updated: 1,
+      removed: 0,
+    });
+
+    unsubscribe();
+    uninstall();
+  });
+
+  it('does not fire while the push gate is off', () => {
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    const uninstall = installSyncLogCapture(store, log);
+    let fired = 0;
+    const unsubscribe = subscribeLocalCommits(() => {
+      fired += 1;
+    });
+
+    // Gate stays off: bootstrap transactions (OPFS load, backfill) must
+    // not reach local-commit subscribers either.
+    store.setRow(TABLES.tasks, 't1', { title: 'one' });
+    expect(fired).toBe(0);
+
+    unsubscribe();
+    uninstall();
+  });
+
+  it('does not fire for inbound sync-applied diffs', () => {
+    // Real MergeableChanges, produced by a source store's transaction —
+    // same technique as the pull-capture test above.
+    const source = createMergeableStore();
+    source.startTransaction();
+    source.setRow(TABLES.tasks, 't1', { title: 'a' });
+    const changes = source.getTransactionMergeableChanges();
+    source.finishTransaction();
+
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    installSyncLogCapture(store, log);
+    // Gate ON: if the `applying` discrimination leaked, the push path
+    // would fire the listener here.
+    setPushCaptureEnabled(true);
+    let fired = 0;
+    const unsubscribe = subscribeLocalCommits(() => {
+      fired += 1;
+    });
+
+    if (
+      !('__' in store) ||
+      !Array.isArray(store.__) ||
+      typeof store.__[4] !== 'function'
+    ) {
+      throw new Error('internal apply slot missing');
+    }
+    const apply = store.__[4] as (c: MergeableChanges) => unknown;
+    apply(changes);
+
+    // The apply DID flow (one pull recorded) but fired no local commit.
+    expect(eventsOfKind(log, 'pull')).toHaveLength(1);
+    expect(fired).toBe(0);
+
+    unsubscribe();
+  });
+
+  it('does not fire for zero-net-row transactions', () => {
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    const uninstall = installSyncLogCapture(store, log);
+    let fired = 0;
+    const unsubscribe = subscribeLocalCommits(() => {
+      fired += 1;
+    });
+
+    store.setRow(TABLES.tasks, 't1', { title: 'one' });
+    setPushCaptureEnabled(true);
+    // Identical values: the transaction nets zero rows, so neither the
+    // log nor local-commit subscribers may fire.
+    store.setRow(TABLES.tasks, 't1', { title: 'one' });
+    expect(log.events).toHaveLength(0);
+    expect(fired).toBe(0);
+
+    unsubscribe();
+    uninstall();
+  });
+
+  it('fires for reconciler sweeps — tombstone cascades are local commits', async () => {
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    const uninstallReconciler = installTombstoneReconciler(store);
+    const uninstallCapture = installSyncLogCapture(store, log);
+    setPushCaptureEnabled(true);
+    let fired = 0;
+    const unsubscribe = subscribeLocalCommits(() => {
+      fired += 1;
+    });
+
+    const taskId = createTask(store, { title: 'Doomed' });
+    writeTombstone(store, TOMBSTONE_ENTITY_TYPE.task, taskId);
+    // Flush the reconciler's queued sweep (twice, so its follow-up
+    // schedule also settles).
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // createTask + writeTombstone + the sweep itself = 3 local commits.
+    expect(eventsOfKind(log, 'sweep')).toHaveLength(1);
+    expect(fired).toBe(3);
+
+    unsubscribe();
+    uninstallCapture();
+    uninstallReconciler();
+  });
+
+  it('unsubscribe stops notifications', () => {
+    const store = createMergeableStore();
+    const log = createSyncLog();
+    const uninstall = installSyncLogCapture(store, log);
+    setPushCaptureEnabled(true);
+    let fired = 0;
+    const unsubscribe = subscribeLocalCommits(() => {
+      fired += 1;
+    });
+
+    store.setRow(TABLES.tasks, 't1', { title: 'one' });
+    expect(fired).toBe(1);
+    unsubscribe();
+    store.setRow(TABLES.tasks, 't2', { title: 'two' });
+    expect(fired).toBe(1);
+
+    uninstall();
   });
 });
 

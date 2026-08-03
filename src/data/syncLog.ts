@@ -183,6 +183,27 @@ export function setPushCaptureEnabled(enabled: boolean): void {
   pushCaptureEnabled = enabled;
 }
 
+// Subscribers notified with the classified tables of every recorded local
+// commit (push or sweep). Module-level, same style as pushCaptureEnabled
+// — the consumer (the unsynced tracker) lives outside any store too.
+const localCommitListeners = new Set<(tables: SyncTableStats) => void>();
+
+/**
+ * Subscribes to local (non-sync-applied) store commits. Fires at the same
+ * discrimination point as push/sweep recording: the `applying` gate keeps
+ * inbound sync applies out, the OPFS-load gate keeps bootstrap
+ * transactions out, and zero-net-row transactions are skipped. Sweep
+ * events fire too — tombstone cascades are local writes that must sync.
+ */
+export function subscribeLocalCommits(
+  listener: (tables: SyncTableStats) => void,
+): () => void {
+  localCommitListeners.add(listener);
+  return () => {
+    localCommitListeners.delete(listener);
+  };
+}
+
 type RowClass = 'added' | 'updated' | 'removed';
 
 // Both classifiers walk a transaction's mergeable changes and count rows
@@ -359,6 +380,10 @@ export function installSyncLogCapture(store: MergeableStore, log: SyncLog): () =
       kind: isReconcileSweepActive() ? 'sweep' : 'push',
       tables,
     });
+    // Local-commit subscribers (the unsynced tracker) fire here and only
+    // here: after the `applying` gate (inbound applies excluded), after
+    // the push gate (bootstrap excluded), after the zero-row early-return.
+    for (const listener of localCommitListeners) listener(tables);
   });
 
   return () => {

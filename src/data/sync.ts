@@ -177,6 +177,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     // flight; let it complete rather than racing a second socket.
     if (connecting) return;
     connecting = true;
+    const attemptStart = Date.now();
     setStatus({ kind: 'connecting' });
 
     let ws: WebSocket;
@@ -221,6 +222,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       // slow server-side starts; aborted chains fail silently anyway, so a
       // larger budget costs nothing in steady state.
       sync = await (options.synchronizerImpl ?? createWsSynchronizer)(store, ws, 10);
+      logInfo('sync', `connect handshake in ${Date.now() - attemptStart}ms`);
     } catch (err) {
       connecting = false;
       // No error status here either — scheduleReconnect owns the status
@@ -253,6 +255,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
 
     currentSync = sync;
     await sync.startSync();
+    logInfo('sync', `initial sync complete in ${Date.now() - attemptStart}ms`);
     attempt = 0;
     gaveUp = false;
     connecting = false;

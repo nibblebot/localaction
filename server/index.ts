@@ -72,19 +72,24 @@ export async function attachSyncServer(
   // to redo the schema bootstrap. The `Database` is closed in `close()`.
   const db = openDatabase(dbPath);
   await dropLegacyJsonTable(db);
-  // requestTimeoutSeconds=0.25 (TinyBase default: 1s). While TinyBase's
+  // requestTimeoutSeconds=0.1 (TinyBase default: 1s). While TinyBase's
   // ws-server configures/starts a per-path server client (which happens on
   // EVERY sole-client connect — it tears the path down when the last client
   // disconnects), all inbound messages are buffered. That includes the
-  // response to the server's own initial sync pull, so that pull always dies
-  // at this timeout before the path goes Ready and the buffer replays. With
-  // the 1s default, the buffered client pull was answered at ~1.05s — just
-  // after the client's own 1s request timeout — so the initial sync silently
-  // aborted and data only flowed when a later local mutation (OPFS load)
-  // pushed ContentHashes: the multi-second "slow initial sync" on every
-  // page reload. 0.25s gets the path Ready fast enough for the client's
-  // pull to be answered within its timeout; healthy responses on localhost
-  // take <10ms, so the smaller budget changes nothing in steady state.
+  // response to the server's own initial sync pull, so that pull can never
+  // be answered: it always dies at this timeout before the path goes Ready
+  // and the buffer replays. The timeout is therefore PURE dead wait on every
+  // connect — measured as ~250ms of the ~256ms client connect time at 0.25s
+  // — and the only thing it must outlive is the SQLite load (0-10ms here),
+  // so smaller is strictly better. The floor is the buffer expiry
+  // (timeout*10): a huge database that loads slower than 1s would have its
+  // buffered messages expire and the client overflow-killed — 0.1s keeps
+  // that budget at 1s. Historically this was 1s and the ~1.05s path Ready
+  // landed just AFTER the client's own 1s request timeout, silently
+  // aborting the initial sync (data only flowed once a later local mutation
+  // pushed ContentHashes): the multi-second "slow initial sync" on every
+  // page reload. The client now allows 10s for its pull, so the server
+  // staying under 1s is what matters.
   const tinyServer = createWsServer(
     wsServer,
     async (pathId) => {
@@ -94,10 +99,26 @@ export async function attachSyncServer(
       }
       const store = createMergeableStore();
       logInfo('sync', `persister created for path ${safePathId}`);
-      return createServerPersister(store, db);
+      const persister = createServerPersister(store, db);
+      // Time the SQLite load: the ws-server's per-path startup calls
+      // startAutoSave() (which loads the DB content into the path store)
+      // before the path goes Ready, and the client's first pull is
+      // buffered until then — the load duration is the dominant
+      // server-side term of the connect time. The client's own TTC
+      // (`Connected 1.2s` in the sync log) includes it.
+      const loadStartedAt = Date.now();
+      const load = persister.startAutoSave.bind(persister);
+      return {
+        ...persister,
+        async startAutoSave() {
+          const result = await load();
+          logInfo('sync', `path store loaded in ${Date.now() - loadStartedAt}ms`);
+          return result;
+        },
+      };
     },
     undefined,
-    0.25,
+    0.1,
   );
 
   httpServer.on('upgrade', (req, socket, head) => {

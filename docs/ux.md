@@ -259,6 +259,12 @@ appearance menu:
   the due-date pickers behind the task / project due-date buttons.
 - **`ConfirmModal`** — confirmation for destructive actions (delete).
 - **`UndoToast`** — completing a task offers a timed undo.
+- **Sync-arrival entrance** — a task row that arrives via a sync pull
+  (another device's write) enters with `task-line-synced-in`: the list
+  makes room (`max-height` + opacity, ~320ms) while the background
+  flashes a theme-aware tint (darker in light mode, lighter in dark) that
+  fades out over ~1s. Local adds never animate; bulk initial syncs
+  (>24 rows) skip it; `prefers-reduced-motion` renders the row instantly.
 - **`QuickAddModal`** — global `Shift+A` quick-add to the Inbox.
 - **Device-local view state** — collapse sets, the Completed toggle, the
   sidebar width, and appearance all persist to `localStorage` and never

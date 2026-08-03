@@ -18,7 +18,10 @@ import {
   recordConnectionEvent,
   setPushCaptureEnabled,
   subscribeLocalCommits,
+  subscribeSyncedRowAdds,
 } from './syncLog.ts';
+import { getSyncedAddRegistry } from './syncedAdds.ts';
+import { TABLES } from './schema.ts';
 import {
   getHasUnsyncedChanges,
   getUnsyncedTracker,
@@ -86,6 +89,13 @@ export function DataLayerProvider({
       );
     });
 
+    // Feed net-added sync arrivals to the synced-add registry, which the
+    // task row consults at mount to play its entrance animation. Only
+    // tasks animate — other tables have no row-level "make room" moment.
+    const unsubscribeSyncedRowAdds = subscribeSyncedRowAdds((table, rowIds) => {
+      if (table === TABLES.tasks) getSyncedAddRegistry().markSyncedTaskAdds(rowIds);
+    });
+
     if (offline) {
       // Offline mode skips persistence + sync; still normalise the
       // store once so any seeded rows from dev tests pick up `order`.
@@ -98,6 +108,7 @@ export function DataLayerProvider({
         uninstallReconciler();
         uninstallSyncLog();
         unsubscribeLocalCommits();
+        unsubscribeSyncedRowAdds();
       };
     }
 
@@ -174,6 +185,7 @@ export function DataLayerProvider({
       uninstallReconciler();
       uninstallSyncLog();
       unsubscribeLocalCommits();
+      unsubscribeSyncedRowAdds();
       unsubscribe?.();
       if (onBeforeUnload && typeof window !== 'undefined') {
         window.removeEventListener('beforeunload', onBeforeUnload);

@@ -38,6 +38,7 @@ import {
   NOTE_ENTITY_TYPE,
 } from '../../data/index.ts';
 import type { TaskTreeNode } from '../../data/index.ts';
+import { hasSyncedTaskAdd, clearSyncedTaskAdd } from '../../data/syncedAdds.ts';
 import { useUndo } from '../context/useUndo.ts';
 import { SortableTree } from '../dnd/SortableTree.tsx';
 import type { SortableHandleProps } from '../dnd/SortableList.tsx';
@@ -189,6 +190,11 @@ export function TaskRow({
   // strip slides out to the left of it. Desktop never opens it (the
   // trigger is display:none under `pointer: fine`).
   const [menuOpen, setMenuOpen] = useState(false);
+  // Sync-arrival entrance: non-destructive mount-time check against
+  // the sync-pull registry (data/syncedAdds.ts). The initializer form
+  // keeps the check StrictMode- and Compiler-safe; the class is
+  // dropped on animationend (row div below).
+  const [syncedIn, setSyncedIn] = useState(() => hasSyncedTaskAdd(taskId));
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent): void => {
@@ -208,6 +214,7 @@ export function TaskRow({
   const classes = ['task-line'];
   if (handle) classes.push('sortable-row');
   if (done) classes.push('task-line-done');
+  if (syncedIn) classes.push('task-line-synced-in');
   if (handle?.isDragging) classes.push('sortable-row-active');
   if (handle?.isOver) classes.push('sortable-row-over');
 
@@ -225,6 +232,15 @@ export function TaskRow({
       style={handle?.style}
       className={classes.join(' ')}
       data-drag-over={handle?.isOver ? 'true' : undefined}
+      onAnimationEnd={(e) => {
+        // Drop the class when the LAST leg ends (the 1s flash; the
+        // make-room leg finishes at 320ms) so the background fade plays
+        // in full and `overflow: hidden` is still gone before any later
+        // drag could clip its drop-target bar against it.
+        if (e.animationName !== 'task-synced-flash') return;
+        clearSyncedTaskAdd(taskId);
+        setSyncedIn(false);
+      }}
       {...(onTouchStart ? { onTouchStart } : {})}
     >
       {handle && (

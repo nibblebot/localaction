@@ -1358,6 +1358,57 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
+/* Sync-arrival entrance (applied by TaskRow when the row landed via a
+   remote sync pull — data/syncedAdds.ts). Two simultaneous legs: the
+   row makes room for itself while a quiet wash settles back to
+   transparent. Only max-height/opacity/background animate — transform
+   stays free for dnd-kit. The flash base is --surface-active (darker
+   than the light canvas, lighter than the dark one) kissed with 25%
+   --accent so the sync signal speaks in the one iris voice; color-mix
+   resolves against whichever theme block set the tokens, so no
+   per-theme overrides are needed. TaskRow drops the class when the
+   room leg ends, so overflow:hidden never survives to clip the
+   drop-target bar or coarse-pointer hit halos. */
+.task-line-synced-in {
+  overflow: hidden;
+  animation:
+    task-synced-room 320ms ease-out,
+    task-synced-flash 1s ease-out;
+}
+
+/* 8em is generous headroom over a fresh single-line row (~2em) and,
+   like every other row metric, tracks the density knob. */
+@keyframes task-synced-room {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 8em;
+    opacity: 1;
+  }
+}
+
+@keyframes task-synced-flash {
+  from {
+    background-color: color-mix(in oklab, var(--surface-active) 75%, var(--accent));
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task-line-synced-in {
+    animation: none;
+    /* No animationend fires with animations off, so the class lingers
+       for the row's lifetime — restore the resting state explicitly
+       (mirrors the .arming reduce block) rather than leaving
+       overflow:hidden behind to clip outlines and hit halos. */
+    overflow: visible;
+  }
+}
+
 /* Right-aligned action cluster on task rows (DueDate, AddSubtask)
    plus its ⋯ trigger. The delete trash lives beside the title input
    in edit mode instead (see .task-line-trash below). The wrapper owns

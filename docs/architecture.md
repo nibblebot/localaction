@@ -254,7 +254,10 @@ sequenceDiagram
   instead (`setTaskStatus` / `updateTask` wrap the `completedAt` stamp
   and the status write in one explicit transaction). The UI consumes the
   log via the badge popover and the `#/sync-log` viewer; the log is lost
-  on reload by design.
+  on reload by design. The pull seam also fans net-added row ids out to
+  `subscribeSyncedRowAdds`, which `syncedAdds.ts` turns into TTL'd marks
+  (>24-row batches dropped) that the task row reads at mount to play the
+  sync-arrival entrance animation (see `docs/ux.md`).
 - **Server** — `attachSyncServer` (in `server/index.ts`) creates a
   `WebSocketServer({ noServer: true })` and hands it to TinyBase's
   `createWsServer` with a persister factory: for each incoming `pathId` it

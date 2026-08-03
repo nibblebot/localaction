@@ -204,6 +204,28 @@ export function subscribeLocalCommits(
   };
 }
 
+// Subscribers notified with the NET-added row ids of every recorded pull,
+// per table. Module-level, same style as localCommitListeners — the
+// consumer (the synced-add registry feeding the task entrance animation)
+// lives outside any store too.
+const syncedRowAddListeners = new Set<(table: TableName, rowIds: readonly string[]) => void>();
+
+/**
+ * Subscribes to net-added row ids of inbound sync pulls. Fires at the
+ * same point the pull is recorded: updates/removals never fire it, echo
+ * re-applies (zero net rows) skip it via the same totalRows gate, and
+ * push/sweep paths never touch it. Ids share classifyNetPull's 'added'
+ * classification — absent pre-apply, present in the net changes.
+ */
+export function subscribeSyncedRowAdds(
+  listener: (table: TableName, rowIds: readonly string[]) => void,
+): () => void {
+  syncedRowAddListeners.add(listener);
+  return () => {
+    syncedRowAddListeners.delete(listener);
+  };
+}
+
 type RowClass = 'added' | 'updated' | 'removed';
 
 // Both classifiers walk a transaction's mergeable changes and count rows
@@ -291,6 +313,21 @@ function classifyPush(changes: MergeableChanges): SyncTableStats {
   return stats;
 }
 
+// Added-row ids for the synced-add channel: classifyNetPull's 'added'
+// class (absent pre-apply), restricted to rows still present in the net
+// changes. Only computed when the pull records and a subscriber exists.
+function collectNetAddedRowIds(
+  changes: MergeableChanges,
+  existedBefore: Map<TableName, Set<string>>,
+): Partial<Record<TableName, string[]>> {
+  const added: Partial<Record<TableName, string[]>> = {};
+  walkChangeRows(changes, (table, rowId, removed) => {
+    if (removed || existedBefore.get(table)?.has(rowId)) return;
+    (added[table] ??= []).push(rowId);
+  });
+  return added;
+}
+
 // The synchronizer never calls the public `applyMergeableChanges`: inbound
 // diffs flow through `setContentOrChanges` (node_modules/tinybase/
 // synchronizers/index.js) straight into the store's internal encoded-apply
@@ -360,6 +397,14 @@ export function installSyncLogCapture(store: MergeableStore, log: SyncLog): () =
           const tables = classifyNetPull(net, existedBefore);
           if (totalRows(tables) > 0) {
             recorder.record({ kind: 'pull', tables });
+            if (syncedRowAddListeners.size > 0) {
+              const added = collectNetAddedRowIds(net, existedBefore);
+              for (const table of Object.keys(added) as TableName[]) {
+                const rowIds = added[table];
+                if (rowIds === undefined || rowIds.length === 0) continue;
+                for (const listener of syncedRowAddListeners) listener(table, rowIds);
+              }
+            }
           }
         }
       }

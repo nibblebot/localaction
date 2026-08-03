@@ -8,7 +8,6 @@
     "dev": "bun scripts/dev.ts",
     "build": "tsc -b && bun --bun vite build",
     "lint": "oxlint",
-    "preview": "bun --bun vite preview --configLoader runner",
     "start": "bun server/index.ts",
     "smoke": "bun scripts/smoke.ts",
     "backup-db": "bun scripts/backup-db.ts",

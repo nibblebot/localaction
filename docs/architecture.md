@@ -9,8 +9,8 @@ see [`glossary.md`](./glossary.md).
 LocalAction is a single-page React app whose state lives in an in-browser
 [TinyBase](https://tinybase.org/) **MergeableStore**. The same store is
 persisted locally (OPFS) **and** kept in sync over a WebSocket with a small
-Bun server that holds the authoritative SQLite copy. Three runtime modes —
-Vite dev, Vite preview, and the prod server (`bun server/index.ts`) — all share one sync handler
+Bun server that holds the authoritative SQLite copy. Two runtime modes —
+Vite dev and the prod server (`bun server/index.ts`) — share one sync handler
 so behaviour never drifts between them.
 
 ```mermaid
@@ -280,17 +280,16 @@ One unified server serves both static assets and the sync socket:
   runtime mode so there is one source of truth.
 - `startServer(opts)` — wires static + sync onto one `http.Server` and listens.
 
-**Three entrypoints, one handler:**
+**Two entrypoints, one handler:**
 
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
 | dev | `bun run dev` (`scripts/dev.ts` → `bun --bun vite --configLoader runner`) | `vite.config.ts` plugin → `configureServer` |
-| preview | `bun run preview` (`bun --bun vite preview --configLoader runner`) | same plugin → `configurePreviewServer` |
 | prod | `bun run start` (`bun server/index.ts`) | `startServer` directly (module `isMain`) |
 
-Vite runs under Bun in every mode because `vite.config.ts` statically
+Vite runs under Bun because `vite.config.ts` statically
 imports `server/index.ts` → `server/db.ts` → `bun:sqlite`. The
-`--configLoader runner` flag is load-bearing in dev/preview: Vite's default
+`--configLoader runner` flag is load-bearing in dev: Vite's default
 rolldown config bundler breaks `ws` upgrade handling under Bun (the bundled
 handler accepts the socket server-side but its 101 response never reaches
 the wire); the native module runner skips bundling and the handshake works.
@@ -298,7 +297,6 @@ the wire); the native module runner skips bundling and the handshake works.
 Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). Dev and prod use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db`) so dev runs never share the production store; a pre-split `data.db` is left untouched:
 - prod (`bun run start`): `--port` > `7373`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
 - dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
-- preview (`bun run preview`): `--db <path>` works via the `--` escape (e.g. `bun run preview -- --db X`), else `vite.config.ts` falls back to `defaultProdDbPath()`; `--port` is Vite-native.
 
 ## Build & toolchain
 

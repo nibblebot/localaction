@@ -4,8 +4,8 @@ const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 
 
 // Contract: after one online visit, the app shell loads with the network
 // fully offline (service worker precache) and shows OPFS-persisted data.
-// Runs against `vite preview` via playwright.offline.config.ts — the dev
-// server never registers the SW.
+// Runs against the prod server (`bun server/index.ts`) via
+// playwright.offline.config.ts — the dev server never registers the SW.
 test('app shell and data load with the network offline', async ({ page, context }) => {
   // Capture client lifecycle logs; asserted at the end.
   const consoleLines: string[] = [];

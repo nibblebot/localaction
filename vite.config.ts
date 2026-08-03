@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
-import { defaultProdDbPath } from './server/db.ts'
+import { defaultDevDbPath } from './server/db.ts'
 import { logInfo } from './src/log.ts'
 import type { Server } from 'node:http'
 import { createHash } from 'node:crypto'
@@ -24,7 +24,7 @@ function readDbPathFromArgv(argv: readonly string[]): string | undefined {
   }
   return undefined
 }
-const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultProdDbPath()
+const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDevDbPath()
 
 // Absolute dist/ path, captured in `configResolved` (the config may be
 // bundled to a temp file at build time, so import.meta.url is unreliable).
@@ -36,7 +36,7 @@ let outDir = ''
 const LAZY_FONT = /^fonts\/(?!DMSans-)/
 
 // Served by the dev server in place of public/sw.js (see the
-// localaction-sw-dev-cleanup plugin). A prod/preview build served on this
+// localaction-sw-dev-cleanup plugin). A prod build served on this
 // origin earlier may have left a service worker registered; SWs persist per
 // origin and keep serving their precached app shell cache-first even after
 // the dev server takes over the port — the page looks permanently stale and
@@ -74,32 +74,27 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
     {
       // Wires the TinyBase WS sync handler into Vite's HTTP server upgrade
-      // events. Used in both `bun run dev` (configureServer) and
-      // `bun run preview` (configurePreviewServer); the prod server
+      // events in `bun run dev` (configureServer); the prod server
       // (`bun run start`) calls the same `attachSyncServer` directly.
       // Keeps the WS code in one place and avoids drift between modes.
       // The server module imports `bun:sqlite`, which only resolves under
       // the Bun runtime — every Vite invocation must be `bun --bun vite`.
-      // INVARIANT: dev/preview must also pass `--configLoader runner`
-      // (scripts/dev.ts, package.json `preview`). Vite's default rolldown
-      // config bundler breaks `ws` upgrade handling under Bun — the
+      // INVARIANT: dev must also pass `--configLoader runner`
+      // (scripts/dev.ts). Vite's default rolldown config BUNDLER breaks
+      // `ws` upgrade handling under Bun — the
       // bundled handler accepts the socket server-side but its 101
       // response never reaches the wire. The native module runner skips
       // bundling and the handshake works.
       name: 'localaction-sync',
       async configureServer(server) {
-        await attachSyncToVite(server, 'dev', syncDbPath)
-      },
-      async configurePreviewServer(server) {
-        await attachSyncToVite(server, 'preview', syncDbPath)
+        await attachSyncToVite(server, syncDbPath)
       },
     },
     // Dev-only: intercept /sw.js before the static middleware can serve the
     // placeholder template from public/, and answer with DEV_CLEANUP_SW so a
     // stale prod service worker on this origin self-destructs (see above).
-    // Only `configureServer` is defined, so preview (configurePreviewServer)
-    // and the prod server keep serving the real baked dist/sw.js — the
-    // offline e2e suite depends on that.
+    // Only `configureServer` is defined, so the prod server keeps serving
+    // the real baked dist/sw.js — the offline e2e suite depends on that.
     {
       name: 'localaction-sw-dev-cleanup',
       configureServer(server) {
@@ -178,16 +173,15 @@ export default defineConfig({
 // `http.Server`-specific property. The DB path (`--db`) is read from
 // `process.argv` — `scripts/dev.ts` moves it past Vite's `--` separator so
 // `cac` ignores it, and always injects `defaultDevDbPath()` when the user
-// didn't pass one; the `?? defaultProdDbPath()` above covers bare
-// `vite preview`. The HTTP/WS port is whatever Vite binds (native `--port`).
+// didn't pass one; the `?? defaultDevDbPath()` above covers bare Vite
+// invocations. The HTTP/WS port is whatever Vite binds (native `--port`).
 async function attachSyncToVite(
   server: { httpServer: unknown },
-  label: string,
   dbPath: string,
 ): Promise<void> {
   const httpServer = server.httpServer
   if (httpServer == null || typeof httpServer !== 'object') return
   if (!('on' in httpServer) || typeof httpServer.on !== 'function') return
-  logInfo('server', `attached WS sync handler (vite ${label})`)
+  logInfo('server', 'attached WS sync handler (vite dev)')
   await attachSyncServer(httpServer as Server, { dbPath })
 }

@@ -6,7 +6,7 @@ import { logInfo, logWarn } from './log.ts';
 // meaningful and a stale registration could shadow HMR.
 //
 // Dev additionally PURGES any service worker on the origin. SWs persist per
-// origin across server restarts, so a prod/preview build once served on the
+// origin across server restarts, so a prod build once served on the
 // same port leaves a worker that keeps serving its precached shell over the
 // dev server. The dev server's /sw.js cleanup worker (see the
 // localaction-sw-dev-cleanup plugin in vite.config.ts) normally handles the

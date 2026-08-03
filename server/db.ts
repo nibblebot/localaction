@@ -24,7 +24,7 @@ import { logInfo } from '../src/log.ts';
 // Dev and prod get separate files so an experimental `bun run dev` session
 // never shares state with the production store: `defaultDevDbPath()` is the
 // `bun run dev` default; `defaultProdDbPath()` is the `bun run start` /
-// bare `vite preview` / `bun run backup-db` default. A pre-split `data.db`
+// `bun run backup-db` default. A pre-split `data.db`
 // from older versions is left untouched — nothing reads, migrates, or
 // deletes it. Entry points pass the path explicitly; the server API itself
 // has no default, so tests/smoke are forced to name their own throwaway path.

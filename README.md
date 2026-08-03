@@ -29,7 +29,7 @@ Intended for multi-device use with no authorization logic.
 - **Multi-device sync.** Clients converge over WebSocket via CRDT-style merge (per-cell HLC timestamps, last-writer-wins) — no conflict dialogs. A sidebar badge shows sync state (Local only → Syncing… → Synced).
 
 
-The client keeps all state in a [TinyBase](https://tinybase.org/) **MergeableStore** persisted to OPFS in the browser. A `WsSynchronizer` merges it with the server's authoritative SQLite copy, so edits on multiple devices converge automatically. The same sync handler serves dev, preview, and prod.
+The client keeps all state in a [TinyBase](https://tinybase.org/) **MergeableStore** persisted to OPFS in the browser. A `WsSynchronizer` merges it with the server's authoritative SQLite copy, so edits on multiple devices converge automatically. The same sync handler serves dev and prod.
 
 ```text
 Browser                        Server                            Browser

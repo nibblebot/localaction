@@ -20,7 +20,7 @@ export const KIND_PRESENTATION: Record<SyncLogEvent['kind'], KindPresentation> =
   connection: { label: 'Connection', tone: 'connection' },
 };
 
-/** Compact badge label combining connectivity + freshness. */
+/** Compact badge label — connectivity only; freshness/severity lives in the dot and tooltip. */
 export function badgeLabel(status: SyncStatus, hasUnsyncedChanges: boolean): string {
   switch (status.kind) {
     case 'idle':
@@ -30,9 +30,11 @@ export function badgeLabel(status: SyncStatus, hasUnsyncedChanges: boolean): str
     case 'connected':
       return hasUnsyncedChanges ? 'Syncing…' : 'Synced';
     case 'retrying':
-      return hasUnsyncedChanges ? 'Offline · unsynced changes' : 'Offline · synced';
     case 'error':
-      return hasUnsyncedChanges ? 'Offline · unsynced changes' : 'Offline · sync error';
+      // Offline states share one quiet label — the dot carries the
+      // distinction (grey = synced, blinking orange = unsynced changes,
+      // red = reconnect gave up); specifics live in the tooltip.
+      return 'Offline';
   }
 }
 

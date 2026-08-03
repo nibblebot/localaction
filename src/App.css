@@ -1612,7 +1612,7 @@ body.sidebar-resizing {
 
 /* ============================================================
    Sync status — colored dot + quiet label
-   dot = connectivity · label = connectivity + freshness
+   label = connectivity · dot = freshness/severity
    green: online · yellow: syncing/unsynced · red: sync failure
    (idle = pre-connect boot state, stays neutral)
    ============================================================ */
@@ -1651,23 +1651,19 @@ body.sidebar-resizing {
 /* Online but holding unsent local changes — the socket will flush
    them, so warn + pulse until the label returns to "Synced". */
 .sync-status-connected.sync-status-dirty .sync-status-dot {
-  background: var(--warning);
+  background: var(--warning-bright);
   animation: sync-status-pulse 1.2s ease-in-out infinite;
 }
 
 .sync-status-connecting .sync-status-dot {
-  background: var(--warning);
+  background: var(--warning-bright);
   animation: sync-status-pulse 1.2s ease-in-out infinite;
 }
 
-/* Offline: neutral gray by itself, warning + pulse only while there
-   are unsynced changes waiting for the reconnect. */
+/* Reconnect loop: bright yellow flash until the socket reconnects —
+   dirty or not, the loop itself is the signal. */
 .sync-status-retrying .sync-status-dot {
-  background: var(--text-muted);
-}
-
-.sync-status-retrying.sync-status-dirty .sync-status-dot {
-  background: var(--warning);
+  background: var(--warning-bright);
   animation: sync-status-pulse 1.2s ease-in-out infinite;
 }
 

@@ -29,14 +29,14 @@ describe('badgeLabel', () => {
     expect(badgeLabel(connected, true)).toBe('Syncing…');
   });
 
-  it('retrying clean reads "Offline · synced", dirty reads "Offline · unsynced changes"', () => {
-    expect(badgeLabel(retrying, false)).toBe('Offline · synced');
-    expect(badgeLabel(retrying, true)).toBe('Offline · unsynced changes');
+  it('retrying reads "Offline" regardless of dirty (dot shows the state)', () => {
+    expect(badgeLabel(retrying, false)).toBe('Offline');
+    expect(badgeLabel(retrying, true)).toBe('Offline');
   });
 
-  it('error clean reads "Offline · sync error", dirty reads "Offline · unsynced changes"', () => {
-    expect(badgeLabel(error, false)).toBe('Offline · sync error');
-    expect(badgeLabel(error, true)).toBe('Offline · unsynced changes');
+  it('error reads "Offline" regardless of dirty (dot shows the state)', () => {
+    expect(badgeLabel(error, false)).toBe('Offline');
+    expect(badgeLabel(error, true)).toBe('Offline');
   });
 });
 

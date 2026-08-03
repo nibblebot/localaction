@@ -87,6 +87,7 @@
 
   /* Warning */
   --warning: #ab4c08;
+  --warning-bright: #facc15;
   --warning-bg: #fef3c7;
   --warning-border: #fcd34d;
 
@@ -250,6 +251,7 @@
   --success-border: rgba(76, 175, 80, 0.40);
 
   --warning: #d4a72c;
+  --warning-bright: #facc15;
   --warning-bg: rgba(212, 167, 44, 0.14);
   --warning-border: rgba(212, 167, 44, 0.40);
 
@@ -301,6 +303,7 @@
     --success-border: rgba(76, 175, 80, 0.40);
 
     --warning: #d4a72c;
+    --warning-bright: #facc15;
     --warning-bg: rgba(212, 167, 44, 0.14);
     --warning-border: rgba(212, 167, 44, 0.40);
 

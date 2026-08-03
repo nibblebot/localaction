@@ -19,7 +19,8 @@
     "test:watch": "bun test --watch",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:e2e:offline": "bun run build && playwright test --config playwright.offline.config.ts"
+    "test:e2e:offline": "bun run build && playwright test --config playwright.offline.config.ts",
+    "demo:mobile": "scripts/demo-mobile.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

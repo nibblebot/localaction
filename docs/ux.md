@@ -88,9 +88,14 @@ Areas are top-level containers; each may hold nested **sub-areas**
   details in the tooltip. The badge is a toggle: clicking
   it opens the sync-activity popover — the recent pull/push/connection
   events (*"Pulled 8 Tasks, 3 Projects, 1 Area"*, *"Pushed 2 Tasks"*,
-  *Connected*) with relative times and an *"Open full sync log"* link to
-  the `#/sync-log` viewer (absolute timestamps, per-table
-  added/updated/removed breakdowns, raw event JSON, copy/clear actions).
+  *"Connected 234ms"* — time-to-connect: ms under a second, seconds
+  with one decimal above) with relative times
+  and an *"Open full sync log"* link to the `#/sync-log` viewer. A
+  reconnect burst (a server blip's chain of Connecting/Retry events)
+  collapses into a single episode row — *"Reconnected after 2 retries
+  (1.2s)"* — while the full viewer below keeps every raw event (absolute
+  timestamps, per-table added/updated/removed breakdowns, raw event JSON,
+  copy/clear actions).
   Below 768px a second badge instance pins to the shell's top-right corner
   so sync state stays visible while the sidebar is a closed drawer.
 - **AppearanceMenu** — theme, font, and density controls (see

@@ -4,8 +4,10 @@ import type { SyncLogEvent } from '../../data/index.ts';
 import EmptyState from '../shared/EmptyState.tsx';
 import {
   absoluteTime,
+  connectTimeMs,
   connectionChip,
   connectionDescription,
+  formatConnectTime,
   KIND_PRESENTATION,
   tableBreakdown,
 } from './syncLogFormat.ts';
@@ -76,7 +78,7 @@ export default function SyncLogPane(): React.JSX.Element {
         </header>
         <ol className="sync-log-list">
           {[...events].reverse().map((event) => (
-            <SyncLogRow event={event} now={now} key={event.id} />
+            <SyncLogRow events={events} event={event} now={now} key={event.id} />
           ))}
         </ol>
       </div>
@@ -85,9 +87,11 @@ export default function SyncLogPane(): React.JSX.Element {
 }
 
 function SyncLogRow({
+  events,
   event,
   now,
 }: {
+  events: readonly SyncLogEvent[];
   event: SyncLogEvent;
   now: number;
 }): React.JSX.Element {
@@ -95,6 +99,10 @@ function SyncLogRow({
     event.kind === 'connection'
       ? connectionChip(event.status)
       : KIND_PRESENTATION[event.kind];
+  const ttc =
+    event.kind === 'connection' && event.status.kind === 'connected'
+      ? connectTimeMs(events, event)
+      : undefined;
   return (
     <li className="sync-log-event">
       <time className="sync-log-time" dateTime={new Date(event.at).toISOString()}>
@@ -103,7 +111,10 @@ function SyncLogRow({
       <span className={`sync-log-chip sync-log-chip-${chip.tone}`}>{chip.label}</span>
       <div className="sync-log-detail">
         {event.kind === 'connection' ? (
-          <p className="sync-log-line">{connectionDescription(event.status)}</p>
+          <p className="sync-log-line">
+            {connectionDescription(event.status)}
+            {ttc === undefined ? '' : ` (${formatConnectTime(ttc)})`}
+          </p>
         ) : (
           <>
             <p className="sync-log-line">{summarizeTables(event.tables)}</p>

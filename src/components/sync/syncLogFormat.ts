@@ -117,6 +117,148 @@ export function eventLine(event: SyncLogEvent, summarize: (tables: SyncTableStat
   }
 }
 
+/**
+ * Connect time with a human-friendly unit: milliseconds under a second
+ * ("234ms"), seconds with one decimal at or above it ("1.2s").
+ */
+export function formatConnectTime(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * Time to connect for a `connected` event: its timestamp minus the nearest
+ * preceding `connecting` event's timestamp — the duration of the successful
+ * attempt (WS open + synchronizer handshake + initial pull). Scanning stops
+ * at any earlier episode boundary (a connection event that is neither
+ * `connecting` nor `retrying`), so a previous episode's connecting is never
+ * mistaken for this attempt's start. Returns `undefined` when the event is
+ * not a `connected` connection event or the log begins mid-episode (e.g.
+ * the attempt's `connecting` was evicted by the capacity cap).
+ */
+export function connectTimeMs(
+  events: readonly SyncLogEvent[],
+  event: SyncLogEvent,
+): number | undefined {
+  if (event.kind !== 'connection' || event.status.kind !== 'connected') {
+    return undefined;
+  }
+  // Scan strictly backwards from the event's own position — never past it,
+  // or a later episode's boundary would truncate the search.
+  const index = events.indexOf(event);
+  if (index < 0) return undefined;
+  for (let i = index - 1; i >= 0; i--) {
+    const prev = events[i];
+    if (prev.kind !== 'connection') continue;
+    if (prev.status.kind === 'connecting') return event.at - prev.at;
+    if (prev.status.kind !== 'retrying') return undefined;
+  }
+  return undefined;
+}
+
+/** One row in the popover list — either a single event or a collapsed connection episode. */
+export interface PopoverRow {
+  /** Terminal event id (unique, stable while that event stays in the log). */
+  id: number;
+  /** Terminal event timestamp — recovery time for a merged episode. */
+  at: number;
+  /** One plain-language line, same vocabulary as {@link eventLine}. */
+  line: string;
+}
+
+/**
+ * Popover rows with connect/retry spam compacted: a contiguous run of
+ * `connecting`/`retrying` events is one "episode", and episodes collapse
+ * to a single row —
+ *   run → `connected`  ⇒ "Reconnected after N retries" (N = max attempt;
+ *                        a plain connect reads just "Connected"),
+ *   run → `error`      ⇒ "Sync error" (the give-up swallows its run),
+ *   open run (latest is `connecting`/`retrying`) ⇒ the latest status line,
+ *                        updated in place as retries tick.
+ * Pulls/pushes/sweeps and standalone `idle` rows pass through untouched.
+ * The full `#/sync-log` viewer keeps every raw event — this compaction is
+ * only for the notifications popover.
+ */
+export function compactPopoverRows(
+  events: readonly SyncLogEvent[],
+  summarize: (tables: SyncTableStats) => string,
+): PopoverRow[] {
+  const rows: PopoverRow[] = [];
+  let runOpen = false;
+  let runRetries = 0;
+  let runLatest: SyncLogEvent | undefined;
+
+  // Emit the open run as a single row using its latest event (an episode
+  // still in flight — no terminal yet).
+  const flushRun = (): void => {
+    if (!runOpen) return;
+    rows.push({
+      id: runLatest!.id,
+      at: runLatest!.at,
+      line: eventLine(runLatest!, summarize),
+    });
+    runOpen = false;
+    runRetries = 0;
+    runLatest = undefined;
+  };
+
+  // Discard the open run — its terminal event (connected/error) subsumes it.
+  const dropRun = (): void => {
+    runOpen = false;
+    runRetries = 0;
+    runLatest = undefined;
+  };
+
+  for (const event of events) {
+    if (event.kind !== 'connection') {
+      flushRun();
+      rows.push({ id: event.id, at: event.at, line: eventLine(event, summarize) });
+      continue;
+    }
+    const { status } = event;
+    switch (status.kind) {
+      case 'connecting':
+      case 'retrying':
+        runOpen = true;
+        runLatest = event;
+        if (status.kind === 'retrying') {
+          runRetries = Math.max(runRetries, status.attempt);
+        }
+        break;
+      case 'connected': {
+        const retries = runRetries;
+        const ttc = connectTimeMs(events, event);
+        const base =
+          retries >= 1
+            ? `Reconnected after ${retries} retr${retries === 1 ? 'y' : 'ies'}`
+            : 'Connected';
+        rows.push({
+          id: event.id,
+          at: event.at,
+          line:
+            ttc === undefined
+              ? base
+              : retries >= 1
+                ? `${base} (${formatConnectTime(ttc)})`
+                : `${base} ${formatConnectTime(ttc)}`,
+        });
+        dropRun();
+        break;
+      }
+      case 'error':
+        // The give-up swallows its retry run: one "Sync error" row.
+        dropRun();
+        rows.push({ id: event.id, at: event.at, line: 'Sync error' });
+        break;
+      default:
+        // idle: a standalone row; any open run flushes first.
+        flushRun();
+        rows.push({ id: event.id, at: event.at, line: eventLine(event, summarize) });
+    }
+  }
+  flushRun();
+  return rows;
+}
+
 const TABLE_ORDER = ['tasks', 'projects', 'sections', 'areas', 'notes', 'tombstones'] as const;
 
 /**

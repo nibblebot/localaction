@@ -3,7 +3,7 @@ import { summarizeTables } from '../../data/index.ts';
 import type { SyncLogEvent } from '../../data/index.ts';
 import { formatRoute, SYNC_LOG } from '../../router.ts';
 import { useFocusTrap } from '../hooks/useFocusTrap.ts';
-import { eventLine, relativeTime } from './syncLogFormat.ts';
+import { compactPopoverRows, relativeTime } from './syncLogFormat.ts';
 
 export interface SyncLogPopoverProps {
   /** Full event log (oldest → newest); the popover shows the tail. */
@@ -16,9 +16,12 @@ const MAX_ROWS = 20;
 /**
  * Notifications popover behind the sync status badge: the ~20 most
  * recent sync events, newest first, one plain-language line each, and
- * a footer link into the full `#/sync-log` viewer. The badge owns
- * open state and the outside-click/Escape listeners; this component
- * owns focus containment (focus returns to the badge on close).
+ * a footer link into the full `#/sync-log` viewer. Connect/retry bursts
+ * are collapsed into single episode rows (see compactPopoverRows) so a
+ * reconnect storm reads as "Reconnected after N retries", not a stack of
+ * Connecting/Retry lines. The badge owns open state and the
+ * outside-click/Escape listeners; this component owns focus containment
+ * (focus returns to the badge on close).
  */
 export default function SyncLogPopover({
   events,
@@ -36,7 +39,7 @@ export default function SyncLogPopover({
   }, []);
 
   const now = Date.now();
-  const recent = events.slice(-MAX_ROWS).reverse();
+  const recent = compactPopoverRows(events, summarizeTables).slice(-MAX_ROWS).reverse();
 
   return (
     <div
@@ -51,17 +54,15 @@ export default function SyncLogPopover({
         <p className="sync-popover-empty">No sync activity yet.</p>
       ) : (
         <ul className="sync-popover-list">
-          {recent.map((event) => (
-            <li className="sync-popover-item" key={event.id}>
+          {recent.map((row) => (
+            <li className="sync-popover-item" key={row.id}>
               <time
                 className="sync-popover-item-time"
-                dateTime={new Date(event.at).toISOString()}
+                dateTime={new Date(row.at).toISOString()}
               >
-                {relativeTime(event.at, now)}
+                {relativeTime(row.at, now)}
               </time>
-              <span className="sync-popover-item-line">
-                {eventLine(event, summarizeTables)}
-              </span>
+              <span className="sync-popover-item-line">{row.line}</span>
             </li>
           ))}
         </ul>

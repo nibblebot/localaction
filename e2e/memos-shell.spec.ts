@@ -52,8 +52,14 @@ test.describe('LocalAction shell', () => {
     // Projects tab: add a project; its card is expanded by default.
     await createProject(page, 'Plan trip');
     const card = page.locator('li.project-row', { hasText: 'Plan trip' });
-    await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // Add a task via the card's header add-task icon.
+    // The card is expanded by default, but its tree mounts EMPTY (task
+    // creation is deferred until a draft commits) and the
+    // `.project-row-tasks:empty` CSS hides the empty tree — attached,
+    // not visible, until the first task lands.
+    await expect(card.locator('.project-row-tasks')).toBeAttached();
+    await expect(card.locator('.project-row-tasks')).toBeHidden();
+    // Add a task via the card's header add-task icon: a draft row opens
+    // focused; the task is created when the title commits.
     await card.locator('button[aria-label="Add task to Plan trip"]').click();
     await expect(card.locator('.task-line-title:focus')).toBeVisible();
     await page.keyboard.type('Book flights');

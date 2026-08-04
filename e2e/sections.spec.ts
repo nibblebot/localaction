@@ -1,9 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 
 // Journey: project sections. A section groups top-level tasks inside a
-// project; the user adds one via the new-section input under the
-// new-task input in the card footer, renames it inline, drags it to
-// reorder, and deletes it (with its tasks) after confirmation.
+// project; the user adds one via the add-section "+" pinned next to the
+// project name, renames it inline, drags it to reorder, and deletes it
+// (with its tasks) after confirmation. Tasks are added via the add-task
+// "+", which opens a draft row that creates the task only when its
+// title commits.
 const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 
@@ -31,8 +33,13 @@ async function openProject(page: Page, areaName: string, projectName: string): P
   const projectInput = page.locator('input[aria-label="New project"]');
   await projectInput.fill(projectName);
   await projectInput.press('Enter');
-  // The project card is expanded by default — its task tree is ready.
-  await expect(page.locator('.project-row-tasks')).toBeVisible();
+  // The project card is expanded by default. Its tree mounts EMPTY —
+  // task creation is deferred until a draft row commits — and the
+  // `.project-row-tasks:empty` CSS hides the empty tree. So assert the
+  // mount (i.e. the expansion), not visibility; callers add rows via
+  // the header add-task/add-section affordances, which fills the tree.
+  const card = page.locator('li.project-row', { hasText: projectName });
+  await expect(card.locator('.project-row-tasks')).toBeAttached();
 }
 
 async function addSection(page: Page, name: string): Promise<void> {

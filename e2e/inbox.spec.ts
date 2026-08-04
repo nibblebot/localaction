@@ -96,15 +96,16 @@ test.describe('inbox visibility', () => {
     await titles.nth(total - 2).click();
     await page.keyboard.press('Shift+Enter');
 
-    // New empty row sits directly under the current one, focused for
-    // quick entry; the untouched sibling stays put.
+    // A draft row opens directly under the current one, focused for
+    // quick entry; the untouched sibling stays put. The draft is not a
+    // store row yet, but it occupies a line in the list.
     await expect(titles).toHaveCount(total + 1);
     await expect(titles.nth(total - 2)).toHaveValue(alpha);
     await expect(titles.nth(total - 1)).toHaveValue('');
     await expect(titles.nth(total)).toHaveValue(beta);
     await expect(titles.nth(total - 1)).toBeFocused();
 
-    // The focused row is a real editable task: typing + Enter commits it.
+    // The draft accepts quick entry: typing + Enter commits it as a task.
     await page.keyboard.type('Middle');
     await page.keyboard.press('Enter');
     await expect(titles.nth(total - 1)).toHaveValue('Middle');

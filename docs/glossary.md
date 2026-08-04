@@ -89,7 +89,7 @@ The header of an Area view: the area's colour marker and name (inline-renamable 
 
 ## Area Tasks Section
 
-The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an *Add task* affordance. Sub-areas (recursively) roll in below the Area's own tree as labeled, editable groups — one per sub-area that roots its own tasks — each scoped to that sub-area's placement.
+The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an add-task "+" affordance that opens a [task draft row](#task-draft-row) at the end of the tree. Sub-areas (recursively) roll in below the Area's own tree as labeled, editable groups — one per sub-area that roots its own tasks — each scoped to that sub-area's placement.
 
 ## Projects Section
 
@@ -101,7 +101,7 @@ The Area view section rolling up every [Note](#note) attached to the Area, its s
 
 ## Project Row
 
-A single Project's row in the Projects section: a drag handle, the expand caret, the project name, a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (section headers with no visible tasks are hidden by default; the toggle shows them for that project; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), rename, and delete behind a confirm. Clicking the row body opens the [Project detail pane](#project-detail-pane); the caret is the expand toggle.
+A single Project's row in the Projects section: a drag handle, the expand caret, the project name, an add-task "+" and an add-section affordance next to the name (the "+" opens a [task draft row](#task-draft-row)), a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (section headers with no visible tasks are hidden by default; the toggle shows them for that project; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), rename, and delete behind a confirm. Clicking the row body opens the [Project detail pane](#project-detail-pane); the caret is the expand toggle.
 
 ## Project Card
 
@@ -109,15 +109,15 @@ A [Project row](#project-row) plus its expanded inline body — the [Project tas
 
 ## Project Task List
 
-The body of an expanded [Project card](#project-card) (`projects/ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section), followed by the **task list footer** (the *Add task* / *Add section* inline-add buttons).
+The body of an expanded [Project card](#project-card) (`projects/ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section). The add-task "+" and add-section affordances ride next to the project name, not in the list (see [Project Row](#project-row)); the "+" opens a [task draft row](#task-draft-row) at the end of the unsectioned group.
 
 ## Section Row
 
-A [Section's](#section) header inside the Project task list: a drag handle, the inline-editable section name, and delete (containment cascade, behind a confirm). Section rows are pinned to the top level — they can reorder but never nest — and always render after the Project's unsectioned Tasks.
+A [Section's](#section) header inside the Project task list: a drag handle, the inline-editable section name, an add-task "+" (opens a [task draft row](#task-draft-row) at the end of the section), and delete (containment cascade, behind a confirm). Section rows are pinned to the top level — they can reorder but never nest — and always render after the Project's unsectioned Tasks.
 
 ## Task Row
 
-A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — due date, add sub-task, and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
+A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — due date, add sub-task (opens a [task draft row](#task-draft-row) at the end of the task's children), and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
 
 ## Project Notes Pane
 
@@ -125,7 +125,7 @@ The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project
 
 ## Project Detail Pane
 
-The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card; hidden by default), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
+The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the add-task "+" and add-section affordance next to the name, the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card; hidden by default), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
 
 ## Today / Week View
 
@@ -137,7 +137,11 @@ The show/hide-done switch (a check icon, accent-tinted while active) shared by t
 
 ## Inline Add
 
-The inline-creation affordance used wherever rows are added — new area, new note, the Inbox add input, *Add task* / *Add section* / *Add project*. Two forms: an always-visible single-line input appended to a list, or a dashed *Add …* button that reveals that input in place, focused. Enter commits the trimmed, non-empty value; Esc clears the draft (in the button form, Esc or blurring an empty input also collapses back to the button).
+The inline-creation affordance used wherever rows are added — new area, new note, the Inbox add input, *Add section* / *Add project*. Two forms: an always-visible single-line input appended to a list, or a dashed *Add …* button that reveals that input in place, focused. Enter commits the trimmed, non-empty value; Esc clears the draft (in the button form, Esc or blurring an empty input also collapses back to the button). Adding a Task is the exception — every add-task affordance opens a [task draft row](#task-draft-row) instead of creating inline.
+
+## Task Draft Row
+
+The deferred add-task row. Clicking an add-task "+" — the [Area tasks section](#area-tasks-section) header, next to the project name on a [Project row](#project-row) or the [Project detail pane](#project-detail-pane), a [Section row](#section-row), a [Task row's](#task-row) add-sub-task action — or pressing Shift+Enter in a task title opens a draft row exactly where the task will land: an inert task row carrying a focused, empty title input. Nothing is created until the input commits — Enter, or blur with a non-empty title; Escape, Enter on an empty input, or blurring an empty input discards the draft and creates nothing. Shift+Enter with a non-empty title commits and chains a fresh draft directly below the new task. While a draft is open there is no task: counts, sync, and undo are untouched.
 
 ## Quick Add
 

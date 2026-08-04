@@ -3,7 +3,6 @@ import {
   useDataLayer,
   useAreaTaskIds,
   getAreaTaskIds,
-  createTask,
   moveTask,
   PLACEMENT_SEP,
   getEffectiveTaskStatus,
@@ -14,7 +13,7 @@ import { useTableVersion } from '../../data/index.ts';
 import CollapsibleSection from './CollapsibleSection.tsx';
 import { TaskTreeByStatus } from '../tasks/TaskList.tsx';
 import Group from '../tasks/Group.tsx';
-import { queueTaskTitleFocus } from '../hooks/taskTitleFocus.ts';
+import { requestTaskDraft } from '../hooks/taskDraft.ts';
 import { useDeepTaskIds, countVisibleTopLevel } from '../tasks/taskTree.ts';
 import type { SubAreaRef } from './types.ts';
 
@@ -79,8 +78,7 @@ export default function AreaTasksSection({
           title="Add task"
           onClick={() => {
             if (collapsed) onToggleCollapse();
-            const id = createTask(store, { title: '', placement: { kind: 'area', id: areaId } });
-            queueTaskTitleFocus(id);
+            requestTaskDraft({ placement: { kind: 'area', id: areaId } });
           }}
         >
           <svg className="svg-icon" aria-hidden="true">
@@ -94,6 +92,7 @@ export default function AreaTasksSection({
         onMove={onMove}
         ariaLabel="Area tasks"
         showCompleted={showCompleted}
+        draftRootPlacement={{ kind: 'area', id: areaId }}
       />
       {subAreas.map((sa) => (
         <SubAreaTaskGroup

@@ -1,9 +1,9 @@
 import {
   useDataLayer,
-  createTask,
   createSection,
 } from '../../data/index.ts';
-import { queueTaskTitleFocus, queueSectionTitleFocus } from '../hooks/taskTitleFocus.ts';
+import { queueSectionTitleFocus } from '../hooks/taskTitleFocus.ts';
+import { requestTaskDraft } from '../hooks/taskDraft.ts';
 import { useSelection } from '../context/useSelection.ts';
 import ProjectDueDateButton from './ProjectDueDateButton.tsx';
 import { NOTES_ENABLED } from '../notes/notesConfig.ts';
@@ -11,8 +11,10 @@ import { NOTES_ENABLED } from '../notes/notesConfig.ts';
 /**
  * The add-task "+", pinned right next to the project name — the same
  * slot the section and group headers give their add affordance —
- * instead of buried in the right-edge action cluster. Shares the
- * card's hover-reveal chrome (`.project-row-action`).
+ * instead of buried in the right-edge action cluster. Opens a draft
+ * row at the end of the project's unsectioned group; nothing enters
+ * the store until the draft commits. Shares the card's hover-reveal
+ * chrome (`.project-row-action`).
  */
 export function ProjectAddTaskButton({
   projectId,
@@ -25,7 +27,6 @@ export function ProjectAddTaskButton({
   /** Expands a collapsed card so the new row can mount (panes omit). */
   onEnsureExpanded?: () => void;
 }): React.JSX.Element {
-  const { store } = useDataLayer();
   return (
     <button
       type="button"
@@ -35,8 +36,7 @@ export function ProjectAddTaskButton({
       onClick={(e) => {
         e.stopPropagation();
         onEnsureExpanded?.();
-        const id = createTask(store, { title: '', placement: { kind: 'project', id: projectId } });
-        queueTaskTitleFocus(id);
+        requestTaskDraft({ placement: { kind: 'project', id: projectId } });
       }}
     >
       <svg className="svg-icon" aria-hidden="true">

@@ -26,6 +26,14 @@
  * Empty section headers are skipped by default (`hideEmptySections`),
  * so the area rollup matches the project view; pass
  * `hideEmptySections={false}` to render every section header.
+ *
+ * The pending task draft (hooks/taskDraft.ts) splices into the built
+ * nodes as a static (non-draggable) row: a project draft appends right
+ * after the unsectioned group, a section draft appends into that
+ * section's children (before the empty-section skip, so the draft
+ * keeps its section rendered), and sub-task/Shift+Enter drafts land
+ * via the shared DFS splice. Nothing enters the store until the
+ * draft commits.
  */
 import { useState } from 'react';
 import type { MergeableStore } from 'tinybase';
@@ -33,7 +41,6 @@ import {
   useDataLayer,
   useSection,
   useSectionIdsForProject,
-  createTask,
   updateSection,
   deleteSection,
   captureSubtree,
@@ -53,7 +60,14 @@ import { SortableTree } from '../dnd/SortableTree.tsx';
 import type { SortableTreeNode } from '../dnd/SortableTree.tsx';
 import type { SortableHandleProps } from '../dnd/SortableList.tsx';
 import { TaskRow } from './TaskList.tsx';
-import { queueTaskTitleFocus, consumeSectionTitleFocus } from '../hooks/taskTitleFocus.ts';
+import TaskDraftRow from './TaskDraftRow.tsx';
+import {
+  isTaskDraftNodeId,
+  requestTaskDraft,
+  spliceTaskDraft,
+  usePendingTaskDraft,
+} from '../hooks/taskDraft.ts';
+import { consumeSectionTitleFocus } from '../hooks/taskTitleFocus.ts';
 import { useUndo } from '../context/useUndo.ts';
 import EditableTitle from '../shared/EditableTitle.tsx';
 import ConfirmModal from '../shared/ConfirmModal.tsx';
@@ -181,11 +195,7 @@ function SectionRow({
         aria-label="Add task to section"
         title="Add task to section"
         onClick={() => {
-          const childId = createTask(store, {
-            title: '',
-            placement: { kind: 'section', id: sectionId },
-          });
-          queueTaskTitleFocus(childId);
+          requestTaskDraft({ placement: { kind: 'section', id: sectionId } });
         }}
       >
         <svg className="svg-icon" aria-hidden="true">
@@ -233,6 +243,7 @@ export function SectionedTaskTree({
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const sectionIds = useSectionIdsForProject(store, projectId);
+  const draft = usePendingTaskDraft();
 
   const projectKey = `project${PLACEMENT_SEP}${projectId}`;
   const nodes: SortableTreeNode<string>[] = [];
@@ -247,14 +258,29 @@ export function SectionedTaskTree({
     const tree = buildTaskTree(store, groups.get(key) ?? []);
     return showCompleted ? tree.children : pruneDoneTasks(store, tree.children);
   };
+  const draftNode: TaskTreeNode | null =
+    draft !== null ? { id: draft.nodeId, children: [] } : null;
   nodes.push(...buildGroup(projectKey));
+  // Project draft: end of the unsectioned group, before section headers.
+  if (draft?.placement?.kind === 'project' && draft.placement.id === projectId && draftNode) {
+    nodes.push(draftNode);
+  }
   for (const sid of sectionIds) {
     const children = buildGroup(sectionNodeId(sid));
+    // Section draft: end of that section's children. Spliced BEFORE the
+    // hideEmptySections skip so the draft keeps its section rendered.
+    if (draft?.placement?.kind === 'section' && draft.placement.id === sid && draftNode) {
+      children.push(draftNode);
+    }
     if (hideEmptySections && children.length === 0) continue;
     nodes.push({ id: sectionNodeId(sid), children });
   }
+  // Sub-task (kind 'task') and Shift+Enter (afterId) drafts land via the
+  // shared DFS splice; project/section drafts were spliced above and
+  // pass through unchanged.
+  const spliced = draft !== null ? spliceTaskDraft(nodes, draft) : nodes;
 
-  if (nodes.length === 0) return null;
+  if (spliced.length === 0) return null;
 
   function onMove(
     activeId: string,
@@ -293,7 +319,7 @@ export function SectionedTaskTree({
 
   return (
     <SortableTree
-      nodes={nodes}
+      nodes={spliced}
       onMove={onMove}
       ariaLabel={ariaLabel ?? 'Tasks'}
       className="sortable-list project-task-tree"
@@ -302,6 +328,7 @@ export function SectionedTaskTree({
       // tasks render flush with the section header; only true subtasks
       // (parent = another task) keep the tree gutter.
       isPhantom={isSectionNode}
+      isStatic={isTaskDraftNodeId}
       maxDepthOf={(id) =>
         decodeSectionNodeId(id) !== null ? 0 : Number.POSITIVE_INFINITY
       }
@@ -315,6 +342,9 @@ export function SectionedTaskTree({
               handle={handle}
             />
           );
+        }
+        if (draft !== null && id === draft.nodeId) {
+          return <TaskDraftRow draft={draft} handle={handle} />;
         }
         return <TaskRow handle={handle} taskId={id} progress={taskProgress?.get(id)} />;
       }}

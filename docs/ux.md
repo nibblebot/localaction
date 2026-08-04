@@ -154,12 +154,16 @@ add-sub-area button sits beside the name. The header's action row holds the
   expands into one flattened drag surface spanning the
   unsectioned tasks and every section — tasks drag within/between groups
   and nest as sub-tasks; section rows (inline-renamable, deletable) drag
-  to reorder, never nest, and always follow the unsectioned group. The
-  card footer holds *Add task* / *Add section* inline-add buttons.
+  to reorder, never nest, and always follow the unsectioned group. An
+  add-task "+" and an add-section affordance ride next to the project
+  name: the "+" opens a draft row at the end of the unsectioned group,
+  and the task is created only when the title commits (Enter, or blur
+  with a non-empty title) — Escape or an empty blur creates nothing.
   Per-card collapse state persists per device.
   An *Add project* button closes the section.
 - **Area tasks** — the area-rooted task tree (draggable, sub-tasks nest)
-  with an *Add task* button, followed by one labeled, editable group per
+  with an add-task "+" button that opens a draft row at the end of the
+  tree (the task exists only once the draft's title commits), followed by one labeled, editable group per
   sub-area that roots its own tasks (each group scoped to that
   sub-area — a root drop inside it re-parents to the sub-area).
 - **Notes** — notes attached to this area or anywhere in its subtree (or
@@ -188,7 +192,7 @@ whose own due date falls in range shows its link row (with a *Due today*
 badge and a collapse caret) followed by its full task tree — the same
 editable
 `ProjectTaskList` the project detail pane uses, with sections, subtasks,
-and the add-task / add-section footer. Sections with no open tasks under
+and the same add-task "+" / add-section affordances next to the project name. Sections with no open tasks under
 them are hidden here (they still render in the area and project views). The caret hides the tree without
 leaving the view; collapse state persists per device. In Week the project stays a single
 link row into its area with a *Due this week* badge, and each task row
@@ -205,8 +209,9 @@ shows — the done/total progress meter, the due-date affordance, the
 empty-sections toggle (per-project state shared with the card;
 hidden by default), the
 note icon, rename, and delete (which returns to the owning area) —
-above the same sectioned task tree the card expands into, with
-*Add task* / *Add section* inline-add buttons.
+above the same sectioned task tree the card expands into, with the same
+add-task "+" (opens a draft row; the task is created only when its title
+commits) and add-section affordances next to the project name.
 
 ### Project notes pane
 

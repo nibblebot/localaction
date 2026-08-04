@@ -88,6 +88,13 @@ const sortableOverlayHandle: SortableHandleProps = {
  *   rendering depth shifts — logical depth (drag projection, drop
  *   parent resolution, `maxDepth`) is untouched, so drop semantics
  *   are identical with or without phantoms.
+ * - `isStatic` marks rows that render through the slot like any other
+ *   (indent, gutters, render fn) but are invisible to drag-and-drop:
+ *   their `useSortable` is disabled and they are excluded from the
+ *   SortableContext items and from every list fed to projection,
+ *   no-op detection, and drop resolution. A static row can never be
+ *   `activeId`/`overId`, so `onMove` never sees its id. Task trees
+ *   use this for the pending draft row (see hooks/taskDraft.ts).
  * - Dropping a row onto one of its own ancestor rows (an easy
  *   overshoot when dragging up, since the parent row sits directly
  *   above the first sibling) keeps it in the family as the ancestor's
@@ -117,6 +124,13 @@ export interface SortableTreeProps<TId extends string> {
    * align with the section header while subtasks keep the gutter.
    */
   isPhantom?: (id: TId) => boolean;
+  /**
+   * Per-row predicate marking rows that render normally through the
+   * slot but are excluded from drag-and-drop entirely: disabled
+   * sortable, absent from SortableContext items and from every
+   * projection/drop list. The render loop still walks them.
+   */
+  isStatic?: (id: TId) => boolean;
   /** Deepest allowed nesting; default unbounded. */
   maxDepth?: number;
   /**
@@ -368,6 +382,8 @@ interface SortableTreeSlotProps<TId extends string> {
   parentCol: number;
   /** True when the row's own branch is the last-sibling (top-half). */
   isLastSibling: boolean;
+  /** Static rows render through the slot but never drag or drop. */
+  disabled?: boolean;
   children: (handleProps: SortableHandleProps, depth: number) => ReactNode;
 }
 
@@ -379,6 +395,7 @@ function SortableTreeSlot<TId extends string>({
   continues,
   parentCol,
   isLastSibling,
+  disabled = false,
   children: render,
 }: SortableTreeSlotProps<TId>): ReactElement {
   const {
@@ -389,7 +406,7 @@ function SortableTreeSlot<TId extends string>({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: id as string });
+  } = useSortable({ id: id as string, disabled });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -448,6 +465,7 @@ export function SortableTree<TId extends string>({
   maxDepth = Number.POSITIVE_INFINITY,
   maxDepthOf,
   isPhantom,
+  isStatic,
   className,
   ariaLabel,
 }: SortableTreeProps<TId>): ReactElement {
@@ -456,11 +474,22 @@ export function SortableTree<TId extends string>({
   const [offsetX, setOffsetX] = useState(0);
 
   const flattened = useMemo(() => flattenTree(nodes, isPhantom), [nodes, isPhantom]);
+  // Static rows render but are invisible to drag-and-drop: every list
+  // the DnD logic consumes (context items, projection, no-op check,
+  // drop resolution) is built from `draggable` instead of `flattened`.
+  const draggable = useMemo(
+    () => (isStatic ? flattened.filter((i) => !isStatic(i.id)) : flattened),
+    [flattened, isStatic],
+  );
   // During a drag the active row's descendants leave the target list:
   // the subtree moves with the parent and can't be its own drop target.
   const rendered = useMemo(
     () => (activeId === null ? flattened : removeSubtree(flattened, activeId)),
     [flattened, activeId],
+  );
+  const renderedDraggable = useMemo(
+    () => (activeId === null ? draggable : removeSubtree(draggable, activeId)),
+    [draggable, activeId],
   );
 
   // Depth limit for the row currently being dragged.
@@ -469,7 +498,7 @@ export function SortableTree<TId extends string>({
 
   const projected =
     activeId !== null && overId !== null
-      ? getProjection(rendered, activeId, overId, offsetX, indentWidth, activeMaxDepth)
+      ? getProjection(renderedDraggable, activeId, overId, offsetX, indentWidth, activeMaxDepth)
       : null;
 
   // Depth used by the overlay: where the drop will land, else the row's
@@ -530,8 +559,8 @@ export function SortableTree<TId extends string>({
       const activeIdStr = String(active.id) as TId;
       const overIdStr = String(over.id) as TId;
       // Recompute against the drag-time list (subtree removed) with the
-      // final pointer offsets.
-      const dragItems = removeSubtree(flattened, activeIdStr);
+      // final pointer offsets. Static rows never participate in drops.
+      const dragItems = removeSubtree(draggable, activeIdStr);
       const projection = getProjection(
         dragItems,
         activeIdStr,
@@ -541,7 +570,7 @@ export function SortableTree<TId extends string>({
         maxDepthOf ? maxDepthOf(activeIdStr) : maxDepth,
       );
       if (!projection) return;
-      const current = currentPosition(flattened, activeIdStr);
+      const current = currentPosition(draggable, activeIdStr);
       if (
         current &&
         current.parentId === projection.parentId &&
@@ -551,7 +580,7 @@ export function SortableTree<TId extends string>({
       }
       onMove(activeIdStr, projection.parentId, projection.beforeId);
     },
-    [flattened, indentWidth, maxDepth, maxDepthOf, onMove, reset],
+    [draggable, indentWidth, maxDepth, maxDepthOf, onMove, reset],
   );
 
   return (
@@ -590,7 +619,7 @@ export function SortableTree<TId extends string>({
       }}
     >
       <SortableContext
-        items={rendered.map((i) => i.id)}
+        items={renderedDraggable.map((i) => i.id)}
         strategy={verticalListSortingStrategy}
       >
         <div className={className} role="list" aria-label={ariaLabel}>
@@ -604,6 +633,7 @@ export function SortableTree<TId extends string>({
               continues={item.continues}
               parentCol={item.parentCol}
               isLastSibling={item.isLastSibling}
+              disabled={isStatic?.(item.id) ?? false}
             >
               {(handle, depth) => children(item.id, handle, depth)}
             </SortableTreeSlot>

@@ -19,14 +19,18 @@
  * - `progress`        — optional subtask progress meter (done/total
  *                       over all transitive descendants) rendered
  *                       after the title.
+ *
+ * Add-task affordances (the row's "Add sub-task", Shift+Enter quick
+ * entry) never create an empty task in the store: they request a
+ * draft from hooks/taskDraft.ts, which TaskTree splices into the
+ * render order as a static (non-draggable) TaskDraftRow. The task
+ * enters the store only when the draft commits.
  */
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useDataLayer,
   useTask,
   useEffectiveTaskStatus,
-  createTask,
-  createTaskAfter,
   updateTask,
   setTaskStatus,
   deleteTask,
@@ -37,12 +41,19 @@ import {
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
 } from '../../data/index.ts';
-import type { TaskTreeNode } from '../../data/index.ts';
+import type { TaskPlacement, TaskTreeNode } from '../../data/index.ts';
 import { hasSyncedTaskAdd, clearSyncedTaskAdd } from '../../data/syncedAdds.ts';
 import { useUndo } from '../context/useUndo.ts';
 import { SortableTree } from '../dnd/SortableTree.tsx';
 import type { SortableHandleProps } from '../dnd/SortableList.tsx';
-import { consumeTaskTitleFocus, queueTaskTitleFocus } from '../hooks/taskTitleFocus.ts';
+import {
+  isTaskDraftNodeId,
+  spliceTaskDraft,
+  usePendingTaskDraft,
+  requestTaskDraft,
+} from '../hooks/taskDraft.ts';
+import TaskDraftRow from './TaskDraftRow.tsx';
+import { useAutogrowTextarea } from './useAutogrowTextarea.ts';
 import TaskDueDateButton from './TaskDueDateButton.tsx';
 import ConfirmModal from '../shared/ConfirmModal.tsx';
 import { weekdayWithDate } from '../shared/dates.ts';
@@ -64,38 +75,11 @@ function TaskTitleInput({
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (consumeTaskTitleFocus(taskId)) {
-      ref.current?.focus();
-    }
-  }, [taskId]);
-
-  useEffect(() => {
     if (document.activeElement !== ref.current) setDraft(title);
   }, [title]);
 
-  // Auto-grow: collapse then measure so the textarea wraps at the row
-  // width instead of scrolling horizontally like a single-line input.
-  // ResizeObserver re-fits when the row width changes (window resize)
-  // even though the draft text did not.
-  const fitRef = useRef<() => void>(() => {});
-  fitRef.current = () => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = '0px';
-    el.style.height = `${el.scrollHeight}px`;
-  };
-
-  useLayoutEffect(() => {
-    fitRef.current();
-  }, [draft]);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => fitRef.current());
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  // Auto-grow: fit on every draft change, re-fit on row-width changes.
+  useAutogrowTextarea(ref, draft);
 
   // Keep the editing-change callback in sync with the input's focus
   // state — focus / blur are the only real signals (same idiom as
@@ -114,10 +98,11 @@ function TaskTitleInput({
   }, [onEditingChange]);
 
   function commit(): void {
-    // Blurring a never-titled task with an empty draft cancels the
-    // creation — the row only existed so the input could take focus.
-    // Covers every add-task flow (project/area "+", sub-task,
-    // Shift+Enter sibling) and Escape on a fresh row.
+    // Blurring a still-untitled task with an empty draft deletes the
+    // row. Only reachable for legacy empty rows (created before the
+    // draft-row flow) and titles the user just cleared — add-task
+    // affordances now open a draft row that never enters the store
+    // until it commits (see hooks/taskDraft.ts).
     if (title === '' && draft.trim() === '') {
       deleteTask(store, taskId);
       return;
@@ -138,11 +123,11 @@ function TaskTitleInput({
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
-          // Shift+Enter: save this title (via blur) and open a fresh
-          // empty sibling immediately below, focused for quick entry.
+          // Shift+Enter: save this title (via blur) and open a draft
+          // row immediately below for quick entry — nothing is created
+          // until that draft commits.
           if (e.shiftKey) {
-            const nextId = createTaskAfter(store, taskId, '');
-            if (nextId) queueTaskTitleFocus(nextId);
+            requestTaskDraft({ afterId: taskId });
           }
           e.currentTarget.blur();
         } else if (e.key === 'Escape') {
@@ -347,11 +332,7 @@ export function TaskRow({
                 aria-label="Add sub-task"
                 title="Add sub-task"
                 onClick={() => {
-                  const childId = createTask(store, {
-                    title: '',
-                    placement: { kind: 'task', id: taskId },
-                  });
-                  queueTaskTitleFocus(childId);
+                  requestTaskDraft({ placement: { kind: 'task', id: taskId } });
                 }}
               >
                 <svg className="svg-icon" aria-hidden="true">
@@ -428,11 +409,18 @@ export function TaskList({
  * DndContext spans every depth, so a drag can reorder within a sibling
  * group or reparent a task under another task / back to the root.
  * Indentation is the slot's `depth * indentWidth` left padding.
+ *
+ * The pending task draft (hooks/taskDraft.ts) is spliced into the
+ * render order and rendered as a static row: visible and focused, but
+ * invisible to drag-and-drop and absent from the store until it
+ * commits. `draftRootPlacement` identifies this tree's own group so a
+ * group-append draft (area/project/…) lands at its root end.
  */
 export function TaskTree({
   nodes,
   onMove,
   ariaLabel,
+  draftRootPlacement,
 }: {
   nodes: readonly TaskTreeNode[];
   /**
@@ -441,17 +429,30 @@ export function TaskTree({
    */
   onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
   ariaLabel?: string;
+  /** This tree's root placement — group-append drafts splice here. */
+  draftRootPlacement?: TaskPlacement;
 }): React.JSX.Element | null {
-  if (nodes.length === 0) return null;
+  const draft = usePendingTaskDraft();
+  const spliced = draft ? spliceTaskDraft(nodes, draft, draftRootPlacement) : nodes;
+  // Empty-tree check AFTER splicing: an empty group must still render
+  // when the draft belongs to it (the draft row is its only row).
+  if (spliced.length === 0) return null;
   return (
     <SortableTree
-      nodes={nodes}
+      nodes={spliced}
       onMove={onMove ?? (() => {})}
       ariaLabel={ariaLabel ?? 'Tasks'}
       className="sortable-list"
       indentWidth={22}
+      isStatic={isTaskDraftNodeId}
     >
-      {(tid, handle) => <TaskRow handle={handle} taskId={tid} />}
+      {(tid, handle) =>
+        draft !== null && tid === draft.nodeId ? (
+          <TaskDraftRow draft={draft} handle={handle} />
+        ) : (
+          <TaskRow handle={handle} taskId={tid} />
+        )
+      }
     </SortableTree>
   );
 }
@@ -467,12 +468,15 @@ export function TaskTreeByStatus({
   onMove,
   ariaLabel,
   showCompleted = false,
+  draftRootPlacement,
 }: {
   ids: readonly string[];
   onMove?: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
   ariaLabel?: string;
   /** Show done tasks in place instead of hiding them. */
   showCompleted?: boolean;
+  /** This tree's root placement — group-append drafts splice here. */
+  draftRootPlacement?: TaskPlacement;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const tree = buildTaskTree(store, ids);
@@ -482,6 +486,7 @@ export function TaskTreeByStatus({
       nodes={nodes}
       onMove={onMove}
       ariaLabel={ariaLabel}
+      draftRootPlacement={draftRootPlacement}
     />
   );
 }

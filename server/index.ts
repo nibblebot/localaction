@@ -7,6 +7,7 @@ import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { defaultPreviewDbPath, defaultProdDbPath, openDatabase, type ServerDatabase } from './db.ts';
+import { startOwnerWatchdog } from '../e2e/infra.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
 export const DEFAULT_PORT = 7373;
@@ -283,6 +284,11 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
 
   await new Promise<void>((resolve) => httpServer.listen(port, () => resolve()));
   logInfo('server', `listening on http://localhost:${port}`);
+
+  // Arms the e2e owner watchdog when LOCALACTION_OWNER_PID is set (Playwright
+  // webServer env) so an abandoned e2e server exits on its own; a no-op for
+  // normal `bun run prod`/`preview`.
+  startOwnerWatchdog({ port, dbPath });
 
   if (!secret) {
     logWarn('server', 'sync secret empty, /ws accepts any client');

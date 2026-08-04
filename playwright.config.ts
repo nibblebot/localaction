@@ -1,5 +1,15 @@
 import { defineConfig } from '@playwright/test';
 import { TEST_DB_PATH } from './e2e/test-db-path.ts';
+import { getE2eServerPort } from './e2e/infra.ts';
+
+// Free port per run (AGENTS.md agent port rule — e2e never hardcodes ports).
+// The port comes from LOCALACTION_E2E_PORT, set by scripts/e2e.ts: this file
+// is loaded once per process (runner + workers), so rolling the port here
+// would desync webServer.command from use.baseURL. Top-level await rather
+// than an async default export — Playwright 1.61 does not await the default
+// export (see e2e/infra.ts header).
+const port = await getE2eServerPort();
+const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -20,7 +30,7 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   globalTeardown: './e2e/global-teardown.ts',
   use: {
-    baseURL: 'http://localhost:5180',
+    baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
@@ -31,12 +41,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `bun run dev --port 5180 --strictPort -- --db "${TEST_DB_PATH}"`,
-    url: 'http://localhost:5180',
+    command: `bun run dev --port ${port} --strictPort -- --db "${TEST_DB_PATH}"`,
+    url: baseURL,
     reuseExistingServer: false,
     timeout: 60_000,
     env: {
       VITE_LOCALACTION_SYNC_ENABLED: 'false',
+      // Lets the spawned dev server self-terminate when this runner dies
+      // (startOwnerWatchdog in e2e/infra.ts); scripts/e2e.ts reaps leftovers.
+      LOCALACTION_OWNER_PID: String(process.pid),
     },
   },
 });

@@ -336,8 +336,12 @@ up the Playwright specs under `e2e/`.
 - **bun test (`tests/integration/`)** — `sync-roundtrip.test.ts`: a real
   two-client ↔ one-server WebSocket round-trip against the shared
   `bun:sqlite` connection.
-- **Playwright** (`e2e/`) — one spec per user journey; auto-starts `bun run dev`
-  on a non-default port (`5180`) so a manual `bun run dev` session on `5173` can run in parallel; depends on the `/ws` handshake.
+- **Playwright** (`e2e/`) — one spec per user journey; `bun run test:e2e`
+  wraps `playwright test` (`scripts/e2e.ts`): it reaps orphaned e2e servers,
+  self-installs chromium if missing, and allocates a free port per run
+  (`LOCALACTION_E2E_PORT`) so parallel runs and a manual dev session never
+  collide. E2e-spawned servers carry a `LOCALACTION_OWNER_PID` watchdog and
+  self-terminate when the runner dies; depends on the `/ws` handshake.
 - **`scripts/smoke.ts`** — boots the prod server on a random port and asserts
   WS sync between two clients plus a SQLite persistence round-trip.
 

@@ -2,12 +2,12 @@
 
 ## Stack
 - Vite 8 + React 19 + TypeScript (~6), ESM. **Bun** is the package manager and runtime for everything app-side (`server/`, `scripts/`, Vite); the SQLite driver is `bun:sqlite`, so any process loading `server/db.ts` (server, scripts, Vite config, tests) MUST run under Bun.
-- Linter: **oxlint** (`.oxlintrc.json`). Unit/integration: **bun test** rooted at `tests/` (no DOM env; stub `globalThis.window` where needed). E2E: **@playwright/test** — run `bunx playwright install chromium` once after install.
+- Linter: **oxlint** (`.oxlintrc.json`). Unit/integration: **bun test** rooted at `tests/` (no DOM env; stub `globalThis.window` where needed). E2E: **@playwright/test** — chromium is installed by the `postinstall` script; `scripts/e2e.ts` also self-heals a missing browser before each run.
 - No state lib — TinyBase owns the store. No router — `src/router.ts` is hand-rolled.
 - Node is unpinned and only needed for Playwright/tsc/oxlint binaries. Stack versions are bleeding-edge; generic tutorials may target older majors.
 
 ## Commands
-- **Agent port rule:** never use the default ports (`5173`, `7373`) or their URLs for any server invocation. Always pass an explicit, currently unused port with `--strictPort` (or equivalent) and use that actual port in every URL you construct. Bare `bun run dev`/`preview`/`start` are prohibited; `bun run smoke` and `bun run test:e2e` satisfy the rule (their configs allocate non-default ports).
+- **Agent port rule:** never use the default ports (`5173`, `7373`) or their URLs for any server invocation. Always pass an explicit, currently unused port with `--strictPort` (or equivalent) and use that actual port in every URL you construct. Bare `bun run dev`/`preview`/`start` are prohibited; `bun run smoke` and `bun run test:e2e` satisfy the rule (their configs allocate non-default ports). Hardcoding ports (e.g. `5199`) is prohibited for e2e — `scripts/e2e.ts` allocates a free port per run (`getFreePort()`) and hands it to the Playwright configs via `LOCALACTION_E2E_PORT`; always go through the wrapper.
 - **Agent process-kill rule:** never kill a process you didn't start — even an apparently orphaned server may be the user's live session. Pick another explicit non-default port or ask the user to stop it. Clean up processes you spawned when done.
 - `bun run dev` — Vite dev + HMR + TinyBase sync WS; `scripts/dev.ts` injects `--db` (default `defaultDevDbPath()`, kept separate from the prod store).
 - `bun run build` — `tsc -b` (both tsconfig projects) + `bun --bun vite build`; TS errors fail the build.
@@ -15,7 +15,7 @@
 - `bun run preview` — serve `dist/` (same WS handler as dev). `bun run start` — prod server (`server/index.ts`): `--port` (default 7373), `--db` (default `defaultProdDbPath()`).
 - `bun run smoke` — WS sync between two TinyBase clients + SQLite persister round-trip, on a random port/DB.
 - `bun run backup-db` / `bun run benchmark-size` — online `VACUUM INTO` backup; DB size-growth benchmark against a throwaway store.
-- `bun run test:e2e` / `:headed` / `:offline` — Playwright; offline builds first, then previews on port 5181 (the SW registers only in prod builds).
+- `bun run test:e2e` / `:headed` / `:offline` — Playwright via `scripts/e2e.ts`: reaps orphaned e2e servers, verifies chromium is installed, then runs on a free port allocated per run. `:offline` builds first, then runs against the prod server (the SW registers only in prod builds). Extra args pass through (`bun scripts/e2e.ts e2e/app-boot.spec.ts --grep foo`).
 
 ## Repo layout
 - Entry chain: `index.html` → `src/main.tsx` (StrictMode double-render in dev) → `src/App.tsx`.
@@ -26,7 +26,7 @@
 - `tests/` — bun-test tree: `data/`, `markdown/`, `integration/`, `router.test.ts`. `e2e/` — Playwright, one spec per user journey.
 - `public/` — static assets; `dist/` is build output; never hand-edit.
 - `docs/architecture.md`, `docs/ux.md`, `docs/glossary.md` — system shape, UX, vocabulary. Trust code for behavior, the glossary for vocabulary.
-- tsconfigs: `tsconfig.app.json` covers `src/` + `tests/`; `tsconfig.node.json` covers `vite.config.ts` / `playwright.config.ts`. `@types/bun` provides `bun:sqlite` / `bun:test` types.
+- tsconfigs: `tsconfig.app.json` covers `src/` + `tests/`; `tsconfig.node.json` covers `vite.config.ts`, both `playwright*.config.ts`, `scripts/e2e.ts`, and `e2e/infra.ts`. `@types/bun` provides `bun:sqlite` / `bun:test` types.
 
 ## Quirks
 - React Compiler is enabled.
@@ -34,7 +34,7 @@
 - `tsc -b` uses project references — TS errors in `vite.config.ts` / `playwright.config.ts` block the build.
 - Every Vite invocation must be `bun --bun vite ...` — never bare `vite`. Dev/preview must also pass `--configLoader runner`: Vite's default rolldown config loader breaks `ws` upgrade handling under Bun. Also, Bun's `node:http` keeps upgraded WS sockets tracked, so `attachSyncServer.close()` destroys them from an explicit socket set or `httpServer.close()` never fires. Both are pinned in the scripts — do not remove.
 - `bun test` shares one module registry across all files in a run — never `mock.module` app modules (registrations leak into later files). Inject fakes through option seams instead (e.g. `startSync`'s `synchronizerImpl`).
-- Playwright auto-starts `bun run dev` on port 5180 (`reuseExistingServer: false`); tests depend on the `/ws` handshake.
+- Playwright auto-starts `bun run dev` (or `bun run prod` for the offline suite) on a **free port allocated per run** (by `scripts/e2e.ts`, passed to the configs as `LOCALACTION_E2E_PORT` — the config file is re-loaded per worker process, so the port cannot be rolled per config load; `reuseExistingServer: false`); tests depend on the `/ws` handshake. E2e-spawned servers arm an owner watchdog (`LOCALACTION_OWNER_PID` + `startOwnerWatchdog()`) that exits the server within ~0.5s when the Playwright runner dies, and `scripts/e2e.ts` reaps any leftovers before each run (registry in `tmpdir()/localaction-e2e-servers` plus a `/proc` scan for throwaway-DB argv markers).
 - **Test DBs live in `os.tmpdir()`** — unique throwaway path per run (`e2e/test-db-path.ts` is the canonical helper). Never let an experimental run fall through to `defaultDevDbPath()`.
 - **Real data is NEVER wiped without an explicit user prompt gate** — no deleting/overwriting user data SQLite files, no clearing OPFS outside throwaway browser profiles. Tmp test DBs and e2e profiles are exempt.
 

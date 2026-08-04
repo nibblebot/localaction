@@ -3,6 +3,7 @@ import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { attachSyncServer } from './server/index.ts'
 import { defaultDevDbPath } from './server/db.ts'
+import { startOwnerWatchdog } from './e2e/infra.ts'
 import { logInfo } from './src/log.ts'
 import type { Server } from 'node:http'
 import { createHash } from 'node:crypto'
@@ -87,6 +88,11 @@ export default defineConfig({
       // bundling and the handshake works.
       name: 'localaction-sync',
       async configureServer(server) {
+        // Arms the e2e owner watchdog when LOCALACTION_OWNER_PID is set
+        // (Playwright webServer env); a no-op for normal `bun run dev`.
+        // The port is not bound yet at configure time, so only the DB path
+        // is recorded in the registry entry.
+        startOwnerWatchdog({ dbPath: syncDbPath })
         await attachSyncToVite(server, syncDbPath)
       },
     },

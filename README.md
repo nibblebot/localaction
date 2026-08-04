@@ -2,6 +2,8 @@
 
 **Offline-first, self-hosted task manager with multi-device sync.**
 
+![LocalAction offline and sync demo](assets/localaction-sync.gif)
+
 Perists work locally for offline use and syncs w/ server for automatic conflict resolution.
 
 OPFS storage in browser, websocket sync and SQLite persistence on the server. 
@@ -21,6 +23,7 @@ Intended for multi-device use with no authorization logic.
 - **Drag and Drop Trees**: reorder, nest, and unnest in one flattened drag surface.
 - **Inbox / Today / Week views** with recursive open-task rollups across area subtrees.
 - **Themes** (light/dark/system), five fonts, three densities; per-device view state stays out of sync.
+- **Sync log** — full per-event viewer (pulls / pushes / connections) per session.
 
 ## Data sync & persistence
 

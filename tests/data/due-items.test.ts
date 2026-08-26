@@ -3,9 +3,7 @@ import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { TABLES, COLUMNS, TASK_STATUS } from '../../src/data/schema.ts';
 import { createTask, updateTask, setTaskStatus } from '../../src/data/tasks.ts';
-import { createProject, updateProject } from '../../src/data/projects.ts';
 import { createArea } from '../../src/data/areas.ts';
-import { createSection } from '../../src/data/sections.ts';
 import { getDueItems, getCompletedItemsInRange } from '../../src/data/selectors.ts';
 
 const TODAY = '2026-07-23';
@@ -42,7 +40,7 @@ describe('getDueItems', () => {
     expect(items[0]).toMatchObject({
       kind: 'task',
       areaId: null,
-      projectId: null,
+      rootTaskId: dueToday,
       done: false,
       dueDate: TODAY,
     });
@@ -64,48 +62,20 @@ describe('getDueItems', () => {
     expect(items.map((i) => i.dueDate)).toEqual(['2026-07-20', '2026-07-22', WEEK_TO]);
   });
 
-  it('resolves area-rooted tasks to their area', () => {
+  it('resolves area-rooted tasks to their area and carries the root task id', () => {
     const areaId = createArea(store, { name: 'Work' });
     const tid = createTask(store, { title: 'Area task', placement: { kind: 'area', id: areaId } });
     updateTask(store, tid, { dueDate: TODAY });
     expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: tid, dueDate: TODAY, areaId, projectId: null, done: false },
+      { kind: 'task', id: tid, dueDate: TODAY, areaId, rootTaskId: tid, done: false },
     ]);
   });
 
-  it('resolves project tasks to their project and the project’s area', () => {
+  it('surfaces nested sub-tasks due today under their root task', () => {
     const areaId = createArea(store, { name: 'Work' });
-    const projectId = createProject(store, { name: 'Launch', areaId });
-    const tid = createTask(store, {
-      title: 'Project task',
-      placement: { kind: 'project', id: projectId },
-    });
-    updateTask(store, tid, { dueDate: TODAY });
-    expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: tid, dueDate: TODAY, areaId, projectId, done: false },
-    ]);
-  });
-
-  it('resolves section-rooted tasks through the section’s project', () => {
-    const areaId = createArea(store, { name: 'Work' });
-    const projectId = createProject(store, { name: 'Launch', areaId });
-    const sectionId = createSection(store, { name: 'Phase 1', projectId });
-    const tid = createTask(store, {
-      title: 'Section task',
-      placement: { kind: 'section', id: sectionId },
-    });
-    updateTask(store, tid, { dueDate: TODAY });
-    expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: tid, dueDate: TODAY, areaId, projectId, done: false },
-    ]);
-  });
-
-  it('surfaces nested sub-tasks due today under their root project', () => {
-    const areaId = createArea(store, { name: 'Work' });
-    const projectId = createProject(store, { name: 'Launch', areaId });
     const parent = createTask(store, {
       title: 'Parent',
-      placement: { kind: 'project', id: projectId },
+      placement: { kind: 'area', id: areaId },
     });
     const child = createTask(store, {
       title: 'Child due today',
@@ -113,25 +83,16 @@ describe('getDueItems', () => {
     });
     updateTask(store, child, { dueDate: TODAY });
     expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: child, dueDate: TODAY, areaId, projectId, done: false },
+      { kind: 'task', id: child, dueDate: TODAY, areaId, rootTaskId: parent, done: false },
     ]);
   });
 
-  it('includes projects due today even with no due tasks', () => {
-    const areaId = createArea(store, { name: 'Work' });
-    const projectId = createProject(store, { name: 'Launch', areaId });
-    updateProject(store, projectId, { dueDate: TODAY });
-    expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'project', id: projectId, dueDate: TODAY, areaId, projectId, done: false },
-    ]);
-  });
-
-  it('marks effectively-done tasks as done', () => {
+  it('marks derived-done tasks as done', () => {
     const tid = createTask(store, { title: 'Done today' });
     updateTask(store, tid, { dueDate: TODAY });
     setTaskStatus(store, tid, TASK_STATUS.done);
     expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: tid, dueDate: TODAY, areaId: null, projectId: null, done: true },
+      { kind: 'task', id: tid, dueDate: TODAY, areaId: null, rootTaskId: tid, done: true },
     ]);
   });
 
@@ -141,7 +102,7 @@ describe('getDueItems', () => {
     createTask(store, { title: 'Open child', placement: { kind: 'task', id: parent } });
     setTaskStatus(store, parent, TASK_STATUS.done);
     expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: parent, dueDate: TODAY, areaId: null, projectId: null, done: false },
+      { kind: 'task', id: parent, dueDate: TODAY, areaId: null, rootTaskId: parent, done: false },
     ]);
   });
 
@@ -154,7 +115,7 @@ describe('getDueItems', () => {
     updateTask(store, child, { dueDate: TODAY });
     store.delRow(TABLES.tasks, parent);
     expect(getDueItems(store, TODAY, TODAY)).toEqual([
-      { kind: 'task', id: child, dueDate: TODAY, areaId: null, projectId: null, done: false },
+      { kind: 'task', id: child, dueDate: TODAY, areaId: null, rootTaskId: child, done: false },
     ]);
   });
 
@@ -281,9 +242,8 @@ describe('getDueItems', () => {
     ]);
   });
 
-  it('getCompletedItemsInRange resolves areaId and projectId through the root placement', () => {
+  it('getCompletedItemsInRange resolves areaId and rootTaskId through the root placement', () => {
     const area = createArea(store, { name: 'Family' });
-    const project = createProject(store, { name: 'Trip', areaId: area });
     const areaTask = createTask(store, {
       title: 'area-rooted',
       placement: { kind: 'area', id: area },
@@ -291,12 +251,12 @@ describe('getDueItems', () => {
     setTaskStatus(store, areaTask, TASK_STATUS.done);
     store.setCell(TABLES.tasks, areaTask, COLUMNS.tasks.completedAt, atNoon(2026, 7, 23));
 
-    const projectTask = createTask(store, {
-      title: 'project-rooted',
-      placement: { kind: 'project', id: project },
+    const childTask = createTask(store, {
+      title: 'nested',
+      placement: { kind: 'task', id: areaTask },
     });
-    setTaskStatus(store, projectTask, TASK_STATUS.done);
-    store.setCell(TABLES.tasks, projectTask, COLUMNS.tasks.completedAt, atNoon(2026, 7, 23));
+    setTaskStatus(store, childTask, TASK_STATUS.done);
+    store.setCell(TABLES.tasks, childTask, COLUMNS.tasks.completedAt, atNoon(2026, 7, 23));
 
     const inboxTask = createTask(store, { title: 'inbox' });
     setTaskStatus(store, inboxTask, TASK_STATUS.done);
@@ -305,11 +265,11 @@ describe('getDueItems', () => {
     const items = getCompletedItemsInRange(store, '2026-07-23', '2026-07-23');
     const byTask = new Map(items.map((i) => [i.taskId, i]));
     expect(byTask.get(areaTask)?.areaId).toBe(area);
-    expect(byTask.get(areaTask)?.projectId).toBeNull();
-    expect(byTask.get(projectTask)?.areaId).toBe(area);
-    expect(byTask.get(projectTask)?.projectId).toBe(project);
+    expect(byTask.get(areaTask)?.rootTaskId).toBe(areaTask);
+    expect(byTask.get(childTask)?.areaId).toBe(area);
+    expect(byTask.get(childTask)?.rootTaskId).toBe(areaTask);
     expect(byTask.get(inboxTask)?.areaId).toBeNull();
-    expect(byTask.get(inboxTask)?.projectId).toBeNull();
+    expect(byTask.get(inboxTask)?.rootTaskId).toBe(inboxTask);
   });
 
   it('getCompletedItemsInRange drops the row when the task is reopened (no completedAt, not done)', () => {

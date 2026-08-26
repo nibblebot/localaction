@@ -8,6 +8,7 @@ import {
   pointerWithin,
   rectIntersection,
   TouchSensor,
+  useDndMonitor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -26,6 +27,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { SortableHandleProps } from './SortableList.tsx';
+import { DndTargetContext } from './dndTarget.ts';
+import type { DndTarget } from './dndTarget.ts';
 
 /**
  * Inert handle used to re-render a row inside the DragOverlay when the
@@ -41,6 +44,61 @@ const sortableOverlayHandle: SortableHandleProps = {
   isDragging: false,
   isOver: false,
 };
+
+/**
+ * Forwards the enclosing DndContext's monitor events to the given
+ * callbacks without rendering anything. Place it INSIDE a tree's
+ * DndContext (anywhere in its children) to observe the drag lifecycle
+ * of that tree from an outer component — e.g. to track the dragged
+ * row's id for gating outer drop targets. Renders null.
+ */
+export function ContextDndMonitor({
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+}: {
+  onDragStart?: (event: DragStartEvent) => void;
+  onDragOver?: (event: DragOverEvent) => void;
+  onDragEnd?: (event: DragEndEvent) => void;
+}): null {
+  useDndMonitor({
+    onDragStart,
+    onDragOver,
+    onDragEnd,
+  });
+  return null;
+}
+
+/**
+ * External-mode monitor: subscribes to the ENCLOSING DndContext and
+ * feeds this tree's local projection handlers, so a tree registered
+ * into a hoisted context still computes its own (parent, before)
+ * drop. Only mounted when `externalDndContext` is set — the hook
+ * throws outside a DndContext, and standalone trees (TaskPane) never
+ * mount it.
+ */
+function ExternalTreeMonitor({
+  onDragStart,
+  onDragMove,
+  onDragOver,
+  onDragEnd,
+  onDragCancel,
+}: {
+  onDragStart: (event: DragStartEvent) => void;
+  onDragMove: (event: DragMoveEvent) => void;
+  onDragOver: (event: DragOverEvent) => void;
+  onDragEnd: (event: DragEndEvent) => void;
+  onDragCancel: () => void;
+}): null {
+  useDndMonitor({
+    onDragStart,
+    onDragMove,
+    onDragOver,
+    onDragEnd,
+    onDragCancel,
+  });
+  return null;
+}
 
 /**
  * Flattened-tree sortable list (dnd-kit tree pattern) — one DndContext
@@ -120,7 +178,7 @@ export interface SortableTreeProps<TId extends string> {
   /**
    * Per-row predicate marking rows whose children render flush with
    * the row itself instead of one indent level in (see the contract
-   * above). Sections in the project task tree use this so their tasks
+   * above). Grouped rows use this so their tasks
    * align with the section header while subtasks keep the gutter.
    */
   isPhantom?: (id: TId) => boolean;
@@ -141,6 +199,15 @@ export interface SortableTreeProps<TId extends string> {
   maxDepthOf?: (id: TId) => number;
   className?: string;
   ariaLabel?: string;
+  /**
+   * Register this tree's rows into the ENCLOSING DndContext instead of
+   * owning one. The enclosing context resolves drops: this tree
+   * observes it (useDndMonitor) and fires `onMove` for tree-level
+   * drops only when the enclosing context passes events through. Set
+   * when a hoisted context coordinates this tree plus group drop
+   * targets (RootGroups); leave unset for standalone trees (TaskPane).
+   */
+  externalDndContext?: boolean;
 }
 
 interface FlattenedItem<TId extends string> {
@@ -323,7 +390,7 @@ function getProjection<TId extends string>(
     }
   }
 
-  // A root-pinned row (maxDepth 0, e.g. a project section) dropped over
+  // A root-pinned row (maxDepth 0, e.g. a pinned header) dropped over
   // a row nested inside a trailing subtree finds no root sibling after
   // the drop point, so the scan above misreads the drop as "end of the
   // root list". When the dragged row came from BELOW the block the
@@ -468,10 +535,25 @@ export function SortableTree<TId extends string>({
   isStatic,
   className,
   ariaLabel,
+  externalDndContext = false,
 }: SortableTreeProps<TId>): ReactElement {
   const [activeId, setActiveId] = useState<TId | null>(null);
   const [overId, setOverId] = useState<TId | null>(null);
   const [offsetX, setOffsetX] = useState(0);
+  // A non-owning tree registers its rows into the ENCLOSING DndContext
+  // instead of owning one (RootGroups' hoisted group drops). Decided at
+  // mount — never flips mid-drag. Standalone trees (TaskPane) own their
+  // context exactly as before.
+  const isExternal = externalDndContext;
+
+  // Live drag state published to outer contexts (see DndTargetContext).
+  const dndTarget = useMemo<DndTarget>(
+    () => ({
+      activeId: activeId as string | null,
+      overId: overId as string | null,
+    }),
+    [activeId, overId],
+  );
 
   const flattened = useMemo(() => flattenTree(nodes, isPhantom), [nodes, isPhantom]);
   // Static rows render but are invisible to drag-and-drop: every list
@@ -558,6 +640,11 @@ export function SortableTree<TId extends string>({
       if (!over) return;
       const activeIdStr = String(active.id) as TId;
       const overIdStr = String(over.id) as TId;
+      // External mode: the enclosing context resolves cross-tree and
+      // group-level drops; this tree only handles drops onto its own
+      // rows (same-slice reorder/nest). Anything else is the hoisted
+      // context's job.
+      if (isExternal && !draggable.some((i) => i.id === overIdStr)) return;
       // Recompute against the drag-time list (subtree removed) with the
       // final pointer offsets. Static rows never participate in drops.
       const dragItems = removeSubtree(draggable, activeIdStr);
@@ -580,8 +667,74 @@ export function SortableTree<TId extends string>({
       }
       onMove(activeIdStr, projection.parentId, projection.beforeId);
     },
-    [draggable, indentWidth, maxDepth, maxDepthOf, onMove, reset],
+    [draggable, indentWidth, maxDepth, maxDepthOf, onMove, reset, isExternal],
   );
+
+  // The rows + drag overlay, shared by both render modes. In external
+  // mode the overlay is skipped — the enclosing context owns it.
+  const treeBody = (
+    <DndTargetContext.Provider value={dndTarget}>
+      <SortableContext
+        items={renderedDraggable.map((i) => i.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div className={className} role="list" aria-label={ariaLabel}>
+          {rendered.map((item) => (
+            <SortableTreeSlot
+              key={item.id}
+              id={item.id}
+              depth={item.depth}
+              visualDepth={item.visualDepth}
+              indentWidth={indentWidth}
+              continues={item.continues}
+              parentCol={item.parentCol}
+              isLastSibling={item.isLastSibling}
+              disabled={isStatic?.(item.id) ?? false}
+            >
+              {(handle, depth) => children(item.id, handle, depth)}
+            </SortableTreeSlot>
+          ))}
+        </div>
+      </SortableContext>
+      {!isExternal && (
+        <DragOverlay className="drag-overlay" dropAnimation={null}>
+          {activeId !== null ? (
+            renderOverlay ? (
+              renderOverlay(activeId, activeDepth)
+            ) : (
+              <div
+                style={
+                  activeVisualDepth > 0
+                    ? { paddingLeft: activeVisualDepth * indentWidth }
+                    : undefined
+                }
+              >
+                {children(activeId, sortableOverlayHandle, activeDepth)}
+              </div>
+            )
+          ) : null}
+        </DragOverlay>
+      )}
+    </DndTargetContext.Provider>
+  );
+
+  // Non-owning tree: rows register into the enclosing DndContext; the
+  // monitor feeds this tree's projection handlers from the enclosing
+  // context's events (the enclosing context resolves the drop).
+  if (isExternal) {
+    return (
+      <>
+        <ExternalTreeMonitor
+          onDragStart={handleStart}
+          onDragMove={handleMove}
+          onDragOver={handleOver}
+          onDragEnd={handleEnd}
+          onDragCancel={reset}
+        />
+        {treeBody}
+      </>
+    );
+  }
 
   return (
     <DndContext
@@ -618,45 +771,7 @@ export function SortableTree<TId extends string>({
         },
       }}
     >
-      <SortableContext
-        items={renderedDraggable.map((i) => i.id)}
-        strategy={verticalListSortingStrategy}
-      >
-        <div className={className} role="list" aria-label={ariaLabel}>
-          {rendered.map((item) => (
-            <SortableTreeSlot
-              key={item.id}
-              id={item.id}
-              depth={item.depth}
-              visualDepth={item.visualDepth}
-              indentWidth={indentWidth}
-              continues={item.continues}
-              parentCol={item.parentCol}
-              isLastSibling={item.isLastSibling}
-              disabled={isStatic?.(item.id) ?? false}
-            >
-              {(handle, depth) => children(item.id, handle, depth)}
-            </SortableTreeSlot>
-          ))}
-        </div>
-      </SortableContext>
-      <DragOverlay className="drag-overlay" dropAnimation={null}>
-        {activeId !== null ? (
-          renderOverlay ? (
-            renderOverlay(activeId, activeDepth)
-          ) : (
-            <div
-              style={
-                activeVisualDepth > 0
-                  ? { paddingLeft: activeVisualDepth * indentWidth }
-                  : undefined
-              }
-            >
-              {children(activeId, sortableOverlayHandle, activeDepth)}
-            </div>
-          )
-        ) : null}
-      </DragOverlay>
+      {treeBody}
     </DndContext>
   );
 }

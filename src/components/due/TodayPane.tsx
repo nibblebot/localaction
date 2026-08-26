@@ -9,7 +9,7 @@ export default function TodayPane(): React.JSX.Element {
       from={today}
       to={today}
       storageKey="localaction.today"
-      projectBadgeLabel="Due today"
+      dueBadgeLabel="Due today"
     />
   );
 }

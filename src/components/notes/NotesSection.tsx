@@ -21,13 +21,13 @@ export default function NotesSection({
   areaId: string;
 }): React.JSX.Element {
   const { store } = useDataLayer();
-  const { areaNotes, projectNotes, taskNotes } = useNotesForAreaTree(
+  const { areaNotes, taskNotes } = useNotesForAreaTree(
     store,
     areaId,
   );
   const allIds = useMemo(
-    () => [...areaNotes, ...projectNotes, ...taskNotes],
-    [areaNotes, projectNotes, taskNotes],
+    () => [...areaNotes, ...taskNotes],
+    [areaNotes, taskNotes],
   );
 
   return (

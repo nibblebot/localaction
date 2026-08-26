@@ -69,41 +69,41 @@ async function main() {
     );
     console.log('smoke: write A replicated to B');
 
-    b.setCell('projects', 'p1', 'areaId', 'd1');
-    b.setCell('projects', 'p1', 'name', 'Plan vacation');
+    b.setCell('tasks', 't1', 'placement', 'area:d1');
+    b.setCell('tasks', 't1', 'title', 'Plan vacation');
     await withTimeout(
-      waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation'),
+      waitForCell(a, 'tasks', 't1', 'title', 'Plan vacation'),
       5000,
       'sync B→A',
     );
     console.log('smoke: write B replicated to A');
 
-    await waitForPersisted(DB_PATH, 'projects', 'p1', 'name', 'Plan vacation');
+    await waitForPersisted(DB_PATH, 'tasks', 't1', 'title', 'Plan vacation');
     console.log('smoke: writes persisted to SQLite');
 
-    // Direct proof of tabular mode: the project row lives in a per-entity
-    // `projects` SQL table keyed by `_id`, not in a JSON blob.
+    // Direct proof of tabular mode: the task row lives in a per-entity
+    // `tasks` SQL table keyed by `_id`, not in a JSON blob.
     const rawDb = openDatabase(DB_PATH, { readonly: true });
-    const projectRows = rawDb
-      .query("SELECT name FROM projects WHERE _id = 'p1'")
-      .all() as Array<{ name: string }>;
+    const taskRows = rawDb
+      .query("SELECT title FROM tasks WHERE _id = 't1'")
+      .all() as Array<{ title: string }>;
     assert(
-      projectRows.length === 1 && projectRows[0]!.name === 'Plan vacation',
-      `tabular SELECT from projects did not return the p1 row (got ${JSON.stringify(projectRows)})`,
+      taskRows.length === 1 && taskRows[0]!.title === 'Plan vacation',
+      `tabular SELECT from tasks did not return the t1 row (got ${JSON.stringify(taskRows)})`,
     );
     const tableNames = (
       rawDb.query("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{
         name: string;
       }>
     ).map((r) => r.name);
-    for (const expected of ['areas', 'projects']) {
+    for (const expected of ['areas', 'tasks']) {
       assert(
         tableNames.includes(expected),
         `tabular tables missing ${expected} (have: ${tableNames.join(', ')})`,
       );
     }
     rawDb.close();
-    console.log('smoke: raw SQL confirms tabular tables (areas, projects)');
+    console.log('smoke: raw SQL confirms tabular tables (areas, tasks)');
     await syncA.destroy();
     await syncB.destroy();
 
@@ -122,9 +122,9 @@ async function main() {
     );
     console.log('smoke: fresh observed initial area');
     await withTimeout(
-      waitForCell(fresh, 'projects', 'p1', 'name', 'Plan vacation'),
+      waitForCell(fresh, 'tasks', 't1', 'title', 'Plan vacation'),
       5000,
-      'fresh project load',
+      'fresh task load',
     );
     await withTimeout(
       waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1'),
@@ -147,11 +147,11 @@ async function main() {
       'persister.load() did not return areas/d2/parentId (sub-area)',
     );
     assert(
-      reload.getCell('projects', 'p1', 'name') === 'Plan vacation',
-      'persister.load() did not return projects/p1/name',
+      reload.getCell('tasks', 't1', 'title') === 'Plan vacation',
+      'persister.load() did not return tasks/t1/title',
     );
     console.log(
-      'smoke: persister.load() round-trips Area, Sub-Area, and Project rows',
+      'smoke: persister.load() round-trips Area, Sub-Area, and Task rows',
     );
   } finally {
     await server.close();

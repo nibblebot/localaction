@@ -4,7 +4,7 @@ import {
   useAreaCounts,
   createArea,
   moveArea,
-  useProject,
+  getRootPlacement,
   useInboxTaskIds,
   useDueItems,
   type AreaCount,
@@ -81,7 +81,6 @@ function SortableAreaRow({
   // recovering on hover — but never while the area is the active one.
   const empty =
     node.count.taskCount === 0 &&
-    node.count.projectCount === 0 &&
     node.count.noteCount === 0;
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
@@ -176,18 +175,20 @@ export default function Sidebar({
     walk(tree);
     return m;
   }, [tree]);
-  // A project (or its notes tab) selects its parent area, exactly as
-  // if that area itself were being viewed.
-  const selectedProject = useProject(
-    store,
-    selection.kind === 'project' || selection.kind === 'project-notes'
-      ? selection.id
-      : undefined,
-  );
+  // A task pane selects its owning area (resolved through the placement
+  // chain); an inbox-rooted task selects nothing, exactly as if the inbox
+  // itself were being viewed.
+  const selectedTaskAreaId = useMemo(() => {
+    if (selection.kind !== 'task') return null;
+    const root = getRootPlacement(store, selection.id);
+    return root.kind === 'area' ? root.id : null;
+  }, [store, selection]);
   const selectedId =
     selection.kind === 'area'
       ? selection.id
-      : (selectedProject?.areaId ?? null);
+      : selection.kind === 'task'
+        ? selectedTaskAreaId
+        : null;
   const activeColor: AreaColorId = useMemo(() => {
     const c = counts.find((x) => x.id === selectedId);
     return c ? c.color : 'gray';

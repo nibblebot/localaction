@@ -110,13 +110,13 @@ describe('subscribeSyncedRowAdds', () => {
       pullChanges((s) => {
         s.setRow(TABLES.tasks, 't1', { title: 'a' });
         s.setRow(TABLES.tasks, 't2', { title: 'b' });
-        s.setRow(TABLES.projects, 'p1', { title: 'p' });
+        s.setRow(TABLES.notes, 'n1', { title: 'n' });
       }),
     );
 
     expect(calls).toEqual([
       [TABLES.tasks, ['t1', 't2']],
-      [TABLES.projects, ['p1']],
+      [TABLES.notes, ['n1']],
     ]);
     unsubscribe();
   });

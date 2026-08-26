@@ -1,28 +1,8 @@
 import { test, expect, type Page } from '@playwright/test';
-
-// Unique tokens keep replayed state from prior specs harmless.
-const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+import { createArea, createRootTask, uniq } from './helpers.ts';
 
 // Fixed desktop viewport so the layout is stable across CI / local runs.
 test.use({ viewport: { width: 1440, height: 900 } });
-
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-  await expect(page.locator('.area-header-name')).toContainText(name);
-}
-
-async function addAreaTask(page: Page, title: string): Promise<void> {
-  const section = page.locator('.pane-section', { hasText: 'Tasks' });
-  await section.locator('button[aria-label="Add task"]').click();
-  await expect(section.locator('.task-line-title:focus')).toBeVisible();
-  await page.keyboard.type(title);
-  await page.keyboard.press('Enter');
-  // The line collapses to read-only after the focused title commits.
-  await expect(section.locator('.task-line', { hasText: title })).toBeVisible();
-}
 
 /**
  * Set the due date on the row whose title matches `title` to the given
@@ -74,8 +54,8 @@ test.describe('Today / Week Done section', () => {
 
     // One task with a due date today, one with no due date at all —
     // the Done section must show both, gated on completion alone.
-    await addAreaTask(page, tDue);
-    await addAreaTask(page, tNoDue);
+    await createRootTask(page, tDue);
+    await createRootTask(page, tNoDue);
 
     const today = new Date();
     await setDueDateOnRow(page, tDue, today.getDate());
@@ -101,8 +81,7 @@ test.describe('Today / Week Done section', () => {
     // Reopening a task drops it from the Done section. The Done
     // section's task rows carry the checkbox with the same
     // "Mark … not done" label, so we click it from the Today view
-    // rather than navigating back to the area (where the row is
-    // pruned by default).
+    // rather than navigating back to the area.
     await doneSection
       .locator(`input[aria-label="Mark “${tNoDue}” not done"]`)
       .click();
@@ -122,8 +101,8 @@ test.describe('Today / Week Done section', () => {
 
     await page.goto('/#/');
     await createArea(page, area);
-    await addAreaTask(page, tDue);
-    await addAreaTask(page, tNoDue);
+    await createRootTask(page, tDue);
+    await createRootTask(page, tNoDue);
 
     const today = new Date();
     await setDueDateOnRow(page, tDue, today.getDate());

@@ -1,6 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-
-const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+import { uniq } from './helpers.ts';
 
 /** Current inbox sidebar count; the badge is absent at zero. */
 async function inboxCount(page: Page): Promise<number> {

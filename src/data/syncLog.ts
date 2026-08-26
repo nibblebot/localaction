@@ -140,8 +140,6 @@ function sameStatus(a: SyncStatus, b: SyncStatus): boolean {
 // Display names in fixed summary order.
 const SUMMARY_ORDER: readonly (readonly [TableName, string, string])[] = [
   [TABLES.tasks, 'Task', 'Tasks'],
-  [TABLES.projects, 'Project', 'Projects'],
-  [TABLES.sections, 'Section', 'Sections'],
   [TABLES.areas, 'Area', 'Areas'],
   [TABLES.notes, 'Note', 'Notes'],
   [TABLES.tombstones, 'Tombstone', 'Tombstones'],

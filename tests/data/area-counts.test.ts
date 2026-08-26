@@ -58,4 +58,11 @@ describe('getAreaCounts open-task counts', () => {
     expect(parentCounts.taskCount).toBe(2);
     expect(parentCounts.openTaskCount).toBe(1);
   });
+
+  it('childCount counts only direct sub-areas', () => {
+    const sub = createArea(store, { name: 'Sub', parentId: area });
+    createArea(store, { name: 'Grandchild', parentId: sub });
+    expect(areaCounts(store, area).childCount).toBe(1);
+    expect(areaCounts(store, sub).childCount).toBe(1);
+  });
 });

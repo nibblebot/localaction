@@ -1,7 +1,7 @@
 /**
  * Deferred task creation ("draft row") — the app-wide pending draft.
  *
- * Every add-task affordance (area/project/section "+", "Add sub-task",
+ * Every add-task affordance (a view's add-task "+", a row's "Add sub-task",
  * Shift+Enter quick entry) requests a draft here instead of creating an
  * empty task in the store. The task trees splice the draft's node into
  * their render order (see `spliceTaskDraft`) and render it as a static

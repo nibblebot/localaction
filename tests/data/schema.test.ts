@@ -8,16 +8,9 @@ import {
 } from '../../src/data/schema.ts';
 
 describe('schema constants', () => {
-  it('exposes the six top-level tables the schema defines', () => {
+  it('exposes the four top-level tables the schema defines', () => {
     expect<string[]>(Object.values(TABLES).sort()).toEqual(
-      [
-        'areas',
-        'notes',
-        'projects',
-        'sections',
-        'tasks',
-        'tombstones',
-      ].sort(),
+      ['areas', 'notes', 'tasks', 'tombstones'].sort(),
     );
   });
 
@@ -36,30 +29,19 @@ describe('schema constants', () => {
     expect(COLUMNS.tasks.completedAt).toBe('completedAt');
   });
 
+  it('declares the backlog column on tasks (root shelf state, absent = Active)', () => {
+    expect(COLUMNS.tasks.backlog).toBe('backlog');
+  });
+
   it('keeps the task status enum consistent', () => {
     expect(TASK_STATUS).toEqual({ open: 'open', done: 'done' });
   });
 
-  it('keeps the note entity-type enum aligned with the glossary', () => {
-    expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(
-      ['area', 'project', 'task'],
-    );
+  it('keeps the note entity-type enum aligned with the glossary (areas + tasks only)', () => {
+    expect(Object.keys(NOTE_ENTITY_TYPE).sort()).toEqual(['area', 'task']);
   });
 
-  it('lets tombstones name sections without widening note targets', () => {
-    expect(Object.keys(TOMBSTONE_ENTITY_TYPE).sort()).toEqual(
-      ['area', 'project', 'section', 'task'],
-    );
-  });
-
-  it('declares the section table columns', () => {
-    expect(COLUMNS.sections).toEqual({
-      id: 'id',
-      name: 'name',
-      projectId: 'projectId',
-      order: 'order',
-      createdAt: 'createdAt',
-      updatedAt: 'updatedAt',
-    });
+  it('narrows tombstone entity types to the deletable owners (areas + tasks)', () => {
+    expect(Object.keys(TOMBSTONE_ENTITY_TYPE).sort()).toEqual(['area', 'task']);
   });
 });

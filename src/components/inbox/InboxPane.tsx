@@ -1,65 +1,69 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   useDataLayer,
   useInboxTaskIds,
   createTask,
-  moveTask,
-  PLACEMENT_SEP,
+  getRootTriState,
 } from '../../data/index.ts';
-import { TaskTreeByStatus } from '../tasks/TaskList.tsx';
+import RootGroups from '../tasks/RootGroups.tsx';
+import type { RootGroupSlice } from '../tasks/RootGroups.tsx';
 import InlineAddInput from '../shared/InlineAddInput.tsx';
-import CompletedToggle from '../area/CompletedToggle.tsx';
-import { useShowCompleted } from '../hooks/useShowCompleted.ts';
-import { useDeepTaskIds } from '../tasks/taskTree.ts';
 import { useFocusEmptyList } from '../hooks/useFocusEmptyList.ts';
 
+/**
+ * The inbox: the same Active / Backlog / Done root-task groups as the
+ * area view, with no sub-area slices (a single headerless slice).
+ * The add-task input creates Active inbox roots (placement absent).
+ */
 export default function InboxPane(): React.JSX.Element {
   const { store } = useDataLayer();
   const topLevelIds = useInboxTaskIds(store);
-  // TaskTreeByStatus builds the tree itself — feed it the flat deep
-  // list (top-level + descendants), same as the project/area tabs.
-  const allIds = useDeepTaskIds(store, topLevelIds);
-  const { showCompleted, toggle: toggleCompleted } = useShowCompleted();
+
+  const slices = useMemo<readonly RootGroupSlice[]>(() => {
+    const active: string[] = [];
+    const backlog: string[] = [];
+    const done: string[] = [];
+    for (const tid of topLevelIds) {
+      const tri = getRootTriState(store, tid);
+      if (tri === 'done') done.push(tid);
+      else if (tri === 'backlog') backlog.push(tid);
+      else active.push(tid);
+    }
+    return [
+      { key: 'inbox', label: null, placement: null, active, backlog, done },
+    ];
+  }, [store, topLevelIds]);
+
   function addTask(title: string): void {
     createTask(store, { title });
   }
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
-    moveTask(
-      store,
-      activeId,
-      parentId ? `task${PLACEMENT_SEP}${parentId}` : null,
-      beforeId,
-    );
-  }
+
   const addInputRef = useRef<HTMLInputElement>(null);
-  useFocusEmptyList(addInputRef, allIds.length === 0);
+  useFocusEmptyList(addInputRef, topLevelIds.length === 0);
+
   return (
     <main className="main" aria-label="Inbox">
       <div className="main-body">
         <header className="main-pane-header">
           <h2 className="main-pane-title">Inbox</h2>
-          <CompletedToggle showCompleted={showCompleted} onToggle={toggleCompleted} />
         </header>
         <section className="tasks-tab" aria-label="Inbox tasks">
-          <TaskTreeByStatus
-            ids={allIds}
-            onMove={onMove}
-            ariaLabel="Inbox tasks"
-            showCompleted={showCompleted}
-          />
-          <InlineAddInput
-            ref={addInputRef}
-            placeholder={
-              allIds.length === 0
-                ? 'No inbox tasks yet — add the first one.'
-                : 'New inbox task…'
+          <RootGroups
+            slices={slices}
+            renderGroupFooter={(group) =>
+              group === 'active' ? (
+                <InlineAddInput
+                  ref={addInputRef}
+                  placeholder={
+                    topLevelIds.length === 0
+                      ? 'No inbox tasks yet — add the first one.'
+                      : 'New inbox task…'
+                  }
+                  ariaLabel="New inbox task"
+                  onSubmit={addTask}
+                />
+              ) : null
             }
-            ariaLabel="New inbox task"
-            onSubmit={addTask}
           />
         </section>
       </div>

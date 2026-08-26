@@ -99,7 +99,7 @@ export function useAllNoteIds(store: MergeableStore): string[] {
 }
 
 /**
- * Reactive: ids of notes attached to a single entity (e.g. one project).
+ * Reactive: ids of notes attached to a single entity (e.g. one area or task).
  * Subscribes to the notes table so any change re-renders callers.
  */
 export function useNoteIdsForEntity(

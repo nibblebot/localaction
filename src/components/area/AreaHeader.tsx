@@ -12,7 +12,6 @@ import type { AreaColorId } from '../../data/colors.ts';
 import { useUndo } from '../context/useUndo.ts';
 import AreaEditPopover from './AreaEditPopover.tsx';
 import ConfirmModal from '../shared/ConfirmModal.tsx';
-import CompletedToggle from './CompletedToggle.tsx';
 import type { HeaderArea } from './types.ts';
 
 function AreaHeader({
@@ -20,8 +19,6 @@ function AreaHeader({
   name,
   color,
   parent,
-  showCompleted,
-  onToggleCompleted,
   onNavigate,
   onDeleteArea,
 }: {
@@ -29,8 +26,6 @@ function AreaHeader({
   parent: HeaderArea | null;
   name: string;
   color: AreaColorId;
-  showCompleted: boolean;
-  onToggleCompleted: () => void;
   onNavigate: (id: string) => void;
   onDeleteArea: () => void;
 }): React.JSX.Element {
@@ -80,10 +75,6 @@ function AreaHeader({
           <span className="area-header-name-edit-text">{name || 'Untitled'}</span>
         </button>
       </h1>
-      <div className="area-header-actions">
-        <CompletedToggle showCompleted={showCompleted} onToggle={onToggleCompleted} />
-      </div>
-
       <AreaEditPopover
         anchor={editAnchor}
         areaId={areaId}
@@ -98,7 +89,7 @@ function AreaHeader({
       <ConfirmModal
         open={confirmDelete}
         title="Delete area?"
-        message={`"${name || 'Untitled'}" will be deleted along with every sub-area, project, task, and note inside it.`}
+        message={`"${name || 'Untitled'}" will be deleted along with every sub-area, task and note inside it.`}
         confirmLabel="Delete"
         onConfirm={() => {
           const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.area, areaId);

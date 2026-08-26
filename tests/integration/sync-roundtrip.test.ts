@@ -8,7 +8,7 @@
  *   1. Two clients can each start sync against the server.
  *   2. A write on one client's store replicates to the other.
  *   3. After both clients disconnect, a third "fresh" client sees the
- *      full persisted state (Area, Sub-Area, Project).
+ *      full persisted state (Area, Sub-Area, Task).
  *   4. The SQLite file round-trips through the tabular server persister's
  *      `load()` (`createServerTabularPersister`).
  *
@@ -185,11 +185,11 @@ describe('sync server round-trip', () => {
       await waitForCell(b, 'areas', 'd1', 'name', 'Family');
       expect(b.getCell('areas', 'd2', 'parentId')).toBe('d1');
 
-      b.setCell('projects', 'p1', 'areaId', 'd1');
-      b.setCell('projects', 'p1', 'name', 'Plan vacation');
-      await waitForCell(a, 'projects', 'p1', 'name', 'Plan vacation');
+      b.setCell('tasks', 't1', 'placement', 'area:d1');
+      b.setCell('tasks', 't1', 'title', 'Plan vacation');
+      await waitForCell(a, 'tasks', 't1', 'title', 'Plan vacation');
 
-      await waitForPersisted(dbPath, 'projects', 'p1', 'name', 'Plan vacation');
+      await waitForPersisted(dbPath, 'tasks', 't1', 'title', 'Plan vacation');
     } finally {
       await syncA.destroy();
       await syncB.destroy();
@@ -200,7 +200,7 @@ describe('sync server round-trip', () => {
     try {
       await waitForCell(fresh, 'areas', 'd1', 'name', 'Family');
       await waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1');
-      await waitForCell(fresh, 'projects', 'p1', 'name', 'Plan vacation');
+      await waitForCell(fresh, 'tasks', 't1', 'title', 'Plan vacation');
     } finally {
       await freshSync.destroy();
     }
@@ -212,7 +212,7 @@ describe('sync server round-trip', () => {
     reloadDb.close();
     expect(reload.getCell('areas', 'd1', 'name')).toBe('Family');
     expect(reload.getCell('areas', 'd2', 'parentId')).toBe('d1');
-    expect(reload.getCell('projects', 'p1', 'name')).toBe('Plan vacation');
+    expect(reload.getCell('tasks', 't1', 'title')).toBe('Plan vacation');
   }, 30000);
 
   it('a row deleted on one client disappears on the other and on a fresh client', async () => {

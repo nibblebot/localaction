@@ -1,28 +1,15 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { createArea, createRootTask } from './helpers.ts';
 
 // Regression guard for the duplicate-React crash class:
 //   "Invalid hook call. Hooks can only be called inside of the body of a
 //    function component ... resolveDispatcher() is null"
 // seen when @dnd-kit (`useSensor`/`useMemo` in core.esm.js) resolves a
 // different React instance than the renderer. The app must boot and mount its
-// @dnd-kit sortable surfaces (sidebar area rows, area-view project rows)
+// @dnd-kit sortable surfaces (sidebar area rows, area-view task rows)
 // without throwing. Any uncaught page error fails this contract.
 
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-}
-
-async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add project to Active"]').click();
-  const input = page.locator('input[aria-label="New project"]');
-  await input.fill(name);
-  await input.press('Enter');
-}
-
-// Matches the duplicate-React / broken-disporter error family.
+// Matches the duplicate-React / broken-dispatcher error family.
 const HOOK_ERROR = /Invalid hook call|resolveDispatcher|more than one copy of React|useSensor/i;
 
 test.describe('app boot / React hook contract', () => {
@@ -42,15 +29,16 @@ test.describe('app boot / React hook contract', () => {
     await expect(page.locator('.sidebar-app-name')).toContainText('LocalAction');
 
     // Creating an area mounts the sidebar SortableList (area rows are
-    // sortable) and navigates into the area view, whose Projects section is
-    // itself a SortableList — both exercise the `useSensor`/`useSortable`
-    // hooks that crash under a duplicate React copy.
+    // sortable) and navigates into the area view, whose task trees are
+    // themselves SortableLists — both exercise the
+    // `useSensor`/`useSortable` hooks that crash under a duplicate
+    // React copy.
     await createArea(page, 'Boot check');
     await expect(page).toHaveURL(/#\/a\//);
     await expect(page.locator('.sidebar-area-row.sortable-row')).toBeVisible();
 
-    await createProject(page, 'Ship it');
-    await expect(page.locator('li.project-row', { hasText: 'Ship it' })).toBeVisible();
+    await createRootTask(page, 'Ship it');
+    await expect(page.locator('.task-line.sortable-row', { hasText: 'Ship it' })).toBeVisible();
 
     // The crash surfaces as an uncaught page error; any is a regression.
     expect(pageErrors, `uncaught page errors:\n${pageErrors.join('\n')}`).toEqual([]);

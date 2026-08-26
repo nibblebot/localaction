@@ -62,14 +62,15 @@ The seam between React and TinyBase. Everything is re-exported from
 - **Store** — `store.ts` holds a process-wide `createMergeableStore()` singleton
   (`getStore()`). A MergeableStore tracks per-cell HLC timestamps, which is what
   makes conflict-free sync possible.
-- **Schema** — `schema.ts` defines six tables and their column keys as
+- **Schema** — `schema.ts` defines four tables and their column keys as
   `const` maps (`TABLES`, `COLUMNS`), plus the `TASK_STATUS` (`open` / `done`),
-  `PROJECT_STATUS` (`active` is the default — stored as an absent cell —
-  and `backlog`; **Done** is derived, never stored), `NOTE_ENTITY_TYPE`
-  (`area` / `project` / `task`), and `TOMBSTONE_ENTITY_TYPE` (those three
-  + `section`) enums-as-objects.
-- **CRUD + hooks** — one module per entity (`areas.ts`, `projects.ts`,
-  `sections.ts`, `tasks.ts`, `notes.ts`, `tombstones.ts`). Each exposes
+  `NOTE_ENTITY_TYPE`
+  (`area` / `task`), and `TOMBSTONE_ENTITY_TYPE` (the same two)
+  enums-as-objects. Root tasks also carry a `backlog` cell — the only
+  persistent tri-state marker; **Active** (absent cell) and **Done**
+  (derived from the subtree) are never stored.
+- **CRUD + hooks** — one module per entity (`areas.ts`, `tasks.ts`,
+  `notes.ts`, `tombstones.ts`). Each exposes
   imperative mutators/readers (`createX` / `updateX` / `getX`) and a
   React hook (`useX`) built on `tinybase/ui-react`'s `useRow` / `useRowIds`.
   Deletes live apart — `deletion.ts` runs the containment cascade and writes
@@ -78,10 +79,13 @@ The seam between React and TinyBase. Everything is re-exported from
   the exception: `deleteNote` stays on the entity module. IDs come from
   `crypto.randomUUID()`; timestamps are ISO 8601.
 - **Selectors** — `selectors.ts` derives rollups (`useAreaCounts`,
-  `useProjectRollups`, `useNotesForAreaTree`, `useDueItems`). Each `get*`
+  `useNotesForAreaTree`, `useDueItems`). Each `get*`
   takes an optional `_version` dependency token so React Compiler can memoise
   the derived output.
 - **Ordering** — `order.ts` (see [Ordering](#ordering) below).
+- **Migration** — `migrate.ts` runs a boot-time, idempotent one-off
+  transform of legacy data into the current model (see
+  [Boot migration](#boot-migration) below).
 - **Helpers** — `colors.ts` (the area palette), `slug.ts` (note slugs),
   `internal.ts` (`newId`, `nowIso`, `row`, `useTableVersion`).
 
@@ -90,12 +94,8 @@ The seam between React and TinyBase. Everything is re-exported from
 ```mermaid
 erDiagram
   areas ||--o{ areas : "parentId (self-ref tree)"
-  areas ||--o{ projects : "areaId"
+  areas ||--o{ tasks : "placement=area:<id>"
   areas ||--o{ notes : "entityType=area"
-  projects ||--o{ sections : "projectId"
-  projects ||--o{ tasks : "placement=project:<id>"
-  sections ||--o{ tasks : "placement=section:<id>"
-  projects ||--o{ notes : "entityType=project"
   tasks ||--o{ tasks : "placement=task:<id> (self-ref)"
   tasks ||--o{ notes : "entityType=task"
   areas { string id PK }
@@ -103,29 +103,21 @@ erDiagram
   areas { string parentId FK "nullable; null = top-level" }
   areas { string color "AreaColorId" }
   areas { float order }
-  projects { string id PK }
-  projects { string areaId FK "nullable" }
-  projects { string dueDate "optional; YYYY-MM-DD" }
-  projects { string status "optional; only backlog stored; absent = active" }
-  projects { float order }
-  sections { string id PK }
-  sections { string name }
-  sections { string projectId FK }
-  sections { float order }
   tasks { string id PK }
   tasks { string title }
-  tasks { string placement "project:<id>|section:<id>|area:<id>|task:<id>; absent = Inbox" }
-  tasks { string status "open|done" }
+  tasks { string placement "area:<id>|task:<id>; absent = Inbox" }
+  tasks { string status "open|done; leaf tasks only — parents derive" }
   tasks { string dueDate "optional; YYYY-MM-DD" }
   tasks { float order }
+  tasks { bool backlog "optional; roots only; absent = active" }
   notes { string id PK }
   notes { string slug }
   notes { string title }
   notes { string body "markdown" }
-  notes { string entityType "area|project|task" }
+  notes { string entityType "area|task" }
   notes { string entityId FK "polymorphic" }
   tombstones { string id PK }
-  tombstones { string entityType "area|project|task|section" }
+  tombstones { string entityType "area|task" }
   tombstones { string entityId FK "polymorphic" }
   tombstones { string deletedAt }
 ```
@@ -136,15 +128,36 @@ erDiagram
   `deletion.ts` so a deletion wins after a sync merge even when the
   parent and child arrive in either order.
 
+### Boot migration
+
+`migrate.ts` performs a one-off, idempotent upgrade of pre-cutover
+stores at boot, before `backfillOrder`. The legacy model (kept here in
+past tense) had **project** rows owned by areas and **section** rows
+grouping a project's top-level tasks; the migration folds both into the
+task tree:
+
+- Each legacy project became a root task: `placement: area:<id>` (or
+  absent = Inbox when its `areaId` was null), with name, due date,
+  backlog status, and relative order copied across.
+- Sections were flattened: their tasks became direct children of the new
+  root, ordered unsectioned-first then by (section order, in-section
+  order). An empty project became a leaf root task.
+- Project notes re-attached to the new root task
+  (`entityType: 'task'`); area notes were untouched. Project/section
+  rows and their tombstones were dropped.
+
+The migration is guarded by the legacy table being empty, so
+post-migration stores skip it entirely; running it twice is a no-op.
+
 ### Ordering
 
 Drag-to-reorder spans the whole tree: one flattened `SortableTree`
 (dnd-kit) derives a `(parent, before)` drop from vertical position plus
 horizontal (nest/unnest) intent, and the move helpers write parent +
-order in one transaction. Each ordered table (`areas`, `projects`,
-`sections`, `tasks`) has an `order` key. `order.ts`:
+order in one transaction. Each ordered table (`areas`, `tasks`) has an
+`order` key. `order.ts`:
 
-- The `createX` helpers (areas/projects/sections/tasks) append new rows
+- The `createX` helpers (areas/tasks) append new rows
   at `lastSiblingOrder + 1000`.
 - On a drag, `computeInsertOrder` takes the midpoint between neighbours
   (appending at the end lands at `last + 1000 − MIN_GAP`); when the
@@ -152,18 +165,20 @@ order in one transaction. Each ordered table (`areas`, `projects`,
   neighbour or the value is non-finite — the whole sibling group is
   **renormalised** to evenly-spaced integers from `RENORMALIZE_SPACING`
   (1000), in one transaction.
-- `backfillOrder()` seeds missing `order` cells on `areas` / `projects` /
-  `sections` (tasks already had one) — `(index + 1) * 1000 + idHash(id)`,
+- `backfillOrder()` seeds missing `order` cells on `areas` and `tasks` —
+  `(index + 1) * 1000 + idHash(id)`,
   sorted by `createdAt` — on boot; idempotent, run after OPFS loads.
-- Move helpers (`moveArea` / `moveTask` / `moveSection` / `reorderProject`
-  / `moveProjectToStatus`) reorder within a sibling group AND
+- Move helpers (`moveArea` / `moveTask`) reorder within a sibling group AND
   (areas/tasks) reparent in a single write (parent cell + `order` +
   `updatedAt`). They refuse moves that would create a cycle (a row under
   itself or one of its own descendants) or target a missing parent.
-  `moveSection` and `reorderProject` stay sibling-scoped (sections never
-  leave their project; projects have no tree UI); `moveProjectToStatus`
-  writes `status` + `order` in one transaction for Active ⇄ Backlog
-  drags.
+  `moveRootToBacklog` shelves or restores a root task in one
+  transaction: the `backlog` cell (set or deleted) plus repositioning
+  within the root's current placement sibling group, so Active ⇄
+  Backlog drags write status and order atomically. When a `moveTask`
+  removes a parent's last subtask, the parent's derived status is
+  snapshotted into its stored cell first, so the parent→leaf conversion
+  preserves the visible state.
 
 ## Persistence
 
@@ -173,8 +188,8 @@ Two independent persisters bracket the same in-memory store:
   `tinybase/persisters/persister-browser`'s `createOpfsPersister` against
   `localaction.json` in the origin's OPFS directory. On boot it `load()`s
   the snapshot and then `startAutoSave()`s; once the load resolves,
-  `DataLayerProvider` runs `backfillOrder()` to seed any missing `order`
-  cells. If OPFS / the File System Access API is unavailable,
+  `DataLayerProvider` runs the boot migration (`migrate.ts`) and then `backfillOrder()` to
+  seed any missing `order` cells. If OPFS / the File System Access API is unavailable,
   persistence is disabled (warned, non-fatal).
 - **Server (SQLite)** — `server/db.ts` opens a `bun:sqlite` `Database`
   (synchronous; `PRAGMA busy_timeout = 5000` on open) — the persister
@@ -191,11 +206,13 @@ Two independent persisters bracket the same in-memory store:
   runtime, every process that loads `server/db.ts` — prod server,
   scripts, Vite's config, tests — must run under Bun.
 
-**Schema evolution** — there is no versioning, wipe, or migration machinery:
+**Schema evolution** — there is no versioning or wipe machinery:
 persisted stores (OPFS snapshot + server SQLite) load as-is on every boot.
 Schema changes must therefore be backward-compatible — add tables or columns
 and have readers treat absent cells as `undefined` — or be handled as a
-deliberate, one-off transform at load time.
+deliberate, one-off transform at load time. The projects/sections removal
+was such a transform, implemented by `migrate.ts` (see
+[Boot migration](#boot-migration)).
 
 ## Sync
 
@@ -246,7 +263,7 @@ sequenceDiagram
     never double-count.
   - Pushes: a `didFinishTransaction` listener parses
     `getTransactionMergeableChanges()`, gated by `setPushCaptureEnabled`
-    (opened only after the OPFS load + order backfill, so boot
+    (opened only after the OPFS load + migration + order backfill, so boot
     transactions never appear) and attributed to `sweep` while
     `isReconcileSweepActive()`.
   One transaction = one event — no coalescing; multi-write operations

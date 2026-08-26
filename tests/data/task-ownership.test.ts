@@ -1,13 +1,11 @@
 import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { createTask } from '../../src/data/tasks.ts';
-import { createProject } from '../../src/data/projects.ts';
+import { createTask, setTaskStatus, getDerivedStatus } from '../../src/data/tasks.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createNote } from '../../src/data/notes.ts';
 import {
   deleteArea,
-  deleteProject,
   deleteTask,
   reconcileTombstones,
   installTombstoneReconciler,
@@ -17,7 +15,7 @@ import {
   getTombstone,
   tombstoneId,
 } from '../../src/data/tombstones.ts';
-import { TABLES, NOTE_ENTITY_TYPE } from '../../src/data/schema.ts';
+import { TABLES, COLUMNS, NOTE_ENTITY_TYPE, TASK_STATUS } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -29,40 +27,24 @@ describe('cascade deletion', () => {
     store = freshStore();
   });
 
-  it('deletes a sub-area, its projects, and tasks under it', () => {
+  it('deletes a sub-area and the tasks under it', () => {
     const a = createArea(store, { name: 'Family' });
     const sub = createArea(store, { name: 'Kids', parentId: a });
-    const p = createProject(store, { name: 'P', areaId: sub });
-    const t = createTask(store, { title: 'T', placement: { kind: 'project', id: p } });
+    const t = createTask(store, { title: 'T', placement: { kind: 'area', id: sub } });
     deleteArea(store, a);
     expect(store.hasRow(TABLES.areas, sub)).toBe(false);
-    expect(store.hasRow(TABLES.projects, p)).toBe(false);
     expect(store.hasRow(TABLES.tasks, t)).toBe(false);
     expect(hasTombstone(store, NOTE_ENTITY_TYPE.area, a)).toBe(true);
   });
 
   it('strips notes attached to any doomed entity', () => {
     const a = createArea(store, { name: 'A' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const t = createTask(store, { title: 'T', placement: { kind: 'project', id: p } });
+    const t = createTask(store, { title: 'T', placement: { kind: 'area', id: a } });
     const areaNote = createNote(store, { title: 'an', entityType: 'area', entityId: a });
-    const projNote = createNote(store, { title: 'pn', entityType: 'project', entityId: p });
     const taskNote = createNote(store, { title: 'tn', entityType: 'task', entityId: t });
     deleteArea(store, a);
     expect(store.hasRow(TABLES.notes, areaNote)).toBe(false);
-    expect(store.hasRow(TABLES.notes, projNote)).toBe(false);
     expect(store.hasRow(TABLES.notes, taskNote)).toBe(false);
-  });
-
-  it('deletes a project and its tasks, leaving the area alone', () => {
-    const a = createArea(store, { name: 'A' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const t = createTask(store, { title: 'T', placement: { kind: 'project', id: p } });
-    deleteProject(store, p);
-    expect(store.hasRow(TABLES.areas, a)).toBe(true);
-    expect(store.hasRow(TABLES.projects, p)).toBe(false);
-    expect(store.hasRow(TABLES.tasks, t)).toBe(false);
-    expect(hasTombstone(store, NOTE_ENTITY_TYPE.project, p)).toBe(true);
   });
 
   it('deletes a task and its sub-tasks', () => {
@@ -71,6 +53,24 @@ describe('cascade deletion', () => {
     deleteTask(store, root);
     expect(store.hasRow(TABLES.tasks, root)).toBe(false);
     expect(store.hasRow(TABLES.tasks, child)).toBe(false);
+  });
+
+  it('deleting the only child snapshots the parent derived status first', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    setTaskStatus(store, child, TASK_STATUS.done);
+    // Parent derives done through its only child; deleting that child
+    // converts the parent back to a leaf, so the derived status is
+    // snapshotted into the parent's stored cell first.
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+    deleteTask(store, child);
+    expect(store.hasRow(TABLES.tasks, child)).toBe(false);
+    expect(store.hasRow(TABLES.tasks, parent)).toBe(true);
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(true);
   });
 
   it('tombstone id is the deterministic composite `${entityType}:${entityId}`', () => {

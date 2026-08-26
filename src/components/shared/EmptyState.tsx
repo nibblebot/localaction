@@ -1,6 +1,6 @@
 /**
  * The empty-/welcome-state shell shared by every main-pane route when it has
- * nothing to render: a no-area welcome, or a deleted-project placeholder. The
+ * nothing to render: a no-area welcome, or a deleted-task placeholder. The
  * outer `<main>`/`.main-body` chrome matches the populated panes so the layout
  * never collapses around the empty state.
  */

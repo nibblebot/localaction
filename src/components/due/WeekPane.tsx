@@ -9,7 +9,7 @@ export default function WeekPane(): React.JSX.Element {
       from={from}
       to={to}
       storageKey="localaction.week"
-      projectBadgeLabel="Due this week"
+      dueBadgeLabel="Due this week"
     />
   );
 }

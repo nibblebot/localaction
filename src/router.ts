@@ -4,8 +4,7 @@ export type Selection =
   | { kind: 'today' }
   | { kind: 'week' }
   | { kind: 'area'; id: string }
-  | { kind: 'project'; id: string }
-  | { kind: 'project-notes'; id: string }
+  | { kind: 'task'; id: string }
   | { kind: 'sync-log' };
 
 export const HOME: Selection = { kind: 'home' };
@@ -16,10 +15,10 @@ export const SYNC_LOG: Selection = { kind: 'sync-log' };
 
 /**
  * Recognises `#/inbox` (Inbox), `#/today` (Today), `#/week` (Week),
- * `#/sync-log` (sync debug log), `#/a/<id>` (area), `#/p/<id>`
- * (project detail), and `#/p/<id>/notes` (project notes) deep links.
- * Anything else — including legacy task / note / tag shapes —
- * collapses to `home` so stale links fall back to the welcome screen.
+ * `#/sync-log` (sync debug log), `#/a/<id>` (area), and `#/t/<id>`
+ * (task detail) deep links. Anything else — including legacy
+ * note / tag shapes — collapses to `home` so stale links fall back to
+ * the welcome screen.
  */
 export function parseRoute(raw: string): Selection {
   if (!raw) return HOME;
@@ -31,10 +30,8 @@ export function parseRoute(raw: string): Selection {
   if (hash === '#/sync-log') return SYNC_LOG;
   let m = hash.match(/^#\/a\/([^/?#]+)$/);
   if (m && m[1]) return { kind: 'area', id: decodeURIComponent(m[1]) };
-  m = hash.match(/^#\/p\/([^/?#]+)\/notes$/);
-  if (m && m[1]) return { kind: 'project-notes', id: decodeURIComponent(m[1]) };
-  m = hash.match(/^#\/p\/([^/?#]+)$/);
-  if (m && m[1]) return { kind: 'project', id: decodeURIComponent(m[1]) };
+  m = hash.match(/^#\/t\/([^/?#]+)$/);
+  if (m && m[1]) return { kind: 'task', id: decodeURIComponent(m[1]) };
   return HOME;
 }
 
@@ -45,8 +42,7 @@ export function formatRoute(sel: Selection): string {
   if (sel.kind === 'week') return '#/week';
   if (sel.kind === 'sync-log') return '#/sync-log';
   if (sel.kind === 'area') return `#/a/${encodeURIComponent(sel.id)}`;
-  if (sel.kind === 'project') return `#/p/${encodeURIComponent(sel.id)}`;
-  return `#/p/${encodeURIComponent(sel.id)}/notes`;
+  return `#/t/${encodeURIComponent(sel.id)}`;
 }
 
 export function routeEquals(a: Selection, b: Selection): boolean {
@@ -57,6 +53,5 @@ export function routeEquals(a: Selection, b: Selection): boolean {
   if (a.kind === 'week' && b.kind === 'week') return true;
   if (a.kind === 'sync-log' && b.kind === 'sync-log') return true;
   if (a.kind === 'area' && b.kind === 'area') return a.id === b.id;
-  if (a.kind === 'project' && b.kind === 'project') return a.id === b.id;
-  return a.kind === 'project-notes' && b.kind === 'project-notes' && a.id === b.id;
+  return a.kind === 'task' && b.kind === 'task' && a.id === b.id;
 }

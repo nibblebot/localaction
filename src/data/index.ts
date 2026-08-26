@@ -2,18 +2,14 @@ export {
   TABLES,
   COLUMNS,
   TASK_STATUS,
-  PROJECT_STATUS,
   NOTE_ENTITY_TYPE,
   TOMBSTONE_ENTITY_TYPE,
 } from './schema.ts';
 export type {
   TableName,
   AreaColumn,
-  ProjectColumn,
-  SectionColumn,
   TaskColumn,
   TaskStatus,
-  ProjectStatus,
   NoteEntityType,
   TombstoneEntityType,
   TombstoneColumn,
@@ -41,16 +37,10 @@ export type { DataLayerProviderProps } from './DataLayerProvider.tsx';
 
 export type {
   Area,
-  Project,
-  Section,
-  SectionInput,
-  SectionPatch,
   Task,
   Note,
   AreaInput,
   AreaPatch,
-  ProjectInput,
-  ProjectPatch,
   TaskInput,
   TaskPatch,
   TaskPlacement,
@@ -67,19 +57,6 @@ export {
   descendantAreaIds,
 } from './areas.ts';
 export {
-  createProject,
-  updateProject,
-  useProject,
-} from './projects.ts';
-export {
-  createSection,
-  updateSection,
-  getSection,
-  useSection,
-  getSectionIdsForProject,
-  useSectionIdsForProject,
-} from './sections.ts';
-export {
   createTask,
   createTaskAfter,
   updateTask,
@@ -93,16 +70,20 @@ export {
   getPlacement,
   getRawPlacement,
   getRootPlacement,
-  getEffectiveTaskStatus,
-  useEffectiveTaskStatus,
+  getDerivedStatus,
+  useDerivedTaskStatus,
+  getRootTriState,
+  setRootBacklog,
+  snapshotDerivedIntoStored,
+  getSubtreeProgress,
+  useSubtreeProgress,
+  getRootTaskId,
   childTaskIds,
   descendantTaskIds,
   buildTaskTree,
   pruneDoneTasks,
   sortTaskIds,
   topLevelTaskIdsForPlacement,
-  getTasksForProjectDeep,
-  useTasksForProjectDeep,
   getInboxTaskIds,
   useInboxTaskIds,
   getAreaTaskIds,
@@ -114,9 +95,7 @@ export type { TaskTreeNode } from './tasks.ts';
 export {
   moveArea,
   moveTask,
-  moveSection,
-  reorderProject,
-  moveProjectToStatus,
+  moveRootToBacklog,
   backfillOrder,
   readSiblingOrders,
 } from './order.ts';
@@ -132,9 +111,7 @@ export {
 
 export {
   deleteArea,
-  deleteProject,
   deleteTask,
-  deleteSection,
   cascadeDeleteSubtree,
   reconcileTombstones,
   installTombstoneReconciler,
@@ -194,12 +171,10 @@ export {
   getAreaCounts,
   getNotesForAreaTree,
   useNotesForAreaTree,
-  getProjectRollups,
   useAreaCounts,
-  useProjectRollups,
   getDueItems,
   useDueItems,
   getCompletedItemsInRange,
   useCompletedItemsInRange,
 } from './selectors.ts';
-export type { AreaCount, ProjectRollup, DueItem, CompletedItem } from './selectors.ts';
+export type { AreaCount, DueItem, CompletedItem } from './selectors.ts';

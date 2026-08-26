@@ -10,6 +10,13 @@ describe('parseRoute', () => {
     });
   });
 
+  it('parses a task route', () => {
+    expect(parseRoute('#/t/task1')).toEqual<Selection>({
+      kind: 'task',
+      id: 'task1',
+    });
+  });
+
   it('parses a bare path without the leading hash', () => {
     expect(parseRoute('/a/are1')).toEqual<Selection>({ kind: 'area', id: 'are1' });
   });
@@ -42,15 +49,9 @@ describe('parseRoute', () => {
     expect(parseRoute('/sync-log')).toEqual<Selection>({ kind: 'sync-log' });
   });
 
-  it('parses a project route', () => {
-    expect(parseRoute('#/p/proj1')).toEqual<Selection>({ kind: 'project', id: 'proj1' });
-  });
-
-  it('parses a project-notes route', () => {
-    expect(parseRoute('#/p/proj1/notes')).toEqual<Selection>({
-      kind: 'project-notes',
-      id: 'proj1',
-    });
+  it('falls back to home for legacy project deep links', () => {
+    expect(parseRoute('#/p/proj1')).toEqual<Selection>({ kind: 'home' });
+    expect(parseRoute('#/p/proj1/notes')).toEqual<Selection>({ kind: 'home' });
   });
 
   it('returns a home selection for empty / unknown hashes', () => {
@@ -60,8 +61,7 @@ describe('parseRoute', () => {
     expect(parseRoute('#/a/')).toEqual<Selection>({ kind: 'home' });
   });
 
-  it('collapses legacy task / note / tag deep links to home', () => {
-    expect(parseRoute('#/t/t1')).toEqual<Selection>({ kind: 'home' });
+  it('collapses legacy note / tag deep links to home', () => {
     expect(parseRoute('#/n/some-slug')).toEqual<Selection>({ kind: 'home' });
     expect(parseRoute('#/g/work')).toEqual<Selection>({ kind: 'home' });
   });
@@ -75,8 +75,7 @@ describe('formatRoute', () => {
     expect(formatRoute({ kind: 'week' })).toBe('#/week');
     expect(formatRoute({ kind: 'sync-log' })).toBe('#/sync-log');
     expect(formatRoute({ kind: 'area', id: 'a1' })).toBe('#/a/a1');
-    expect(formatRoute({ kind: 'project', id: 'p1' })).toBe('#/p/p1');
-    expect(formatRoute({ kind: 'project-notes', id: 'p1' })).toBe('#/p/p1/notes');
+    expect(formatRoute({ kind: 'task', id: 't1' })).toBe('#/t/t1');
   });
 });
 
@@ -88,18 +87,11 @@ describe('routeEquals', () => {
     expect(routeEquals(a, { kind: 'home' })).toBe(false);
   });
 
-  it('treats project selections with the same id as equal', () => {
-    const a: Selection = { kind: 'project', id: 'p1' };
-    expect(routeEquals(a, { kind: 'project', id: 'p1' })).toBe(true);
-    expect(routeEquals(a, { kind: 'project', id: 'p2' })).toBe(false);
-    expect(routeEquals(a, { kind: 'project-notes', id: 'p1' })).toBe(false);
-  });
-
-  it('treats project-notes selections with the same id as equal', () => {
-    const a: Selection = { kind: 'project-notes', id: 'p1' };
-    expect(routeEquals(a, { kind: 'project-notes', id: 'p1' })).toBe(true);
-    expect(routeEquals(a, { kind: 'project-notes', id: 'p2' })).toBe(false);
-    expect(routeEquals(a, { kind: 'area', id: 'p1' })).toBe(false);
+  it('treats task selections with the same id as equal', () => {
+    const a: Selection = { kind: 'task', id: 't1' };
+    expect(routeEquals(a, { kind: 'task', id: 't1' })).toBe(true);
+    expect(routeEquals(a, { kind: 'task', id: 't2' })).toBe(false);
+    expect(routeEquals(a, { kind: 'area', id: 't1' })).toBe(false);
   });
 
   it('treats two today selections as equal', () => {

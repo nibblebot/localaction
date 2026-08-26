@@ -1,5 +1,5 @@
 /**
- * Titled section wrapper used by tab content (projects, tasks, notes).
+ * Titled section wrapper used by tab content (task groups, notes).
  * Children render inside a plain <ul>; each child supplies its own
  * row chrome.
  */

@@ -165,10 +165,10 @@ describe('summarizeTables / totalRows', () => {
     expect(
       summarizeTables({
         areas: { added: 1, updated: 0, removed: 0 },
-        projects: { added: 3, updated: 0, removed: 0 },
+        notes: { added: 3, updated: 0, removed: 0 },
         tasks: { added: 8, updated: 0, removed: 0 },
       }),
-    ).toBe('8 Tasks, 3 Projects, 1 Area');
+    ).toBe('8 Tasks, 1 Area, 3 Notes');
     expect(
       summarizeTables({
         tasks: { added: 0, updated: 2, removed: 1 },
@@ -499,7 +499,7 @@ describe('pull capture over real WS sync', () => {
     const source = createMergeableStore();
     source.setRow(TABLES.tasks, 't1', { title: 'a' });
     source.setRow(TABLES.tasks, 't2', { title: 'b' });
-    source.setRow(TABLES.projects, 'p1', { name: 'x' });
+    source.setRow(TABLES.notes, 'n1', { title: 'x' });
     const syncSource = await connectClient(source);
 
     const clock = fakeClock();
@@ -514,7 +514,7 @@ describe('pull capture over real WS sync', () => {
         () =>
           target.hasRow(TABLES.tasks, 't1') &&
           target.hasRow(TABLES.tasks, 't2') &&
-          target.hasRow(TABLES.projects, 'p1'),
+          target.hasRow(TABLES.notes, 'n1'),
       );
       // The initial pull applies in a single transaction → one event.
       const pulls = eventsOfKind(log, 'pull');
@@ -524,7 +524,7 @@ describe('pull capture over real WS sync', () => {
         updated: 0,
         removed: 0,
       });
-      expect(pulls[0]?.tables[TABLES.projects]).toEqual({
+      expect(pulls[0]?.tables[TABLES.notes]).toEqual({
         added: 1,
         updated: 0,
         removed: 0,

@@ -1,18 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-}
-
-async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add project to Active"]').click();
-  const input = page.locator('input[aria-label="New project"]');
-  await input.fill(name);
-  await input.press('Enter');
-}
+import { test, expect } from '@playwright/test';
+import { createArea, createRootTask } from './helpers.ts';
 
 test.describe('LocalAction shell', () => {
   test('renders the two-zone layout with sidebar and main pane', async ({ page }) => {
@@ -29,66 +16,77 @@ test.describe('LocalAction shell', () => {
     await expect(page.locator('.main-empty')).toContainText('Welcome to LocalAction');
   });
 
-  test('creating an area navigates to its main pane with the two sections', async ({ page }) => {
+  test('creating an area navigates to its main pane with the unified task groups', async ({
+    page,
+  }) => {
     await page.goto('/#/');
     await createArea(page, 'Work');
     await expect(page).toHaveURL(/#\/a\//);
     await expect(page.locator('.area-header-name')).toContainText('Work');
-    await expect(page.locator('.pane-section-toggle', { hasText: 'Tasks' })).toBeVisible();
-    await expect(page.locator('.pane-section-toggle', { hasText: 'Projects' })).toBeVisible();
+    // The area view is the unified Active / Backlog / Done tri-state
+    // (the Projects/Sections era's task/project toggle is gone).
+    await expect(page.locator('.tasks-tab')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Active/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Backlog/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Done/ })).toBeVisible();
   });
 
-  test('projects tab renders an inline add input', async ({ page }) => {
+  test('the Active group header offers the inline add-task input', async ({ page }) => {
     await page.goto('/#/');
     // Create an area so we have something to render.
     await createArea(page, 'Health');
-    await expect(page.locator('.projects-tab')).toBeVisible();
-    await expect(page.locator('button[aria-label="Add project to Active"]')).toBeVisible();
+    await expect(page.locator('.tasks-tab')).toBeVisible();
+    await expect(page.locator('button[aria-label="Add task to Active"]')).toBeVisible();
+    await page.locator('button[aria-label="Add task to Active"]').click();
+    await expect(page.locator('input[aria-label="New task"]')).toBeFocused();
   });
 
-  test('caret toggles a project card; clicking the row opens the project detail pane', async ({ page }) => {
+  test('caret toggles a parent row; clicking its name opens the task detail pane', async ({
+    page,
+  }) => {
     await page.goto('/#/');
     await createArea(page, 'Family');
-    // Projects tab: add a project; its card is expanded by default.
-    await createProject(page, 'Plan trip');
-    const card = page.locator('li.project-row', { hasText: 'Plan trip' });
-    // The card is expanded by default, but its tree mounts EMPTY (task
-    // creation is deferred until a draft commits) and the
-    // `.project-row-tasks:empty` CSS hides the empty tree — attached,
-    // not visible, until the first task lands.
-    await expect(card.locator('.project-row-tasks')).toBeAttached();
-    await expect(card.locator('.project-row-tasks')).toBeHidden();
-    // Add a task via the card's header add-task icon: a draft row opens
-    // focused; the task is created when the title commits.
-    await card.locator('button[aria-label="Add task to Plan trip"]').click();
-    await expect(card.locator('.task-line-title:focus')).toBeVisible();
+    await createRootTask(page, 'Plan trip');
+    await expect(page.locator('input[aria-label="Mark “Plan trip” done"]')).toBeVisible();
+    // Add a sub-task: the row becomes a parent (caret + progress meter).
+    const row = page.locator('.task-line', { hasText: 'Plan trip' });
+    await row.locator('button[aria-label="Add sub-task"]').click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
     await page.keyboard.type('Book flights');
     await page.keyboard.press('Enter');
-    await expect(card.locator('.task-line-title').first()).toHaveValue('Book flights');
-    // Clicking the project name navigates to the detail pane — it does
-    // NOT collapse the card.
-    await card.locator('.project-row-name').click();
-    await expect(page).toHaveURL(/#\/p\/[^/]+$/);
+    await expect(row.locator('button[aria-label="Collapse Plan trip"]')).toBeVisible();
+    await expect(row.locator('.project-row-progress-count')).toHaveText('0 / 1');
+    // Clicking the parent name navigates to the detail pane — it does
+    // NOT collapse the row.
+    await row.locator('.project-row-name').click();
+    await expect(page).toHaveURL(/#\/t\/[^/]+$/);
     await expect(page.locator('.area-header-name')).toContainText('Plan trip');
-    // The detail pane shows the same task surface as the expanded card.
-    await expect(page.locator('.task-line-title').first()).toHaveValue('Book flights');
-    // The breadcrumb returns to the area, where the card stayed expanded.
-    await page.locator('.area-header-crumb[title="Family"]').click();
+    // The detail pane shows the same task surface as the tree row.
+    await expect(page.locator('.project-pane-tasks .task-line', { hasText: 'Book flights' })).toBeVisible();
+    // The breadcrumb returns to the area.
+    await page.locator('.area-header-crumb').click();
     await expect(page).toHaveURL(/#\/a\/[^/]+$/);
-    await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // Only the caret toggles the card; again expands it.
-    await card.locator('button[aria-label="Collapse Plan trip"]').click();
-    await expect(card.locator('.project-row-tasks')).toHaveCount(0);
-    await card.locator('button[aria-label="Expand Plan trip"]').click();
-    await expect(card.locator('.project-row-tasks')).toBeVisible();
-    // Management affordances (rename, delete) are not on the card —
-    // they live on the project detail pane header only.
-    await expect(card.locator('button[aria-label="Rename project"]')).toHaveCount(0);
-    await expect(card.locator('button[aria-label="Delete project"]')).toHaveCount(0);
+    await expect(page.locator('.task-line', { hasText: 'Book flights' })).toBeVisible();
+    // Only the caret toggles the row; again expands it.
+    await row.locator('button[aria-label="Collapse Plan trip"]').click();
+    await expect(page.locator('.task-line', { hasText: 'Book flights' })).toHaveCount(0);
+    await row.locator('button[aria-label="Expand Plan trip"]').click();
+    await expect(page.locator('.task-line', { hasText: 'Book flights' })).toBeVisible();
+    // Management affordances (rename, delete) are not on the tree row —
+    // they live on the task detail pane header only.
+    await expect(row.locator('button[aria-label^="Rename"]')).toHaveCount(0);
+    await expect(row.locator('button[aria-label="Delete task"]')).toHaveCount(0);
   });
 
   test('invalid route hashes fall back to the welcome state', async ({ page }) => {
-    for (const hash of ['/#/t/whatever', '/#/n/whatever', '/#/p/does-not-exist', '/#/unknown/x']) {
+    for (const hash of [
+      '/#/t/whatever',
+      '/#/n/whatever',
+      // Legacy project routes collapse to home too (src/router.ts
+      // `parseRoute` — anything it does not recognise falls back).
+      '/#/p/does-not-exist',
+      '/#/unknown/x',
+    ]) {
       await page.goto(hash);
       await expect(page.locator('.main-empty')).toBeVisible();
     }

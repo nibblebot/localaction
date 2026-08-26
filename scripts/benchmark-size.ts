@@ -3,7 +3,7 @@
  * (`createServerPersister`: MergeableStore → mirror bridge → tabular
  * SQLite autoSave) against a throwaway `os.tmpdir()/localaction-bench-size/`
  * dir, seeds
- * areas/projects/tasks through the app's own creators, then deletes half
+ * areas/root tasks/subtasks through the app's own creators, then deletes half
  * through the app's cascade deleters — snapshotting on-disk file sizes,
  * page stats, and row counts at each of the 5 cases.
  *
@@ -22,11 +22,9 @@ import { createMergeableStore, type MergeableStore } from 'tinybase';
 import { openDatabase, type ServerDatabase } from '../server/db.ts';
 import { createServerPersister } from '../server/persister.ts';
 import { createArea } from '../src/data/areas.ts';
-import { createProject } from '../src/data/projects.ts';
 import { createTask } from '../src/data/tasks.ts';
 import {
   deleteArea,
-  deleteProject,
   deleteTask,
 } from '../src/data/deletion.ts';
 import { TABLES } from '../src/data/schema.ts';
@@ -51,21 +49,25 @@ function mulberry32(seed: number): () => number {
 }
 const rand = mulberry32(42);
 
-const AREA_WORDS = ['Family', 'Health', 'Work', 'Finance', 'Home', 'Travel', 'Learning', 'Side projects', 'Admin', 'Fitness'];
-const PROJECT_WORDS = ['Plan vacation', 'Quarterly budget', 'Kitchen renovation', 'Tax filing', 'Marathon training', 'Website redesign', 'Reading list', 'Car maintenance', 'Garden overhaul', 'Conference talk'];
+const AREA_WORDS = ['Family', 'Health', 'Work', 'Finance', 'Home', 'Travel', 'Learning', 'Side efforts', 'Admin', 'Fitness'];
+const ROOT_WORDS = ['Plan vacation', 'Quarterly budget', 'Kitchen renovation', 'Tax filing', 'Marathon training', 'Website redesign', 'Reading list', 'Car maintenance', 'Garden overhaul', 'Conference talk'];
 const TASK_WORDS = ['review', 'draft', 'schedule', 'call', 'buy', 'research', 'book', 'write', 'fix', 'compare', 'submit', 'organize'];
 const TASK_OBJECTS = ['quarterly budget proposal', 'flight options', 'insurance paperwork', 'meeting notes', 'vendor quotes', 'weekend itinerary', 'grocery list', 'tax documents', 'training plan', 'design mockups'];
 
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
 const areaName = (i: number) => `${pick(AREA_WORDS)} ${i}`;
-const projectName = (i: number) => `${pick(PROJECT_WORDS)} #${i}`;
+const rootName = (i: number) => `${pick(ROOT_WORDS)} #${i}`;
 const taskTitle = (i: number) => `${pick(TASK_WORDS)} ${pick(TASK_OBJECTS)} (${i})`;
 
 function all<T>(db: ServerDatabase, sql: string): T[] {
   return db.query(sql).all() as T[];
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+function sleep(ms: number): Promise<void> {
+  const { promise, resolve } = Promise.withResolvers<void>();
+  setTimeout(resolve, ms);
+  return promise;
+}
 
 async function tableCounts(db: ServerDatabase): Promise<Record<string, number>> {
   const tables = await all<{ name: string }>(
@@ -136,33 +138,42 @@ function printSnapshot(s: Snapshot): void {
 // ---------------------------------------------------------------------------
 
 const areaIds: string[] = [];
-const projectIds: string[] = [];
-const taskIds: string[] = [];
-const taskOrderByProject = new Map<string, number>();
+const rootTaskIds: string[] = [];
+const subTaskIds: string[] = [];
+const rootOrderByArea = new Map<string, number>();
+const subOrderByRoot = new Map<string, number>();
 
-function seedTo(store: MergeableStore, areas: number, projects: number, tasks: number): void {
+function seedTo(store: MergeableStore, areas: number, roots: number, subtasks: number): void {
   store.transaction(() => {
     while (areaIds.length < areas) {
       const i = areaIds.length + 1;
-      // ~10% sub-areas under a random earlier root.
-      const roots = areaIds.filter((id) => !store.getCell(TABLES.areas, id, 'parentId'));
-      const parentId = i > 1 && rand() < 0.1 && roots.length > 0 ? pick(roots) : null;
+      // ~10% sub-areas under a random earlier top-level area.
+      const tops = areaIds.filter((id) => !store.getCell(TABLES.areas, id, 'parentId'));
+      const parentId = i > 1 && rand() < 0.1 && tops.length > 0 ? pick(tops) : null;
       areaIds.push(createArea(store, { name: areaName(i), parentId }));
     }
-    while (projectIds.length < projects) {
-      const i = projectIds.length + 1;
+    while (rootTaskIds.length < roots) {
+      const i = rootTaskIds.length + 1;
       const areaId = areaIds[Math.floor(rand() * areaIds.length)]!;
-      projectIds.push(createProject(store, { name: projectName(i), areaId }));
+      const order = (rootOrderByArea.get(areaId) ?? 0) + 1;
+      rootOrderByArea.set(areaId, order);
+      rootTaskIds.push(
+        createTask(store, {
+          title: rootName(i),
+          placement: { kind: 'area', id: areaId },
+          order: order * 1000,
+        }),
+      );
     }
-    while (taskIds.length < tasks) {
-      const i = taskIds.length + 1;
-      const projectId = projectIds[Math.floor(rand() * projectIds.length)]!;
-      const order = (taskOrderByProject.get(projectId) ?? 0) + 1;
-      taskOrderByProject.set(projectId, order);
-      taskIds.push(
+    while (subTaskIds.length < subtasks) {
+      const i = subTaskIds.length + 1;
+      const rootId = rootTaskIds[Math.floor(rand() * rootTaskIds.length)]!;
+      const order = (subOrderByRoot.get(rootId) ?? 0) + 1;
+      subOrderByRoot.set(rootId, order);
+      subTaskIds.push(
         createTask(store, {
           title: taskTitle(i),
-          placement: { kind: 'project', id: projectId },
+          placement: { kind: 'task', id: rootId },
           order: order * 1000,
         }),
       );
@@ -192,26 +203,26 @@ async function main(): Promise<void> {
   await sleep(500);
   snaps.push(await snapshot(db, '1b. initial boot (no writes, no user data)', 'test-bench-size.db'));
 
-  // Case 2: 10 areas, 30 projects, 100 tasks.
+  // Case 2: 10 areas, 30 root tasks, 100 subtasks.
   let t0 = Date.now();
   seedTo(store, 10, 30, 100);
-  await waitForCounts(db, { areas: 10, projects: 30, tasks: 100 });
+  await waitForCounts(db, { areas: 10, tasks: 130 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '2. 10 areas / 30 projects / 100 tasks', 'test-bench-size.db'));
+  snaps.push(await snapshot(db, '2. 10 areas / 30 root tasks / 100 subtasks', 'test-bench-size.db'));
 
-  // Case 3: 100 areas, 500 projects, 1000 tasks.
+  // Case 3: 100 areas, 500 root tasks, 1000 subtasks.
   t0 = Date.now();
   seedTo(store, 100, 500, 1000);
-  await waitForCounts(db, { areas: 100, projects: 500, tasks: 1000 });
+  await waitForCounts(db, { areas: 100, tasks: 1500 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '3. 100 areas / 500 projects / 1000 tasks', 'test-bench-size.db'));
+  snaps.push(await snapshot(db, '3. 100 areas / 500 root tasks / 1000 subtasks', 'test-bench-size.db'));
 
-  // Case 4: 1000 areas, 5000 projects, 10000 tasks.
+  // Case 4: 1000 areas, 5000 root tasks, 10000 subtasks.
   t0 = Date.now();
   seedTo(store, 1000, 5000, 10000);
-  await waitForCounts(db, { areas: 1000, projects: 5000, tasks: 10000 });
+  await waitForCounts(db, { areas: 1000, tasks: 15000 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '4. 1000 areas / 5000 projects / 10000 tasks', 'test-bench-size.db'));
+  snaps.push(await snapshot(db, '4. 1000 areas / 5000 root tasks / 10000 subtasks', 'test-bench-size.db'));
 
   // Case 5: delete half the entities via the app's cascade deleters.
   t0 = Date.now();
@@ -222,27 +233,25 @@ async function main(): Promise<void> {
     }
   });
   store.transaction(() => {
-    for (const id of projectIds) {
-      if (store.getRowIds(TABLES.projects).length <= 2500) break;
-      if (store.hasRow(TABLES.projects, id)) deleteProject(store, id);
+    for (const id of rootTaskIds) {
+      if (store.getRowIds(TABLES.tasks).length <= 12500) break;
+      if (store.hasRow(TABLES.tasks, id)) deleteTask(store, id);
     }
   });
   store.transaction(() => {
-    for (const id of taskIds) {
-      if (store.getRowIds(TABLES.tasks).length <= 5000) break;
+    for (const id of subTaskIds) {
+      if (store.getRowIds(TABLES.tasks).length <= 7500) break;
       if (store.hasRow(TABLES.tasks, id)) deleteTask(store, id);
     }
   });
   const remaining = {
     areas: store.getRowIds(TABLES.areas).length,
-    projects: store.getRowIds(TABLES.projects).length,
     tasks: store.getRowIds(TABLES.tasks).length,
     tombstones: store.getRowIds(TABLES.tombstones).length,
   };
   console.log(`  (deleted in ${Date.now() - t0} ms; remaining ${JSON.stringify(remaining)})`);
   await waitForCounts(db, {
     areas: remaining.areas,
-    projects: remaining.projects,
     tasks: remaining.tasks,
     tombstones: remaining.tombstones,
   });
@@ -257,12 +266,12 @@ async function main(): Promise<void> {
 
   // Summary table.
   console.log('\n=== SUMMARY ===');
-  console.log('| case | total size | pages | free pages | rows (areas/projects/tasks/tombstones) |');
+  console.log('| case | total size | pages | free pages | rows (areas/tasks/tombstones) |');
   console.log('|---|---|---|---|---|');
   for (const s of snaps) {
     const c = s.counts;
     console.log(
-      `| ${s.label} | ${fmt(s.totalBytes)} | ${s.pageCount} | ${s.freelistPages} | ${c.areas ?? 0}/${c.projects ?? 0}/${c.tasks ?? 0}/${c.tombstones ?? 0} |`,
+      `| ${s.label} | ${fmt(s.totalBytes)} | ${s.pageCount} | ${s.freelistPages} | ${c.areas ?? 0}/${c.tasks ?? 0}/${c.tombstones ?? 0} |`,
     );
   }
 

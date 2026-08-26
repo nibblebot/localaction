@@ -1,58 +1,27 @@
 import { test, expect, type Page } from '@playwright/test';
+import { createArea, createRootTask, uniq } from './helpers.ts';
 
 // Each test uses a unique, timestamped token so state from prior runs
 // is harmless — we only inspect the rows that match our token.
-const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-  await expect(page.locator('.area-header-name')).toContainText(name);
-}
-
-async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add project to Active"]').click();
-  const input = page.locator('input[aria-label="New project"]');
-  await input.fill(name);
-  await input.press('Enter');
-  await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
-}
-
-async function createTask(page: Page, title: string): Promise<void> {
-  // Single-project contexts: the one project card's header add-task icon.
-  await page
-    .locator('li.project-row')
-    .first()
-    .locator('button[aria-label^="Add task to "]')
-    .click();
-  await expect(page.locator('.task-line-title:focus')).toBeVisible();
-  await page.keyboard.type(title);
-  await page.keyboard.press('Enter');
-}
-
-// The SortableList reports its current render order back as a list of
-// row ids in DOM order. We use this to assert that a reorder actually
-// changed the displayed order, without depending on the brittle
-// dnd-kit keyboard-sensor integration with focused buttons.
 async function sidebarOrder(page: Page, token: string): Promise<string[]> {
   const names = await page.locator('.sidebar-item-name', { hasText: token }).allTextContents();
   return names;
 }
 
-async function projectOrder(page: Page, token: string): Promise<string[]> {
-  const names = await page
-    .locator('.sortable-list .project-row-name', { hasText: token })
-    .allTextContents();
-  return names;
-}
-
-async function taskOrder(page: Page, token: string): Promise<string[]> {
-  const inputs = await page
-    .locator('.sortable-list .task-line-title')
-    .evaluateAll((els: HTMLInputElement[]) => els.map((e) => e.value));
-  return inputs.filter((v) => v.includes(token));
+/** Root-task labels in Active/Backlog group order, by token. Roots are
+ * leaf-shaped unless they carry sub-tasks, so read both the parent name
+ * button and the leaf title textarea. */
+async function rootOrder(page: Page, token: string): Promise<string[]> {
+  const rows = page.locator('.sortable-list .task-line', { hasText: token });
+  return rows.evaluateAll((els) =>
+    els.map((el) => {
+      const name = el.querySelector<HTMLElement>('.project-row-name');
+      if (name) return name.textContent ?? '';
+      const title = el.querySelector<HTMLTextAreaElement>('.task-line-title');
+      return title ? title.value : '';
+    }),
+  );
 }
 
 test.describe('Reorder rendering', () => {
@@ -73,49 +42,63 @@ test.describe('Reorder rendering', () => {
     ]);
   });
 
-  test('projects render in created order', async ({ page }) => {
+  test('root tasks render in created order', async ({ page }) => {
     const tok = uniq();
     await createArea(page, `Reorder-Area ${tok}`);
-    await createProject(page, `Project Alpha ${tok}`);
-    await createProject(page, `Project Bravo ${tok}`);
-    await createProject(page, `Project Charlie ${tok}`);
-    const order = await projectOrder(page, tok);
+    await createRootTask(page, `Task Alpha ${tok}`);
+    await createRootTask(page, `Task Bravo ${tok}`);
+    await createRootTask(page, `Task Charlie ${tok}`);
+    const order = await rootOrder(page, tok);
     expect(order).toEqual([
-      `Project Alpha ${tok}`,
-      `Project Bravo ${tok}`,
-      `Project Charlie ${tok}`,
+      `Task Alpha ${tok}`,
+      `Task Bravo ${tok}`,
+      `Task Charlie ${tok}`,
     ]);
   });
 
-  test('tasks render under their project after creation', async ({ page }) => {
+  test('sub-tasks render under their parent after creation', async ({ page }) => {
     const tok = uniq();
     await createArea(page, `Task-Area ${tok}`);
-    await createProject(page, `My Project ${tok}`);
-    await createTask(page, `Task one ${tok}`);
-    await createTask(page, `Task two ${tok}`);
-    await createTask(page, `Task three ${tok}`);
-    // Wait for the last task to settle into the list. (Controlled
-    // textareas expose their text via the value property, never the
-    // attribute, so match by position + toHaveValue.)
-    await expect(
-      page.locator('.project-row-tasks .task-line-title').last(),
-    ).toHaveValue(`Task three ${tok}`);
-    const order = await taskOrder(page, tok);
-    expect(order).toEqual([
-      `Task one ${tok}`,
-      `Task two ${tok}`,
-      `Task three ${tok}`,
+    await createRootTask(page, `My Task ${tok}`);
+    // Add two sub-tasks via the parent row's affordance; each commits
+    // through a focused draft row that opens in place.
+    const parent = page.locator('.task-line', { hasText: `My Task ${tok}` });
+    await parent.locator('button[aria-label="Add sub-task"]').click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Sub one ${tok}`);
+    await page.keyboard.press('Enter');
+    await parent.locator('button[aria-label="Add sub-task"]').click();
+    await expect(page.locator('.task-line-title:focus')).toBeVisible();
+    await page.keyboard.type(`Sub two ${tok}`);
+    await page.keyboard.press('Enter');
+
+    // Rows render in canonical order: parent first, then its sub-tasks
+    // (the parent is a `.project-row-name` button; the sub-tasks are
+    // leaf `.task-line-title` textareas — match both shapes).
+    const rowLabels = await page
+      .locator(
+        '.sortable-list .task-line .project-row-name, .sortable-list .task-line .task-line-title',
+      )
+      .evaluateAll((els) =>
+        els.map((el) =>
+          el instanceof HTMLTextAreaElement ? el.value : (el.textContent ?? ''),
+        ),
+      );
+    expect(rowLabels.filter((v) => v.includes(tok))).toEqual([
+      `My Task ${tok}`,
+      `Sub one ${tok}`,
+      `Sub two ${tok}`,
     ]);
   });
 
-  test('dropping a project on the Backlog header shelves it', async ({ page }) => {
+  test('dropping a root task on the Backlog group header shelves it', async ({ page }) => {
     const tok = uniq();
     await createArea(page, `Shelf-Area ${tok}`);
-    await createProject(page, `Alpha ${tok}`);
-    await createProject(page, `Bravo ${tok}`);
+    await createRootTask(page, `Alpha ${tok}`);
+    await createRootTask(page, `Bravo ${tok}`);
 
-    const alphaCard = page.locator('li.project-row', { hasText: `Alpha ${tok}` });
-    const handle = alphaCard.locator('button[aria-label="Drag to reorder"]');
+    const alphaRow = page.locator('.task-line', { hasText: `Alpha ${tok}` });
+    const handle = alphaRow.locator('button[aria-label="Drag to reorder"]');
     // Scope via the header toggle's accessible name — group text
     // includes every descendant row, which can false-match.
     const backlogHead = page.locator('.tab-group-head', {
@@ -149,18 +132,19 @@ test.describe('Reorder rendering', () => {
       await page.mouse.up();
     }
 
-    // Alpha lands in Backlog; Bravo stays Active.
+    // Alpha lands in Backlog; Bravo stays Active (roots are leaf rows
+    // here, so scope by `.task-line`).
     await expect(
-      backlogGroup.locator('.project-row-name', { hasText: `Alpha ${tok}` }),
+      backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` }),
     ).toBeVisible();
     await expect(
-      activeGroup.locator('.project-row-name', { hasText: `Bravo ${tok}` }),
+      activeGroup.locator('.task-line', { hasText: `Bravo ${tok}` }),
     ).toBeVisible();
 
-    // The status change persists across reload.
+    // The shelf persists across reload.
     await page.reload();
     await expect(
-      backlogGroup.locator('.project-row-name', { hasText: `Alpha ${tok}` }),
+      backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` }),
     ).toBeVisible();
   });
 });

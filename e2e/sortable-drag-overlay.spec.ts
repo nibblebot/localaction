@@ -1,36 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-
-// Each test uses a unique, timestamped token so state from prior runs
-// is harmless — we only inspect the rows that match our token.
-const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-  await expect(page.locator('.area-header-name')).toContainText(name);
-}
-
-async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add project to Active"]').click();
-  const input = page.locator('input[aria-label="New project"]');
-  await input.fill(name);
-  await input.press('Enter');
-  await expect(page.locator('.project-row-name', { hasText: name })).toBeVisible();
-}
-
-async function createTask(page: Page, title: string): Promise<void> {
-  // Single-project contexts: the one project card's header add-task icon.
-  await page
-    .locator('li.project-row')
-    .first()
-    .locator('button[aria-label^="Add task to "]')
-    .click();
-  await expect(page.locator('.task-line-title:focus')).toBeVisible();
-  await page.keyboard.type(title);
-  await page.keyboard.press('Enter');
-}
+import { createArea, createRootTask, uniq } from './helpers.ts';
 
 // Grab a drag handle and hold the drag mid-air. dnd-kit's keyboard
 // sensor doesn't compose with these focused buttons, so drags are
@@ -55,16 +24,18 @@ test.describe('Drag overlay preview', () => {
     await page.goto('/#/');
   });
 
-  test('dragging a project row shows its name in the overlay', async ({ page }) => {
+  test('dragging a parent task row shows its name in the overlay', async ({ page }) => {
     const tok = uniq();
     await createArea(page, `Overlay-Area ${tok}`);
-    await createProject(page, `Project Alpha ${tok}`);
-    await createProject(page, `Project Bravo ${tok}`);
+    await createRootTask(page, `Task Alpha ${tok}`);
+    await createRootTask(page, `Task Bravo ${tok}`);
+    // Two rows guarantee a second row exists to reorder against.
+    await expect(page.locator('.task-line')).toHaveCount(2);
 
-    const name = `Project Alpha ${tok}`;
+    const name = `Task Alpha ${tok}`;
     const handle = page
-      .locator('.project-row', { hasText: name })
-      .locator('.project-row-drag-handle');
+      .locator('.task-line', { hasText: name })
+      .locator('.task-line-drag-handle');
     await dragHandle(page, handle, 60);
     await expect(page.locator('.drag-overlay')).toContainText(name);
     await page.mouse.up();
@@ -84,12 +55,12 @@ test.describe('Drag overlay preview', () => {
     await expect(page.locator('.drag-overlay')).toHaveCount(0);
   });
 
-  test('dragging a task row shows its title in the overlay', async ({ page }) => {
+  test('dragging a leaf task row shows its title in the overlay', async ({ page }) => {
     const tok = uniq();
     await createArea(page, `Overlay-Area ${tok}`);
-    await createProject(page, `Project ${tok}`);
-    await createTask(page, `Task Alpha ${tok}`);
-    await createTask(page, `Task Bravo ${tok}`);
+    await createRootTask(page, `Task Alpha ${tok}`);
+    await createRootTask(page, `Task Bravo ${tok}`);
+    await expect(page.locator('.task-line')).toHaveCount(2);
 
     const first = page.locator('.task-line').first();
     const title = await first.locator('.task-line-title').inputValue();

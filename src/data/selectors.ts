@@ -1,35 +1,28 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, PROJECT_STATUS, TABLES, TASK_STATUS } from './schema.ts';
-import type { ProjectStatus } from './schema.ts';
+import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import { getArea, getAllAreaIdsFlat } from './areas.ts';
-import { getRootPlacement, getTasksForProjectDeep, getEffectiveTaskStatus, childTaskIds, normalizeCompletedAt } from './tasks.ts';
+import {
+  getRootPlacement,
+  getRootTaskId,
+  getDerivedStatus,
+  childTaskIds,
+  normalizeCompletedAt,
+} from './tasks.ts';
 import { useTableVersion, localDayOf } from './internal.ts';
 import type { Area } from './types.ts';
 
 /**
- * The area a task ultimately belongs to (resolved through its placement
- * chain), or null for Inbox-rooted / orphaned tasks.
- */
-/**
- * Resolve a task's owning area and project through its placement chain
- * (shared by the due-item and completed-item selectors so the two can
- * never drift). A section root resolves through the section's project;
- * Inbox-rooted or orphaned tasks return nulls.
+ * Resolve a task's owning area through its placement chain (shared by
+ * the due-item and completed-item selectors so the two can never
+ * drift). Inbox-rooted or orphaned tasks return null.
  */
 function taskOwnership(
   store: MergeableStore,
   taskId: string,
-): { areaId: string | null; projectId: string | null } {
+): { areaId: string | null } {
   const root = getRootPlacement(store, taskId);
-  if (root.kind === 'area') return { areaId: root.id, projectId: null };
-  if (root.kind === 'project') {
-    const areaRaw = store.getCell(TABLES.projects, root.id, COLUMNS.projects.areaId);
-    return {
-      areaId: typeof areaRaw === 'string' ? areaRaw : null,
-      projectId: root.id,
-    };
-  }
-  return { areaId: null, projectId: null };
+  if (root.kind === 'area') return { areaId: root.id };
+  return { areaId: null };
 }
 
 export interface AreaCount {
@@ -38,11 +31,11 @@ export interface AreaCount {
   parentId: string | null;
   color: Area['color'];
   order: number;
+  /** Direct sub-area count — drives the sidebar expand caret. */
   childCount: number;
-  projectCount: number;
   /** All tasks in the subtree — drives the empty-area dimming. */
   taskCount: number;
-  /** Incomplete (effective-open) tasks — the sidebar badge count. */
+  /** Incomplete (derived-open) tasks — the sidebar badge count. */
   openTaskCount: number;
   noteCount: number;
 }
@@ -55,19 +48,9 @@ export interface AreaCount {
  * purpose is to invalidate the memoised derivation on table changes.
  */
 export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] {
-  const projectIds = store.getRowIds(TABLES.projects);
   const taskIds = store.getRowIds(TABLES.tasks);
   const noteIds = store.getRowIds(TABLES.notes);
 
-  const projectArea = new Map<string, string | null>();
-  for (const pid of projectIds) {
-    projectArea.set(
-      pid,
-      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId) === 'string'
-        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId))
-        : null,
-    );
-  }
   const taskArea = new Map<string, string | null>();
   for (const tid of taskIds) {
     taskArea.set(tid, taskOwnership(store, tid).areaId);
@@ -88,10 +71,8 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
   }
 
   const directSubAreaCount = new Map<string, number>();
-  const directProjectCount = new Map<string, number>();
   for (const did of allAreaIds) {
     directSubAreaCount.set(did, 0);
-    directProjectCount.set(did, 0);
   }
   for (const id of allAreaIds) {
     const parent = store.getCell(TABLES.areas, id, COLUMNS.areas.parentId);
@@ -99,50 +80,39 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
       directSubAreaCount.set(parent, (directSubAreaCount.get(parent) ?? 0) + 1);
     }
   }
-  for (const pid of projectIds) {
-    const aId = projectArea.get(pid) ?? null;
-    if (!aId) continue;
-    directProjectCount.set(aId, (directProjectCount.get(aId) ?? 0) + 1);
-  }
 
-  const projectCount = new Map<string, number>();
   const taskCount = new Map<string, number>();
   const openTaskCount = new Map<string, number>();
   const noteCount = new Map<string, number>();
   for (const did of allAreaIds) {
-    projectCount.set(did, 0);
     taskCount.set(did, 0);
     openTaskCount.set(did, 0);
     noteCount.set(did, 0);
   }
 
-  for (const pid of projectIds) {
-    const aId = projectArea.get(pid) ?? null;
-    if (!aId) continue;
-    for (const owner of descendantsOf.get(aId) ?? []) {
-      projectCount.set(owner, (projectCount.get(owner) ?? 0) + 1);
-    }
-  }
-  // Effective-done memo: effective status recurses through children, so
+  // Derived-done memo: derived status recurses through children, so
   // resolving it per task would be O(N²). One memoised pass keeps the
-  // count loop linear. Matches getEffectiveTaskStatus: done ⟺ stored
-  // done AND every child effectively done.
-  const effectiveDone = new Map<string, boolean>();
-  const resolveEffectiveDone = (id: string): boolean => {
-    const cached = effectiveDone.get(id);
+  // count loop linear. Matches getDerivedStatus: a leaf reflects its
+  // stored cell; a parent is done iff every descendant is derived-done.
+  const derivedDone = new Map<string, boolean>();
+  const resolveDerivedDone = (id: string): boolean => {
+    const cached = derivedDone.get(id);
     if (cached !== undefined) return cached;
-    effectiveDone.set(id, false); // cycle guard
-    let done =
-      store.getCell(TABLES.tasks, id, COLUMNS.tasks.status) === TASK_STATUS.done;
-    if (done) {
-      for (const child of childTaskIds(store, id)) {
-        if (!resolveEffectiveDone(child)) {
+    derivedDone.set(id, false); // cycle guard
+    const children = childTaskIds(store, id);
+    let done: boolean;
+    if (children.length === 0) {
+      done = store.getCell(TABLES.tasks, id, COLUMNS.tasks.status) === TASK_STATUS.done;
+    } else {
+      done = true;
+      for (const child of children) {
+        if (!resolveDerivedDone(child)) {
           done = false;
           break;
         }
       }
     }
-    effectiveDone.set(id, done);
+    derivedDone.set(id, done);
     return done;
   };
 
@@ -151,7 +121,7 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
     if (!aId) continue;
     for (const owner of descendantsOf.get(aId) ?? []) {
       taskCount.set(owner, (taskCount.get(owner) ?? 0) + 1);
-      if (!resolveEffectiveDone(tid)) {
+      if (!resolveDerivedDone(tid)) {
         openTaskCount.set(owner, (openTaskCount.get(owner) ?? 0) + 1);
       }
     }
@@ -178,9 +148,7 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
       parentId: d?.parentId ?? null,
       color: d?.color ?? 'gray',
       order: d?.order ?? 0,
-      childCount:
-        (directSubAreaCount.get(did) ?? 0) + (directProjectCount.get(did) ?? 0),
-      projectCount: projectCount.get(did) ?? 0,
+      childCount: directSubAreaCount.get(did) ?? 0,
       taskCount: taskCount.get(did) ?? 0,
       openTaskCount: openTaskCount.get(did) ?? 0,
       noteCount: noteCount.get(did) ?? 0,
@@ -189,13 +157,12 @@ export function getAreaCounts(store: MergeableStore, _version = 0): AreaCount[] 
 }
 
 export function useAreaCounts(store: MergeableStore): AreaCount[] {
-  // The version token bumps on any change to the four source tables,
+  // The version token bumps on any change to the three source tables,
   // feeding the cache key the React Compiler uses to decide whether to
   // re-run the derivation (row moves like `moveArea` only touch cells —
   // a row-id subscription alone would serve the stale order).
   const v =
     useTableVersion(store, TABLES.areas) +
-    useTableVersion(store, TABLES.projects) +
     useTableVersion(store, TABLES.tasks) +
     useTableVersion(store, TABLES.notes);
   return getAreaCounts(store, v);
@@ -205,7 +172,7 @@ export function getNotesForAreaTree(
   store: MergeableStore,
   areaId: string,
   _version = 0,
-): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
+): { areaNotes: string[]; taskNotes: string[] } {
   const descendants = new Set<string>([areaId]);
   let added = true;
   while (added) {
@@ -220,7 +187,6 @@ export function getNotesForAreaTree(
   }
 
   const areaNotes: string[] = [];
-  const projectNotes: string[] = [];
   const taskNotes: string[] = [];
   for (const nid of store.getRowIds(TABLES.notes)) {
     const type = String(store.getCell(TABLES.notes, nid, COLUMNS.notes.entityType) ?? '');
@@ -228,11 +194,6 @@ export function getNotesForAreaTree(
     if (typeof eId !== 'string') continue;
     if (type === 'area' && descendants.has(eId)) {
       areaNotes.push(nid);
-    } else if (type === 'project') {
-      const pArea = store.getCell(TABLES.projects, eId, COLUMNS.projects.areaId);
-      if (typeof pArea === 'string' && descendants.has(pArea)) {
-        projectNotes.push(nid);
-      }
     } else if (type === 'task') {
       const aId = taskOwnership(store, eId).areaId;
       if (typeof aId === 'string' && descendants.has(aId)) {
@@ -240,102 +201,44 @@ export function getNotesForAreaTree(
       }
     }
   }
-  return { areaNotes, projectNotes, taskNotes };
+  return { areaNotes, taskNotes };
 }
 
 export function useNotesForAreaTree(
   store: MergeableStore,
   areaId: string,
-): { areaNotes: string[]; projectNotes: string[]; taskNotes: string[] } {
+): { areaNotes: string[]; taskNotes: string[] } {
   const v =
     useTableVersion(store, TABLES.areas) +
-    useTableVersion(store, TABLES.projects) +
     useTableVersion(store, TABLES.tasks) +
     useTableVersion(store, TABLES.notes);
   return getNotesForAreaTree(store, areaId, v);
 }
 
-export interface ProjectRollup {
-  projectId: string;
-  areaId: string | null;
-  projectName: string;
-  /** Stored status — `active` when the cell is absent, else `backlog`. */
-  status: ProjectStatus;
-  order: number;
-  done: number;
-  total: number;
-}
-
-export function useProjectRollups(store: MergeableStore): ProjectRollup[] {
-  // Rollups read projects + tasks (via getTasksForProjectDeep, which
-  // also walks sections) — the token watches all three.
-  const v =
-    useTableVersion(store, TABLES.projects) +
-    useTableVersion(store, TABLES.tasks) +
-    useTableVersion(store, TABLES.sections);
-  return getProjectRollups(store, v);
-}
-
-export function getProjectRollups(
-  store: MergeableStore,
-  _version = 0,
-): ProjectRollup[] {
-  const projectIds = store.getRowIds(TABLES.projects);
-  const projectArea = new Map<string, string | null>();
-  for (const pid of projectIds) {
-    projectArea.set(
-      pid,
-      typeof store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId) === 'string'
-        ? String(store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId))
-        : null,
-    );
-  }
-  const projectRollups: ProjectRollup[] = [];
-  for (const pid of projectIds) {
-    const areaIdRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId);
-    const areaId = typeof areaIdRaw === 'string' ? areaIdRaw : null;
-    const name = String(store.getCell(TABLES.projects, pid, COLUMNS.projects.name) ?? '');
-    const order = Number(store.getCell(TABLES.projects, pid, COLUMNS.projects.order) ?? 0);
-    const status: ProjectStatus =
-      store.getCell(TABLES.projects, pid, COLUMNS.projects.status) === PROJECT_STATUS.backlog
-        ? PROJECT_STATUS.backlog
-        : PROJECT_STATUS.active;
-    let done = 0;
-    let total = 0;
-    for (const tid of getTasksForProjectDeep(store, pid)) {
-      total += 1;
-      if (getEffectiveTaskStatus(store, tid) === TASK_STATUS.done) done += 1;
-    }
-    projectRollups.push({ projectId: pid, areaId, projectName: name, status, order, done, total });
-  }
-  return projectRollups;
-}
-
 export interface DueItem {
-  kind: 'task' | 'project';
+  kind: 'task';
   id: string;
   /** The matched due date (`YYYY-MM-DD`, local calendar day). */
   dueDate: string;
   /** Owning area id (resolved through the placement chain), or null for Inbox-rooted items. */
   areaId: string | null;
-  /** Owning project id, or null for Inbox / area-rooted tasks. */
-  projectId: string | null;
+  /** The top-level root task (the item itself when it's already a root). */
+  rootTaskId: string;
   /**
-   * Effective completion state. Always false for projects (they have no
-   * status cell); tasks use the read-time derivation so a stored-done
-   * parent with open children still reads open.
+   * Derived completion state — a parent's done state reflects its
+   * descendants, so a stored-done parent with open children still
+   * reads open.
    */
   done: boolean;
 }
 
 /**
- * Every task and project due in the inclusive local-date range
- * [`from`, `to`] (`YYYY-MM-DD` strings), across ALL placements — Inbox
- * roots, area roots, projects, sections, and nested sub-tasks. String
- * comparison on the date-only ISO cell is an exact calendar-day match:
- * no timestamps, no timezone math. Today is the degenerate range
- * `from === to`. Items are ordered by due date, then their sibling
- * `order` cell within each kind.
+ * Every task due in the inclusive local-date range [`from`, `to`]
+ * (`YYYY-MM-DD` strings), across ALL placements — Inbox roots, area
+ * roots, and nested sub-tasks. String comparison on the date-only ISO
+ * cell is an exact calendar-day match: no timestamps, no timezone
+ * math. Today is the degenerate range `from === to`. Items are ordered
+ * by due date, then their sibling `order` cell.
  */
 export function getDueItems(
   store: MergeableStore,
@@ -344,40 +247,21 @@ export function getDueItems(
   _version = 0,
 ): DueItem[] {
   const items: DueItem[] = [];
-  for (const pid of store.getRowIds(TABLES.projects)) {
-    const due = store.getCell(TABLES.projects, pid, COLUMNS.projects.dueDate);
-    if (typeof due !== 'string' || due < from || due > to) continue;
-    const areaRaw = store.getCell(TABLES.projects, pid, COLUMNS.projects.areaId);
-    items.push({
-      kind: 'project',
-      id: pid,
-      dueDate: due,
-      areaId: typeof areaRaw === 'string' ? areaRaw : null,
-      projectId: pid,
-      done: false,
-    });
-  }
   for (const tid of store.getRowIds(TABLES.tasks)) {
     const due = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.dueDate);
     if (typeof due !== 'string' || due < from || due > to) continue;
-    const { areaId, projectId } = taskOwnership(store, tid);
+    const { areaId } = taskOwnership(store, tid);
     items.push({
       kind: 'task',
       id: tid,
       dueDate: due,
       areaId,
-      projectId,
-      done: getEffectiveTaskStatus(store, tid) === TASK_STATUS.done,
+      rootTaskId: getRootTaskId(store, tid) ?? tid,
+      done: getDerivedStatus(store, tid) === TASK_STATUS.done,
     });
   }
   const orderOf = (item: DueItem): number =>
-    Number(
-      store.getCell(
-        item.kind === 'task' ? TABLES.tasks : TABLES.projects,
-        item.id,
-        item.kind === 'task' ? COLUMNS.tasks.order : COLUMNS.projects.order,
-      ) ?? 0,
-    );
+    Number(store.getCell(TABLES.tasks, item.id, COLUMNS.tasks.order) ?? 0);
   return items.sort((a, b) => {
     if (a.dueDate !== b.dueDate) return a.dueDate < b.dueDate ? -1 : 1;
     const oa = orderOf(a);
@@ -387,15 +271,14 @@ export function getDueItems(
 }
 
 /**
- * Reactive counterpart of `getDueItems`. Watches tasks (due dates,
- * statuses, placements), projects (due dates, area links), and sections
- * (section-rooted tasks resolve their project through the section row).
+ * Reactive counterpart of `getDueItems`. Watches areas, tasks (due
+ * dates, statuses, placements), and notes.
  */
 export function useDueItems(store: MergeableStore, from: string, to: string): DueItem[] {
   const v =
+    useTableVersion(store, TABLES.areas) +
     useTableVersion(store, TABLES.tasks) +
-    useTableVersion(store, TABLES.projects) +
-    useTableVersion(store, TABLES.sections);
+    useTableVersion(store, TABLES.notes);
   return getDueItems(store, from, to, v);
 }
 
@@ -407,8 +290,8 @@ export interface CompletedItem {
   localDay: string;
   /** Owning area id (resolved through the placement chain), or null. */
   areaId: string | null;
-  /** Owning project id, or null for Inbox / area-rooted tasks. */
-  projectId: string | null;
+  /** The top-level root task (the item itself when it's already a root). */
+  rootTaskId: string;
 }
 
 /**
@@ -438,14 +321,14 @@ export function getCompletedItemsInRange(
     if (completedAt === null) continue;
     const localDay = localDayOf(completedAt);
     if (localDay < from || localDay > to) continue;
-    if (getEffectiveTaskStatus(store, tid) !== TASK_STATUS.done) continue;
-    const { areaId, projectId } = taskOwnership(store, tid);
+    if (getDerivedStatus(store, tid) !== TASK_STATUS.done) continue;
+    const { areaId } = taskOwnership(store, tid);
     items.push({
       taskId: tid,
       completedAt,
       localDay,
       areaId,
-      projectId,
+      rootTaskId: getRootTaskId(store, tid) ?? tid,
     });
   }
   items.sort((a, b) => {
@@ -458,9 +341,8 @@ export function getCompletedItemsInRange(
 
 /**
  * Reactive counterpart of `getCompletedItemsInRange`. Watches the same
- * table set as `useDueItems` — tasks (status, completedAt, dueDate,
- * placements), projects (area links), and sections (section-rooted
- * tasks resolve their project through the section row).
+ * table set as `useDueItems` — areas, tasks (status, completedAt,
+ * dueDate, placements), and notes.
  */
 export function useCompletedItemsInRange(
   store: MergeableStore,
@@ -468,8 +350,8 @@ export function useCompletedItemsInRange(
   to: string,
 ): CompletedItem[] {
   const v =
+    useTableVersion(store, TABLES.areas) +
     useTableVersion(store, TABLES.tasks) +
-    useTableVersion(store, TABLES.projects) +
-    useTableVersion(store, TABLES.sections);
+    useTableVersion(store, TABLES.notes);
   return getCompletedItemsInRange(store, from, to, v);
 }

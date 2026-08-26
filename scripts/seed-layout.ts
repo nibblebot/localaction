@@ -1,6 +1,6 @@
 /**
  * Layout seed: populates a throwaway SQLite file in the OS temp dir with an
- * area tree + projects/sections/tasks/subtasks so the layout pass has a
+ * area tree + root tasks/subtasks so the layout pass has a
  * representative working surface in the browser.
  *
  * Usage: bun scripts/seed-layout.ts
@@ -34,8 +34,6 @@ function buildTables(): Tables {
   const ts = nowIso();
 
   const areas: Record<string, Row> = {};
-  const projects: Record<string, Row> = {};
-  const sections: Record<string, Row> = {};
   const tasks: Record<string, Row> = {};
   const notes: Record<string, Row> = {};
 
@@ -90,79 +88,35 @@ function buildTables(): Tables {
     updatedAt: ts,
   };
 
-  // Projects
-  const pRedesign = newId();
-  projects[pRedesign] = {
-    name: 'Website redesign',
-    areaId: aClientA,
+  // Root tasks (former top-level groupings, now plain task trees)
+
+  // Website redesign — root under Client A with a deep subtree
+  const rRedesign = newId();
+  tasks[rRedesign] = {
+    title: 'Website redesign',
+    placement: `area${':'}${aClientA}`,
+    status: TASK_STATUS.open,
     order: 1000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  const pMigration = newId();
-  projects[pMigration] = {
-    name: 'Database migration to Postgres',
-    areaId: aClientA,
-    order: 2000,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-
-  const pOnboarding = newId();
-  projects[pOnboarding] = {
-    name: 'Client onboarding playbook',
-    areaId: aClientB,
-    order: 1000,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-
-  const pBudget = newId();
-  projects[pBudget] = {
-    name: 'Household budget review',
-    areaId: aPersonal,
-    order: 1000,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-
-  // Sections under Website redesign
-  const sDiscovery = newId();
-  sections[sDiscovery] = {
-    name: 'Discovery',
-    projectId: pRedesign,
-    order: 1000,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-  const sDesign = newId();
-  sections[sDesign] = {
-    name: 'Design system',
-    projectId: pRedesign,
-    order: 2000,
-    createdAt: ts,
-    updatedAt: ts,
-  };
-
-  // Tasks
   const tSetup = newId();
   tasks[tSetup] = {
     title: 'Set up staging environment',
-    placement: `project${':'}${pRedesign}`,
+    placement: `task${':'}${rRedesign}`,
     status: TASK_STATUS.open,
     order: 1000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Discovery section
   const tResearch = newId();
   tasks[tResearch] = {
     title: 'Audit current site analytics',
-    placement: `section${':'}${sDiscovery}`,
+    placement: `task${':'}${rRedesign}`,
     status: TASK_STATUS.open,
-    order: 1000,
+    order: 2000,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -196,20 +150,19 @@ function buildTables(): Tables {
   const tSitemap = newId();
   tasks[tSitemap] = {
     title: 'Draft new sitemap',
-    placement: `section${':'}${sDiscovery}`,
+    placement: `task${':'}${rRedesign}`,
     status: TASK_STATUS.open,
-    order: 2000,
+    order: 3000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Design system section
   const tTokens = newId();
   tasks[tTokens] = {
     title: 'Lock in colour and type tokens',
-    placement: `section${':'}${sDesign}`,
+    placement: `task${':'}${rRedesign}`,
     status: TASK_STATUS.open,
-    order: 1000,
+    order: 4000,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -225,18 +178,27 @@ function buildTables(): Tables {
   const tComponents = newId();
   tasks[tComponents] = {
     title: 'Component inventory: buttons, rows, inputs',
-    placement: `section${':'}${sDesign}`,
+    placement: `task${':'}${rRedesign}`,
+    status: TASK_STATUS.open,
+    order: 5000,
+    createdAt: ts,
+    updatedAt: ts,
+  };
+
+  // Database migration — root under Client A
+  const rMigration = newId();
+  tasks[rMigration] = {
+    title: 'Database migration to Postgres',
+    placement: `area${':'}${aClientA}`,
     status: TASK_STATUS.open,
     order: 2000,
     createdAt: ts,
     updatedAt: ts,
   };
-
-  // Database migration
   const tSchema = newId();
   tasks[tSchema] = {
     title: 'Reverse-engineer existing schema',
-    placement: `project${':'}${pMigration}`,
+    placement: `task${':'}${rMigration}`,
     status: TASK_STATUS.open,
     order: 1000,
     createdAt: ts,
@@ -245,29 +207,39 @@ function buildTables(): Tables {
   const tSqlite = newId();
   tasks[tSqlite] = {
     title: 'A very long task title that should wrap inside the row without breaking the card layout or pushing the actions cluster out of the available width — used to verify the squint test under text-heavy content',
-    placement: `project${':'}${pMigration}`,
+    placement: `task${':'}${rMigration}`,
     status: TASK_STATUS.open,
     order: 2000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Onboarding playbook
+  // Client onboarding playbook — root under Client B
+  const rOnboarding = newId();
+  tasks[rOnboarding] = {
+    title: 'Client onboarding playbook',
+    placement: `area${':'}${aClientB}`,
+    status: TASK_STATUS.open,
+    order: 1000,
+    createdAt: ts,
+    updatedAt: ts,
+  };
   const tIntake = newId();
   tasks[tIntake] = {
     title: 'Welcome email sequence',
-    placement: `project${':'}${pOnboarding}`,
+    placement: `task${':'}${rOnboarding}`,
     status: TASK_STATUS.open,
     order: 1000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Done project (exercises project-row-done styling)
-  const pLegacy = newId();
-  projects[pLegacy] = {
-    name: 'Legacy CMS deprecation',
-    areaId: aClientA,
+  // Done root (exercises the done-group styling): every subtask done
+  const rLegacy = newId();
+  tasks[rLegacy] = {
+    title: 'Legacy CMS deprecation',
+    placement: `area${':'}${aClientA}`,
+    status: TASK_STATUS.open,
     order: 3000,
     createdAt: ts,
     updatedAt: ts,
@@ -275,7 +247,7 @@ function buildTables(): Tables {
   const tLegacy1 = newId();
   tasks[tLegacy1] = {
     title: 'Identify in-flight content',
-    placement: `project${':'}${pLegacy}`,
+    placement: `task${':'}${rLegacy}`,
     status: TASK_STATUS.done,
     order: 1000,
     createdAt: ts,
@@ -284,31 +256,40 @@ function buildTables(): Tables {
   const tLegacy2 = newId();
   tasks[tLegacy2] = {
     title: 'Redirect map to new structure',
-    placement: `project${':'}${pLegacy}`,
+    placement: `task${':'}${rLegacy}`,
     status: TASK_STATUS.done,
     order: 2000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Personal project
+  // Personal root
+  const rBudget = newId();
+  tasks[rBudget] = {
+    title: 'Household budget review',
+    placement: `area${':'}${aPersonal}`,
+    status: TASK_STATUS.open,
+    order: 1000,
+    createdAt: ts,
+    updatedAt: ts,
+  };
   const tBudget = newId();
   tasks[tBudget] = {
     title: 'Categorise last 3 months of expenses',
-    placement: `project${':'}${pBudget}`,
+    placement: `task${':'}${rBudget}`,
     status: TASK_STATUS.open,
     order: 1000,
     createdAt: ts,
     updatedAt: ts,
   };
 
-  // Area-level tasks on Client A (unassigned to a project)
+  // Area-level leaf tasks on Client A (no subtasks)
   const tArea = newId();
   tasks[tArea] = {
     title: 'Renew vendor insurance',
     placement: `area${':'}${aClientA}`,
     status: TASK_STATUS.open,
-    order: 1000,
+    order: 4000,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -317,7 +298,7 @@ function buildTables(): Tables {
     title: 'Q3 capacity planning conversation with PM',
     placement: `area${':'}${aClientA}`,
     status: TASK_STATUS.open,
-    order: 2000,
+    order: 5000,
     createdAt: ts,
     updatedAt: ts,
   };
@@ -336,16 +317,14 @@ function buildTables(): Tables {
     slug: 'design-principles',
     title: 'Design principles for the redesign',
     body: 'One voice. Tonal elevation. Inline-first. No features without craft.',
-    entityType: NOTE_ENTITY_TYPE.project,
-    entityId: pRedesign,
+    entityType: NOTE_ENTITY_TYPE.task,
+    entityId: rRedesign,
     createdAt: ts,
     updatedAt: ts,
   };
 
   return {
     [TABLES.areas]: areas,
-    [TABLES.projects]: projects,
-    [TABLES.sections]: sections,
     [TABLES.tasks]: tasks,
     [TABLES.notes]: notes,
   };

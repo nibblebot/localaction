@@ -37,7 +37,7 @@ function monthCells(year: number, month: number): (number | null)[] {
  * popover to pick or clear the date. `className` carries the
  * row-context action styling (`project-row-action`, `task-line-action`);
  * the generic `due-date` classes size the label variant. Data-bound
- * wrappers (project, task) supply the store reads/writes.
+ * wrappers (task) supply the store reads/writes.
  */
 export default function DueDateButton({
   dueDate,
@@ -186,7 +186,7 @@ function DueDateCalendar({
         className="due-calendar-backdrop"
         onClick={(e) => {
           // Portal events still bubble through the React tree into
-          // clickable rows (project row → detail pane) — keep
+          // clickable rows (task row → detail pane) — keep
           // backdrop/dialog clicks from reaching the row's own click
           // target.
           e.stopPropagation();

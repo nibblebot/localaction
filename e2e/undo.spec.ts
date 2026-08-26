@@ -1,66 +1,43 @@
-import { test, expect, type Page } from '@playwright/test';
-
-async function createArea(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="New area"]').click();
-  const input = page.locator('.sidebar-section-add .inline-add-input');
-  await input.fill(name);
-  await input.press('Enter');
-}
-
-async function createProject(page: Page, name: string): Promise<void> {
-  await page.locator('button[aria-label="Add project to Active"]').click();
-  const input = page.locator('input[aria-label="New project"]');
-  await input.fill(name);
-  await input.press('Enter');
-}
-
-async function createTask(page: Page, title: string): Promise<void> {
-  // Single-project contexts: the one project card's header add-task icon.
-  await page
-    .locator('li.project-row')
-    .first()
-    .locator('button[aria-label^="Add task to "]')
-    .click();
-  await expect(page.locator('.task-line-title:focus')).toBeVisible();
-  await page.keyboard.type(title);
-  await page.keyboard.press('Enter');
-}
+import { test, expect } from '@playwright/test';
+import { createArea, createRootTask, uniq } from './helpers.ts';
 
 test.describe('Undo toast', () => {
   test('offers undo after completing a task and restores it', async ({ page }) => {
+    const tok = uniq();
     await page.goto('/#/');
-    await createArea(page, 'UndoArea');
-    await createProject(page, 'UndoProject');
-    await createTask(page, 'Finish me');
+    await createArea(page, `UndoArea ${tok}`);
+    await createRootTask(page, `Finish me ${tok}`);
 
-    await page.locator('input[aria-label="Mark “Finish me” done"]').click();
-    // Hidden-completed mode prunes the row; the toast names the action.
-    await expect(page.locator('.task-line-title', { hasText: 'Finish me' })).toHaveCount(0);
-    await expect(page.locator('.undo-toast-label')).toHaveText('Completed “Finish me”');
+    // Completed subtasks stay in place now (no show-completed pruning):
+    // the row remains, checked, and the toast names the action.
+    await page.locator(`input[aria-label="Mark “Finish me ${tok}” done"]`).click();
+    await expect(page.locator('.task-line.task-line-done', { hasText: `Finish me ${tok}` })).toBeVisible();
+    await expect(page.locator('.undo-toast-label')).toHaveText(`Completed “Finish me ${tok}”`);
 
     await page.locator('.undo-toast-action').click();
-    await expect(page.locator('.task-line-title', { hasText: 'Finish me' })).toHaveCount(1);
+    await expect(page.locator('.task-line', { hasText: `Finish me ${tok}` })).toBeVisible();
+    await expect(page.locator('.task-line', { hasText: `Finish me ${tok}` })).not.toHaveClass(/task-line-done/);
     await expect(page.locator('.undo-toast')).toHaveCount(0);
   });
 
   test('restores a deleted task', async ({ page }) => {
+    const tok = uniq();
     await page.goto('/#/');
-    await createArea(page, 'UndoDelArea');
-    await createProject(page, 'UndoDelProject');
-    await createTask(page, 'Delete me');
+    await createArea(page, `UndoDelArea ${tok}`);
+    await createRootTask(page, `Delete me ${tok}`);
 
-    const row = page.locator('.task-line', { hasText: 'Delete me' });
+    const row = page.locator('.task-line', { hasText: `Delete me ${tok}` });
     // The delete trash only renders while the title is focused (the
-    // section-row pattern); focus the input to enter edit mode, then
+    // leaf-row pattern); focus the input to enter edit mode, then
     // click the trash.
     await row.locator('.task-line-title').click();
     await row.locator('button[aria-label="Delete task"]').click();
     await page.locator('.modal button', { hasText: 'Delete' }).click();
-    await expect(page.locator('.task-line-title', { hasText: 'Delete me' })).toHaveCount(0);
-    await expect(page.locator('.undo-toast-label')).toHaveText('Deleted “Delete me”');
+    await expect(page.locator('.task-line', { hasText: `Delete me ${tok}` })).toHaveCount(0);
+    await expect(page.locator('.undo-toast-label')).toHaveText(`Deleted “Delete me ${tok}”`);
 
     await page.locator('.undo-toast-action').click();
-    await expect(page.locator('.task-line-title', { hasText: 'Delete me' })).toHaveCount(1);
+    await expect(page.locator('.task-line', { hasText: `Delete me ${tok}` })).toHaveCount(1);
     await expect(page.locator('.undo-toast')).toHaveCount(0);
   });
 });

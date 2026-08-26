@@ -1,6 +1,5 @@
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, PROJECT_STATUS, TABLES } from './schema.ts';
-import type { ProjectStatus } from './schema.ts';
+import { COLUMNS, TABLES, TASK_STATUS } from './schema.ts';
 import { normalizeRelation, nowIso, row } from './internal.ts';
 
 /**
@@ -33,8 +32,6 @@ interface SiblingRow {
 
 type OrderedTable =
   | typeof TABLES.areas
-  | typeof TABLES.projects
-  | typeof TABLES.sections
   | typeof TABLES.tasks;
 
 interface OrderColumns {
@@ -50,18 +47,6 @@ const ORDER_COLUMNS: Record<OrderedTable, OrderColumns> = {
     parent: COLUMNS.areas.parentId,
     order: COLUMNS.areas.order,
     updatedAt: COLUMNS.areas.updatedAt,
-  },
-  [TABLES.projects]: {
-    table: TABLES.projects,
-    parent: COLUMNS.projects.areaId,
-    order: COLUMNS.projects.order,
-    updatedAt: COLUMNS.projects.updatedAt,
-  },
-  [TABLES.sections]: {
-    table: TABLES.sections,
-    parent: COLUMNS.sections.projectId,
-    order: COLUMNS.sections.order,
-    updatedAt: COLUMNS.sections.updatedAt,
   },
   [TABLES.tasks]: {
     table: TABLES.tasks,
@@ -263,102 +248,72 @@ export function moveArea(
   );
 }
 
-/**
- * Move a project to a new sibling position within its current area.
- * Reordering across areas is not supported by this helper — move
- * the project with `updateProject({ areaId })` first.
- */
-export function reorderProject(
-  store: MergeableStore,
-  projectId: string,
-  beforeId: string | undefined,
-): void {
-  if (!store.hasRow(TABLES.projects, projectId)) return;
-  const areaId = normalizeRelation(
-    store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId),
-  );
-  moveWithinSiblings(
-    store,
-    ORDER_COLUMNS[TABLES.projects],
-    areaId,
-    projectId,
-    beforeId,
-  );
+// --- parent→leaf conversion snapshot (local to avoid a cycle) ---------
+//
+// `tasks.ts` imports this module, so this module cannot import the
+// derived-status helpers from `tasks.ts`. The two stay in lockstep with
+// `derivedStatus` / `snapshotDerivedIntoStored` there.
+
+function localChildIds(store: MergeableStore, parentId: string): string[] {
+  const target = `task:${parentId}`;
+  const out: string[] = [];
+  for (const id of store.getRowIds(TABLES.tasks)) {
+    const p = normalizeRelation(store.getCell(TABLES.tasks, id, COLUMNS.tasks.placement));
+    if (p === target) out.push(id);
+  }
+  return out;
+}
+
+/** Leaf → stored cell; parent → done iff every descendant derived-done. */
+function localDerivedStatus(store: MergeableStore, id: string): string {
+  const children = localChildIds(store, id);
+  if (children.length === 0) {
+    return store.getCell(TABLES.tasks, id, COLUMNS.tasks.status) === TASK_STATUS.done
+      ? TASK_STATUS.done
+      : TASK_STATUS.open;
+  }
+  for (const child of children) {
+    if (localDerivedStatus(store, child) !== TASK_STATUS.done) return TASK_STATUS.open;
+  }
+  return TASK_STATUS.done;
 }
 
 /**
- * Set a project's stored status and land it at a new position in one
- * transaction — the cross-group drag (Active ⇄ Backlog) writes both,
- * and subscribers must see a single change. `beforeId` names the row
- * the project now sits before within its area's sibling order
- * (`undefined` = end of the target group).
+ * Write `id`'s current derived status into its stored status cell,
+ * maintaining `completedAt` (stamp on open→done, clear on done→open,
+ * unchanged → no-op). Mirrors `snapshotDerivedIntoStored` in tasks.ts.
  */
-export function moveProjectToStatus(
-  store: MergeableStore,
-  projectId: string,
-  status: ProjectStatus,
-  beforeId: string | undefined,
-): void {
-  if (!store.hasRow(TABLES.projects, projectId)) return;
-  if (beforeId !== undefined && !store.hasRow(TABLES.projects, beforeId)) return;
-  if (beforeId === projectId) return;
-  const areaId = normalizeRelation(
-    store.getCell(TABLES.projects, projectId, COLUMNS.projects.areaId),
-  );
-  const columns = ORDER_COLUMNS[TABLES.projects];
-  const siblings = readSiblingOrders(store, columns.table, columns.parent, areaId);
-  const newOrder = computeInsertOrder(store, columns.table, siblings, projectId, beforeId);
-  store.transaction(() => {
-    // Active is the default — stored as an absent cell; only backlog
-    // is ever written.
-    if (status === PROJECT_STATUS.active) {
-      store.delCell(TABLES.projects, projectId, COLUMNS.projects.status);
-    }
-    store.setPartialRow(
-      TABLES.projects,
-      projectId,
-      row({
-        [COLUMNS.projects.status]:
-          status === PROJECT_STATUS.active ? undefined : status,
-        [columns.order]: newOrder,
-        [columns.updatedAt]: nowIso(),
-      }),
-    );
-  });
-}
-
-/**
- * Move a section to a new sibling position within its project.
- * Sections never leave their project — there is no reparenting.
- */
-export function moveSection(
-  store: MergeableStore,
-  sectionId: string,
-  beforeId: string | undefined,
-): void {
-  if (!store.hasRow(TABLES.sections, sectionId)) return;
-  const projectId = normalizeRelation(
-    store.getCell(TABLES.sections, sectionId, COLUMNS.sections.projectId),
-  );
-  moveWithinSiblings(
-    store,
-    ORDER_COLUMNS[TABLES.sections],
-    projectId,
-    sectionId,
-    beforeId,
+function localSnapshotDerivedIntoStored(store: MergeableStore, id: string): void {
+  if (!store.hasRow(TABLES.tasks, id)) return;
+  const derived = localDerivedStatus(store, id);
+  const stored = store.getCell(TABLES.tasks, id, COLUMNS.tasks.status);
+  if (derived === TASK_STATUS.done && stored !== TASK_STATUS.done) {
+    store.setPartialRow(TABLES.tasks, id, row({ [COLUMNS.tasks.completedAt]: nowIso() }));
+  } else if (derived !== TASK_STATUS.done && stored === TASK_STATUS.done) {
+    store.delCell(TABLES.tasks, id, COLUMNS.tasks.completedAt);
+  }
+  store.setPartialRow(
+    TABLES.tasks,
+    id,
+    row({ [COLUMNS.tasks.status]: derived, [COLUMNS.tasks.updatedAt]: nowIso() }),
   );
 }
 
 /**
  * Move a task to a new sibling position within `placement`, reparenting
  * it when the placement differs from its current one. `placement` is
- * the encoded cell value (`project:<id>`, `section:<id>`,
- * `area:<id>`, `task:<id>`, or `null` for the Inbox). A single write
- * updates placement + order so subscribers see one change.
+ * the encoded cell value (`area:<id>`, `task:<id>`, or `null` for the
+ * Inbox). A single write updates placement + order so subscribers see
+ * one change.
  *
  * Refused (no-op) when the target parent row is missing, or when the
  * target is `task:<id>` and the move would create a cycle — the parent
  * task being the moving task itself or one of its descendants.
+ *
+ * Conversion write: when the moving task is its old parent's LAST
+ * child, the parent converts to a leaf — snapshot its derived status
+ * into the stored cell BEFORE the move, so the full meter becomes a
+ * checked box (partial → open).
  *
  * The placement string is parsed locally to avoid an import cycle
  * (tasks.ts already imports this module).
@@ -386,16 +341,29 @@ export function moveTask(
         );
         cur = p !== null && p.startsWith('task:') ? p.slice(5) : null;
       }
-    } else if (kind === 'project') {
-      if (!store.hasRow(TABLES.projects, parentRef)) return;
-    } else if (kind === 'section') {
-      if (!store.hasRow(TABLES.sections, parentRef)) return;
     } else if (kind === 'area') {
       if (!store.hasRow(TABLES.areas, parentRef)) return;
     } else {
       return;
     }
   }
+
+  // Parent→leaf conversion: when the moving task was the last child of
+  // its old parent, snapshot the old parent's derived status into its
+  // stored cell BEFORE the move.
+  const oldPlacement = normalizeRelation(
+    store.getCell(TABLES.tasks, taskId, COLUMNS.tasks.placement),
+  );
+  if (oldPlacement !== null && oldPlacement.startsWith('task:')) {
+    const oldParent = oldPlacement.slice(5);
+    if (
+      store.hasRow(TABLES.tasks, oldParent) &&
+      localChildIds(store, oldParent).length === 1
+    ) {
+      localSnapshotDerivedIntoStored(store, oldParent);
+    }
+  }
+
   moveWithinSiblings(
     store,
     ORDER_COLUMNS[TABLES.tasks],
@@ -403,6 +371,48 @@ export function moveTask(
     taskId,
     beforeId,
   );
+}
+
+/**
+ * Shelve or unshelve a root task and land it at a new position in one
+ * transaction — the cross-group drag (Active ⇄ Backlog) writes both,
+ * and subscribers must see a single change. The placement string is
+ * unchanged (the root stays in its current sibling group); `beforeId`
+ * names the sibling the root now sits before (`undefined` = end of
+ * the group). `shelved` true writes the backlog cell; false deletes
+ * it (Active is the default — absent cell).
+ */
+export function moveRootToBacklog(
+  store: MergeableStore,
+  rootId: string,
+  shelved: boolean,
+  beforeId?: string,
+): void {
+  if (!store.hasRow(TABLES.tasks, rootId)) return;
+  if (beforeId !== undefined && !store.hasRow(TABLES.tasks, beforeId)) return;
+  if (beforeId === rootId) return;
+  const columns = ORDER_COLUMNS[TABLES.tasks];
+  const placement = normalizeRelation(
+    store.getCell(TABLES.tasks, rootId, columns.parent),
+  );
+  const siblings = readSiblingOrders(store, columns.table, columns.parent, placement);
+  const newOrder = computeInsertOrder(store, columns.table, siblings, rootId, beforeId);
+  store.transaction(() => {
+    // Active is the default — stored as an absent cell; only backlog
+    // is ever written.
+    if (!shelved) {
+      store.delCell(TABLES.tasks, rootId, COLUMNS.tasks.backlog);
+    }
+    store.setPartialRow(
+      TABLES.tasks,
+      rootId,
+      row({
+        [COLUMNS.tasks.backlog]: shelved ? true : undefined,
+        [columns.order]: newOrder,
+        [columns.updatedAt]: nowIso(),
+      }),
+    );
+  });
 }
 
 /**
@@ -414,19 +424,18 @@ export function moveTask(
  */
 export function backfillOrder(store: MergeableStore): void {
   // Tasks already had `order` per the original schema; skip if all set.
-  // Areas, projects and sections are the new ones.
+  // Areas are the new ones.
   store.transaction(() => {
-    for (const table of [TABLES.areas, TABLES.projects, TABLES.sections] as const) {
+    for (const table of [TABLES.areas, TABLES.tasks] as const) {
       const columns = ORDER_COLUMNS[table];
       // Group row ids by their parent scope.
-      const groups = new Map<string, string[]>();
+      const groups: Record<string, string[]> = {};
       for (const id of store.getRowIds(table)) {
         const p = store.getCell(table, id, columns.parent);
         const key = p === undefined || p === null || p === '' ? '' : String(p);
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(id);
+        (groups[key] ??= []).push(id);
       }
-      for (const ids of groups.values()) {
+      for (const ids of Object.values(groups)) {
         // Stable initial order: by createdAt asc, then id. We have to
         // read cells imperatively; this is a one-time migration.
         ids.sort((a, b) => {

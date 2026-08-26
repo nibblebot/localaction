@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-
-const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+import { uniq } from './helpers.ts';
 
 // Contract: after one online visit, the app shell loads with the network
 // fully offline (service worker precache) and shows OPFS-persisted data.
 // Runs against the prod server (`bun server/index.ts`) via
 // playwright.offline.config.ts — the dev server never registers the SW.
+
 test('app shell and data load with the network offline', async ({ page, context }) => {
   // Capture client lifecycle logs; asserted at the end.
   const consoleLines: string[] = [];
@@ -42,14 +42,12 @@ test('app shell and data load with the network offline', async ({ page, context 
   // Chromium's network stack, where SW cache hits still resolve.
   const cdp = await context.newCDPSession(page);
   await cdp.send('Network.enable');
-  const setOffline = (offline: boolean): Promise<unknown> =>
-    cdp.send('Network.emulateNetworkConditions', {
-      offline,
-      latency: 0,
-      downloadThroughput: -1,
-      uploadThroughput: -1,
-    });
-  await setOffline(true);
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: true,
+    latency: 0,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
   try {
     await page.reload();
     await page.waitForSelector('.sidebar-inbox-link');
@@ -63,7 +61,12 @@ test('app shell and data load with the network offline', async ({ page, context 
       )
       .toContain(title);
   } finally {
-    await setOffline(false);
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 0,
+      downloadThroughput: -1,
+      uploadThroughput: -1,
+    });
   }
 
   // Lifecycle logs actually fired on the client.

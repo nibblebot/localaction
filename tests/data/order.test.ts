@@ -1,19 +1,16 @@
 import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import { COLUMNS, TABLES } from '../../src/data/schema.ts';
+import { COLUMNS, TABLES, TASK_STATUS } from '../../src/data/schema.ts';
 import { createArea } from '../../src/data/areas.ts';
-import { createProject } from '../../src/data/projects.ts';
-import { createTask } from '../../src/data/tasks.ts';
+import { createTask, setTaskStatus, getDerivedStatus } from '../../src/data/tasks.ts';
 import {
   moveArea,
   moveTask,
-  reorderProject,
-  moveProjectToStatus,
+  moveRootToBacklog,
   backfillOrder,
   readSiblingOrders,
 } from '../../src/data/order.ts';
-import { PROJECT_STATUS } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();
@@ -160,81 +157,19 @@ describe('moveArea', () => {
   });
 });
 
-describe('reorderProject', () => {
-  let store: MergeableStore;
-  beforeEach(() => {
-    store = freshStore();
-  });
-
-  it('moves a project before another within the same area', () => {
-    const d = createArea(store, { name: 'D' });
-    const p1 = createProject(store, { name: 'P1', areaId: d });
-    const p2 = createProject(store, { name: 'P2', areaId: d });
-    const p3 = createProject(store, { name: 'P3', areaId: d });
-    reorderProject(store, p3, p1);
-    const siblings = readSiblingOrders(store, TABLES.projects, COLUMNS.projects.areaId, d);
-    expect(siblings.map((s) => s.id)).toEqual([p3, p1, p2]);
-  });
-
-  it('does not move a project across areas', () => {
-    const a = createArea(store, { name: 'A' });
-    const b = createArea(store, { name: 'B' });
-    const pA = createProject(store, { name: 'pA', areaId: a });
-    const pB = createProject(store, { name: 'pB', areaId: b });
-    reorderProject(store, pA, pB);
-    expect(store.getCell(TABLES.projects, pA, COLUMNS.projects.areaId)).toBe(a);
-  });
-});
-
-describe('moveProjectToStatus', () => {
-  let store: MergeableStore;
-  beforeEach(() => {
-    store = freshStore();
-  });
-
-  it('stores the backlog status and lands at the given position in one write', () => {
-    const d = createArea(store, { name: 'D' });
-    const p1 = createProject(store, { name: 'P1', areaId: d });
-    const p2 = createProject(store, { name: 'P2', areaId: d });
-    const p3 = createProject(store, { name: 'P3', areaId: d });
-    moveProjectToStatus(store, p1, PROJECT_STATUS.backlog, p3);
-    expect(store.getCell(TABLES.projects, p1, COLUMNS.projects.status)).toBe('backlog');
-    const siblings = readSiblingOrders(store, TABLES.projects, COLUMNS.projects.areaId, d);
-    expect(siblings.map((s) => s.id)).toEqual([p2, p1, p3]);
-  });
-
-  it('restoring to active clears the status cell back to absent', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
-    moveProjectToStatus(store, p, PROJECT_STATUS.backlog, undefined);
-    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(true);
-    moveProjectToStatus(store, p, PROJECT_STATUS.active, undefined);
-    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
-  });
-
-  it('refuses a missing project or a beforeId outside the store', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
-    moveProjectToStatus(store, 'missing', PROJECT_STATUS.backlog, undefined);
-    moveProjectToStatus(store, p, PROJECT_STATUS.backlog, 'missing');
-    expect(store.hasCell(TABLES.projects, p, COLUMNS.projects.status)).toBe(false);
-  });
-});
-
 describe('moveTask', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
   });
 
-  it('moves a top-level task before another in the same project', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
-    const t1 = createTask(store, { title: 't1', placement: { kind: 'project', id: p } });
-    const t2 = createTask(store, { title: 't2', placement: { kind: 'project', id: p } });
-    const t3 = createTask(store, { title: 't3', placement: { kind: 'project', id: p } });
-    moveTask(store, t3, `project:${p}`, t1);
-    expect(taskOrder(store, `project:${p}`)).toEqual([t3, t1, t2]);
+  it('moves a top-level task before another in the same area', () => {
+    const a = createArea(store, { name: 'A' });
+    const t1 = createTask(store, { title: 't1', placement: { kind: 'area', id: a } });
+    const t2 = createTask(store, { title: 't2', placement: { kind: 'area', id: a } });
+    const t3 = createTask(store, { title: 't3', placement: { kind: 'area', id: a } });
+    moveTask(store, t3, `area:${a}`, t1);
+    expect(taskOrder(store, `area:${a}`)).toEqual([t3, t1, t2]);
   });
 
   it('moves a child task within its parent', () => {
@@ -257,12 +192,13 @@ describe('moveTask', () => {
 
   it('promotes a sub-task to the inbox root (null placement)', () => {
     const parent = createTask(store, { title: 'parent' });
-    const child = createTask(store, { title: 'child', placement: { kind: 'task', id: parent } });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: parent } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: parent } });
     const inbox = createTask(store, { title: 'inbox' });
-    moveTask(store, child, null, inbox);
-    expect(store.getCell(TABLES.tasks, child, COLUMNS.tasks.placement)).toBeUndefined();
-    expect(taskOrder(store, null)).toEqual([parent, child, inbox]);
-    expect(taskOrder(store, `task:${parent}`)).toEqual([]);
+    moveTask(store, c1, null, inbox);
+    expect(store.getCell(TABLES.tasks, c1, COLUMNS.tasks.placement)).toBeUndefined();
+    expect(taskOrder(store, null)).toEqual([parent, c1, inbox]);
+    expect(taskOrder(store, `task:${parent}`)).toEqual([c2]);
   });
 
   it('moves a task with its subtree to a new parent', () => {
@@ -295,9 +231,9 @@ describe('moveTask', () => {
     expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.placement)).toBeUndefined();
   });
 
-  it('refuses a missing project', () => {
+  it('refuses a missing area parent', () => {
     const t = createTask(store, { title: 't' });
-    moveTask(store, t, 'project:missing', undefined);
+    moveTask(store, t, 'area:missing', undefined);
     expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.placement)).toBeUndefined();
   });
 
@@ -315,31 +251,137 @@ describe('moveTask', () => {
   });
 });
 
+describe('moveTask conversion snapshot', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('moving out the last child snapshots the ex-parent derived status into its stored cell', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    setTaskStatus(store, child, TASK_STATUS.done);
+    // The parent's stored cell stays open but it derives done via the
+    // only child. Moving the child out converts the parent to a leaf.
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+    moveTask(store, child, null, undefined);
+    expect(store.getCell(TABLES.tasks, child, COLUMNS.tasks.placement)).toBeUndefined();
+    expect(taskOrder(store, `task:${parent}`)).toEqual([]);
+    // The ex-parent's stored cell must carry the snapshotted derived
+    // status (done) with a completedAt stamp.
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(true);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+  });
+
+  it('moving out the last open child snapshots the ex-parent as open', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    // A stored-done parent with an open child derives open. Moving the
+    // last child out converts the parent to a leaf, so the derived-open
+    // status is snapshotted into its stored cell (overwriting done).
+    setTaskStatus(store, parent, TASK_STATUS.done);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.open);
+    moveTask(store, child, null, undefined);
+    expect(taskOrder(store, `task:${parent}`)).toEqual([]);
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.open);
+  });
+
+  it('does not snapshot when the parent still has other children', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: parent } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: parent } });
+    setTaskStatus(store, c2, TASK_STATUS.done);
+    moveTask(store, c1, null, undefined);
+    // c2 still parents under `parent`, so no conversion snapshot is
+    // written. The tell is completedAt: a done snapshot would stamp it,
+    // and a still-parented task is never stamped.
+    expect(taskOrder(store, `task:${parent}`)).toEqual([c2]);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(false);
+  });
+});
+
+describe('moveRootToBacklog', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('shelves a root: sets the backlog cell and repositions within the sibling group', () => {
+    const r1 = createTask(store, { title: 'r1' });
+    const r2 = createTask(store, { title: 'r2' });
+    const r3 = createTask(store, { title: 'r3' });
+    moveRootToBacklog(store, r1, true, r3);
+    expect(store.hasCell(TABLES.tasks, r1, COLUMNS.tasks.backlog)).toBe(true);
+    expect(taskOrder(store, null)).toEqual([r2, r1, r3]);
+  });
+
+  it('shelving to the end uses undefined beforeId', () => {
+    const r1 = createTask(store, { title: 'r1' });
+    const r2 = createTask(store, { title: 'r2' });
+    const r3 = createTask(store, { title: 'r3' });
+    moveRootToBacklog(store, r1, true, undefined);
+    expect(taskOrder(store, null)).toEqual([r2, r3, r1]);
+  });
+
+  it('restoring to active clears the backlog cell back to absent and repositions', () => {
+    const r1 = createTask(store, { title: 'r1' });
+    const r2 = createTask(store, { title: 'r2' });
+    moveRootToBacklog(store, r1, true, undefined);
+    expect(store.hasCell(TABLES.tasks, r1, COLUMNS.tasks.backlog)).toBe(true);
+    moveRootToBacklog(store, r1, false, r2);
+    expect(store.hasCell(TABLES.tasks, r1, COLUMNS.tasks.backlog)).toBe(false);
+    expect(taskOrder(store, null)).toEqual([r1, r2]);
+  });
+
+  it('keeps the placement string unchanged (shelf does not reparent)', () => {
+    const a = createArea(store, { name: 'A' });
+    const root = createTask(store, { title: 'r', placement: { kind: 'area', id: a } });
+    moveRootToBacklog(store, root, true, undefined);
+    expect(store.getCell(TABLES.tasks, root, COLUMNS.tasks.placement)).toBe(`area:${a}`);
+    expect(store.hasCell(TABLES.tasks, root, COLUMNS.tasks.backlog)).toBe(true);
+  });
+
+  it('is a no-op for a missing root id', () => {
+    const r = createTask(store, { title: 'r' });
+    const before = order(store, TABLES.tasks, r);
+    moveRootToBacklog(store, 'missing', true, undefined);
+    expect(order(store, TABLES.tasks, r)).toBe(before);
+  });
+});
+
 describe('backfillOrder', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
   });
 
-  it('fills `order` on legacy rows that have none', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
-    store.delCell(TABLES.areas, d, COLUMNS.areas.order);
-    store.delCell(TABLES.projects, p, COLUMNS.projects.order);
+  it('fills `order` on legacy area and task rows that have none', () => {
+    const a = createArea(store, { name: 'A' });
+    const t = createTask(store, { title: 'T', placement: { kind: 'area', id: a } });
+    store.delCell(TABLES.areas, a, COLUMNS.areas.order);
+    store.delCell(TABLES.tasks, t, COLUMNS.tasks.order);
     backfillOrder(store);
-    expect(order(store, TABLES.areas, d)).toBeGreaterThan(0);
-    expect(order(store, TABLES.projects, p)).toBeGreaterThan(0);
+    expect(order(store, TABLES.areas, a)).toBeGreaterThan(0);
+    expect(order(store, TABLES.tasks, t)).toBeGreaterThan(0);
   });
 
   it('is idempotent — running twice does not change `order`', () => {
-    const d = createArea(store, { name: 'D' });
-    const p = createProject(store, { name: 'P', areaId: d });
+    const a = createArea(store, { name: 'A' });
+    const t = createTask(store, { title: 'T', placement: { kind: 'area', id: a } });
     backfillOrder(store);
-    const dOrder = order(store, TABLES.areas, d);
-    const pOrder = order(store, TABLES.projects, p);
+    const aOrder = order(store, TABLES.areas, a);
+    const tOrder = order(store, TABLES.tasks, t);
     backfillOrder(store);
-    expect(order(store, TABLES.areas, d)).toBe(dOrder);
-    expect(order(store, TABLES.projects, p)).toBe(pOrder);
+    expect(order(store, TABLES.areas, a)).toBe(aOrder);
+    expect(order(store, TABLES.tasks, t)).toBe(tOrder);
   });
 
   it('orders siblings by createdAt within a parent scope', () => {

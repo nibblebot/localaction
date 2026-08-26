@@ -2,25 +2,34 @@ import { useMemo } from 'react';
 import {
   useDataLayer,
   useAreaCounts,
-  useProjectRollups,
   useDueItems,
   useCompletedItemsInRange,
+  useTask,
   areaColorHex,
+  moveTask,
+  childTaskIds,
+  sortTaskIds,
+  useTableVersion,
+  PLACEMENT_SEP,
+  COLUMNS,
+  TABLES,
 } from '../../data/index.ts';
+import type { MergeableStore } from 'tinybase';
 import type { CompletedItem, DueItem } from '../../data/index.ts';
 import { useSelection } from '../context/useSelection.ts';
 import { useCollapsedSet } from '../hooks/useCollapsedSet.ts';
 import { todayIso, weekdayWithDate } from '../shared/dates.ts';
-import { TaskList } from '../tasks/TaskList.tsx';
-import ProjectTaskList from '../projects/ProjectTaskList.tsx';
+import ReadOnlyTaskList from '../tasks/ReadOnlyTaskList.tsx';
+import TaskTree from '../tasks/TaskTree.tsx';
 import type { AreaColorId } from '../../data/colors.ts';
 
-interface DueProjectGroup {
-  projectId: string | null;
-  projectName: string;
+interface DueRootGroup {
+  /** The owning root task every due item in this bucket rolls up to. */
+  rootTaskId: string;
   order: number;
-  /** True when the project itself is due in the range (rendered as a project row). */
-  projectDue: boolean;
+  /** True when the root task itself is due in the range (rendered as a root row). */
+  rootDue: boolean;
+  /** Due sub-tasks under the root (the root itself is never listed here). */
   taskIds: string[];
 }
 
@@ -29,20 +38,20 @@ interface DueAreaGroup {
   name: string;
   color: AreaColorId;
   order: number;
-  projects: DueProjectGroup[];
+  roots: DueRootGroup[];
 }
 
 /**
- * Group flat due items into Area → Project buckets. The Inbox
- * (`areaId` null) sorts first; areas and projects keep their sidebar
- * `order`. A project appears as its own bucket when it is due in the
- * range or any of its tasks are; area-level tasks sit in the
- * `projectId: null` bucket.
+ * Group flat due items into Area → Root-task buckets. The Inbox
+ * (`areaId` null) sorts first; areas and roots keep their `order`. A root
+ * task appears as its own bucket when it is due in the range or any of its
+ * sub-tasks are; a root that's itself due is flagged `rootDue` (its own id
+ * never lands in `taskIds`).
  */
 function groupDueItems(
+  store: MergeableStore,
   items: readonly DueItem[],
   areaMeta: ReadonlyMap<string, { name: string; color: AreaColorId; order: number }>,
-  projectMeta: ReadonlyMap<string, { name: string; order: number }>,
 ): DueAreaGroup[] {
   const areas = new Map<string | null, DueAreaGroup>();
   const areaFor = (areaId: string | null): DueAreaGroup => {
@@ -54,60 +63,75 @@ function groupDueItems(
       name: areaId === null ? 'Inbox' : meta?.name || 'Untitled',
       color: meta?.color ?? 'gray',
       order: areaId === null ? -1 : (meta?.order ?? 0),
-      projects: [],
+      roots: [],
     };
     areas.set(areaId, group);
     return group;
   };
-  const projectFor = (area: DueAreaGroup, projectId: string | null): DueProjectGroup => {
-    const existing = area.projects.find((p) => p.projectId === projectId);
+  const rootFor = (area: DueAreaGroup, rootTaskId: string): DueRootGroup => {
+    const existing = area.roots.find((r) => r.rootTaskId === rootTaskId);
     if (existing) return existing;
-    const meta = projectId === null ? null : projectMeta.get(projectId);
-    const group: DueProjectGroup = {
-      projectId,
-      projectName: meta?.name || 'Untitled',
-      order: projectId === null ? -1 : (meta?.order ?? 0),
-      projectDue: false,
-      taskIds: [],
-    };
-    area.projects.push(group);
+    const order = Number(store.getCell(TABLES.tasks, rootTaskId, COLUMNS.tasks.order) ?? 0);
+    const group: DueRootGroup = { rootTaskId, order, rootDue: false, taskIds: [] };
+    area.roots.push(group);
     return group;
   };
   for (const item of items) {
     const area = areaFor(item.areaId);
-    if (item.kind === 'project') {
-      projectFor(area, item.id).projectDue = true;
-    } else {
-      projectFor(area, item.projectId).taskIds.push(item.id);
-    }
+    const root = rootFor(area, item.rootTaskId);
+    if (item.id === item.rootTaskId) root.rootDue = true;
+    else root.taskIds.push(item.id);
   }
   const sorted = [...areas.values()].sort((a, b) =>
     a.order !== b.order ? a.order - b.order : a.name.localeCompare(b.name),
   );
   for (const area of sorted) {
-    area.projects.sort((a, b) =>
-      a.order !== b.order ? a.order - b.order : a.projectName.localeCompare(b.projectName),
-    );
+    area.roots.sort((a, b) => a.order !== b.order ? a.order - b.order : a.rootTaskId.localeCompare(b.rootTaskId));
   }
   return sorted;
 }
 
-/** A project that is due in the current range — a link row into its
- * area. When `onToggleCollapse` is given (the Today view, where the
- * project's task tree renders below), a caret toggles that tree. */
-function ProjectDueRow({
-  areaId,
-  name,
+/** A root task's title, read at render time. */
+function RootTaskTitle({ rootTaskId }: { rootTaskId: string }): React.JSX.Element {
+  const { store } = useDataLayer();
+  const task = useTask(store, rootTaskId);
+  return <>{task?.title || 'Untitled'}</>;
+}
+
+/** The subtree of a due root, rendered inline: the root's direct
+ * children become the tree's roots (the root itself is the link row
+ * above), so the full descendant tree shows without duplicating the
+ * root row. */
+function DueRootSubtree({
+  rootTaskId,
+  onMove,
+}: {
+  rootTaskId: string;
+  onMove: (activeId: string, parentId: string | null, beforeId: string | undefined) => void;
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
+  const v = useTableVersion(store, TABLES.tasks);
+  const childIds = useMemo(() => {
+    void v; // invalidation token
+    return sortTaskIds(store, childTaskIds(store, rootTaskId));
+  }, [store, v, rootTaskId]);
+  return <TaskTree rootIds={childIds} onMove={onMove} />;
+}
+
+/** A root task that is due in the current range — a link row into its
+ * task pane. When `onToggleCollapse` is given (the Today view, where the
+ * root's subtree renders below), a caret toggles that subtree. */
+function RootTaskDueRow({
+  rootTaskId,
   badgeLabel,
   collapsed,
   onToggleCollapse,
 }: {
-  areaId: string | null;
-  name: string;
+  rootTaskId: string;
   badgeLabel: string;
   /** Tree-collapsed state; required with `onToggleCollapse`. */
   collapsed?: boolean;
-  /** When set, the row gains a caret that toggles the task tree. */
+  /** When set, the row gains a caret that toggles the subtree. */
   onToggleCollapse?: () => void;
 }): React.JSX.Element {
   const { navigate } = useSelection();
@@ -115,13 +139,15 @@ function ProjectDueRow({
     <button
       type="button"
       className="today-project-due"
-      onClick={() => areaId && navigate({ kind: 'area', id: areaId })}
-      aria-label={`Project ${name} ${badgeLabel.toLowerCase()}`}
+      onClick={() => navigate({ kind: 'task', id: rootTaskId })}
+      aria-label={`Task due ${badgeLabel.toLowerCase()}`}
     >
       <svg className="svg-icon" aria-hidden="true">
-        <use href="/icons.svg#project-list-icon" />
+        <use href="/icons.svg#tasks-icon" />
       </svg>
-      <span className="today-project-due-name">{name}</span>
+      <span className="today-project-due-name">
+        <RootTaskTitle rootTaskId={rootTaskId} />
+      </span>
       <span className="today-due-badge">{badgeLabel}</span>
     </button>
   );
@@ -131,9 +157,8 @@ function ProjectDueRow({
       <button
         type="button"
         className="project-row-caret icon-button"
-        aria-label={collapsed ? `Expand ${name}` : `Collapse ${name}`}
         aria-expanded={!collapsed}
-        title={collapsed ? 'Expand tasks' : 'Collapse tasks'}
+        title={collapsed ? 'Expand subtasks' : 'Collapse subtasks'}
         onClick={onToggleCollapse}
       >
         <svg className="svg-icon" aria-hidden="true">
@@ -146,37 +171,35 @@ function ProjectDueRow({
 }
 
 /**
- * Shared body for the Today and Week views. The range filtering and
- * header differ — `from === to` is the single-day Today view (the
- * title-bar badge collapses to "Due today"): there, a project whose
- * own due date falls in range expands its full task tree in place via
- * the same `ProjectTaskList` the project detail pane uses. A wider
- * range shows one cross-cutting project-due link row per project and
- * per-row weekday labels.
+ * Shared body for the Today and Week views. The range filtering and header
+ * differ — `from === to` is the single-day Today view (the title-bar badge
+ * collapses to "Due today"): there, a root task whose own due date falls in
+ * range expands its full subtree in place via the shared `TaskTree`. A wider
+ * range shows one cross-cutting root-due link row per root and per-row
+ * weekday labels.
  */
 export default function DuePane({
   title,
   from,
   to,
   storageKey,
-  projectBadgeLabel,
+  dueBadgeLabel,
 }: {
   title: string;
   /** Inclusive local-date ISO (`YYYY-MM-DD`) range start. */
   from: string;
   /** Inclusive local-date ISO (`YYYY-MM-DD`) range end. */
   to: string;
-  /** LocalStorage key for collapse state (Done section, due-project trees). */
+  /** LocalStorage key for collapse state (Done section, due-root trees). */
   storageKey: string;
-  /** Label rendered on project-due rows (e.g. "Due today" or "Due this week"). */
-  projectBadgeLabel: string;
+  /** Label rendered on root-due rows (e.g. "Due today" or "Due this week"). */
+  dueBadgeLabel: string;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   // The query range reaches back to the ISO floor so past-due items are
   // fetched too; they split into the Overdue section below.
   const items = useDueItems(store, '0000-01-01', to);
   const counts = useAreaCounts(store);
-  const rollups = useProjectRollups(store);
   const { collapsed, toggle } = useCollapsedSet(storageKey);
   const { collapsed: collapsedDays, toggle: toggleDay } = useCollapsedSet(`${storageKey}:days`);
 
@@ -186,11 +209,7 @@ export default function DuePane({
    * range groups into the Overdue section. Same definition in both
    * views: anything due before today. */
   const overdue = useMemo(() => open.filter((i) => i.dueDate < today), [open, today]);
-  const overdueTaskIds = useMemo(
-    () => overdue.filter((i) => i.kind === 'task').map((i) => i.id),
-    [overdue],
-  );
-  const overdueProjects = useMemo(() => overdue.filter((i) => i.kind === 'project'), [overdue]);
+  const overdueTaskIds = useMemo(() => overdue.map((i) => i.id), [overdue]);
   const inRange = useMemo(() => open.filter((i) => i.dueDate >= today), [open, today]);
   const completed = useCompletedItemsInRange(store, from, to);
   const doneByDay = useMemo(() => {
@@ -205,15 +224,27 @@ export default function DuePane({
 
   const groups = useMemo(() => {
     const areaMeta = new Map(counts.map((c) => [c.id, { name: c.name, color: c.color, order: c.order }]));
-    const projectMeta = new Map(rollups.map((r) => [r.projectId, { name: r.projectName, order: r.order }]));
-    return groupDueItems(inRange, areaMeta, projectMeta);
-  }, [inRange, counts, rollups]);
+    return groupDueItems(store, inRange, areaMeta);
+  }, [store, inRange, counts]);
 
   const overdueCollapsed = collapsed.has('overdue');
   const doneCollapsed = collapsed.has('done');
   const showRowDates = from !== to;
-  /** Single-day Today view: due projects expand their full task tree. */
-  const expandDueProjects = from === to;
+  /** Single-day Today view: due root tasks expand their full subtree. */
+  const expandDueRoots = from === to;
+
+  function onMove(
+    activeId: string,
+    parentId: string | null,
+    beforeId: string | undefined,
+  ): void {
+    moveTask(
+      store,
+      activeId,
+      parentId ? `task${PLACEMENT_SEP}${parentId}` : null,
+      beforeId,
+    );
+  }
 
   return (
     <main className="main" aria-label={title}>
@@ -241,22 +272,8 @@ export default function DuePane({
               <h3 className="today-group-title">Overdue</h3>
               <span className="sidebar-link-count">{overdue.length}</span>
             </button>
-            {!overdueCollapsed && (
-              <>
-                {overdueProjects.map((project) => (
-                  <ProjectDueRow
-                    key={project.id}
-                    areaId={project.areaId}
-                    name={
-                      rollups.find((r) => r.projectId === project.id)?.projectName || 'Untitled'
-                    }
-                    badgeLabel="Overdue"
-                  />
-                ))}
-                {overdueTaskIds.length > 0 && (
-                  <TaskList ids={overdueTaskIds} readOnly effectiveStatus showDueDate />
-                )}
-              </>
+            {!overdueCollapsed && overdueTaskIds.length > 0 && (
+              <ReadOnlyTaskList ids={overdueTaskIds} showDueDate />
             )}
           </section>
         )}
@@ -276,46 +293,34 @@ export default function DuePane({
                 )}
                 {area.name}
               </h3>
-              {area.projects.map((project) => {
-                const projectId = project.projectId;
+              {area.roots.map((root) => {
+                const rootTaskId = root.rootTaskId;
                 return (
-                <div key={projectId ?? 'area-tasks'} className="today-project">
-                  {projectId !== null && !project.projectDue && (
-                    <h4 className="today-project-title">{project.projectName}</h4>
+                <div key={rootTaskId} className="today-project">
+                  {!root.rootDue && (
+                    <h4 className="today-project-title">
+                      <RootTaskTitle rootTaskId={rootTaskId} />
+                    </h4>
                   )}
-                  {project.projectDue && projectId !== null && (
-                    <ProjectDueRow
-                      areaId={area.areaId}
-                      name={project.projectName}
-                      badgeLabel={projectBadgeLabel}
-                      collapsed={collapsed.has(projectId)}
+                  {root.rootDue && (
+                    <RootTaskDueRow
+                      rootTaskId={rootTaskId}
+                      badgeLabel={dueBadgeLabel}
+                      collapsed={collapsed.has(rootTaskId)}
                       onToggleCollapse={
-                        expandDueProjects ? () => toggle(projectId) : undefined
+                        expandDueRoots ? () => toggle(rootTaskId) : undefined
                       }
                     />
                   )}
-                  {project.projectDue &&
-                  projectId !== null &&
-                  expandDueProjects &&
-                  !collapsed.has(projectId) ? (
-                    // Today: the full editable tree (same as the project
-                    // detail pane) supersedes the read-only due-task rows.
+                  {root.rootDue && expandDueRoots && !collapsed.has(rootTaskId) ? (
+                    // Today: the full subtree (same tree as the task detail
+                    // pane) supersedes the read-only due-task rows.
                     <div className="project-row-tasks">
-                      <ProjectTaskList
-                        projectId={projectId}
-                        projectName={project.projectName}
-                        showCompleted={false}
-                        hideEmptySections
-                      />
+                      <DueRootSubtree rootTaskId={rootTaskId} onMove={onMove} />
                     </div>
                   ) : (
-                    project.taskIds.length > 0 && (
-                      <TaskList
-                        ids={project.taskIds}
-                        readOnly
-                        effectiveStatus
-                        showDueDate={showRowDates}
-                      />
+                    root.taskIds.length > 0 && (
+                      <ReadOnlyTaskList ids={root.taskIds} showDueDate={showRowDates} />
                     )
                   )}
                 </div>
@@ -363,10 +368,8 @@ export default function DuePane({
                         <span className="sidebar-link-count">{dayItems.length}</span>
                       </button>
                       {!dayCollapsed && (
-                        <TaskList
+                        <ReadOnlyTaskList
                           ids={dayItems.map((item) => item.taskId)}
-                          readOnly
-                          effectiveStatus
                           showDueDate={showRowDates}
                         />
                       )}
@@ -378,10 +381,8 @@ export default function DuePane({
                   className="today-done-day today-done-day--single"
                   aria-label="Done today"
                 >
-                  <TaskList
+                  <ReadOnlyTaskList
                     ids={completed.map((item) => item.taskId)}
-                    readOnly
-                    effectiveStatus
                     showDueDate={showRowDates}
                   />
                 </section>

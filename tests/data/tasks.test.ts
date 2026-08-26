@@ -8,11 +8,15 @@ import {
   updateTask,
   setTaskStatus,
   getTask,
-  getTasksForProjectDeep,
   getInboxTaskIds,
   getAreaTaskIds,
   getRootPlacement,
-  getEffectiveTaskStatus,
+  getDerivedStatus,
+  getRootTriState,
+  setRootBacklog,
+  snapshotDerivedIntoStored,
+  getSubtreeProgress,
+  getRootTaskId,
   childTaskIds,
   descendantTaskIds,
   buildTaskTree,
@@ -20,7 +24,6 @@ import {
   decodePlacement,
 } from '../../src/data/tasks.ts';
 import { deleteTask } from '../../src/data/deletion.ts';
-import { createProject } from '../../src/data/projects.ts';
 import { createArea } from '../../src/data/areas.ts';
 
 function freshStore(): MergeableStore {
@@ -43,32 +46,26 @@ describe('task placement', () => {
     expect(getInboxTaskIds(store)).toContain(t);
   });
 
-  it('createTask stores project / area / sub-task placements', () => {
+  it('createTask stores area / sub-task placements', () => {
     const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const projectTask = createTask(store, {
-      title: 'pt',
-      placement: { kind: 'project', id: p },
-    });
     const areaTask = createTask(store, {
       title: 'at',
       placement: { kind: 'area', id: a },
     });
     const subTask = createTask(store, {
       title: 'st',
-      placement: { kind: 'task', id: projectTask },
+      placement: { kind: 'task', id: areaTask },
     });
-    expect(getTask(store, projectTask)?.placement).toEqual({ kind: 'project', id: p });
     expect(getTask(store, areaTask)?.placement).toEqual({ kind: 'area', id: a });
-    expect(getTask(store, subTask)?.placement).toEqual({ kind: 'task', id: projectTask });
+    expect(getTask(store, subTask)?.placement).toEqual({ kind: 'task', id: areaTask });
   });
 
   it('updateTask reparents via placement', () => {
     const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const t = createTask(store, { title: 'x', placement: { kind: 'project', id: p } });
-    updateTask(store, t, { placement: { kind: 'area', id: a } });
-    expect(getTask(store, t)?.placement).toEqual({ kind: 'area', id: a });
+    const parent = createTask(store, { title: 'parent' });
+    const t = createTask(store, { title: 'x', placement: { kind: 'area', id: a } });
+    updateTask(store, t, { placement: { kind: 'task', id: parent } });
+    expect(getTask(store, t)?.placement).toEqual({ kind: 'task', id: parent });
     updateTask(store, t, { placement: { kind: 'inbox' } });
     expect(getTask(store, t)?.placement).toEqual({ kind: 'inbox' });
   });
@@ -85,10 +82,9 @@ describe('task placement', () => {
     expect(getTask(store, t)?.dueDate).toBeNull();
   });
 
-  it('encodePlacement / decodePlacement round-trip every kind', () => {
+  it('encodePlacement / decodePlacement round-trip the supported kinds', () => {
     const cases = [
-      { kind: 'project', id: 'abc' },
-      { kind: 'area', id: 'def' },
+      { kind: 'area', id: 'abc' },
       { kind: 'task', id: 'ghi' },
       { kind: 'inbox' },
     ] as const;
@@ -97,11 +93,16 @@ describe('task placement', () => {
     }
   });
 
+  it('decodePlacement maps legacy project / section placements to Inbox', () => {
+    expect(decodePlacement('project:p1')).toEqual({ kind: 'inbox' });
+    expect(decodePlacement('section:s1')).toEqual({ kind: 'inbox' });
+  });
+
   it('decodePlacement treats garbage / empty as Inbox', () => {
     expect(decodePlacement(undefined)).toEqual({ kind: 'inbox' });
     expect(decodePlacement('')).toEqual({ kind: 'inbox' });
     expect(decodePlacement('nope:1')).toEqual({ kind: 'inbox' });
-    expect(decodePlacement('project:')).toEqual({ kind: 'inbox' });
+    expect(decodePlacement('area:')).toEqual({ kind: 'inbox' });
   });
 });
 
@@ -125,24 +126,30 @@ describe('createTaskAfter', () => {
     expect(renderedOrder(getInboxTaskIds(store))).toEqual([a, inserted!, b]);
   });
 
-  it('inherits the placement of a project / sub-task sibling', () => {
+  it('inherits the placement of an area / sub-task sibling', () => {
     const area = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: area });
-    const first = createTask(store, { title: 'one', placement: { kind: 'project', id: p } });
-    const second = createTask(store, { title: 'two', placement: { kind: 'project', id: p } });
+    const first = createTask(store, { title: 'one', placement: { kind: 'area', id: area } });
+    const second = createTask(store, { title: 'two', placement: { kind: 'area', id: area } });
     const between = createTaskAfter(store, first, '');
-    expect(getTask(store, between!)?.placement).toEqual({ kind: 'project', id: p });
-    expect(renderedOrder(getTasksForProjectDeep(store, p))).toEqual([first, between!, second]);
+    expect(getTask(store, between!)?.placement).toEqual({ kind: 'area', id: area });
+    expect(renderedOrder(getAreaTaskIds(store, area))).toEqual([first, between!, second]);
 
     // Inserting after a top-level task produces a top-level task (never a
     // sub-task); inserting after a sub-task keeps the sub-task's parent.
     const afterBetween = createTaskAfter(store, between!, '');
-    expect(getTask(store, afterBetween!)?.placement).toEqual({ kind: 'project', id: p });
+    expect(getTask(store, afterBetween!)?.placement).toEqual({ kind: 'area', id: area });
 
     const sub = createTask(store, { title: 'sub', placement: { kind: 'task', id: first } });
     const afterSub = createTaskAfter(store, sub, '');
     expect(getTask(store, afterSub!)?.placement).toEqual({ kind: 'task', id: first });
-    const tree = buildTaskTree(store, getTasksForProjectDeep(store, p));
+    const tree = buildTaskTree(store, [
+      first,
+      between!,
+      second,
+      afterBetween!,
+      sub,
+      afterSub!,
+    ]);
     const firstNode = tree.children.find((n) => n.id === first)!;
     expect(firstNode.children.map((n) => n.id)).toEqual([sub, afterSub!]);
   });
@@ -169,9 +176,7 @@ describe('task ancestry', () => {
   });
 
   it('childTaskIds / descendantTaskIds walk the placement `task:` chain', () => {
-    const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const root = createTask(store, { title: 'root', placement: { kind: 'project', id: p } });
+    const root = createTask(store, { title: 'root' });
     const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: root } });
     const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: root } });
     const gc = createTask(store, { title: 'gc', placement: { kind: 'task', id: c1 } });
@@ -181,68 +186,114 @@ describe('task ancestry', () => {
 
   it('getRootPlacement resolves ownership through the chain', () => {
     const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const root = createTask(store, { title: 'root', placement: { kind: 'project', id: p } });
+    const root = createTask(store, { title: 'root', placement: { kind: 'area', id: a } });
     const child = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
     const gc = createTask(store, { title: 'gc', placement: { kind: 'task', id: child } });
-    expect(getRootPlacement(store, gc)).toEqual({ kind: 'project', id: p });
-    expect(getRootPlacement(store, root)).toEqual({ kind: 'project', id: p });
+    expect(getRootPlacement(store, gc)).toEqual({ kind: 'area', id: a });
+    expect(getRootPlacement(store, root)).toEqual({ kind: 'area', id: a });
   });
 
-  it('getTasksForProjectDeep gathers top-level + nested tasks for a project', () => {
-    const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
-    const t1 = createTask(store, { title: 'parent', placement: { kind: 'project', id: p } });
-    const t2 = createTask(store, { title: 'child', placement: { kind: 'task', id: t1 } });
-    const t3 = createTask(store, { title: 'sibling', placement: { kind: 'project', id: p } });
-    expect(getTasksForProjectDeep(store, p).sort()).toEqual([t1, t2, t3].sort());
+  it('getRootPlacement resolves an orphaned sub-task to Inbox', () => {
+    const orphan = createTask(store, {
+      title: 'orphan',
+      placement: { kind: 'task', id: 'missing-parent' },
+    });
+    expect(getRootPlacement(store, orphan)).toEqual({ kind: 'inbox' });
   });
 
   it('getAreaTaskIds and getInboxTaskIds partition top-level tasks', () => {
     const a = createArea(store, { name: 'Work' });
-    const p = createProject(store, { name: 'P', areaId: a });
     const inbox = createTask(store, { title: 'i' });
     const areaT = createTask(store, { title: 'at', placement: { kind: 'area', id: a } });
-    createTask(store, { title: 'pt', placement: { kind: 'project', id: p } });
     expect(getInboxTaskIds(store)).toEqual([inbox]);
     expect(getAreaTaskIds(store, a)).toEqual([areaT]);
   });
 });
 
-describe('task status derivation', () => {
+describe('getRootTaskId', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
   });
 
-  it('setTaskStatus toggles a leaf open <-> done', () => {
-    const t = createTask(store, { title: 'x' });
-    setTaskStatus(store, t, TASK_STATUS.done);
-    expect(getEffectiveTaskStatus(store, t)).toBe(TASK_STATUS.done);
-    setTaskStatus(store, t, TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, t)).toBe(TASK_STATUS.open);
+  it('returns the task itself for a top-level task', () => {
+    const t = createTask(store, { title: 't' });
+    expect(getRootTaskId(store, t)).toBe(t);
   });
-  it('completing a parent only writes the parent cell; children re-derive', () => {
+
+  it('walks the placement `task:` chain to the top-level ancestor', () => {
+    const root = createTask(store, { title: 'root' });
+    const mid = createTask(store, { title: 'mid', placement: { kind: 'task', id: root } });
+    const leaf = createTask(store, { title: 'leaf', placement: { kind: 'task', id: mid } });
+    expect(getRootTaskId(store, leaf)).toBe(root);
+    expect(getRootTaskId(store, mid)).toBe(root);
+    expect(getRootTaskId(store, root)).toBe(root);
+  });
+
+  it('returns undefined for a missing row', () => {
+    expect(getRootTaskId(store, 'missing')).toBeUndefined();
+  });
+});
+
+describe('getDerivedStatus', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('returns undefined for a missing row', () => {
+    expect(getDerivedStatus(store, 'missing')).toBeUndefined();
+  });
+
+  it('a leaf reflects its stored cell', () => {
+    const t = createTask(store, { title: 'x' });
+    expect(getDerivedStatus(store, t)).toBe(TASK_STATUS.open);
+    setTaskStatus(store, t, TASK_STATUS.done);
+    expect(getDerivedStatus(store, t)).toBe(TASK_STATUS.done);
+  });
+
+  it('a stored-open parent with all-done children reads done (stored cell ignored)', () => {
+    const root = createTask(store, { title: 'root' });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: root } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: root } });
+    // The parent's stored cell is never written — it stays open.
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.open);
+    setTaskStatus(store, c1, TASK_STATUS.done);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.open);
+    setTaskStatus(store, c2, TASK_STATUS.done);
+    // Every descendant is now derived-done, so the parent derives done
+    // even though its own stored cell is still open.
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.done);
+  });
+
+  it('a stored-done parent with an open child reads open (stored cell ignored)', () => {
     const root = createTask(store, { title: 'root' });
     const c = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
     setTaskStatus(store, root, TASK_STATUS.done);
     // The child was never written, so it stays stored-open and the
-    // parent effective status re-derives to open.
-    expect(getEffectiveTaskStatus(store, c)).toBe(TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, root)).toBe(TASK_STATUS.open);
-    // Completing the last child flips the parent to effective-done.
+    // parent derived status re-derives to open.
+    expect(getDerivedStatus(store, c)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.open);
+    // Completing the last child flips the parent to derived-done.
     setTaskStatus(store, c, TASK_STATUS.done);
-    expect(getEffectiveTaskStatus(store, c)).toBe(TASK_STATUS.done);
-    expect(getEffectiveTaskStatus(store, root)).toBe(TASK_STATUS.done);
+    expect(getDerivedStatus(store, c)).toBe(TASK_STATUS.done);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.done);
   });
 
-  it('a stored-done parent with an open child is effectively open', () => {
+  it('a parent is derived-done only when EVERY descendant is derived-done', () => {
     const root = createTask(store, { title: 'root' });
-    const c = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
-    setTaskStatus(store, root, TASK_STATUS.done);
-    setTaskStatus(store, c, TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, c)).toBe(TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, root)).toBe(TASK_STATUS.open);
+    const mid = createTask(store, { title: 'mid', placement: { kind: 'task', id: root } });
+    const leaf = createTask(store, { title: 'leaf', placement: { kind: 'task', id: mid } });
+    const sibling = createTask(store, {
+      title: 'sibling',
+      placement: { kind: 'task', id: root },
+    });
+    setTaskStatus(store, leaf, TASK_STATUS.done);
+    // mid derived-done (only child done), but sibling still open → root open.
+    expect(getDerivedStatus(store, mid)).toBe(TASK_STATUS.done);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.open);
+    setTaskStatus(store, sibling, TASK_STATUS.done);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.done);
   });
 
   it('reopening a descendant reopens every ancestor', () => {
@@ -251,12 +302,83 @@ describe('task status derivation', () => {
     const leaf = createTask(store, { title: 'leaf', placement: { kind: 'task', id: mid } });
     setTaskStatus(store, root, TASK_STATUS.done);
     setTaskStatus(store, leaf, TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, mid)).toBe(TASK_STATUS.open);
-    expect(getEffectiveTaskStatus(store, root)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, mid)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.open);
   });
 });
 
-describe('deleteTask', () => {
+describe('getRootTriState / setRootBacklog', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('defaults to active for a root with no backlog and an incomplete subtree', () => {
+    const root = createTask(store, { title: 'root' });
+    expect(getRootTriState(store, root)).toBe('active');
+  });
+
+  it('reads backlog when the backlog cell is set', () => {
+    const root = createTask(store, { title: 'root' });
+    setRootBacklog(store, root, true);
+    expect(getRootTriState(store, root)).toBe('backlog');
+  });
+
+  it('done wins over backlog when the subtree is fully complete', () => {
+    const root = createTask(store, { title: 'root' });
+    const c = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
+    setRootBacklog(store, root, true);
+    setTaskStatus(store, c, TASK_STATUS.done);
+    // Derived-done takes precedence over the stored backlog shelf.
+    expect(getDerivedStatus(store, root)).toBe(TASK_STATUS.done);
+    expect(getRootTriState(store, root)).toBe('done');
+  });
+
+  it('a done leaf root wins over backlog too', () => {
+    const root = createTask(store, { title: 'root' });
+    setRootBacklog(store, root, true);
+    setTaskStatus(store, root, TASK_STATUS.done);
+    expect(getRootTriState(store, root)).toBe('done');
+  });
+
+  it('setRootBacklog sets and clears the backlog cell', () => {
+    const root = createTask(store, { title: 'root' });
+    expect(store.hasCell(TABLES.tasks, root, COLUMNS.tasks.backlog)).toBe(false);
+    setRootBacklog(store, root, true);
+    expect(store.hasCell(TABLES.tasks, root, COLUMNS.tasks.backlog)).toBe(true);
+    expect(getRootTriState(store, root)).toBe('backlog');
+    setRootBacklog(store, root, false);
+    expect(store.hasCell(TABLES.tasks, root, COLUMNS.tasks.backlog)).toBe(false);
+    expect(getRootTriState(store, root)).toBe('active');
+  });
+});
+
+describe('getSubtreeProgress', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('counts derived-done over all descendants', () => {
+    const root = createTask(store, { title: 'root' });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: root } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: root } });
+    const gc = createTask(store, { title: 'gc', placement: { kind: 'task', id: c1 } });
+    setTaskStatus(store, gc, TASK_STATUS.done);
+    // Descendants of root: c1, c2, gc (total 3). gc stored-done; c1
+    // derived-done (its only child is done); c2 still open → done = 2.
+    expect(getSubtreeProgress(store, root)).toEqual({ done: 2, total: 3 });
+    setTaskStatus(store, c2, TASK_STATUS.done);
+    expect(getSubtreeProgress(store, root)).toEqual({ done: 3, total: 3 });
+  });
+
+  it('a leaf has an empty subtree', () => {
+    const leaf = createTask(store, { title: 'leaf' });
+    expect(getSubtreeProgress(store, leaf)).toEqual({ done: 0, total: 0 });
+  });
+});
+
+describe('deleteTask conversion snapshot', () => {
   let store: MergeableStore;
   beforeEach(() => {
     store = freshStore();
@@ -273,6 +395,78 @@ describe('deleteTask', () => {
     const child = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
     deleteTask(store, root);
     expect(getTask(store, child)).toBeUndefined();
+  });
+
+  it('deleting the last child snapshots the parent derived status into its stored cell', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    setTaskStatus(store, child, TASK_STATUS.done);
+    // The parent's stored cell is still open but it is derived-done
+    // because its only child is done.
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+    deleteTask(store, child);
+    // The parent is now a leaf; its stored cell must carry the
+    // snapshotted derived status (done) with a completedAt stamp.
+    expect(childTaskIds(store, parent)).toEqual([]);
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(true);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+  });
+
+  it('deleting the last open child snapshots the parent as open', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    // A stored-done parent with an open child derives open. Deleting the
+    // last child converts the parent to a leaf, so the derived-open
+    // status is snapshotted into its stored cell (overwriting done).
+    setTaskStatus(store, parent, TASK_STATUS.done);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.open);
+    deleteTask(store, child);
+    expect(childTaskIds(store, parent)).toEqual([]);
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.open);
+  });
+
+  it('does not snapshot when the parent still has other children', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const c1 = createTask(store, { title: 'c1', placement: { kind: 'task', id: parent } });
+    const c2 = createTask(store, { title: 'c2', placement: { kind: 'task', id: parent } });
+    setTaskStatus(store, c2, TASK_STATUS.done);
+    deleteTask(store, c1);
+    // The parent still has c2, so no conversion snapshot is written.
+    // The tell is completedAt: a done snapshot would stamp it, and a
+    // still-parented task is never stamped.
+    expect(childTaskIds(store, parent)).toEqual([c2]);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(false);
+  });
+});
+
+describe('snapshotDerivedIntoStored', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  it('writes the current derived status into the stored cell', () => {
+    const parent = createTask(store, { title: 'parent' });
+    const child = createTask(store, {
+      title: 'child',
+      placement: { kind: 'task', id: parent },
+    });
+    setTaskStatus(store, child, TASK_STATUS.done);
+    // createTask stores status:open on the parent; its derived status is
+    // done via the child, so the snapshot must overwrite open with done.
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.open);
+    expect(getDerivedStatus(store, parent)).toBe(TASK_STATUS.done);
+    snapshotDerivedIntoStored(store, parent);
+    expect(store.getCell(TABLES.tasks, parent, COLUMNS.tasks.status)).toBe(TASK_STATUS.done);
+    expect(store.hasCell(TABLES.tasks, parent, COLUMNS.tasks.completedAt)).toBe(true);
   });
 });
 

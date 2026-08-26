@@ -15,8 +15,8 @@ import { tombstoneId } from './tombstones.ts';
  * job.
  *
  * Restores cannot resurrect an owner deleted *after* the snapshot was
- * taken: restoring a project whose area was since deleted leaves the
- * project's relation dangling, which read models already tolerate.
+ * taken: restoring an area whose parent area was since deleted leaves
+ * the area's relation dangling, which read models already tolerate.
  * Sequential deletes each take their own snapshot and undo
  * independently.
  */
@@ -40,8 +40,6 @@ export function captureSubtree(
     }
   };
   take(TABLES.areas, doomed.areas);
-  take(TABLES.projects, doomed.projects);
-  take(TABLES.sections, doomed.sections);
   take(TABLES.tasks, doomed.tasks);
   take(TABLES.notes, attachedRowIds(store, TABLES.notes, doomed));
   return { entityType, entityId, rows };

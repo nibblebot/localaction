@@ -11,6 +11,7 @@ import { getStore } from './store.ts';
 import { startLocalPersistence } from './persistence.ts';
 import { logWarn } from '../log.ts';
 import { backfillOrder } from './order.ts';
+import { migrateProjectsToTasks } from './migrate.ts';
 import { installTombstoneReconciler } from './deletion.ts';
 import {
   getSyncLog,
@@ -97,8 +98,9 @@ export function DataLayerProvider({
     });
 
     if (offline) {
-      // Offline mode skips persistence + sync; still normalise the
+      // Offline mode skips persistence + sync; still migrate + normalise the
       // store once so any seeded rows from dev tests pick up `order`.
+      migrateProjectsToTasks(store);
       backfillOrder(store);
       // Gate opens only after the one-time normalisation above, so the
       // backfill itself never appears in the sync log.
@@ -116,8 +118,10 @@ export function DataLayerProvider({
     void (async () => {
       try {
         await startLocalPersistence();
-        // After OPFS has loaded the persisted snapshot, fill in any
-        // missing `order` cells. Idempotent — re-running is a no-op.
+        // After OPFS has loaded the persisted snapshot, migrate legacy
+        // projects/sections into tasks, then fill in any missing `order`
+        // cells. Both are idempotent — re-running is a no-op.
+        migrateProjectsToTasks(store);
         backfillOrder(store);
         // Open the push gate only now: the OPFS load transaction and the
         // backfill must never appear in the sync log. Not disabled in

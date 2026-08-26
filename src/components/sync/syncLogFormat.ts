@@ -92,7 +92,7 @@ export function connectionDescription(status: SyncStatus): string {
   }
 }
 
-/** One-line popover row for an event ("Pulled 8 Tasks, 3 Projects"). */
+/** One-line popover row for an event ("Pulled 8 Tasks, 2 Notes"). */
 export function eventLine(event: SyncLogEvent, summarize: (tables: SyncTableStats) => string): string {
   switch (event.kind) {
     case 'pull':
@@ -259,7 +259,7 @@ export function compactPopoverRows(
   return rows;
 }
 
-const TABLE_ORDER = ['tasks', 'projects', 'sections', 'areas', 'notes', 'tombstones'] as const;
+const TABLE_ORDER = ['tasks', 'areas', 'notes', 'tombstones'] as const;
 
 /**
  * Per-table added/updated/removed breakdown for the full viewer —

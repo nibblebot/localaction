@@ -4,33 +4,43 @@ The domain vocabulary for LocalAction. Use these terms when writing issues or an
 
 ## Area
 
-An ongoing area of life or practice that has no end state. Top-level container for Projects, sub-Areas, and Tasks. Examples: "Family", "Work", "Health".
+An ongoing area of life or practice that has no end state. Top-level container for sub-Areas and Tasks. Examples: "Family", "Work", "Health".
 
 ## Sub-Area
 
 A nested Area. Same semantics as Area — ongoing, container — but lives under a parent Area.
 
-## Project
-
-A bounded effort with a clear end state, owned by an Area (or sub-Area). Projects have tasks that, when completed, mean the project is done. NOT used for ongoing concerns; use an Area (or sub-Area) for those.
-
-A Project has three presentation states in the [Projects section](#projects-section): **Backlog** (a stored status — the project is shelved out of the active list without touching its tasks), **Active** (the default; any project not in Backlog that is not Done), and **Done** (derived — the project has at least one task and every task in it is done; never stored, so an empty project reads Active). Only Backlog persists; a shelved project stays shelved even when its tasks complete (Backlog wins over the derived Done state), and dragging a project between the Active and Backlog groups writes the status and the new position in one transaction.
-
-## Section
-
-A named group of top-level Tasks inside a Project (e.g. "Phase 1", "Backlog"). Sections exist only at the top level of a Project — they never nest, belong to exactly one Project, and hold Tasks only (no Notes). A Task joins a Section through its `section:<id>` [placement](#placement); its owning Project resolves through the Section row. Sections are ordered by drag within their Project and always render after the Project's unsectioned Tasks. Deleting a Section deletes its Tasks (containment cascade, with a typed [tombstone](#tombstone)).
-
 ## Task
 
-A unit of action. A top-level Task has exactly one of three ownership states: it belongs to a Project, belongs directly to an Area, or is unassociated and therefore appears in the Inbox. Only the top-level Task carries that ownership; every descendant resolves its owner through its ancestry, and moving the top-level Task moves the whole tree. Has an `open` / `done` status: a Task may be done only when all of its descendants are done, and reopening a descendant reopens every ancestor.
+The unit of action. A Task is either a **leaf** — the smallest owned, unowned, or contained responsibility — or a **parent** when it has at least one subtask.
+
+A leaf Task carries a stored `open` / `done` status (the done checkbox). A parent Task has **no meaningful stored status of its own**: its done state is **derived** — it is done iff every descendant is derived-done. Parent rows therefore render a done/total [progress meter](#progress-meter) instead of a checkbox. Conversion is dynamic and bidirectional: adding a first subtask makes a leaf a parent (its stored status becomes the derived driver for the subtree); a parent whose last subtask is removed **snapshots** its current derived status into the stored cell, becoming a leaf again (full meter → checked box; partial → open).
+
+A root Task (see [Root Task](#root-task)) carries a tri-state — **Active** / **Backlog** / **Done** — that every descendant inherits through ancestry; subtasks themselves carry no per-subtask status.
+
+## Root Task
+
+A top-level Task: one whose [placement](#placement) is `area:<id>` (owned by an Area) or absent (an [Inbox](#inbox) unassociated Task). Only root Tasks hold placement ownership; every descendant resolves its owner through ancestry, and moving a root Task moves the whole tree.
+
+A root Task carries exactly one of three states — its **tri-state**:
+
+- **Active** — the default when it has no stored [Backlog](#backlog) status.
+- **Backlog** — a stored status that shelves the whole subtree untouched.
+- **Done** — derived: every descendant is derived-done. Done **wins over** Backlog, so a shelved root whose subtree completes reads Done.
+
+Only Backlog persists as a cell; Active and Done are derived.
 
 ## Area Task
 
-A Task that belongs directly to an Area rather than to one of its Projects.
+A [Root Task](#root-task) that belongs directly to an Area (`placement: area:<id>`) and appears in that Area's [Area view](#area-view). Not yet a synonym for "task": a subtask's owner resolves through its root, not directly.
+
+## Backlog
+
+The stored root [tri-state](#root-task) that shelves a root Task and its entire subtree out of the Active group without touching any stored statuses. Backlog is the only persistent status cell (`backlog` on the tasks row); Active and Done are derived. Shelving or restoring a root is a single transaction that writes the status and the new sibling position together (see [Task Group](#task-group) drag).
 
 ## Inbox
 
-The view of unassociated Tasks: Tasks that belong to neither a Project nor an Area. Inbox membership is derived from the absence of both associations; the Inbox is not another Task container.
+The view of unassociated root Tasks — roots with no [placement](#placement). It shows the same three [Task groups](#task-group) as the [Area view](#area-view) — Active, Backlog, Done — with no sub-area slices. Inbox membership is derived from the absence of an `area:<id>` placement; the Inbox is not another task container.
 
 ## Recurring Task (reserved)
 
@@ -38,8 +48,7 @@ An Area Task that fires on a recurrence rule (e.g. every Monday). It is distingu
 
 ## Note
 
-A markdown body attached to exactly one entity (Area, Project, or Task).
-Rendered with markdown-it: CommonMark, raw HTML disabled, bare URLs auto-linked.
+A markdown body attached to exactly one entity of type **Area** or **Task**. A Task's note lives in its detail pane; an Area's notes live in the [Notes section](#notes-section). Rendered with markdown-it: CommonMark, raw HTML disabled, bare URLs auto-linked.
 
 ## Slug
 
@@ -47,17 +56,29 @@ A URL-safe identifier for a Note, derived from its title. Unique across all Note
 
 ## Placement
 
-A Task's ownership cell: a discriminated string naming exactly one owner — `area:<id>`, `project:<id>`, or `section:<id>` for a top-level Task, `task:<id>` for a sub-task, absent for an Inbox root. Only the top-level Task carries ownership; descendants resolve theirs through ancestry (see [Task](#task)). One mergeable cell, so concurrent moves of the same Task resolve last-writer-wins.
+A Task's ownership cell: a discriminated string naming exactly one owner — `area:<id>` for a root Task, `task:<id>` for a subtask, absent for an [Inbox](#inbox) root. Unknown or legacy placement strings resolve to Inbox. Only the root Task carries ownership; descendants resolve theirs through ancestry (see [Task](#task)). One mergeable cell, so concurrent moves of the same Task resolve last-writer-wins.
 
 ## Tombstone
 
-A typed deletion marker: a `(entityType, entityId)` row (Area, Project, Task, or Section) written when its entity is deleted. Tombstones make a deletion win after a sync merge even when the deletion and a concurrent edit arrive in either order, and they drive the containment cascade that removes an entity's whole subtree, attached Notes included.
+A typed deletion marker: a `(entityType, entityId)` row (Area or Task) written when its entity is deleted. Tombstones make a deletion win after a sync merge even when the deletion and a concurrent edit arrive in either order, and they drive the containment cascade that removes an entity's whole subtree, attached Notes included.
+
+## Task Group
+
+The three status groupings shared by the [Area view](#area-view) and the [Inbox](#inbox): **Active**, **Backlog**, and **Done**. The Backlog group is a standing drop zone (shelving a root via `moveRootToBacklog`); the Done group is static and never a drop target.
+
+## Progress Meter
+
+The done/total indicator shown on a parent Task row instead of a checkbox: `n/m`, where `n` is the count of derived-done descendants and `m` the total descendants. A full meter (n = m) means the parent is derived-done; a partial meter means open. Parent rows everywhere — area view, inbox, and detail panes — render the meter.
+
+## Task Detail Pane
+
+The Main Pane view for a task with subtasks (`#/t/<id>`). Its header shows the breadcrumb / back affordance toward the owning root (or panes above), the due-date affordance, rename, and delete (which returns to the owning view) — plus, for root Tasks, the [Backlog](#backlog) toggle. The body is the full subtree rendered with the same [Task Row](#task-row) chrome: parent rows show their [progress meters](#progress-meter), and nested subtask names navigate to their own panes at any depth. Each pane also renders the Task's [Note](#note) body with an add/edit input; this is the only place a Task-scoped Note is created. Leaf tasks have no pane — their name is inline-editable in place.
 
 ---
 
 # UI Structure
 
-The canonical names for the shell's regions and their contents. Use these in issues and reviews instead of ad-hoc descriptions ("the left panel", "the expanded project thing"). Component names in `src/components/` mirror these terms.
+The canonical names for the shell's regions and their contents. Use these in issues and reviews instead of ad-hoc descriptions ("the left panel", "the expanded task thing"). Component names in `src/components/` mirror these terms.
 
 ## App Shell
 
@@ -77,75 +98,43 @@ The strip pinned to the bottom of the Sidebar holding the two app-wide status/se
 
 ## Main Pane
 
-The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a time based on the current selection: the Welcome screen, an [Area view](#area-view), a [Project detail pane](#project-detail-pane), a [Project notes pane](#project-notes-pane), or the Inbox / Today / Week panes.
+The working area right of the Sidebar (`MainPane.tsx`). Renders one view at a time based on the current selection: the Welcome screen, an [Area view](#area-view), a [Task detail pane](#task-detail-pane), or the Inbox / Today / Week panes.
 
 ## Area View
 
-The Main Pane view for a selected Area: an [Area header](#area-header) above three collapsible sections — [Area tasks](#area-tasks-section), [Projects](#projects-section), and [Notes](#notes-section). Sub-areas roll up into the Projects and Area tasks sections; the section counts include the full sub-area subtree.
+The Main Pane view for a selected Area: an [Area header](#area-header) above the [Task Groups section](#task-groups-section) — one unified list of the Area's [root Tasks](#root-task), grouped by [Task group](#task-group) — and the [Notes section](#notes-section). Sub-areas roll in as labeled slices within each task group; the group and note counts include the full sub-area subtree.
 
 ## Area Header
 
-The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a `..` link back to the parent area (with `/` separator) when the area has a parent, the **Completed toggle** (show/hide done tasks in place), an add-sub-area action, and delete behind a confirm modal.
+The header of an Area view: the area's colour marker and name (inline-renamable via the area edit popover, which also picks the palette colour), a `..` link back to the parent area (with `/` separator) when the area has a parent, an add-root-task affordance, an add-sub-area action, and delete behind a confirm modal.
 
-## Area Tasks Section
+## Task Groups Section
 
-The Area view section holding the area-rooted Tasks — the [Area Tasks](#area-task) that belong directly to this Area rather than to one of its Projects. Rendered as a draggable task tree (sub-tasks nest), with an add-task "+" affordance that opens a [task draft row](#task-draft-row) at the end of the tree. Sub-areas (recursively) roll in below the Area's own tree as labeled, editable groups — one per sub-area that roots its own tasks — each scoped to that sub-area's placement.
-
-## Projects Section
-
-The Area view section listing every Project owned by the Area, grouped **Active** / **Backlog** / **Done**, drag-to-reorder within the Area. The viewed Area's **Backlog** group is a permanent standing drop zone — it renders on every Area view, even with no projects at all — and its **Active** group renders while the Area has any project in either group, so shelving or restoring a project is always a visible drag away (the **Done** group is derived, its rows are static, and it is never a drop target; a sub-area's empty slice appears only mid-drag). Each group header collapses its rows; group collapse state persists per device. Projects from sub-areas (recursively) roll in under clickable **sub-area headers**. When sub-areas roll in, the projects owned directly by the viewed Area are labeled with a static **Area projects** header (the Area's colour dot, no navigation target); with no sub-areas there is nothing to disambiguate and the slice stays headerless. A trailing collapse-all / expand-all button operates on every [Project card](#project-card) at once.
+The Area view section holding the Area's root Tasks, grouped **Active** / **Backlog** / **Done**. The **Active** group lists the Area's Active roots (new roots land here); the **Backlog** group is a permanent standing drop zone — it renders on every Area view, even with no tasks at all, so shelving a root is always a visible drag away; the **Done** group is derived, static, and never a drop target. Each group is one draggable surface: within a group, roots reorder and drag onto other rows to nest (root↔subtask re-parenting); dropping a root into a sub-area's slice re-parents it to that sub-area; dropping onto the Backlog group shelves it via [Backlog](#backlog). Group headers collapse their rows; group collapse state persists per device. Root rows from sub-areas (recursively) roll in under clickable **sub-area headers**, one slice per sub-area.
 
 ## Notes Section
 
-The Area view section rolling up every [Note](#note) attached to the Area, its subtree, or their Projects/Tasks — each rendered as a **note line** with a markdown body preview. The add input creates Area-scoped Notes; note lines edit in place (click the title or body) and delete behind a confirm. Project-scoped Notes are created in the [Project notes pane](#project-notes-pane).
-
-## Project Row
-
-A single Project's row in the Projects section: a drag handle, the expand caret, the project name, an add-task "+" and an add-section affordance next to the name (the "+" opens a [task draft row](#task-draft-row)), a done/total **progress meter**, a due-date affordance, an **empty-sections toggle** (section headers with no visible tasks are hidden by default; the toggle shows them for that project; per-project, persisted per device), a note icon (opens the [Project notes pane](#project-notes-pane)), rename, and delete behind a confirm. Clicking the row body opens the [Project detail pane](#project-detail-pane); the caret is the expand toggle.
-
-## Project Card
-
-A [Project row](#project-row) plus its expanded inline body — the [Project task list](#project-task-list). "Expand a project" means opening its card. Per-card collapse state persists per device.
-
-## Project Task List
-
-The body of an expanded [Project card](#project-card) (`projects/ProjectTaskList.tsx`): one flattened drag surface spanning the unsectioned [Tasks](#task) and every [Section](#section). The add-task "+" and add-section affordances ride next to the project name, not in the list (see [Project Row](#project-row)); the "+" opens a [task draft row](#task-draft-row) at the end of the unsectioned group.
-
-## Section Row
-
-A [Section's](#section) header inside the Project task list: a drag handle, the inline-editable section name, an add-task "+" (opens a [task draft row](#task-draft-row) at the end of the section), and delete (containment cascade, behind a confirm). Section rows are pinned to the top level — they can reorder but never nest — and always render after the Project's unsectioned Tasks.
+The Area view section rolling up every [Note](#note) attached to the Area and its subtree (area-scoped plus the notes of the subtree's Tasks) — each rendered as a **note line** with a markdown body preview. The add input creates Area-scoped Notes; note lines edit in place (click the title or body) and delete behind a confirm. A Task's note is created and edited in the [Task detail pane](#task-detail-pane).
 
 ## Task Row
 
-A single Task's row anywhere in the app: a drag handle (on sortable surfaces), the done checkbox, the inline-editable title, an optional due-date label, a subtask progress meter (when it has descendants), and the **row actions** — due date, add sub-task (opens a [task draft row](#task-draft-row) at the end of the task's children), and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
-
-## Project Notes Pane
-
-The notes-only Main Pane view for a single Project (`#/p/<id>/notes`): a project header with a breadcrumb back to its Area, plus the Project's Notes with an add input. The only place project-scoped Notes are created.
-
-## Project Detail Pane
-
-The Main Pane view for a single Project (`#/p/<id>`) — the standalone form of an expanded [Project card](#project-card). Its header shows the area breadcrumb, the Completed toggle, and the same row chrome the [Project row](#project-row) carries: the add-task "+" and add-section affordance next to the name, the progress meter, the due-date affordance, the empty-sections toggle (per-project state shared with the card; hidden by default), the note icon, rename, and delete (which returns to the owning Area). The body is the [Project task list](#project-task-list).
+A single Task's row anywhere in the app. A **parent** row (has subtasks) shows the expand caret, the [progress meter](#progress-meter) in place of a checkbox, and the inline-editable title; clicking the title (or row body) opens the [Task detail pane](#task-detail-pane). A **leaf** row shows a done checkbox instead. Both carry a drag handle (on sortable surfaces), an optional due-date label, and the **row actions** — due date and add-sub-task (opens a [task draft row](#task-draft-row) at the end of the task's children), and delete behind a confirm. Read-only rows (no handle, no actions) appear in the Today/Week due panes.
 
 ## Today / Week View
 
-The due-work [Main Pane](#main-pane) views (`#/today`, `#/week`) — one shared pane, two ranges: Today is the single day, Week the coming week. Open items due in range group under area headings with their projects; open items already past due collect in a collapsible *Overdue* section above the range groups; done items collect in a collapsible *Done* section. Both sections collapse from their header rows, persisted per device and keyed per view. In Today a project due today expands into its full editable task tree in place — the same one the [Project detail pane](#project-detail-pane) renders — which supersedes that project's read-only rows; in Week it stays a single link row into its area. Outside that expanded tree, task rows are read-only (see [Task Row](#task-row)).
-
-## Completed Toggle
-
-The show/hide-done switch (a check icon, accent-tinted while active) shared by the [Area header](#area-header), the [Project detail pane](#project-detail-pane) header, and the Inbox pane. While on, done tasks show in place; while off, they are pruned from the task tree. Per-device view state, never synced.
+The due-work [Main Pane](#main-pane) views (`#/today`, `#/week`) — one shared pane, two ranges: Today is the single day, Week the coming week. Open items due in range group under area headings; open items already past due collect in a collapsible *Overdue* section above the range groups; done items collect in a collapsible *Done* section. Both sections collapse from their header rows, persisted per device and keyed per view. In Today a parent task due today expands into its full editable task tree in place — the same one the [Task detail pane](#task-detail-pane) renders — which supersedes that task's read-only rows; in Week it stays a single link row into its area. Outside that expanded tree, task rows are read-only (see [Task Row](#task-row)).
 
 ## Inline Add
 
-The inline-creation affordance used wherever rows are added — new area, new note, the Inbox add input, *Add section* / *Add project*. Two forms: an always-visible single-line input appended to a list, or a dashed *Add …* button that reveals that input in place, focused. Enter commits the trimmed, non-empty value; Esc clears the draft (in the button form, Esc or blurring an empty input also collapses back to the button). Adding a Task is the exception — every add-task affordance opens a [task draft row](#task-draft-row) instead of creating inline.
+The inline-creation affordance used wherever rows are added — new area, new note, the Inbox add input, an area's add-root-task. Two forms: an always-visible single-line input appended to a list, or a dashed *Add …* button that reveals that input in place, focused. Enter commits the trimmed, non-empty value; Esc clears the draft (in the button form, Esc or blurring an empty input also collapses back to the button). Adding a Task is the exception — every add-task affordance opens a [task draft row](#task-draft-row) instead of creating inline.
 
 ## Task Draft Row
 
-The deferred add-task row. Clicking an add-task "+" — the [Area tasks section](#area-tasks-section) header, next to the project name on a [Project row](#project-row) or the [Project detail pane](#project-detail-pane), a [Section row](#section-row), a [Task row's](#task-row) add-sub-task action — or pressing Shift+Enter in a task title opens a draft row exactly where the task will land: an inert task row carrying a focused, empty title input. Nothing is created until the input commits — Enter, or blur with a non-empty title; Escape, Enter on an empty input, or blurring an empty input discards the draft and creates nothing. Shift+Enter with a non-empty title commits and chains a fresh draft directly below the new task. While a draft is open there is no task: counts, sync, and undo are untouched.
+The deferred add-task row. Clicking an add-task "+" — the [Area header](#area-header), the Inbox add input, a [Task Row's](#task-row) add-sub-task action — or pressing Shift+Enter in a task title opens a draft row exactly where the task will land: an inert task row carrying a focused, empty title input. Nothing is created until the input commits — Enter, or blur with a non-empty title; Escape, Enter on an empty input, or blurring an empty input discards the draft and creates nothing. Shift+Enter with a non-empty title commits and chains a fresh draft directly below the new task.
 
 ## Quick Add
 
-Global quick capture: `Shift+A` (when no input is focused) opens a modal with a single title field. Enter commits a new unassociated Task — it lands in the [Inbox](#inbox); Esc or the backdrop cancels without saving.
+Global quick capture: `Shift+A` (when no input is focused) opens a modal with a single title field. Enter commits a new unassociated [Root Task](#root-task) — it lands in the [Inbox](#inbox); Esc or the backdrop cancels without saving.
 
 ## Undo Toast
 
@@ -153,4 +142,4 @@ The timed undo affordance shown after a task completion or a cascade delete: a t
 
 ## Routes
 
-The hash routes the [Main Pane](#main-pane) resolves (`src/router.ts`): `#/` (Welcome screen), `#/inbox`, `#/today`, `#/week`, `#/a/<id>` ([Area view](#area-view)), `#/p/<id>` ([Project detail pane](#project-detail-pane)), `#/p/<id>/notes` ([Project notes pane](#project-notes-pane)). Anything else — including legacy task/note shapes — collapses to the Welcome screen, so stale links degrade gracefully.
+The hash routes the [Main Pane](#main-pane) resolves (`src/router.ts`): `#/` (Welcome screen), `#/inbox`, `#/today`, `#/week`, `#/a/<id>` ([Area view](#area-view)), `#/t/<id>` ([Task detail pane](#task-detail-pane)). Anything else — including legacy note/tag and pre-cutover `#/p/…` shapes — collapses to the Welcome screen, so stale links degrade gracefully.

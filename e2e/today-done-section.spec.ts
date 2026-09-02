@@ -1,44 +1,15 @@
-import { test, expect, type Page } from '@playwright/test';
-import { createArea, createRootTask, uniq } from './helpers.ts';
+import { test, expect } from '@playwright/test';
+import {
+  createArea,
+  createRootTask,
+  navigateToToday,
+  navigateToWeek,
+  setDueDateOnRow,
+  uniq,
+} from './helpers.ts';
 
 // Fixed desktop viewport so the layout is stable across CI / local runs.
 test.use({ viewport: { width: 1440, height: 900 } });
-
-/**
- * Set the due date on the row whose title matches `title` to the given
- * day-of-month. The caller must pass a day inside the calendar's current
- * month (today's date always qualifies — no month navigation needed for
- * the flows in this spec). The "Set due date" button sits in the row's
- * action strip on desktop and behind the "Task actions" trigger on
- * touch — pointer:coarse hides the strip until the menu opens.
- */
-async function setDueDateOnRow(page: Page, title: string, day: number): Promise<void> {
-  const row = page.locator('.task-line', { hasText: title });
-  await row.hover();
-  const setDueDate = row.locator('button[aria-label="Set due date"]');
-  if (await setDueDate.isVisible()) {
-    await setDueDate.click();
-  } else {
-    await row.locator('button[aria-label="Task actions"]').click();
-    await setDueDate.click();
-  }
-  const dialog = page.getByRole('dialog', { name: 'Pick due date' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('gridcell', { name: String(day), exact: true }).click();
-  // Calendar auto-closes on pick.
-  await expect(dialog).toHaveCount(0);
-  await expect(row).toBeVisible();
-}
-
-async function navigateToToday(page: Page): Promise<void> {
-  await page.click('.sidebar-today-link');
-  await expect(page.locator('main[aria-label="Today"]')).toBeVisible();
-}
-
-async function navigateToWeek(page: Page): Promise<void> {
-  await page.click('.sidebar-week-link');
-  await expect(page.locator('main[aria-label^="Week"]')).toBeVisible();
-}
 
 test.describe('Today / Week Done section', () => {
   test('the Done section on Today shows completed tasks — with and without a due date — under a single bucket', async ({

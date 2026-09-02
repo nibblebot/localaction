@@ -21,6 +21,7 @@ import { useCollapsedSet } from '../hooks/useCollapsedSet.ts';
 import { todayIso, weekdayWithDate } from '../shared/dates.ts';
 import ReadOnlyTaskList from '../tasks/ReadOnlyTaskList.tsx';
 import TaskTree from '../tasks/TaskTree.tsx';
+import TaskProgressMeter from '../tasks/TaskProgressMeter.tsx';
 import type { AreaColorId } from '../../data/colors.ts';
 
 interface DueRootGroup {
@@ -119,8 +120,9 @@ function DueRootSubtree({
 }
 
 /** A root task that is due in the current range — a link row into its
- * task pane. When `onToggleCollapse` is given (the Today view, where the
- * root's subtree renders below), a caret toggles that subtree. */
+ * task pane, styled like the area-view parent row: caret, name, and the
+ * derived subtree progress meter (no checkbox affordance — a parent's
+ * done state is derived). The caret toggles the subtree rendered below. */
 function RootTaskDueRow({
   rootTaskId,
   badgeLabel,
@@ -129,29 +131,12 @@ function RootTaskDueRow({
 }: {
   rootTaskId: string;
   badgeLabel: string;
-  /** Tree-collapsed state; required with `onToggleCollapse`. */
-  collapsed?: boolean;
-  /** When set, the row gains a caret that toggles the subtree. */
-  onToggleCollapse?: () => void;
+  /** Tree-collapsed state. */
+  collapsed: boolean;
+  /** Toggles the subtree under this row. */
+  onToggleCollapse: () => void;
 }): React.JSX.Element {
   const { navigate } = useSelection();
-  const link = (
-    <button
-      type="button"
-      className="today-project-due"
-      onClick={() => navigate({ kind: 'task', id: rootTaskId })}
-      aria-label={`Task due ${badgeLabel.toLowerCase()}`}
-    >
-      <svg className="svg-icon" aria-hidden="true">
-        <use href="/icons.svg#tasks-icon" />
-      </svg>
-      <span className="today-project-due-name">
-        <RootTaskTitle rootTaskId={rootTaskId} />
-      </span>
-      <span className="today-due-badge">{badgeLabel}</span>
-    </button>
-  );
-  if (!onToggleCollapse) return link;
   return (
     <div className="today-project-due-row">
       <button
@@ -165,18 +150,31 @@ function RootTaskDueRow({
           <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
         </svg>
       </button>
-      {link}
+      <button
+        type="button"
+        className="today-project-due"
+        onClick={() => navigate({ kind: 'task', id: rootTaskId })}
+        aria-label={`Task due ${badgeLabel.toLowerCase()}`}
+      >
+        <span className="today-project-due-name">
+          <RootTaskTitle rootTaskId={rootTaskId} />
+        </span>
+        <TaskProgressMeter taskId={rootTaskId} />
+        <span className="today-due-badge">{badgeLabel}</span>
+      </button>
     </div>
   );
 }
 
 /**
- * Shared body for the Today and Week views. The range filtering and header
- * differ — `from === to` is the single-day Today view (the title-bar badge
- * collapses to "Due today"): there, a root task whose own due date falls in
- * range expands its full subtree in place via the shared `TaskTree`. A wider
- * range shows one cross-cutting root-due link row per root and per-row
- * weekday labels.
+ * Shared body for the Today and Week views. The range filtering, header,
+ * and badge label differ (`from === to` is the single-day Today view);
+ * the row behavior is identical: a root task whose own due date falls in
+ * range renders as a link row with a collapse caret and expands its full
+ * subtree in place via the shared `TaskTree` — the same interactive
+ * task/subtask rendering as the area view. Roots that are not themselves
+ * due keep a plain heading plus the read-only list of their due subtasks
+ * (with per-row weekday labels in the Week view).
  */
 export default function DuePane({
   title,
@@ -230,8 +228,6 @@ export default function DuePane({
   const overdueCollapsed = collapsed.has('overdue');
   const doneCollapsed = collapsed.has('done');
   const showRowDates = from !== to;
-  /** Single-day Today view: due root tasks expand their full subtree. */
-  const expandDueRoots = from === to;
 
   function onMove(
     activeId: string,
@@ -307,14 +303,12 @@ export default function DuePane({
                       rootTaskId={rootTaskId}
                       badgeLabel={dueBadgeLabel}
                       collapsed={collapsed.has(rootTaskId)}
-                      onToggleCollapse={
-                        expandDueRoots ? () => toggle(rootTaskId) : undefined
-                      }
+                      onToggleCollapse={() => toggle(rootTaskId)}
                     />
                   )}
-                  {root.rootDue && expandDueRoots && !collapsed.has(rootTaskId) ? (
-                    // Today: the full subtree (same tree as the task detail
-                    // pane) supersedes the read-only due-task rows.
+                  {root.rootDue && !collapsed.has(rootTaskId) ? (
+                    // The full subtree (same tree as the task detail pane)
+                    // supersedes the read-only due-task rows.
                     <div className="project-row-tasks">
                       <DueRootSubtree rootTaskId={rootTaskId} onMove={onMove} />
                     </div>

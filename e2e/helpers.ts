@@ -83,3 +83,41 @@ export async function groupCount(page: Page, title: 'Active' | 'Backlog' | 'Done
   const text = (await count.textContent()) ?? '';
   return Number.parseInt(text, 10) || 0;
 }
+
+/**
+ * Set the due date on the row whose title matches `title` to the given
+ * day-of-month. The caller must pass a day inside the calendar's current
+ * month (today's date always qualifies — no month navigation needed for
+ * the flows in these specs). The "Set due date" button sits in the row's
+ * action strip on desktop and behind the "Task actions" trigger on
+ * touch — pointer:coarse hides the strip until the menu opens.
+ */
+export async function setDueDateOnRow(page: Page, title: string, day: number): Promise<void> {
+  const row = page.locator('.task-line', { hasText: title });
+  await row.hover();
+  const setDueDate = row.locator('button[aria-label="Set due date"]');
+  if (await setDueDate.isVisible()) {
+    await setDueDate.click();
+  } else {
+    await row.locator('button[aria-label="Task actions"]').click();
+    await setDueDate.click();
+  }
+  const dialog = page.getByRole('dialog', { name: 'Pick due date' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('gridcell', { name: String(day), exact: true }).click();
+  // Calendar auto-closes on pick.
+  await expect(dialog).toHaveCount(0);
+  await expect(row).toBeVisible();
+}
+
+/** Open the Today pane from the sidebar. */
+export async function navigateToToday(page: Page): Promise<void> {
+  await page.click('.sidebar-today-link');
+  await expect(page.locator('main[aria-label="Today"]')).toBeVisible();
+}
+
+/** Open the Week pane from the sidebar. */
+export async function navigateToWeek(page: Page): Promise<void> {
+  await page.click('.sidebar-week-link');
+  await expect(page.locator('main[aria-label^="Week"]')).toBeVisible();
+}

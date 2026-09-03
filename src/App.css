@@ -755,7 +755,7 @@ body.sidebar-resizing {
 }
 
 .tab-group-title {
-  font-size: var(--text-label);
+  font-size: 1rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -764,9 +764,10 @@ body.sidebar-resizing {
 
 /* Collapsible status-group header (Active / Backlog / Done). A
    caretless label row — the register step down from
-   .pane-section-toggle is carried by the label-tier uppercase
-   title, not a caret glyph or a boxed pill (DESIGN.md: hierarchy
-   from the two eyebrow registers, never from chrome). The left
+   .pane-section-toggle is carried by weight (600 vs 700) on the
+   same body-size uppercase title, not a caret glyph or a boxed
+   pill (DESIGN.md: hierarchy from the eyebrow registers, never
+   from chrome). The left
    padding lands the title text at exactly the x of the section
    title text (--icon-sm + 6px), so section → group scans flush
    down one rail. Drop scoping lives on .tab-group-head

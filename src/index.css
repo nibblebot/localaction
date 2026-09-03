@@ -136,9 +136,9 @@
         - UPPERCASE eyebrows (0.06em tracking) mark app chrome:
           pane sections at --text-body (700); sidebar/appearance
           section labels at --text-label. Pane status-group labels
-          (Active / Backlog / Done) are label-tier uppercase
-          eyebrows too, one register below the pane-section
-          eyebrow they nest under.
+          (Active / Backlog / Done) keep the uppercase eyebrow
+          treatment at --text-body (600) — same size register as
+          the pane-section eyebrow, stepped down by weight.
         - Tabular meta (counts, badges, due chips, calendar cells,
           sync status) sits at --text-label with font-variant-numeric.
 

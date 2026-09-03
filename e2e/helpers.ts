@@ -1,4 +1,5 @@
 import { expect, type Page, type Locator } from '@playwright/test';
+import type { MergeableStore } from 'tinybase';
 
 /**
  * Shared e2e seeds/selectors for the post-Projects/Sections app.
@@ -31,6 +32,35 @@ export async function createArea(page: Page, name: string): Promise<void> {
   await input.fill(name);
   await input.press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(name);
+}
+
+/** Nest the area named `subName` under `parentName` via the data layer
+ * (the sidebar reparent drag is covered by reorder.spec). */
+export async function nestArea(page: Page, parentName: string, subName: string): Promise<void> {
+  await page.evaluate(
+    async ([parent, sub]) => {
+      const w = window as unknown as { __LOCALACTION?: { store?: MergeableStore } };
+      let store = w.__LOCALACTION?.store;
+      // Wait for the store to be exposed (dev hook).
+      for (let i = 0; i < 50 && !store; i += 1) {
+        const { promise, resolve } = Promise.withResolvers<void>();
+        setTimeout(resolve, 100);
+        await promise;
+        store = w.__LOCALACTION?.store;
+      }
+      if (!store) throw new Error('localaction store not exposed on window');
+      const findByName = (name: string): string =>
+        store.getRowIds('areas').find((id) => store.getCell('areas', id, 'name') === name) ??
+        (() => {
+          throw new Error(`area not found: ${name}`);
+        })();
+      // Dynamic import: evaluate callbacks are serialized into the page,
+      // so no static import can reach the app's module graph.
+      const { moveArea } = await import('../src/data/index.ts');
+      moveArea(store, findByName(sub), findByName(parent), undefined);
+    },
+    [parentName, subName],
+  );
 }
 
 /** Create an Active root task in the current area via its add-task affoardance. */

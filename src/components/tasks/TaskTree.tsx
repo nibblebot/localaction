@@ -489,6 +489,7 @@ export default function TaskTree({
   onMove,
   droppable = true,
   externalDndContext = false,
+  draftRootTaskId,
 }: {
   /** Root task ids (top-level of this tree), in canonical order. */
   rootIds: readonly string[];
@@ -504,6 +505,16 @@ export default function TaskTree({
   /** True registers this tree into the enclosing DndContext instead of
    * owning one (RootGroups' hoisted group drops). */
   externalDndContext?: boolean;
+  /**
+   * Set when this tree's roots ARE the direct children of the named
+   * task (TaskPane's viewed task, DuePane's due-root subtree): a draft
+   * targeting that task (`placement` kind `'task'`) cannot be found by
+   * the DFS splice, so this tree — and ONLY this tree — appends it at
+   * its root. Without the gate, every mounted tree that lacks the
+   * target would append the draft at its own root, mounting duplicate
+   * draft rows whose focus race instantly blur-cancels the draft.
+   */
+  draftRootTaskId?: string;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const collapsedRows = useCollapsedTaskRows();
@@ -520,7 +531,8 @@ export default function TaskTree({
     draft !== null &&
     spliced === pruned &&
     draft.placement !== undefined &&
-    draft.placement.kind === 'task'
+    draft.placement.kind === 'task' &&
+    draft.placement.id === draftRootTaskId
   ) {
     spliced = [...pruned, { id: draft.nodeId, children: [] }];
   }

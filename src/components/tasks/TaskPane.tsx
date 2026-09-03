@@ -226,7 +226,7 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
           />
         </div>
         <section className="tasks-tab project-pane-tasks" aria-label="Subtasks">
-          <TaskTree rootIds={childIds} onMove={onMove} />
+          <TaskTree rootIds={childIds} onMove={onMove} draftRootTaskId={taskId} />
           <div className="pane-section-head-actions">
             <button
               type="button"

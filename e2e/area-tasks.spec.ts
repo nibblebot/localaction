@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createArea, createRootTask, uniq, groupCount } from './helpers.ts';
+import { createArea, createRootTask, nestArea, uniq, groupCount } from './helpers.ts';
 
 test('area tasks: add, nest, complete', async ({ page }) => {
   const tok = uniq();
@@ -65,25 +65,7 @@ test('sub-area roots render under their own header and navigate on click', async
   // Nest the sub-area under the parent via the data layer (the sidebar
   // drag is covered by reorder.spec; this test targets the sub-area
   // slices in the area view).
-  await page.evaluate(
-    async ([parentName, subName]) => {
-      const w = window as any;
-      const store = w.__LOCALACTION?.store;
-      // Wait for the store to be exposed (dev hook).
-      for (let i = 0; i < 50 && !store; i += 1) {
-        await new Promise((r) => setTimeout(r, 100));
-      }
-      const parentId = store.getRowIds('areas').find(
-        (id: string) => store.getCell('areas', id, 'name') === parentName,
-      );
-      const subId = store.getRowIds('areas').find(
-        (id: string) => store.getCell('areas', id, 'name') === subName,
-      );
-      const { moveArea } = await import('../src/data/index.ts');
-      moveArea(store, subId, parentId, undefined);
-    },
-    [area, sub],
-  );
+  await nestArea(page, area, sub);
 
   // The sub-area is now nested; navigate into it and add a root there.
   await page.locator('.sidebar-item-name', { hasText: sub }).click();
@@ -107,4 +89,48 @@ test('sub-area roots render under their own header and navigate on click', async
   await expect(page).toHaveURL(/#\/a\/[^/]+$/);
   await expect(page.locator('.area-header-name')).toContainText(sub);
   await expect(page.locator('.task-line', { hasText: subTask })).toBeVisible();
+});
+test('parent "+" draft survives when sibling slices mount their own trees', async ({
+  page,
+}) => {
+  const tok = uniq();
+  const area = `Area ${tok}`;
+  const sub = `Sub ${tok}`;
+  const parentTask = `Parent ${tok}`;
+  await page.goto('/#/');
+  await createArea(page, area);
+  await createRootTask(page, parentTask);
+
+  // A nested sub-area mounts extra TaskTrees beside the one holding the
+  // parent. Regression: every tree that lacked the draft target used to
+  // append the draft at its own root, so several draft rows mounted at
+  // once, raced for focus, and blur-cancelled the draft instantly —
+  // the row's "+" appeared dead.
+  await page.locator('button[aria-label="New area"]').click();
+  const input = page.locator('.sidebar-section-add .inline-add-input');
+  await input.fill(sub);
+  await input.press('Enter');
+  await expect(page.locator('.area-header-name')).toContainText(sub);
+  await nestArea(page, area, sub);
+  await page.locator('.sidebar-item-name', { hasText: area }).click();
+  await expect(page.locator('.area-header-name')).toContainText(area);
+  await expect(
+    page.locator('.subarea-header-name', { hasText: sub }),
+  ).toBeVisible();
+
+  const row = page.locator('.task-line', { hasText: parentTask });
+  await row.hover();
+  await row.locator('button[aria-label="Add sub-task"]').click();
+  await expect(page.locator('.task-line-title:focus')).toBeVisible();
+  await page.keyboard.type(`Child ${tok}`);
+  await page.keyboard.press('Enter');
+
+  // The committed child nests under its parent (indented, not flush).
+  const child = page.locator('.task-line', { hasText: `Child ${tok}` });
+  await expect(child).toBeVisible();
+  const parentBox = await row.boundingBox();
+  const childBox = await child.boundingBox();
+  expect(parentBox).not.toBeNull();
+  expect(childBox).not.toBeNull();
+  expect(childBox!.x).toBeGreaterThan(parentBox!.x);
 });

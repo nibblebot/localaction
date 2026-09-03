@@ -116,7 +116,7 @@ function DueRootSubtree({
     void v; // invalidation token
     return sortTaskIds(store, childTaskIds(store, rootTaskId));
   }, [store, v, rootTaskId]);
-  return <TaskTree rootIds={childIds} onMove={onMove} />;
+  return <TaskTree rootIds={childIds} onMove={onMove} draftRootTaskId={rootTaskId} />;
 }
 
 /** A root task that is due in the current range — a link row into its

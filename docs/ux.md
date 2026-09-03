@@ -167,12 +167,16 @@ a root task whose own due date falls in range expands into its full
 editable task tree in place — the same tree the task detail pane renders,
 with subtasks and the same add-task "+" affordances — which supersedes its
 read-only rows. The caret hides the tree without leaving the view;
-collapse state persists per device. In Week the task stays a single link
-row into its area with a *Due this week* badge, and each task row shows
-its weekday label. Done tasks collect in a collapsible *Done* section.
-Both *Overdue* and *Done* collapse from their header rows; collapse state
-persists per device, keyed independently per view. Empty state: *"Nothing
-in this view."*
+collapse state persists per device. In Week, items due in range instead
+group under collapsible per-day sections (ascending, weekday + date
+headers), each day's count in a badge, with its items grouped under the
+area headings as before and the day sections' collapse state persisted
+independently. There a due root task stays a single link row into its area
+with a *Due this week* badge; rows inside a day section carry no
+individual weekday label, since the day header carries the date. Done
+tasks collect in a collapsible *Done* section. Both *Overdue* and *Done*
+collapse from their header rows; collapse state persists per device,
+keyed independently per view. Empty state: *"Nothing in this view."*
 
 ### Task detail pane
 

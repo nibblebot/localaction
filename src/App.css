@@ -1283,7 +1283,8 @@ body.sidebar-resizing {
   color: var(--danger);
 }
 
-.today-done-day {
+.today-done-day,
+.today-due-day {
   padding-left: 12px;
 }
 
@@ -1291,7 +1292,8 @@ body.sidebar-resizing {
   padding-left: 0;
 }
 
-.today-done-day-toggle {
+.today-done-day-toggle,
+.today-due-day-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1305,7 +1307,8 @@ body.sidebar-resizing {
   cursor: pointer;
 }
 
-.today-done-day-toggle .today-group-title {
+.today-done-day-toggle .today-group-title,
+.today-due-day-toggle .today-group-title {
   margin: 0;
   padding-inline: 0;
   font-size: var(--text-label);

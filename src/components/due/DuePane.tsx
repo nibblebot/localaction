@@ -167,14 +167,99 @@ function RootTaskDueRow({
 }
 
 /**
+ * The Area → Root-task sections shared by both views: Today renders them
+ * directly under the pane header, Week nests them inside each due-day
+ * bucket (`areaLabel` names the owning day instead of the pane). Rows
+ * carry no per-row date label — the day header (or Today's single day)
+ * carries the date.
+ */
+function AreaGroups({
+  groups,
+  areaLabel,
+  collapsed,
+  toggleRoot,
+  dueBadgeLabel,
+  onMove,
+}: {
+  groups: DueAreaGroup[];
+  /** Sentence-style section label, e.g. "Home items due Mon, Jul 20". */
+  areaLabel: (area: DueAreaGroup) => string;
+  collapsed: ReadonlySet<string>;
+  toggleRoot: (rootTaskId: string) => void;
+  /** Label rendered on root-due rows (e.g. "Due this week"). */
+  dueBadgeLabel: string;
+  onMove: (activeId: string, parentId: string | null, beforeId: string | undefined) => void;
+}): React.JSX.Element {
+  return (
+    <>
+      {groups.map((area) => (
+        <section
+          key={area.areaId ?? 'inbox'}
+          className="today-group"
+          aria-label={areaLabel(area)}
+        >
+          <h3 className="today-group-title">
+            {area.areaId !== null && (
+              <span
+                className="sidebar-item-dot"
+                style={{ background: areaColorHex(area.color) }}
+                aria-hidden="true"
+              />
+            )}
+            {area.name}
+          </h3>
+          {area.roots.map((root) => {
+            const rootTaskId = root.rootTaskId;
+            return (
+              <div key={rootTaskId} className="today-project">
+                {!root.rootDue && (
+                  <h4 className="today-project-title">
+                    <RootTaskTitle rootTaskId={rootTaskId} />
+                  </h4>
+                )}
+                {root.rootDue && (
+                  <RootTaskDueRow
+                    rootTaskId={rootTaskId}
+                    badgeLabel={dueBadgeLabel}
+                    collapsed={collapsed.has(rootTaskId)}
+                    onToggleCollapse={() => toggleRoot(rootTaskId)}
+                  />
+                )}
+                {root.rootDue && !collapsed.has(rootTaskId) ? (
+                  // The full subtree (same tree as the task detail pane)
+                  // supersedes the read-only due-task rows.
+                  <div className="project-row-tasks">
+                    <DueRootSubtree rootTaskId={rootTaskId} onMove={onMove} />
+                  </div>
+                ) : (
+                  root.taskIds.length > 0 && (
+                    // No per-row date label: the day header (Week) or the
+                    // single-day pane (Today) carries the date.
+                    <ReadOnlyTaskList ids={root.taskIds} showDueDate={false} />
+                  )
+                )}
+              </div>
+            );
+          })}
+        </section>
+      ))}
+    </>
+  );
+}
+
+/**
  * Shared body for the Today and Week views. The range filtering, header,
  * and badge label differ (`from === to` is the single-day Today view);
  * the row behavior is identical: a root task whose own due date falls in
  * range renders as a link row with a collapse caret and expands its full
  * subtree in place via the shared `TaskTree` — the same interactive
  * task/subtask rendering as the area view. Roots that are not themselves
- * due keep a plain heading plus the read-only list of their due subtasks
- * (with per-row weekday labels in the Week view).
+ * due keep a plain heading plus the read-only list of their due subtasks.
+ * Today groups its in-range items straight under area headings; Week
+ * buckets them by due day into collapsible per-day sections (ascending,
+ * `weekdayWithDate` headers, persisted under `:due-days`), each re-grouped
+ * with `groupDueItems` into the same area headings — rows inside a day
+ * section carry no per-row weekday label since the day header dates it.
  */
 export default function DuePane({
   title,
@@ -188,7 +273,7 @@ export default function DuePane({
   from: string;
   /** Inclusive local-date ISO (`YYYY-MM-DD`) range end. */
   to: string;
-  /** LocalStorage key for collapse state (Done section, due-root trees). */
+  /** LocalStorage key for collapse state (Overdue/Done sections, due-day buckets, due-root trees). */
   storageKey: string;
   /** Label rendered on root-due rows (e.g. "Due today" or "Due this week"). */
   dueBadgeLabel: string;
@@ -200,6 +285,10 @@ export default function DuePane({
   const counts = useAreaCounts(store);
   const { collapsed, toggle } = useCollapsedSet(storageKey);
   const { collapsed: collapsedDays, toggle: toggleDay } = useCollapsedSet(`${storageKey}:days`);
+  // Week due-day buckets — distinct from the Done section's `:days` set.
+  const { collapsed: collapsedDueDays, toggle: toggleDueDay } = useCollapsedSet(
+    `${storageKey}:due-days`,
+  );
 
   const today = todayIso();
   const open = useMemo(() => items.filter((i) => !i.done), [items]);
@@ -220,10 +309,35 @@ export default function DuePane({
     return buckets;
   }, [completed]);
 
-  const groups = useMemo(() => {
-    const areaMeta = new Map(counts.map((c) => [c.id, { name: c.name, color: c.color, order: c.order }]));
-    return groupDueItems(store, inRange, areaMeta);
-  }, [store, inRange, counts]);
+  const areaMeta = useMemo(
+    () => new Map(counts.map((c) => [c.id, { name: c.name, color: c.color, order: c.order }])),
+    [counts],
+  );
+
+  const groups = useMemo(
+    () => groupDueItems(store, inRange, areaMeta),
+    [store, inRange, areaMeta],
+  );
+
+  // Week view only: open in-range items bucketed by due day (local ISO,
+  // ascending). Each day re-groups its items with `groupDueItems` so the
+  // day sections reuse the Today view's Area → Root structure.
+  const dayGroups = useMemo(() => {
+    if (from === to) return [];
+    const buckets = new Map<string, DueItem[]>();
+    for (const item of inRange) {
+      const bucket = buckets.get(item.dueDate);
+      if (bucket) bucket.push(item);
+      else buckets.set(item.dueDate, [item]);
+    }
+    return [...buckets.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([day, dayItems]) => ({
+        day,
+        count: dayItems.length,
+        areas: groupDueItems(store, dayItems, areaMeta),
+      }));
+  }, [from, to, inRange, store, areaMeta]);
 
   const overdueCollapsed = collapsed.has('overdue');
   const doneCollapsed = collapsed.has('done');
@@ -273,55 +387,49 @@ export default function DuePane({
             )}
           </section>
         )}
-        {groups.map((area) => (
-            <section
-              key={area.areaId ?? 'inbox'}
-              className="today-group"
-              aria-label={`${area.name} items in ${title.toLowerCase()}`}
-            >
-              <h3 className="today-group-title">
-                {area.areaId !== null && (
-                  <span
-                    className="sidebar-item-dot"
-                    style={{ background: areaColorHex(area.color) }}
-                    aria-hidden="true"
+        {from === to && (
+          <AreaGroups
+            groups={groups}
+            areaLabel={(area) => `${area.name} items in ${title.toLowerCase()}`}
+            collapsed={collapsed}
+            toggleRoot={toggle}
+            dueBadgeLabel={dueBadgeLabel}
+            onMove={onMove}
+          />
+        )}
+        {from !== to &&
+          dayGroups.map(({ day, count, areas }) => {
+            const dayCollapsed = collapsedDueDays.has(day);
+            const dayLabel = weekdayWithDate(day);
+            return (
+              <section key={day} className="today-due-day" aria-label={dayLabel}>
+                <button
+                  type="button"
+                  className="today-due-day-toggle"
+                  aria-expanded={!dayCollapsed}
+                  onClick={() => toggleDueDay(day)}
+                >
+                  <svg className="svg-icon" aria-hidden="true">
+                    <use
+                      href={`/icons.svg#${dayCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
+                    />
+                  </svg>
+                  <h4 className="today-group-title">{dayLabel}</h4>
+                  <span className="sidebar-link-count">{count}</span>
+                </button>
+                {!dayCollapsed && (
+                  <AreaGroups
+                    groups={areas}
+                    areaLabel={(area) => `${area.name} items due ${dayLabel}`}
+                    collapsed={collapsed}
+                    toggleRoot={toggle}
+                    dueBadgeLabel={dueBadgeLabel}
+                    onMove={onMove}
                   />
                 )}
-                {area.name}
-              </h3>
-              {area.roots.map((root) => {
-                const rootTaskId = root.rootTaskId;
-                return (
-                <div key={rootTaskId} className="today-project">
-                  {!root.rootDue && (
-                    <h4 className="today-project-title">
-                      <RootTaskTitle rootTaskId={rootTaskId} />
-                    </h4>
-                  )}
-                  {root.rootDue && (
-                    <RootTaskDueRow
-                      rootTaskId={rootTaskId}
-                      badgeLabel={dueBadgeLabel}
-                      collapsed={collapsed.has(rootTaskId)}
-                      onToggleCollapse={() => toggle(rootTaskId)}
-                    />
-                  )}
-                  {root.rootDue && !collapsed.has(rootTaskId) ? (
-                    // The full subtree (same tree as the task detail pane)
-                    // supersedes the read-only due-task rows.
-                    <div className="project-row-tasks">
-                      <DueRootSubtree rootTaskId={rootTaskId} onMove={onMove} />
-                    </div>
-                  ) : (
-                    root.taskIds.length > 0 && (
-                      <ReadOnlyTaskList ids={root.taskIds} showDueDate={showRowDates} />
-                    )
-                  )}
-                </div>
-                );
-              })}
-            </section>
-          ))}
+              </section>
+            );
+          })}
           </>
         )}
         {completed.length > 0 && (

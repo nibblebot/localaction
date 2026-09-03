@@ -13,7 +13,6 @@ import {
 import { useSelection } from '../context/useSelection.ts';
 import { formatRoute, INBOX, TODAY, WEEK } from '../../router.ts';
 import { todayIso, weekBoundsIso } from '../shared/dates.ts';
-import { useCollapsedAreas } from '../hooks/useCollapsedAreas.ts';
 import InlineAddInput from '../shared/InlineAddInput.tsx';
 import SyncStatusBadge from '../shared/SyncStatusBadge.tsx';
 import AppearanceMenu from '../appearance/AppearanceMenu.tsx';
@@ -60,9 +59,6 @@ interface SortableAreaRowProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   isTopLevel: boolean;
-  /** Present only when this row's children are rendered and collapsible. */
-  collapsed?: boolean | null;
-  onToggleCollapse?: (id: string) => void;
 }
 function SortableAreaRow({
   handle,
@@ -70,14 +66,11 @@ function SortableAreaRow({
   selectedId,
   onSelect,
   isTopLevel,
-  collapsed,
-  onToggleCollapse,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const displayName = node.count.name || 'Untitled';
   const count = node.count.openTaskCount;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
-  const collapsible = collapsed !== null && collapsed !== undefined;
   // Empty areas (nothing inside them yet) recede to 40% opacity,
   // recovering on hover — but never while the area is the active one.
   const empty =
@@ -101,13 +94,9 @@ function SortableAreaRow({
           className={classes.join(' ')}
           aria-label={count > 0 ? `${displayName}, ${count}` : displayName}
           aria-current={isActive ? 'page' : undefined}
-          // Rows with children double as the collapse toggle: there is
-          // no separate caret.
-          aria-expanded={collapsible ? !collapsed : undefined}
           onClick={(e) => {
             if (handle.isDragging) return;
             e.preventDefault();
-            if (collapsible) onToggleCollapse?.(node.count.id);
             onSelect(node.count.id);
           }}
           {...(handle.listeners ?? {})}
@@ -153,18 +142,16 @@ export default function Sidebar({
     if (showNewArea) newAreaInputRef.current?.focus();
   }, [showNewArea]);
   const tree = useMemo(() => buildTree(counts), [counts]);
-  const { collapsed, toggle: toggleCollapse, replace: replaceCollapsed } =
-    useCollapsedAreas();
-  // The sortable tree renders the full area tree flattened; collapsed
-  // areas contribute their row but not their (hidden) children.
   const sortableNodes = useMemo<readonly SortableTreeNode<string>[]>(() => {
+    // Areas never collapse: the tree always renders fully expanded, so a
+    // selected area is always visible with its whole subarea subtree.
     const map = (ns: AreaNode[]): SortableTreeNode<string>[] =>
       ns.map((n) => ({
         id: n.count.id,
-        children: collapsed.has(n.count.id) ? [] : map(n.children),
+        children: map(n.children),
       }));
     return map(tree);
-  }, [tree, collapsed]);
+  }, [tree]);
   const nodeById = useMemo(() => {
     const m = new Map<string, AreaNode>();
     const walk = (ns: AreaNode[]): void => {
@@ -209,46 +196,6 @@ export default function Sidebar({
   const weekItems = useDueItems(store, week.from, week.to);
   const weekOpenCount = weekItems.filter((i) => !i.done).length;
 
-  // Every node with children is collapsible, at any depth — the
-  // collapse-all button reaches them all.
-  const collapsibleIds = useMemo<string[]>(() => {
-    const ids: string[] = [];
-    const walk = (ns: AreaNode[]): void => {
-      for (const n of ns) {
-        if (n.children.length > 0) ids.push(n.count.id);
-        walk(n.children);
-      }
-    };
-    walk(tree);
-    return ids;
-  }, [tree]);
-
-  // Collapse-all keeps the area shown in the main pane (and its
-  // ancestors) expanded so the current context stays visible. The
-  // kept set is shared with the all-collapsed predicate below so the
-  // button flips to expand-all once everything else is collapsed —
-  // otherwise a selected area with sub-areas would pin the button on
-  // "Collapse all" forever.
-  const keepExpanded = useMemo<ReadonlySet<string>>(() => {
-    const keep = new Set<string>();
-    for (let cur = selectedId; cur; ) {
-      keep.add(cur);
-      cur = counts.find((c) => c.id === cur)?.parentId ?? null;
-    }
-    return keep;
-  }, [selectedId, counts]);
-
-  const collapseTargets = useMemo<readonly string[]>(
-    () => collapsibleIds.filter((id) => !keepExpanded.has(id)),
-    [collapsibleIds, keepExpanded],
-  );
-
-  const allCollapsed =
-    collapseTargets.length > 0 && collapseTargets.every((id) => collapsed.has(id));
-
-  function toggleAll(): void {
-    replaceCollapsed(allCollapsed ? [] : collapseTargets);
-  }
 
   function createNew(name: string): void {
     const id = createArea(store, { name, color: activeColor });
@@ -328,19 +275,6 @@ export default function Sidebar({
       >
         <h2 className="sidebar-section-title">
           <span>Areas</span>
-          {collapsibleIds.length > 0 && (
-            <button
-              type="button"
-              className="sidebar-section-title-action icon-button"
-              onClick={toggleAll}
-              aria-label={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
-              title={allCollapsed ? 'Expand all areas' : 'Collapse all areas'}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href={`/icons.svg#${allCollapsed ? 'expand-all-icon' : 'collapse-all-icon'}`} />
-              </svg>
-            </button>
-          )}
           <button
             type="button"
             className="sidebar-section-title-action icon-button"
@@ -374,12 +308,6 @@ export default function Sidebar({
                     onNavigate?.();
                   }}
                   isTopLevel={depth === 0}
-                  collapsed={
-                    node.children.length > 0
-                      ? collapsed.has(node.count.id)
-                      : null
-                  }
-                  onToggleCollapse={toggleCollapse}
                 />
               );
             }}

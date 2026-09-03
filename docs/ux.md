@@ -65,10 +65,10 @@ Areas are top-level containers; each may hold nested **sub-areas**
 (same semantics, recursively).
 
 - Each row: colour dot, name, and the recursive open-task count across its
-  subtree (descendant areas and recursive sub-tasks included). Top-level
-  rows with children carry a collapse caret; the section header offers
-  collapse-all / expand-all (keeping the selected area's chain expanded)
-  and a new-area shortcut.
+  subtree (descendant areas and recursive sub-tasks included). Areas never
+  collapse — the tree is always fully expanded, so the selected area is
+  always visible with its whole subarea subtree; the section header offers
+  a new-area shortcut.
 - **Drag-to-move** across the whole tree via `SortableTree` (dnd-kit's
   flattened-tree pattern — one drag context spans every level). Vertical
   movement picks the insertion row; dragging right nests the row under

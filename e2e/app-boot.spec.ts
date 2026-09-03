@@ -18,9 +18,11 @@ test.describe('app boot / React hook contract', () => {
   }) => {
     const pageErrors: string[] = [];
     const consoleErrors: string[] = [];
+    const consoleWarnings: string[] = [];
     page.on('pageerror', (e) => pageErrors.push(String(e?.message || e)));
     page.on('console', (m) => {
       if (m.type() === 'error') consoleErrors.push(m.text());
+      if (m.type() === 'warning') consoleWarnings.push(m.text());
     });
 
     await page.goto('/');
@@ -46,6 +48,10 @@ test.describe('app boot / React hook contract', () => {
     // "Invalid hook call" message even when an error boundary swallows it).
     const hookConsoleErrors = consoleErrors.filter((e) => HOOK_ERROR.test(e));
     expect(hookConsoleErrors, `hook console errors:\n${consoleErrors.join('\n')}`).toEqual([]);
+    // A fresh profile has an empty OPFS snapshot; persistence must start
+    // clean, not log a spurious JSON.parse error from loading it.
+    const persisterWarnings = consoleWarnings.filter((w) => w.includes('OPFS persister error'));
+    expect(persisterWarnings, `persister warnings:\n${consoleWarnings.join('\n')}`).toEqual([]);
   });
 
   test('directly mounting a sortable row does not throw', async ({ page }) => {

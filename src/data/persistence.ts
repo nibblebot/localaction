@@ -21,13 +21,21 @@ export function startLocalPersistence(): Promise<OpfsPersister> {
     const root = await navigator.storage.getDirectory();
     const handle = await root.getFileHandle(OPFS_FILE_NAME, { create: true });
     const persister = createOpfsPersister(getStore(), handle, onError);
-    logInfo('persistence', `loading OPFS snapshot (${OPFS_FILE_NAME})`);
-    const t0 = performance.now();
-    await persister.load();
-    logInfo(
-      'persistence',
-      `loaded OPFS snapshot in ${Math.round(performance.now() - t0)}ms (${getStore().getTableIds().length} tables)`,
-    );
+    const snapshot = await handle.getFile();
+    if (snapshot.size === 0) {
+      // Fresh OPFS: `load()` would JSON.parse an empty file and log a spurious
+      // "Unexpected end of JSON input" warning. An empty snapshot is
+      // semantically identical to the store's initial empty content.
+      logInfo('persistence', `no OPFS snapshot (${OPFS_FILE_NAME}) — starting fresh`);
+    } else {
+      logInfo('persistence', `loading OPFS snapshot (${OPFS_FILE_NAME})`);
+      const t0 = performance.now();
+      await persister.load();
+      logInfo(
+        'persistence',
+        `loaded OPFS snapshot in ${Math.round(performance.now() - t0)}ms (${getStore().getTableIds().length} tables)`,
+      );
+    }
     void persister.startAutoSave();
     logInfo('persistence', 'autosave started');
     return persister;

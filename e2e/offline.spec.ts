@@ -19,7 +19,8 @@ test('app shell and data load with the network offline', async ({ page, context 
   // Create a task, then poll OPFS until the autosave lands (same pattern as
   // waitForOpfsSave in e2e/inbox.spec.ts) so the reload hydrates from disk.
   const title = `Offline task ${uniq()}`;
-  const input = page.locator('main[aria-label="Inbox"] .inline-add-input');
+  await page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]').click();
+  const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
   await input.fill(title);
   await input.press('Enter');
   await expect(async () => {

@@ -13,7 +13,6 @@ export default function Group({
   dropActive,
   dropOver,
   hasContent,
-  emptyHint,
   children,
 }: {
   /** Status-partition label (Active / Backlog / Done / Area tasks).
@@ -37,14 +36,8 @@ export default function Group({
   /** Caller's verdict that the list paints something. When false the
    * <ul> is skipped entirely — an empty list would still uncollapse
    * the head's bottom margin into real space, so a 0-item group
-   * would grow/shrink on every collapse toggle. Defaults to true.
-   * With `emptyHint` set, an empty expanded group paints that ghost
-   * line instead of skipping, at the cost of the grow/shrink. */
+   * would grow/shrink on every collapse toggle. Defaults to true. */
   hasContent?: boolean;
-  /** One-line ghost shown under an empty, expanded group — the
-   * dashed-invitation convention; doubles as a drop-target hint for
-   * standing destinations. */
-  emptyHint?: string;
   children: React.ReactNode;
 }): React.JSX.Element {
   const collapsible = title !== undefined && onToggleCollapse !== undefined;
@@ -75,14 +68,11 @@ export default function Group({
           {trailing}
         </header>
       )}
-      {!collapsed &&
-        (hasContent !== false ? (
-          <div className="tab-group-list" role="list">
-            {children}
-          </div>
-        ) : (
-          emptyHint !== undefined && <div className="tab-group-ghost">{emptyHint}</div>
-        ))}
+      {!collapsed && hasContent !== false && (
+        <div className="tab-group-list" role="list">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

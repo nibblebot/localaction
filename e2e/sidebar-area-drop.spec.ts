@@ -63,7 +63,9 @@ test.describe('Sidebar area drop', () => {
     const tok = uniq();
     await createArea(page, `Drop-Area ${tok}`);
     await page.click('.sidebar-inbox-link');
-    // Inbox tasks are added through the Active group's add input.
+    // Inbox tasks are added through the Active group header's "+" button,
+    // which reveals the input on demand.
+    await page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]').click();
     const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
     await input.fill(`Task ${tok}`);
     await input.press('Enter');

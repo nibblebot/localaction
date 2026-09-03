@@ -398,7 +398,6 @@ export default function RootGroups({
       onToggleCollapse: () => toggle(g),
       trailing: g !== 'done' && renderGroupAction ? renderGroupAction(g) : undefined,
       hasContent,
-      emptyHint: g === 'backlog' ? 'Drag a task here to shelve it' : undefined,
     };
     const body = (
       <>

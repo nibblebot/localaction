@@ -1,19 +1,21 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import {
   useDataLayer,
   useInboxTaskIds,
   createTask,
+  setRootBacklog,
   getRootTriState,
 } from '../../data/index.ts';
 import RootGroups from '../tasks/RootGroups.tsx';
 import type { RootGroupSlice } from '../tasks/RootGroups.tsx';
-import InlineAddInput from '../shared/InlineAddInput.tsx';
-import { useFocusEmptyList } from '../hooks/useFocusEmptyList.ts';
+import InlineAddField from '../shared/InlineAddField.tsx';
 
 /**
  * The inbox: the same Active / Backlog / Done root-task groups as the
  * area view, with no sub-area slices (a single headerless slice).
- * The add-task input creates Active inbox roots (placement absent).
+ * A "+" on each of the Active / Backlog headers reveals an add input:
+ * Active creates an inbox root (placement absent); Backlog creates one
+ * and shelves it.
  */
 export default function InboxPane(): React.JSX.Element {
   const { store } = useDataLayer();
@@ -34,12 +36,18 @@ export default function InboxPane(): React.JSX.Element {
     ];
   }, [store, topLevelIds]);
 
+  const [adding, setAdding] = useState<'active' | 'backlog' | null>(null);
+
   function addTask(title: string): void {
     createTask(store, { title });
   }
 
-  const addInputRef = useRef<HTMLInputElement>(null);
-  useFocusEmptyList(addInputRef, topLevelIds.length === 0);
+  function addBacklogTask(title: string): void {
+    // One transaction: the new root arrives shelved in a single write.
+    store.transaction(() => {
+      setRootBacklog(store, createTask(store, { title }), true);
+    });
+  }
 
   return (
     <main className="main" aria-label="Inbox">
@@ -50,20 +58,44 @@ export default function InboxPane(): React.JSX.Element {
         <section className="tasks-tab" aria-label="Inbox tasks">
           <RootGroups
             slices={slices}
-            renderGroupFooter={(group) =>
-              group === 'active' ? (
-                <InlineAddInput
-                  ref={addInputRef}
-                  placeholder={
-                    topLevelIds.length === 0
-                      ? 'No inbox tasks yet — add the first one.'
-                      : 'New inbox task…'
-                  }
-                  ariaLabel="New inbox task"
-                  onSubmit={addTask}
-                />
-              ) : null
-            }
+            renderGroupAction={(group) => (
+              <button
+                type="button"
+                className="area-tab-action icon-button area-tab-action-add"
+                aria-label={
+                  group === 'active' ? 'Add task to Active' : 'Add task to Backlog'
+                }
+                title="Add task"
+                onClick={() => setAdding((cur) => (cur === group ? null : group))}
+              >
+                <svg className="svg-icon" aria-hidden="true">
+                  <use href="/icons.svg#add-icon" />
+                </svg>
+              </button>
+            )}
+            renderGroupFooter={(group) => {
+              if (group === 'active') {
+                return adding === 'active' ? (
+                  <InlineAddField
+                    placeholder="New inbox task…"
+                    ariaLabel="New inbox task"
+                    onSubmit={addTask}
+                    onClose={() => setAdding(null)}
+                  />
+                ) : null;
+              }
+              if (group === 'backlog') {
+                return adding === 'backlog' ? (
+                  <InlineAddField
+                    placeholder="New backlog task…"
+                    ariaLabel="New backlog task"
+                    onSubmit={addBacklogTask}
+                    onClose={() => setAdding(null)}
+                  />
+                ) : null;
+              }
+              return null;
+            }}
           />
         </section>
       </div>

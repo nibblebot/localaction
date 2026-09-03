@@ -822,20 +822,6 @@ body.sidebar-resizing {
   flex-direction: column;
 }
 
-/* Empty-group ghost row: the dashed hairline + italic muted
-   "invitation" convention (same voice as the inline-add
-   placeholder), rendered in place of the list when an expanded
-   status group has no projects. */
-.tab-group-ghost {
-  margin: 0 0 var(--space-2);
-  padding: 6px 10px;
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-style: italic;
-  font-size: var(--text-body);
-}
-
 /* ============================================================
    Breadcrumb separator (a "/" between every pair of segments)
    ============================================================ */

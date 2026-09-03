@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { uniq } from './helpers.ts';
+import { uniq, groupBox, groupCount } from './helpers.ts';
 
 /** Current inbox sidebar count; the badge is absent at zero. */
 async function inboxCount(page: Page): Promise<number> {
@@ -21,7 +21,10 @@ async function openInbox(page: Page): Promise<void> {
 }
 
 async function createInboxTask(page: Page, title: string): Promise<void> {
-  const input = page.locator('main[aria-label="Inbox"] .inline-add-input');
+  await page
+    .locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')
+    .click();
+  const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
   await input.fill(title);
   await input.press('Enter');
 }
@@ -52,7 +55,7 @@ test.describe('inbox visibility', () => {
 
   test('a freshly-added inbox task appears immediately in the sidebar count and the inbox body', async ({ page }) => {
     await openInbox(page);
-    await expect(page.locator('main[aria-label="Inbox"] .inline-add-input')).toBeVisible();
+    await expect(page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')).toBeVisible();
 
     const title = `Fresh inbox task ${uniq()}`;
     const before = await inboxCount(page);
@@ -63,6 +66,30 @@ test.describe('inbox visibility', () => {
       String(before + 1),
     );
     await expect.poll(() => inboxTitles(page)).toContain(title);
+  });
+
+  test('the Backlog header "+" shelves a new task, and no ghost placeholder rows remain', async ({ page }) => {
+    await openInbox(page);
+
+    // The dashed ghost row under an empty Backlog and the standing Active
+    // add-input are gone; the headers themselves remain.
+    await expect(page.locator('.tab-group-ghost')).toHaveCount(0);
+    await expect(page.locator('main[aria-label="Inbox"] .inline-add-input')).toHaveCount(0);
+
+    const title = `Backlog inbox task ${uniq()}`;
+    await page
+      .locator('main[aria-label="Inbox"] button[aria-label="Add task to Backlog"]')
+      .click();
+    const input = page.locator('main[aria-label="Inbox"] input[aria-label="New backlog task"]');
+    await input.fill(title);
+    await input.press('Enter');
+
+    // The task lands shelved in Backlog; Active stays empty, and the
+    // revealed input collapses after the commit.
+    await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title })).toHaveCount(1);
+    expect(await groupCount(page, 'Backlog')).toBe(1);
+    expect(await groupCount(page, 'Active')).toBe(0);
+    await expect(input).toHaveCount(0);
   });
 
   test('completing an inbox task removes it from the sidebar count', async ({ page }) => {

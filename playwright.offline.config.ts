@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { OFFLINE_TEST_DB_PATH } from './e2e/offline-test-db-path.ts';
-import { getE2eServerPort } from './e2e/infra.ts';
+import { getE2eServerPort, systemChromiumPath } from './e2e/infra.ts';
 
 // Offline (service-worker) e2e. Runs against the PRODUCTION BUILD via the
 // prod server (`bun server/index.ts`) — the SW only registers in prod builds,
@@ -10,6 +10,10 @@ import { getE2eServerPort } from './e2e/infra.ts';
 // process here — see playwright.config.ts and e2e/infra.ts for why).
 const port = await getE2eServerPort();
 const baseURL = `http://localhost:${port}`;
+
+// Same NixOS system-chromium override as playwright.config.ts (see
+// systemChromiumPath in e2e/infra.ts).
+const chromiumPath = systemChromiumPath();
 
 export default defineConfig({
   testDir: './e2e',
@@ -29,7 +33,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1440, height: 900 },
+        launchOptions: chromiumPath ? { executablePath: chromiumPath } : {},
+      },
     },
   ],
   webServer: {

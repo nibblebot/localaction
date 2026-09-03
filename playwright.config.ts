@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 import { TEST_DB_PATH } from './e2e/test-db-path.ts';
-import { getE2eServerPort } from './e2e/infra.ts';
+import { getE2eServerPort, systemChromiumPath } from './e2e/infra.ts';
 
 // Free port per run (AGENTS.md agent port rule — e2e never hardcodes ports).
 // The port comes from LOCALACTION_E2E_PORT, set by scripts/e2e.ts: this file
@@ -10,6 +10,11 @@ import { getE2eServerPort } from './e2e/infra.ts';
 // export (see e2e/infra.ts header).
 const port = await getE2eServerPort();
 const baseURL = `http://localhost:${port}`;
+
+// NixOS: Playwright's downloaded chromium cannot execute there, so drive the
+// Nix-packaged system chromium instead (see systemChromiumPath in
+// e2e/infra.ts). Undefined elsewhere — Playwright uses its own build.
+const chromiumPath = systemChromiumPath();
 
 export default defineConfig({
   testDir: './e2e',
@@ -37,7 +42,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { browserName: 'chromium', viewport: { width: 1440, height: 900 } },
+      use: {
+        browserName: 'chromium',
+        viewport: { width: 1440, height: 900 },
+        launchOptions: chromiumPath ? { executablePath: chromiumPath } : {},
+      },
     },
   ],
   webServer: {

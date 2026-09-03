@@ -2,7 +2,7 @@
 
 ## Stack
 - Vite 8 + React 19 + TypeScript (~6), ESM. **Bun** is the package manager and runtime for everything app-side (`server/`, `scripts/`, Vite); the SQLite driver is `bun:sqlite`, so any process loading `server/db.ts` (server, scripts, Vite config, tests) MUST run under Bun.
-- Linter: **oxlint** (`.oxlintrc.json`). Unit/integration: **bun test** rooted at `tests/` (no DOM env; stub `globalThis.window` where needed). E2E: **@playwright/test** — chromium is installed by the `postinstall` script; `scripts/e2e.ts` also self-heals a missing browser before each run.
+- Linter: **oxlint** (`.oxlintrc.json`). Unit/integration: **bun test** rooted at `tests/` (no DOM env; stub `globalThis.window` where needed). E2E: **@playwright/test** — chromium is installed by the `postinstall` script; `scripts/e2e.ts` also self-heals a missing browser before each run. On NixOS neither happens (the downloaded build cannot execute there); the configs instead resolve the system chromium from PATH via `systemChromiumPath` in `e2e/infra.ts` — install it with nix (`chromium` in `environment.systemPackages` or `nix profile add nixpkgs#chromium`).
 - No state lib — TinyBase owns the store. No router — `src/router.ts` is hand-rolled.
 - Node is unpinned and only needed for Playwright/tsc/oxlint binaries. Stack versions are bleeding-edge; generic tutorials may target older majors.
 

@@ -18,7 +18,7 @@
 // imports it lazily.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -51,6 +51,31 @@ export const PLAYWRIGHT_BIN_PATH = resolve(
   '.bin',
   'playwright',
 );
+
+/**
+ * NixOS cannot run Playwright's downloaded chromium (a generic dynamically
+ * linked Linux binary — the kernel has no /lib64/ld-linux loader), so e2e
+ * there must drive the Nix-packaged system chromium instead. Returns its
+ * absolute path, resolved from PATH, or undefined off NixOS (where the
+ * downloaded build works) / when no system chromium is installed.
+ */
+export function systemChromiumPath(): string | undefined {
+  // /etc/NIXOS is NixOS's conventional marker file.
+  if (!existsSync('/etc/NIXOS')) return undefined;
+  for (const dir of (process.env['PATH'] ?? '').split(':')) {
+    if (!dir) continue;
+    for (const name of ['chromium', 'chromium-browser']) {
+      const candidate = join(dir, name);
+      try {
+        accessSync(candidate, constants.X_OK);
+        return candidate;
+      } catch {
+        // Not here / not executable — keep looking.
+      }
+    }
+  }
+  return undefined;
+}
 
 /** Allocate an OS-assigned free TCP port on 127.0.0.1. */
 export function getFreePort(): Promise<number> {
@@ -235,11 +260,20 @@ export function reapOrphanE2eServers(): void {
 }
 
 /**
- * Self-heal for `bun install --ignore-scripts`: ensure the Playwright
- * chromium build exists, installing it via the package's own CLI if not.
- * Unlike the reaper this fails loudly — there is no e2e run without a browser.
+ * Self-heal for `bun install --ignore-scripts`: ensure a runnable chromium
+ * exists for the e2e run. On NixOS the downloaded Playwright build cannot
+ * execute (see systemChromiumPath), so the Nix-packaged system chromium is
+ * required instead and no download is attempted. Elsewhere, install the
+ * Playwright build via the package's own CLI if missing. Unlike the reaper
+ * this fails loudly — there is no e2e run without a browser.
  */
 export async function ensurePlaywrightChromium(): Promise<void> {
+  if (systemChromiumPath() !== undefined) return;
+  if (existsSync('/etc/NIXOS')) {
+    throw new Error(
+      'localaction: no system chromium on PATH — Playwright’s downloaded build cannot run on NixOS. Install one (e.g. `nix profile add nixpkgs#chromium`, or add `chromium` to environment.systemPackages).',
+    );
+  }
   // Dynamic import on purpose (rule exception): vite.config.ts and
   // server/index.ts statically import this module inside long-lived
   // dev/prod processes, and a static '@playwright/test' import would drag

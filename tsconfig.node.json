@@ -24,6 +24,7 @@
     "playwright.config.ts",
     "playwright.offline.config.ts",
     "scripts/e2e.ts",
+    "scripts/postinstall.ts",
     "e2e/infra.ts"
   ]
 }

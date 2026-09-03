@@ -20,7 +20,7 @@
     "test:e2e": "bun scripts/e2e.ts",
     "test:e2e:headed": "bun scripts/e2e.ts --headed",
     "test:e2e:offline": "bun run build && bun scripts/e2e.ts --offline",
-    "postinstall": "playwright install chromium",
+    "postinstall": "bun scripts/postinstall.ts",
     "demo:mobile": "scripts/demo-mobile.sh"
   },
   "dependencies": {

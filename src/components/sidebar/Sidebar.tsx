@@ -5,6 +5,7 @@ import {
   createArea,
   moveArea,
   getRootPlacement,
+  getRootTriState,
   useInboxTaskIds,
   useDueItems,
   type AreaCount,
@@ -195,6 +196,12 @@ export default function Sidebar({
   }, [selectedId, counts]);
 
   const inboxIds = useInboxTaskIds(store);
+  // Match Today/Week (open items only) and the area pills
+  // (openTaskCount): a Done root is visible in the Inbox pane but no
+  // longer actionable, so it leaves the sidebar count.
+  const inboxOpenCount = inboxIds.filter(
+    (id) => getRootTriState(store, id) !== 'done',
+  ).length;
   const todayItems = useDueItems(store, todayIso(), todayIso());
   const todayOpenCount = todayItems.filter((i) => !i.done).length;
 
@@ -274,13 +281,13 @@ export default function Sidebar({
           href={formatRoute(INBOX)}
           onClick={onNavigate}
           className={`sidebar-item sidebar-item-top sidebar-inbox-link${selection.kind === 'inbox' ? ' sidebar-item-active' : ''}`}
-          aria-label={inboxIds.length > 0 ? `Inbox, ${inboxIds.length}` : 'Inbox'}
+          aria-label={inboxOpenCount > 0 ? `Inbox, ${inboxOpenCount}` : 'Inbox'}
           aria-current={selection.kind === 'inbox' ? 'page' : undefined}
         >
           <span className="sidebar-item-name">Inbox</span>
-          {inboxIds.length > 0 ? (
+          {inboxOpenCount > 0 ? (
             <span className="sidebar-link-count" aria-label="Inbox task count">
-              {inboxIds.length}
+              {inboxOpenCount}
             </span>
           ) : null}
         </a>

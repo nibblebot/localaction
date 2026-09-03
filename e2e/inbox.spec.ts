@@ -65,6 +65,33 @@ test.describe('inbox visibility', () => {
     await expect.poll(() => inboxTitles(page)).toContain(title);
   });
 
+  test('completing an inbox task removes it from the sidebar count', async ({ page }) => {
+    await openInbox(page);
+
+    const title = `Completable inbox task ${uniq()}`;
+    const before = await inboxCount(page);
+    await createInboxTask(page, title);
+    await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText(
+      String(before + 1),
+    );
+
+    // Done roots stay visible in the pane but leave the sidebar count.
+    await page.getByRole('checkbox', { name: `Mark “${title}” done` }).click();
+    if (before === 0) {
+      // The badge is absent at zero.
+      await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveCount(0);
+    } else {
+      await expect(page.locator('.sidebar-inbox-link .sidebar-link-count')).toHaveText(
+        String(before),
+      );
+    }
+    // The completed root stays visible as a static row in the Done group.
+    await expect(
+      page.locator('main[aria-label="Inbox"]').getByRole('button', { name: title, exact: true }),
+    ).toBeVisible();
+  });
+
+
   test('inbox tasks survive a page reload', async ({ page }) => {
     const title = `Persisted inbox task ${uniq()}`;
     await openInbox(page);

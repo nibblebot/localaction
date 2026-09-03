@@ -56,15 +56,18 @@ export function ContextDndMonitor({
   onDragStart,
   onDragOver,
   onDragEnd,
+  onDragCancel,
 }: {
   onDragStart?: (event: DragStartEvent) => void;
   onDragOver?: (event: DragOverEvent) => void;
   onDragEnd?: (event: DragEndEvent) => void;
+  onDragCancel?: () => void;
 }): null {
   useDndMonitor({
     onDragStart,
     onDragOver,
     onDragEnd,
+    onDragCancel,
   });
   return null;
 }

@@ -5,6 +5,7 @@ import SelectionProvider from './components/context/selection.tsx';
 import UndoProvider from './components/context/undo.tsx';
 import Sidebar from './components/sidebar/Sidebar.tsx';
 import MainPane from './components/MainPane.tsx';
+import { ShellDndContext } from './components/dnd/ShellDndContext.tsx';
 import { useFocusTrap } from './components/hooks/useFocusTrap.ts';
 import { AppearanceProvider } from './components/appearance/AppearanceProvider.tsx';
 import QuickAddModal from './components/shared/QuickAddModal.tsx';
@@ -77,18 +78,20 @@ function App(): React.JSX.Element {
                 <div className="shell-sync-slot">
                   <SyncStatusBadge />
                 </div>
-                <Sidebar
-                  ref={sidebarRef}
-                  drawerOpen={drawerOpen}
-                  onNavigate={() => setDrawerOpen(false)}
-                />
-                {drawerOpen ? (
-                  <div
-                    className="drawer-backdrop"
-                    onClick={() => setDrawerOpen(false)}
+                <ShellDndContext>
+                  <Sidebar
+                    ref={sidebarRef}
+                    drawerOpen={drawerOpen}
+                    onNavigate={() => setDrawerOpen(false)}
                   />
-                ) : null}
-                <MainPane />
+                  {drawerOpen ? (
+                    <div
+                      className="drawer-backdrop"
+                      onClick={() => setDrawerOpen(false)}
+                    />
+                  ) : null}
+                  <MainPane />
+                </ShellDndContext>
                 {Inspector !== null ? (
                   <Suspense fallback={null}>
                     <Inspector />

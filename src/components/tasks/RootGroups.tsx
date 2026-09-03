@@ -1,19 +1,8 @@
 import { useCallback, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  MouseSensor,
-  pointerWithin,
-  rectIntersection,
-  TouchSensor,
-  useDroppable,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { ContextDndMonitor } from '../dnd/SortableTree.tsx';
 import {
   useDataLayer,
   useSubtreeProgress,
@@ -283,14 +272,16 @@ function SliceRows({
  * static (no controls beyond caret/name navigation) and is never a drop
  * target. Per-group collapse is persisted per device.
  *
- * Hoisted drag: ONE DndContext spans every slice's TaskTree, so a drag
- * can reorder within a tree, cross slices (ownership change), AND shelve
- * / unshelve across the Active ⇄ Backlog boundary. The group headers and
- * standing body zones are droppables in this context; drops resolve via
- * `resolveTaskGroupDrop` to `moveRootToBacklog` (shelve/unshelve) or
- * `moveTask` (reorder / cross-slice ownership change). Only ROOT rows
- * participate — subtasks nest/unnest within their own tree and never
- * resolve to a group drop.
+ * Hoisted drag: the DndContext now lives one level up, at the shell
+ * (ShellDndContext), and spans the sidebar's area tree AND every slice's
+ * TaskTree, so a drag can reorder within a tree, cross slices (ownership
+ * change), AND shelve / unshelve across the Active ⇄ Backlog boundary.
+ * The group headers and standing body zones are droppables in that
+ * context; this component observes it via ContextDndMonitor and resolves
+ * group/header drops through `resolveTaskGroupDrop` to
+ * `moveRootToBacklog` (shelve/unshelve) or `moveTask` (reorder /
+ * cross-slice ownership change). Only ROOT rows participate — subtasks
+ * nest/unnest within their own tree and never resolve to a group drop.
  */
 export default function RootGroups({
   slices,
@@ -315,12 +306,6 @@ export default function RootGroups({
   // The hoisted drop targets hang off the view's own scope: the inbox
   // scope ('inbox') or the viewed area id (the headerless first slice).
   const scopeKey = slices[0]?.key ?? 'inbox';
-
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   /** Locate a root task id across every slice's Active/Backlog rows.
    * Done rows and subtasks are never here — the guard that keeps group
@@ -458,61 +443,13 @@ export default function RootGroups({
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      // pointerWithin is precise over a row; rectIntersection covers
-      // the gaps between rows and the drop zones (same rationale as
-      // SortableTree / SortableList).
-      collisionDetection={(args) => {
-        const pointerCollisions = pointerWithin(args);
-        if (pointerCollisions.length > 0) return pointerCollisions;
-        return rectIntersection(args);
-      }}
-      onDragStart={handleStart}
-      onDragEnd={handleEnd}
-      onDragCancel={handleCancel}
-      accessibility={{
-        announcements: {
-          onDragStart: ({ active }) => `Picked up ${String(active.id)}.`,
-          onDragOver: ({ active, over }) =>
-            over
-              ? `${String(active.id)} is over ${String(over.id)}.`
-              : `${String(active.id)} is no longer over a droppable.`,
-          onDragEnd: ({ active, over }) =>
-            over
-              ? `Dropped ${String(active.id)} on ${String(over.id)}.`
-              : `Dropped ${String(active.id)} outside the groups.`,
-          onDragCancel: ({ active }) => `Cancelled drag of ${String(active.id)}.`,
-        },
-        screenReaderInstructions: {
-          draggable:
-            'To pick up a draggable item, press space or enter. While dragging, use the arrow keys to move the item. Press space or enter again to drop the item in its new position, or press escape to cancel.',
-        },
-      }}
-          >
-      {GROUPS.map(renderGroup)}
-      <DragOverlay className="drag-overlay" dropAnimation={null}>
-        {draggingId !== null && <OverlayTaskRow taskId={draggingId} />}
-      </DragOverlay>
-    </DndContext>
-  );
-}
-
-/** Inert single-line preview of the dragged root task inside the
- * hoisted DragOverlay (external-mode trees don't render their own
- * overlays — the enclosing context owns the preview). */
-function OverlayTaskRow({ taskId }: { taskId: string }): React.JSX.Element | null {
-  const { store } = useDataLayer();
-  const task = useTask(store, taskId);
-  if (!task) return null;
-  return (
-    <div className="task-line task-line-dragging">
-      <textarea
-        className="task-line-title"
-        rows={1}
-        readOnly
-        value={task.title || 'Untitled'}
+    <>
+      <ContextDndMonitor
+        onDragStart={handleStart}
+        onDragEnd={handleEnd}
+        onDragCancel={handleCancel}
       />
-    </div>
+      {GROUPS.map(renderGroup)}
+    </>
   );
 }

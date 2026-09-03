@@ -294,6 +294,7 @@ export default function Sidebar({
             ariaLabel="Areas"
             className="sidebar-section-body"
             indentWidth={16}
+            externalDndContext
           >
             {(id, handle, depth) => {
               const node = nodeById.get(id);

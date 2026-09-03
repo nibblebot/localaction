@@ -1141,17 +1141,6 @@ body.sidebar-resizing {
   text-decoration: underline;
 }
 
-/* Static variant ("Area projects" on the viewed area's own slice):
-   same type scale as the clickable sub-area name, but it labels the
-   slice instead of navigating — no pointer, no hover underline. */
-.subarea-header-static {
-  cursor: default;
-}
-
-.subarea-header-static:hover {
-  text-decoration: none;
-}
-
 /* Static weekday + day label rendered inside a read-only task row
    to label which day each item falls on (Week view). */
 .task-line-due-date {

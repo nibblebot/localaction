@@ -72,14 +72,21 @@ test('sub-area roots render under their own header and navigate on click', async
   await expect(page.locator('.area-header-name')).toContainText(sub);
   await createRootTask(page, subTask);
 
-  // Back on the parent area: two slice headers — the static "This
-  // area" and the clickable sub-area name.
+  // A second sub-area with no tasks anywhere contributes no grouping:
+  // its header never renders.
+  const emptySub = `Empty ${tok}`;
+  await createArea(page, emptySub);
+  await nestArea(page, area, emptySub);
+
+  // Back on the parent area: the parent's own roots render headerless
+  // at the top of the group; the only slice header is the clickable
+  // sub-area name (no "This area" grouping, no empty sub-area grouping).
   await page.locator('.sidebar-item-name', { hasText: area }).click();
 
   await expect(page.locator('.area-header-name')).toContainText(area);
-  await expect(page.locator('.subarea-header-name.subarea-header-static')).toHaveText('This area');
   const subHeader = page.locator('.subarea-header-name', { hasText: sub });
   await expect(subHeader).toBeVisible();
+  await expect(page.locator('.subarea-header-name')).toHaveCount(1);
   await expect(page.locator('.tasks-tab .task-line', { hasText: parentTask })).toBeVisible();
   await expect(page.locator('.tasks-tab .task-line', { hasText: subTask })).toBeVisible();
   expect(await groupCount(page, 'Active')).toBe(2);
@@ -101,17 +108,19 @@ test('parent "+" draft survives when sibling slices mount their own trees', asyn
   await createArea(page, area);
   await createRootTask(page, parentTask);
 
-  // A nested sub-area mounts extra TaskTrees beside the one holding the
-  // parent. Regression: every tree that lacked the draft target used to
-  // append the draft at its own root, so several draft rows mounted at
-  // once, raced for focus, and blur-cancelled the draft instantly —
-  // the row's "+" appeared dead.
+  // A nested sub-area with a root mounts extra TaskTrees beside the one
+  // holding the parent (an empty sub-area renders no slice, so the sub
+  // gets a root first). Regression: every tree that lacked the draft
+  // target used to append the draft at its own root, so several draft
+  // rows mounted at once, raced for focus, and blur-cancelled the draft
+  // instantly — the row's "+" appeared dead.
   await page.locator('button[aria-label="New area"]').click();
   const input = page.locator('.sidebar-section-add .inline-add-input');
   await input.fill(sub);
   await input.press('Enter');
   await expect(page.locator('.area-header-name')).toContainText(sub);
   await nestArea(page, area, sub);
+  await createRootTask(page, `Sub root ${tok}`);
   await page.locator('.sidebar-item-name', { hasText: area }).click();
   await expect(page.locator('.area-header-name')).toContainText(area);
   await expect(

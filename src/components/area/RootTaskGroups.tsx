@@ -53,16 +53,15 @@ export default function RootTaskGroups({
     };
     const viewed = partition(areaId);
     return [
+      // The viewed area's own roots always render headerless at the top
+      // of each group — no "This area" grouping.
       {
         key: areaId,
-        label: subAreas.length === 0 ? null : 'This area',
         placement: `area:${areaId}`,
         ...viewed,
-        header: subAreas.length === 0 ? undefined : <AreaOwnHeader />,
       },
       ...subAreas.map((sa) => ({
         key: sa.id,
-        label: sa.name,
         placement: `area:${sa.id}`,
         ...partition(sa.id),
         header: <SubAreaHeader areaId={sa.id} name={sa.name} color={sa.color} />,
@@ -111,17 +110,6 @@ export default function RootTaskGroups({
         }
       />
     </section>
-  );
-}
-
-/** Static header for the viewed area's own slice: the roots that live
- * directly in the area rather than in one of its sub-areas. A label, not
- * a navigation target. */
-function AreaOwnHeader(): React.JSX.Element {
-  return (
-    <header className="subarea-header">
-      <span className="subarea-header-name subarea-header-static">This area</span>
-    </header>
   );
 }
 

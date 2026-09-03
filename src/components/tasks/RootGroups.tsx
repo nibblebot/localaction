@@ -41,9 +41,6 @@ export type TaskGroupId = 'active' | 'backlog' | 'done';
 export interface RootGroupSlice {
   /** Stable key for the slice (area id, or 'inbox'). */
   key: string;
-  /** Slice header label; null renders headerless (the viewed area's own
-   * slice / the inbox). */
-  label: string | null;
   /** Root placement string a root-level drop inside this slice maps to
    * (`area:<id>`, or `null` for the inbox). */
   placement: string | null;
@@ -225,7 +222,8 @@ function GroupHeaderDropTarget({
 }
 
 /** One slice's rows inside a hoisted group: its header (if any) plus a
- * tree (Active/Backlog) or static done rows (Done). */
+ * tree (Active/Backlog) or static done rows (Done). A slice with no
+ * rows in this group renders nothing — no empty sub-area groupings. */
 function SliceRows({
   slice,
   group,
@@ -237,6 +235,7 @@ function SliceRows({
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const ids = group === 'active' ? slice.active : group === 'backlog' ? slice.backlog : slice.done;
+  if (ids.length === 0) return null;
   function onMove(
     activeId: string,
     parentId: string | null,
@@ -251,11 +250,7 @@ function SliceRows({
   }
   return (
     <div className="subarea-section" data-group={group}>
-      {slice.header ?? (slice.label !== null ? (
-        <header className="subarea-header">
-          <span className="subarea-header-name subarea-header-static">{slice.label}</span>
-        </header>
-      ) : null)}
+      {slice.header}
       {group === 'done' ? (
         ids.map((id) => <DoneTaskRow key={id} taskId={id} depth={0} />)
       ) : (

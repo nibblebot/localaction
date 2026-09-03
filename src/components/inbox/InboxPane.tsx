@@ -30,7 +30,7 @@ export default function InboxPane(): React.JSX.Element {
       else active.push(tid);
     }
     return [
-      { key: 'inbox', label: null, placement: null, active, backlog, done },
+      { key: 'inbox', placement: null, active, backlog, done },
     ];
   }, [store, topLevelIds]);
 

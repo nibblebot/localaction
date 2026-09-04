@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createArea, createRootTask, nestArea, uniq, groupCount } from './helpers.ts';
+import { createArea, createRootTask, nestArea, uniq, groupCount, groupBox } from './helpers.ts';
 
 test('area tasks: add, nest, complete', async ({ page }) => {
   const tok = uniq();
@@ -41,6 +41,50 @@ test('area tasks: add, nest, complete', async ({ page }) => {
   expect(await groupCount(page, 'Active')).toBe(1);
   expect(await groupCount(page, 'Done')).toBe(1);
 });
+
+test('the Backlog header "+" shelves a new area task', async ({ page }) => {
+  const tok = uniq();
+  await page.goto('/#/');
+  await createArea(page, `Area ${tok}`);
+
+  const title = `Backlog area task ${tok}`;
+  await page.locator('button[aria-label="Add task to Backlog"]').click();
+  const input = page.locator('input[aria-label="New backlog task"]');
+  await input.fill(title);
+  await input.press('Enter');
+
+  // The task lands shelved in Backlog; Active stays empty, and the
+  // revealed input collapses after the commit.
+  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title })).toHaveCount(1);
+  expect(await groupCount(page, 'Backlog')).toBe(1);
+  expect(await groupCount(page, 'Active')).toBe(0);
+  await expect(input).toHaveCount(0);
+});
+
+test('Shift+Enter in the Backlog add input shelves and keeps adding', async ({ page }) => {
+  const tok = uniq();
+  await page.goto('/#/');
+  await createArea(page, `Area ${tok}`);
+
+  const alpha = `Backlog one ${tok}`;
+  const beta = `Backlog two ${tok}`;
+  await page.locator('button[aria-label="Add task to Backlog"]').click();
+  const input = page.locator('input[aria-label="New backlog task"]');
+  await input.fill(alpha);
+  await input.press('Shift+Enter');
+
+  // The first task lands shelved; the input stays open, cleared and
+  // focused, so the second also lands in Backlog.
+  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: alpha })).toHaveCount(1);
+  await expect(input).toBeFocused();
+  await input.fill(beta);
+  await input.press('Enter');
+  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: beta })).toHaveCount(1);
+  expect(await groupCount(page, 'Backlog')).toBe(2);
+  expect(await groupCount(page, 'Active')).toBe(0);
+  await expect(input).toHaveCount(0);
+});
+
 
 test('sub-area roots render under their own header and navigate on click', async ({
   page,

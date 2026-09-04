@@ -230,7 +230,9 @@ Within a rendered view:
   sidebar area tree and task trees; vertical position + horizontal
   nest/unnest intent resolve to a reparenting move.
 - **`InlineAddInput` / `InlineAddButton`** — the add affordances everywhere:
-  new area, task, or note.
+  new area, task, or note. In the task add fields (inbox and area Active
+  / Backlog group footers), Shift+Enter commits and keeps the field open
+  for the next task (quick entry, mirroring the task-tree draft row).
 - **`EditableTitle`** — inline rename of an entity's title.
 - **Popovers** — `AreaEditPopover` (rename / recolour / delete an area) and
   the due-date pickers behind the task due-date buttons.

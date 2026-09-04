@@ -92,6 +92,33 @@ test.describe('inbox visibility', () => {
     await expect(input).toHaveCount(0);
   });
 
+  test('Shift+Enter in the add input saves and keeps adding', async ({ page }) => {
+    const tok = uniq();
+    const alpha = `Quick one ${tok}`;
+    const beta = `Quick two ${tok}`;
+    await openInbox(page);
+
+    await page
+      .locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')
+      .click();
+    const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
+    await input.fill(alpha);
+    await input.press('Shift+Enter');
+
+    // The first task commits to Active; the input stays open, cleared
+    // and focused, for the next one.
+    await expect(groupBox(page, 'Active').locator('.task-line-title', { hasText: alpha })).toHaveCount(1);
+    await expect(input).toBeFocused();
+    await expect(input).toHaveValue('');
+
+    // Plain Enter commits the second and closes the field.
+    await input.fill(beta);
+    await input.press('Enter');
+    await expect(groupBox(page, 'Active').locator('.task-line-title', { hasText: beta })).toHaveCount(1);
+    expect(await groupCount(page, 'Active')).toBe(2);
+    await expect(input).toHaveCount(0);
+  });
+
   test('completing an inbox task removes it from the sidebar count', async ({ page }) => {
     await openInbox(page);
 

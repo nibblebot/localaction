@@ -8,22 +8,27 @@ export interface InlineAddFieldProps {
   ariaLabel: string;
   onSubmit: (value: string) => void;
   /** Close request: Esc, or blurring an empty input. A successful
-   * submit closes too. */
+   * submit closes too — unless it came from Shift+Enter quick entry. */
   onClose: () => void;
+  /** When true, Shift+Enter submits and keeps the field open (cleared,
+   * focused) for the next item — the task quick-entry pattern. */
+  continueOnShiftEnter?: boolean;
 }
 
 /**
  * The revealed half of an inline-add affordance: a focused
  * InlineAddInput that commits on Enter and asks to close on Esc or on
- * blurring an empty input. Split from InlineAddButton so the trigger
- * and the input can render in different places — e.g. a header "+"
- * whose input opens appended at the end of the list.
+ * blurring an empty input. With `continueOnShiftEnter`, Shift+Enter
+ * commits without closing (quick entry). Split from InlineAddButton so
+ * the trigger and the input can render in different places — e.g. a
+ * header "+" whose input opens appended at the end of the list.
  */
 export default function InlineAddField({
   placeholder,
   ariaLabel,
   onSubmit,
   onClose,
+  continueOnShiftEnter = false,
 }: InlineAddFieldProps): React.JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +59,7 @@ export default function InlineAddField({
           onSubmit(value);
           onClose();
         }}
+        onSubmitContinue={continueOnShiftEnter ? onSubmit : undefined}
       />
     </div>
   );

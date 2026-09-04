@@ -15,7 +15,8 @@ import InlineAddField from '../shared/InlineAddField.tsx';
  * area view, with no sub-area slices (a single headerless slice).
  * A "+" on each of the Active / Backlog headers reveals an add input:
  * Active creates an inbox root (placement absent); Backlog creates one
- * and shelves it.
+ * and shelves it. Shift+Enter in either input commits and keeps it open
+ * (quick entry).
  */
 export default function InboxPane(): React.JSX.Element {
   const { store } = useDataLayer();
@@ -80,6 +81,7 @@ export default function InboxPane(): React.JSX.Element {
                     placeholder="New inbox task…"
                     ariaLabel="New inbox task"
                     onSubmit={addTask}
+                    continueOnShiftEnter
                     onClose={() => setAdding(null)}
                   />
                 ) : null;
@@ -90,6 +92,7 @@ export default function InboxPane(): React.JSX.Element {
                     placeholder="New backlog task…"
                     ariaLabel="New backlog task"
                     onSubmit={addBacklogTask}
+                    continueOnShiftEnter
                     onClose={() => setAdding(null)}
                   />
                 ) : null;

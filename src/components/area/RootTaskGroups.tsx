@@ -5,6 +5,7 @@ import {
   getAreaTaskIds,
   getRootTriState,
   createTask,
+  setRootBacklog,
   TABLES,
 } from '../../data/index.ts';
 import { areaColorHex } from '../../data/colors.ts';
@@ -69,45 +70,71 @@ export default function RootTaskGroups({
     ];
   }, [store, tasksV, areaId, subAreas]);
 
-  // The single add-task input creates Active roots in the viewed area.
-  // The "+" trigger lives in the Active group header; the revealed input
-  // renders appended at the end of the Active group (where the new root
-  // lands). Adding always creates an Active root (placement area:<id>).
-  const [adding, setAdding] = useState(false);
+  // A "+" on each of the Active / Backlog headers reveals an add input:
+  // Active creates an area root (placement area:<id>); Backlog creates
+  // one and shelves it (single transaction). Matches the inbox behavior.
+  // Shift+Enter in either input commits and keeps it open (quick entry).
+  const [adding, setAdding] = useState<'active' | 'backlog' | null>(null);
 
   function addTask(title: string): void {
     createTask(store, { title, placement: { kind: 'area', id: areaId } });
+  }
+
+  function addBacklogTask(title: string): void {
+    // One transaction: the new root arrives shelved in a single write.
+    store.transaction(() => {
+      setRootBacklog(
+        store,
+        createTask(store, { title, placement: { kind: 'area', id: areaId } }),
+        true,
+      );
+    });
   }
 
   return (
     <section className="tasks-tab" aria-label="Tasks">
       <RootGroups
         slices={slices}
-        renderGroupAction={(group) =>
-          group === 'active' ? (
-            <button
-              type="button"
-              className="area-tab-action icon-button area-tab-action-add"
-              aria-label="Add task to Active"
-              title="Add task"
-              onClick={() => setAdding((open) => !open)}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use href="/icons.svg#add-icon" />
-              </svg>
-            </button>
-          ) : null
-        }
-        renderGroupFooter={(group) =>
-          group === 'active' && adding ? (
-            <InlineAddField
-              placeholder="New task…"
-              ariaLabel="New task"
-              onSubmit={addTask}
-              onClose={() => setAdding(false)}
-            />
-          ) : null
-        }
+        renderGroupAction={(group) => (
+          <button
+            type="button"
+            className="area-tab-action icon-button area-tab-action-add"
+            aria-label={
+              group === 'active' ? 'Add task to Active' : 'Add task to Backlog'
+            }
+            title="Add task"
+            onClick={() => setAdding((cur) => (cur === group ? null : group))}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href="/icons.svg#add-icon" />
+            </svg>
+          </button>
+        )}
+        renderGroupFooter={(group) => {
+          if (group === 'active') {
+            return adding === 'active' ? (
+              <InlineAddField
+                placeholder="New task…"
+                ariaLabel="New task"
+                onSubmit={addTask}
+                continueOnShiftEnter
+                onClose={() => setAdding(null)}
+              />
+            ) : null;
+          }
+          if (group === 'backlog') {
+            return adding === 'backlog' ? (
+              <InlineAddField
+                placeholder="New backlog task…"
+                ariaLabel="New backlog task"
+                onSubmit={addBacklogTask}
+                continueOnShiftEnter
+                onClose={() => setAdding(null)}
+              />
+            ) : null;
+          }
+          return null;
+        }}
       />
     </section>
   );

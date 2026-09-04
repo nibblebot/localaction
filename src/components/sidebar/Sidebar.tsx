@@ -20,6 +20,7 @@ import SidebarResizer from './SidebarResizer.tsx';
 import { areaColorHex, type AreaColorId } from '../../data/colors.ts';
 import { SortableTree } from '../dnd/SortableTree.tsx';
 import type { SortableTreeNode } from '../dnd/SortableTree.tsx';
+import { useCollapsedSet } from '../hooks/useCollapsedSet.ts';
 import type { SortableHandleProps } from '../dnd/SortableList.tsx';
 
 interface AreaNode {
@@ -59,6 +60,10 @@ interface SortableAreaRowProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   isTopLevel: boolean;
+  /** True while this area's subareas are hidden (caret points right). */
+  collapsed: boolean;
+  /** Toggles the subarea subtree; only meaningful when the node has children. */
+  onToggleCollapse: () => void;
 }
 function SortableAreaRow({
   handle,
@@ -66,10 +71,13 @@ function SortableAreaRow({
   selectedId,
   onSelect,
   isTopLevel,
+  collapsed,
+  onToggleCollapse,
 }: SortableAreaRowProps): React.JSX.Element {
   const isActive = node.count.id === selectedId;
   const displayName = node.count.name || 'Untitled';
   const count = node.count.openTaskCount;
+  const hasChildren = node.children.length > 0;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
   // Empty areas (nothing inside them yet) recede to 40% opacity,
   // recovering on hover — but never while the area is the active one.
@@ -87,7 +95,20 @@ function SortableAreaRow({
       data-drag-over={handle.isOver ? 'true' : undefined}
     >
       <div className="sidebar-item-row">
-
+        {hasChildren ? (
+          <button
+            type="button"
+            className="sidebar-area-caret"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? `Expand ${displayName}` : `Collapse ${displayName}`}
+            title={collapsed ? `Expand ${displayName}` : `Collapse ${displayName}`}
+            onClick={onToggleCollapse}
+          >
+            <svg className="svg-icon" aria-hidden="true">
+              <use href={`/icons.svg#${collapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`} />
+            </svg>
+          </button>
+        ) : null}
         <button
           type="button"
           {...(handle.attributes ?? {})}
@@ -101,11 +122,13 @@ function SortableAreaRow({
           }}
           {...(handle.listeners ?? {})}
         >
-          <span
-            className="sidebar-item-dot"
-            style={{ background: areaColorHex(node.count.color) }}
-            aria-hidden="true"
-          />
+          {hasChildren ? null : (
+            <span
+              className="sidebar-item-dot"
+              style={{ background: areaColorHex(node.count.color) }}
+              aria-hidden="true"
+            />
+          )}
           <span className="sidebar-item-name">{displayName}</span>
           {count > 0 ? <span className="sidebar-link-count">{count}</span> : null}
         </button>
@@ -141,17 +164,21 @@ export default function Sidebar({
   useEffect(() => {
     if (showNewArea) newAreaInputRef.current?.focus();
   }, [showNewArea]);
+  // Sidebar area collapse — pure view state, localStorage-backed like
+  // the other collapse sets (device-local, never synced).
+  const { collapsed: collapsedAreas, toggle: toggleAreaCollapsed } =
+    useCollapsedSet('localaction.sidebar.collapsedAreaIds');
   const tree = useMemo(() => buildTree(counts), [counts]);
   const sortableNodes = useMemo<readonly SortableTreeNode<string>[]>(() => {
-    // Areas never collapse: the tree always renders fully expanded, so a
-    // selected area is always visible with its whole subarea subtree.
+    // Collapsed parents pass `children: []` — the SortableTree contract
+    // for hiding a subtree (hidden rows can't be drop targets either).
     const map = (ns: AreaNode[]): SortableTreeNode<string>[] =>
       ns.map((n) => ({
         id: n.count.id,
-        children: map(n.children),
+        children: collapsedAreas.has(n.count.id) ? [] : map(n.children),
       }));
     return map(tree);
-  }, [tree]);
+  }, [tree, collapsedAreas]);
   const nodeById = useMemo(() => {
     const m = new Map<string, AreaNode>();
     const walk = (ns: AreaNode[]): void => {
@@ -309,6 +336,8 @@ export default function Sidebar({
                     onNavigate?.();
                   }}
                   isTopLevel={depth === 0}
+                  collapsed={collapsedAreas.has(id)}
+                  onToggleCollapse={() => toggleAreaCollapsed(id)}
                 />
               );
             }}

@@ -239,6 +239,41 @@ body.sidebar-resizing {
   flex-shrink: 0;
 }
 
+/* Areas with subareas swap the dot for a collapse caret. The caret
+   is a sibling of the row button (nested buttons are invalid), and
+   negative margins keep its layout footprint in the dot's 12px
+   column (8px dot + 4px gap) so parent and leaf names stay aligned
+   while the 24px click target bleeds into the gutter and the row
+   button's dead left padding. position: relative + z-index win that
+   overlap zone for the caret and anchor the coarse-pointer halo. */
+.sidebar-area-caret {
+  --icon-button-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  margin-inline: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.sidebar-area-caret:hover {
+  color: var(--text-h);
+}
+
+.sidebar-area-caret:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 1px;
+}
+
 .sidebar-item-name {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3232,6 +3267,14 @@ button .svg-icon {
     content: '';
     position: absolute;
     inset: -6px; /* 32px control + 2×6px → 44px hit area */
+  }
+
+  /* The 24px area collapse caret needs a halo to reach the 44px
+     touch minimum. */
+  .sidebar-area-caret::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
   }
 
   /* The sync badge toggle and its retry button are smaller than

@@ -251,7 +251,7 @@ function LeafTaskRow({
         // confirm dialog steals focus on open, ending edit mode.
         <button
           type="button"
-          className="task-line-action task-line-action-danger icon-button task-line-trash"
+          className="task-line-action task-line-action-danger icon-button"
           aria-label="Delete task"
           title="Delete"
           onMouseDown={(e) => e.preventDefault()}

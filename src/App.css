@@ -1171,6 +1171,10 @@ body.sidebar-resizing {
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
+  /* Ride the title's first-line slot (1.5rem line + 2px + 2px
+     padding) so the label's glyphs center on the row's alignment
+     reference — see the .task-line alignment rule. */
+  line-height: calc(1.5rem + 4px);
 }
 
 /* ============================================================
@@ -1372,6 +1376,25 @@ body.sidebar-resizing {
   color: var(--text-muted);
 }
 
+/* Row chrome aligns to the title's FIRST line, not the row box, so a
+   wrapping title keeps its controls pinned to the top line. Reference:
+   the title's 2px top padding + half its 1.5rem line box puts the line
+   center at 2px + 0.75rem from the row's content top, so a 32px
+   control (--icon-button-control) rides 0.75rem - 14px (= 2px -
+   32px/2). rem-based: exact at every density. Recheck the -14px if
+   --icon-button-control, the title's line-height, or its top padding
+   changes. */
+.task-line > :is(.icon-button, .task-line-action) {
+  margin-top: calc(0.75rem - 14px);
+}
+
+/* The subtree meter is a flex cluster, not a control: stretch it over
+   the title's first-line slot (1.5rem line + 2px + 2px padding) so its
+   internal centering lands the bar and count on the same reference. */
+.task-line > .project-row-progress {
+  height: calc(1.5rem + 4px);
+}
+
 /* Sync-arrival entrance (applied by TaskRow when the row landed via a
    remote sync pull — data/syncedAdds.ts). Two simultaneous legs: the
    row makes room for itself while a quiet wash settles back to
@@ -1424,8 +1447,8 @@ body.sidebar-resizing {
 }
 
 /* Right-aligned action cluster on task rows (DueDate, AddSubtask)
-   plus its ⋯ trigger. The delete trash lives beside the title input
-   in edit mode instead (see .task-line-trash below). The wrapper owns
+   plus its ⋯ trigger. The delete trash rides beside the title input
+   in edit mode instead. The wrapper owns
    the single auto-margin slot; on touch the strip floats out of flow
    as an overlay left of the trigger (see the coarse-pointer block),
    so opening it never shifts the row's layout. */
@@ -1434,12 +1457,9 @@ body.sidebar-resizing {
   align-items: center;
   margin-inline-start: auto;
   flex-shrink: 0;
-  /* Center the 32px controls on the title's first line — same math
-     as .task-line-check: the line center sits at the title's 2px top
-     padding + 0.75rem (half its 1.5 line box), the button's center
-     at half its 32px control. rem-based: exact at every density.
-     Tracks --icon-button-control and the title's top padding —
-     recheck the -14px (= 2px - 32px/2) if either changes. */
+  /* Same first-line centering the row's direct-child controls get from
+     the shared rule above; the wrapper is a div, so it carries its own
+     copy. */
   margin-top: calc(0.75rem - 14px);
 }
 
@@ -1453,15 +1473,6 @@ body.sidebar-resizing {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-/* Edit-mode trash: rides the title input's first line only while the
-   textarea is focused (the section-row pattern). .task-line aligns
-   items to flex-start, so center the 32px control on the title's
-   first line — same math as .task-line-menu; recheck the -14px if
-   --icon-button-control or the title's top padding changes. */
-.task-line-trash {
-  margin-top: calc(0.75rem - 14px);
 }
 
 /* Vertical-dots trigger: the sprite's more-icon is a horizontal
@@ -1496,17 +1507,23 @@ body.sidebar-resizing {
      gap — and every sibling column (task titles, section titles)
      derives from the same tokens instead of UA defaults. */
   margin: 0;
-  /* Center the 14px box on the title's first line: title is 1rem with
-     a 1.5 line box and 2px top padding, so the line center sits at
-     2px + 0.75rem from the row's top. rem-based: exact at every
+  /* Center the 20px box on the title's first line: the line center
+     sits at 2px + 0.75rem from the row's top, so the box rides
+     0.75rem - 8px (= 2px - 20px/2). rem-based: exact at every
      density. */
-  margin-top: calc(0.75rem - 5px);
+  margin-top: calc(0.75rem - 8px);
 }
 
 .task-line-title {
   flex: 1 1 auto;
   font: inherit;
   font-size: var(--text-body);
+  /* Explicit 1.5, never `normal`: the row's chrome math keys off this
+     exact line box (see the .task-line alignment rule), so it must not
+     drift with font metrics. Later in the cascade than
+     .project-row-name, so parent-row names share this reference instead
+     of that class's 1.2 heading leading. */
+  line-height: 1.5;
   color: var(--text-h);
   background: transparent;
   border: 0;
@@ -2716,9 +2733,8 @@ button .svg-icon {
   /* Negative margin absorbs the grip icon's dead space inside the
      32px box so the handle→checkbox gap matches checkbox→title. */
   margin-right: -2px;
-  /* Same first-line centering as .task-line-check (32px box on the
-     title's 2px + 0.75rem line center). */
-  margin-top: calc(0.75rem - 14px);
+  /* First-line centering comes from the shared .task-line control
+     rule (it is a direct-child .icon-button). */
   touch-action: none;
 }
 

@@ -5,6 +5,9 @@ import {
   useDueItems,
   useCompletedItemsInRange,
   useTask,
+  useSubtreeProgress,
+  setTaskStatus,
+  TASK_STATUS,
   areaColorHex,
   moveTask,
   childTaskIds,
@@ -17,6 +20,7 @@ import {
 import type { MergeableStore } from 'tinybase';
 import type { CompletedItem, DueItem } from '../../data/index.ts';
 import { useSelection } from '../context/useSelection.ts';
+import { useUndo } from '../context/useUndo.ts';
 import { useCollapsedSet } from '../hooks/useCollapsedSet.ts';
 import { todayIso, weekdayWithDate } from '../shared/dates.ts';
 import ReadOnlyTaskList from '../tasks/ReadOnlyTaskList.tsx';
@@ -119,10 +123,14 @@ function DueRootSubtree({
   return <TaskTree rootIds={childIds} onMove={onMove} draftRootTaskId={rootTaskId} />;
 }
 
-/** A root task that is due in the current range — a link row into its
- * task pane, styled like the area-view parent row: caret, name, and the
- * derived subtree progress meter (no checkbox affordance — a parent's
- * done state is derived). The caret toggles the subtree rendered below. */
+/** A root task that is due in the current range, routed by its
+ * descendant count like `TaskTreeRow`. A parent (≥1 descendant) is a
+ * link row into its task pane, styled like the area-view parent row:
+ * caret (toggles the subtree rendered below), name, and the derived
+ * subtree progress meter — no checkbox affordance, since a parent's
+ * done state is derived. A bare root (no descendants) is a leaf: a
+ * working checkbox for its own done state, with the same name link
+ * and due badge. */
 function RootTaskDueRow({
   rootTaskId,
   badgeLabel,
@@ -135,8 +143,52 @@ function RootTaskDueRow({
   collapsed: boolean;
   /** Toggles the subtree under this row. */
   onToggleCollapse: () => void;
-}): React.JSX.Element {
+}): React.JSX.Element | null {
+  const { store } = useDataLayer();
   const { navigate } = useSelection();
+  const { offerUndo } = useUndo();
+  const task = useTask(store, rootTaskId);
+  const { total } = useSubtreeProgress(store, rootTaskId);
+  if (!task) return null;
+
+  const openPane = (): void => {
+    navigate({ kind: 'task', id: rootTaskId });
+  };
+
+  if (total === 0) {
+    const done = task.status === TASK_STATUS.done;
+    return (
+      <div className="today-project-due-row">
+        <input
+          type="checkbox"
+          className="task-line-check"
+          checked={done}
+          onChange={() => {
+            if (done) {
+              setTaskStatus(store, rootTaskId, TASK_STATUS.open);
+              return;
+            }
+            setTaskStatus(store, rootTaskId, TASK_STATUS.done);
+            offerUndo({
+              label: `Completed “${task.title || 'Untitled'}”`,
+              onUndo: () => setTaskStatus(store, rootTaskId, TASK_STATUS.open),
+            });
+          }}
+          aria-label={done ? `Mark “${task.title}” not done` : `Mark “${task.title}” done`}
+        />
+        <button
+          type="button"
+          className="today-project-due"
+          onClick={openPane}
+          aria-label={`Task due ${badgeLabel.toLowerCase()}`}
+        >
+          <span className="today-project-due-name">{task.title || 'Untitled'}</span>
+          <span className="today-due-badge">{badgeLabel}</span>
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="today-project-due-row">
       <button
@@ -153,7 +205,7 @@ function RootTaskDueRow({
       <button
         type="button"
         className="today-project-due"
-        onClick={() => navigate({ kind: 'task', id: rootTaskId })}
+        onClick={openPane}
         aria-label={`Task due ${badgeLabel.toLowerCase()}`}
       >
         <span className="today-project-due-name">

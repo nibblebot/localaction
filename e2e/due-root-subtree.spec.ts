@@ -63,4 +63,41 @@ test.describe('Due panes render a due root like the area-view parent row', () =>
     await expect(todayDueRow.locator('.project-row-progress-count')).toHaveText('0 / 1');
     await expect(page.locator('.task-line', { hasText: sub })).toBeVisible();
   });
+  test('a due root with no subtasks renders a checkbox, not a caret', async ({ page }) => {
+    const tok = uniq();
+    const area = `Bare due ${tok}`;
+    const root = `Bare ${tok}`;
+
+    await page.goto('/#/');
+    await createArea(page, area);
+    await createRootTask(page, root);
+    // Due today always lands inside both views' ranges.
+    await setDueDateOnRow(page, root, new Date().getDate());
+
+    // Today view: a bare root is a leaf — a live checkbox for its own
+    // done state, no collapse caret, no derived progress meter.
+    await navigateToToday(page);
+    const dueRow = page.locator('.today-project-due-row', { hasText: root });
+    await expect(dueRow.locator(`input[aria-label="Mark “${root}” done"]`)).toBeVisible();
+    await expect(dueRow.locator('.project-row-caret')).toHaveCount(0);
+    await expect(dueRow.locator('.project-row-progress-count')).toHaveCount(0);
+
+    // Week view: identical leaf chrome.
+    await navigateToWeek(page);
+    const weekDueRow = page.locator('.today-project-due-row', { hasText: root });
+    await expect(weekDueRow.locator(`input[aria-label="Mark “${root}” done"]`)).toBeVisible();
+    await expect(weekDueRow.locator('.project-row-caret')).toHaveCount(0);
+
+    // The checkbox is live: checking the bare root off completes it, so
+    // it leaves the open due list and lands in the Done section — where
+    // its checkbox reopens it.
+    await weekDueRow.locator(`input[aria-label="Mark “${root}” done"]`).click();
+    await expect(page.locator('.today-project-due-row', { hasText: root })).toHaveCount(0);
+    const doneRow = page
+      .locator('section[aria-label="Done"]')
+      .locator('.task-line', { hasText: root });
+    await expect(doneRow).toBeVisible();
+    await doneRow.locator(`input[aria-label="Mark “${root}” not done"]`).click();
+    await expect(page.locator('.today-project-due-row', { hasText: root })).toBeVisible();
+  });
 });

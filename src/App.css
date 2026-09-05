@@ -1298,6 +1298,15 @@ body.sidebar-resizing {
   color: var(--danger);
 }
 
+/* Divider between the Overdue section and the in-range items below it:
+   rendered only when both sections are populated, and kept while
+   Overdue is collapsed so the boundary survives the toggle. It hugs the
+   overdue side; the next section's own margin supplies the lower gap. */
+.today-overdue-divider {
+  margin: var(--space-2) 0 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
 .today-done-day,
 .today-due-day {
   padding-left: 12px;

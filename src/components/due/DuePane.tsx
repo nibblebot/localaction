@@ -130,15 +130,21 @@ function DueRootSubtree({
  * subtree progress meter — no checkbox affordance, since a parent's
  * done state is derived. A bare root (no descendants) is a leaf: a
  * working checkbox for its own done state, with the same name link
- * and due badge. */
+ * and due badge. With `showRowDates` (overdue sections) the trailing
+ * element becomes the root's own due date — each overdue row dates
+ * itself, so a past-due root shows when it fell due instead of the
+ * semantic badge. */
 function RootTaskDueRow({
   rootTaskId,
   badgeLabel,
+  showRowDates = false,
   collapsed,
   onToggleCollapse,
 }: {
   rootTaskId: string;
   badgeLabel: string;
+  /** Emit the root's actual due date instead of the `badgeLabel`. */
+  showRowDates?: boolean;
   /** Tree-collapsed state. */
   collapsed: boolean;
   /** Toggles the subtree under this row. */
@@ -180,10 +186,19 @@ function RootTaskDueRow({
           type="button"
           className="today-project-due"
           onClick={openPane}
-          aria-label={`Task due ${badgeLabel.toLowerCase()}`}
+          aria-label={`Task due ${showRowDates && task.dueDate ? weekdayWithDate(task.dueDate) : badgeLabel.toLowerCase()}`}
         >
           <span className="today-project-due-name">{task.title || 'Untitled'}</span>
-          <span className="today-due-badge">{badgeLabel}</span>
+          {showRowDates && task.dueDate ? (
+            <span
+              className="task-line-due-date"
+              aria-label={`Due ${weekdayWithDate(task.dueDate)}`}
+            >
+              {weekdayWithDate(task.dueDate)}
+            </span>
+          ) : (
+            <span className="today-due-badge">{badgeLabel}</span>
+          )}
         </button>
       </div>
     );
@@ -206,13 +221,22 @@ function RootTaskDueRow({
         type="button"
         className="today-project-due"
         onClick={openPane}
-        aria-label={`Task due ${badgeLabel.toLowerCase()}`}
+        aria-label={`Task due ${showRowDates && task.dueDate ? weekdayWithDate(task.dueDate) : badgeLabel.toLowerCase()}`}
       >
         <span className="today-project-due-name">
           <RootTaskTitle rootTaskId={rootTaskId} />
         </span>
         <TaskProgressMeter taskId={rootTaskId} />
-        <span className="today-due-badge">{badgeLabel}</span>
+        {showRowDates && task.dueDate ? (
+          <span
+            className="task-line-due-date"
+            aria-label={`Due ${weekdayWithDate(task.dueDate)}`}
+          >
+            {weekdayWithDate(task.dueDate)}
+          </span>
+        ) : (
+          <span className="today-due-badge">{badgeLabel}</span>
+        )}
       </button>
     </div>
   );
@@ -222,8 +246,9 @@ function RootTaskDueRow({
  * The Area → Root-task sections shared by both views: Today renders them
  * directly under the pane header, Week nests them inside each due-day
  * bucket (`areaLabel` names the owning day instead of the pane). Rows
- * carry no per-row date label — the day header (or Today's single day)
- * carries the date.
+ * carry no per-row date label by default — the day header (or Today's
+ * single day) carries it; overdue sections opt into `showRowDates` so
+ * each row dates itself.
  */
 function AreaGroups({
   groups,
@@ -232,6 +257,7 @@ function AreaGroups({
   toggleRoot,
   dueBadgeLabel,
   onMove,
+  showRowDates = false,
 }: {
   groups: DueAreaGroup[];
   /** Sentence-style section label, e.g. "Home items due Mon, Jul 20". */
@@ -241,6 +267,8 @@ function AreaGroups({
   /** Label rendered on root-due rows (e.g. "Due this week"). */
   dueBadgeLabel: string;
   onMove: (activeId: string, parentId: string | null, beforeId: string | undefined) => void;
+  /** Render per-row due-date labels (overdue rows date themselves). */
+  showRowDates?: boolean;
 }): React.JSX.Element {
   return (
     <>
@@ -273,6 +301,7 @@ function AreaGroups({
                   <RootTaskDueRow
                     rootTaskId={rootTaskId}
                     badgeLabel={dueBadgeLabel}
+                    showRowDates={showRowDates}
                     collapsed={collapsed.has(rootTaskId)}
                     onToggleCollapse={() => toggleRoot(rootTaskId)}
                   />
@@ -285,9 +314,10 @@ function AreaGroups({
                   </div>
                 ) : (
                   root.taskIds.length > 0 && (
-                    // No per-row date label: the day header (Week) or the
-                    // single-day pane (Today) carries the date.
-                    <ReadOnlyTaskList ids={root.taskIds} showDueDate={false} />
+                    // Per-row date labels only where rows date themselves
+                    // (overdue); the day header (Week) or single-day pane
+                    // (Today) carries the date elsewhere.
+                    <ReadOnlyTaskList ids={root.taskIds} showDueDate={showRowDates} />
                   )
                 )}
               </div>
@@ -307,6 +337,9 @@ function AreaGroups({
  * subtree in place via the shared `TaskTree` — the same interactive
  * task/subtask rendering as the area view. Roots that are not themselves
  * due keep a plain heading plus the read-only list of their due subtasks.
+ * The Overdue section (due before today) reuses the same Area → Root
+ * grouping with per-row date labels; a divider separates it from the
+ * in-range items when both are populated.
  * Today groups its in-range items straight under area headings; Week
  * buckets them by due day into collapsible per-day sections (ascending,
  * `weekdayWithDate` headers, persisted under `:due-days`), each re-grouped
@@ -348,7 +381,6 @@ export default function DuePane({
    * range groups into the Overdue section. Same definition in both
    * views: anything due before today. */
   const overdue = useMemo(() => open.filter((i) => i.dueDate < today), [open, today]);
-  const overdueTaskIds = useMemo(() => overdue.map((i) => i.id), [overdue]);
   const inRange = useMemo(() => open.filter((i) => i.dueDate >= today), [open, today]);
   const completed = useCompletedItemsInRange(store, from, to);
   const doneByDay = useMemo(() => {
@@ -371,6 +403,12 @@ export default function DuePane({
     [store, inRange, areaMeta],
   );
 
+  // Overdue reuses the same Area → Root grouping; rows keep per-row
+  // date labels since each overdue item can carry a different past date.
+  const overdueGroups = useMemo(
+    () => groupDueItems(store, overdue, areaMeta),
+    [store, overdue, areaMeta],
+  );
   // Week view only: open in-range items bucketed by due day (local ISO,
   // ascending). Each day re-groups its items with `groupDueItems` so the
   // day sections reuse the Today view's Area → Root structure.
@@ -434,10 +472,21 @@ export default function DuePane({
               <h3 className="today-group-title">Overdue</h3>
               <span className="sidebar-link-count">{overdue.length}</span>
             </button>
-            {!overdueCollapsed && overdueTaskIds.length > 0 && (
-              <ReadOnlyTaskList ids={overdueTaskIds} showDueDate />
+            {!overdueCollapsed && (
+              <AreaGroups
+                groups={overdueGroups}
+                areaLabel={(area) => `${area.name} items overdue`}
+                collapsed={collapsed}
+                toggleRoot={toggle}
+                dueBadgeLabel="Overdue"
+                onMove={onMove}
+                showRowDates
+              />
             )}
           </section>
+        )}
+        {overdue.length > 0 && inRange.length > 0 && (
+          <hr className="today-overdue-divider" />
         )}
         {from === to && (
           <AreaGroups

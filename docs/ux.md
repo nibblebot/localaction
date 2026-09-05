@@ -160,8 +160,13 @@ followed by an add input. Quick-add (`Shift+A`) lands here.
 One shared `DuePane` with different ranges — Today is the single day; Week
 titles itself *"Week · \<range\>"*. Open items whose due date has already
 passed collect in a collapsible *Overdue* section above the range groups —
-tasks render with their weekday + date label and the section is
-danger-tinted. Open items due in range group under area headings (colour
+its items group under the same area headings (colour dot + name, Inbox
+first) as in-range items and every overdue row carries its actual weekday +
+date label, not a generic badge; the section is danger-tinted. When
+overdue and in-range items both exist, a divider line separates the
+*Overdue* section from the range groups; it stays in place while *Overdue*
+is collapsed and is absent when nothing remains in range. Open items due
+in range group under area headings (colour
 dot + name), each row labeled with its owning root task's title. In Today,
 a root task whose own due date falls in range expands into its full
 editable task tree in place — the same tree the task detail pane renders,

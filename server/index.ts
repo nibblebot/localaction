@@ -23,6 +23,7 @@ export const STATIC_ROOT = join(__dirname, '..', STATIC_ROOT_NAME);
 
 export interface ServerOptions {
   port?: number;
+  host?: string;
   secret?: string;
   // Required: no built-in default. Entry points (`scripts/dev.ts`, the CLI
   // below) pass `defaultDevDbPath()`/`defaultProdDbPath()` explicitly;
@@ -285,10 +286,14 @@ function mimeFor(path: string): string {
 
 export async function startServer(options: ServerOptions): Promise<RunningServer> {
   const port = options.port ?? DEFAULT_PORT;
+  const host = options.host;
   const secret = options.secret ?? process.env.LOCALACTION_SYNC_SECRET ?? '';
   const dbPath = options.dbPath;
   const staticRoot = options.staticRoot ?? STATIC_ROOT;
-  logInfo('server', `starting (port ${port}, db ${dbPath}, static ${staticRoot})`);
+  logInfo(
+    'server',
+    `starting (host ${host ?? 'all interfaces'}, port ${port}, db ${dbPath}, static ${staticRoot})`,
+  );
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
   const { wsServer, tinyServer, close: closeSync } = await attachSyncServer(
@@ -299,8 +304,14 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
     },
   );
 
-  await new Promise<void>((resolve) => httpServer.listen(port, () => resolve()));
-  logInfo('server', `listening on http://localhost:${port}`);
+  await new Promise<void>((resolve) => {
+    if (host) {
+      httpServer.listen(port, host, resolve);
+    } else {
+      httpServer.listen(port, resolve);
+    }
+  });
+  logInfo('server', `listening on ${host ?? 'all interfaces'}:${port}`);
 
   // Arms the e2e owner watchdog when LOCALACTION_OWNER_PID is set (Playwright
   // webServer env) so an abandoned e2e server exits on its own; a no-op for
@@ -336,18 +347,19 @@ const isMain =
   process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 interface CliArgs {
   dbPath?: string;
+  host?: string;
   port?: number;
   help: boolean;
   preview: boolean;
 }
 
 // CLI flag parsing for the prod-server entrypoint (`bun run prod`).
-// `ServerOptions` already accepts a literal `dbPath`/`port`; these flags let
-// the entry (`bun server/index.ts`) pick them at runtime. When `--db` is
-// absent the entry falls back to `defaultProdDbPath()` (platform user-data
-// dir), or to `defaultPreviewDbPath()` under `--preview`; `startServer`
-// itself has no fallback. Unknown flags are ignored so the entry is robust
-// to stray args.
+// `ServerOptions` already accepts a literal `dbPath`/`host`/`port`; these
+// flags let the entry (`bun server/index.ts`) pick them at runtime. When
+// `--db` is absent the entry falls back to `defaultProdDbPath()` (platform
+// user-data dir), or to `defaultPreviewDbPath()` under `--preview`;
+// `startServer` itself has no DB fallback. Unknown flags are ignored so the
+// entry is robust to stray args.
 function parseServerArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { help: false, preview: false };
   for (let i = 0; i < argv.length; i++) {
@@ -359,6 +371,11 @@ function parseServerArgs(argv: readonly string[]): CliArgs {
       if (next) out.dbPath = next;
     } else if (arg.startsWith('--db=')) {
       out.dbPath = arg.slice('--db='.length);
+    } else if (arg === '--host') {
+      const next = argv[++i];
+      if (next) out.host = next;
+    } else if (arg.startsWith('--host=')) {
+      out.host = arg.slice('--host='.length);
     } else if (arg === '--port') {
       const next = argv[++i];
       const parsed = next ? Number(next) : NaN;
@@ -379,6 +396,7 @@ function printServerUsage(stream: NodeJS.WriteStream): void {
       '\n' +
       '  --db <path>      SQLite file for the TinyBase sync persister.\n' +
       `                   Default: ${defaultProdDbPath()}\n` +
+      '  --host <address>  Address to bind. Default: all interfaces\n' +
       '  --port <n>       TCP port to listen on. Default: 7373\n' +
       '  --preview        Preview mode: port defaults to 7474 and the db to\n' +
       `                   ${defaultPreviewDbPath()} (explicit --port/--db win).\n` +
@@ -393,6 +411,7 @@ if (isMain) {
     process.exit(0);
   }
   await startServer({
+    host: cli.host,
     dbPath: cli.dbPath ?? (cli.preview ? defaultPreviewDbPath() : defaultProdDbPath()),
     port: cli.port ?? (cli.preview ? PREVIEW_PORT : DEFAULT_PORT),
   });

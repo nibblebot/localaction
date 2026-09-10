@@ -62,8 +62,8 @@ localaction                  # port 7373, SQLite in the platform user-data dir
 ```
 
 The installed `localaction` command is a Bun executable bundle containing the
-server and built web assets. It accepts the same `--port`, `--db`, `--preview`,
-and `--help` options as `bun run prod`.
+server and built web assets. It accepts the same `--host`, `--port`, `--db`,
+`--preview`, and `--help` options as `bun run prod`.
 
 For an unreleased checkout, rebuild and replace the Bun-linked command:
 
@@ -78,7 +78,35 @@ Keep `~/.bun/bin` on `PATH`; rebuilding and linking again replaces the
 command with the latest checkout.
 
 `bun run prod` and `bun run preview` remain available for source checkouts;
-they accept `--port <n>` and `--db <path>`, and `--help` prints defaults.
+they accept `--host <address>`, `--port <n>`, and `--db <path>`; `--help`
+prints defaults.
+
+**NixOS:** the flake exports `packages.x86_64-linux.localaction` and
+`nixosModules.default`. Import the module and enable the system service:
+
+```nix
+{
+  inputs.localaction.url =
+    "git+ssh://forgejo@forgejo.appz/nibblebot/localaction.git?ref=main";
+
+  outputs = { nixpkgs, localaction, ... }: {
+    nixosConfigurations.example = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        localaction.nixosModules.default
+        {
+          services.localaction.enable = true;
+        }
+      ];
+    };
+  };
+}
+```
+
+The service binds `127.0.0.1:7373` by default and stores SQLite state at
+`/var/lib/localaction/localaction.sqlite`. Set
+`services.localaction.openFirewall = true` only with a non-loopback
+`services.localaction.host`.
 
 **Multi-device sync:** run `localaction` on a reachable host and point every client at that host. No auth at the moment.
 

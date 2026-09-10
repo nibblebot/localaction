@@ -299,7 +299,7 @@ One unified server serves both static assets and the sync socket:
   allow-list; `cache-control: no-cache`.
 - `attachSyncServer(httpServer, opts)` — the sync handler above. Reused by every
   runtime mode so there is one source of truth.
-- `startServer(opts)` — wires static + sync onto one `http.Server` and listens.
+- `startServer(opts)` — wires static + sync onto one `http.Server` and listens on the optional host binding.
 
 **Entrypoints, one handler:**
 
@@ -317,10 +317,10 @@ rolldown config bundler breaks `ws` upgrade handling under Bun (the bundled
 handler accepts the socket server-side but its 101 response never reaches
 the wire); the native module runner skips bundling and the handshake works.
 
-Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). Dev, prod, and preview use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db` / `data-preview.db`) so dev and preview runs never share the production store; a pre-split `data.db` is left untouched:
-- prod (`bun run prod`): `--port` > `7373`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
-- preview (`bun run preview`): `--port` > `7474`; `--db` > `defaultPreviewDbPath()` (`data-preview.db` in the same platform user-data dir), explicit flags win.
-- dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
+Flag precedence by mode (the server API has no built-in DB default — `ServerOptions.dbPath` is required, so programmatic callers like tests/smoke must always name a path). The CLI binds all interfaces unless `--host` is explicit. Dev, prod, and preview use separate default files in the platform user-data dir (`data-dev.db` / `data-prod.db` / `data-preview.db`) so dev and preview runs never share the production store; a pre-split `data.db` is left untouched:
+- prod (`bun run prod`): `--host` > all interfaces; `--port` > `7373`; `--db` > `defaultProdDbPath()` (platform user-data dir via `env-paths`, e.g. `~/.local/share/localaction/data-prod.db` on Linux).
+- preview (`bun run preview`): `--host` > all interfaces; `--port` > `7474`; `--db` > `defaultPreviewDbPath()` (`data-preview.db` in the same platform user-data dir), explicit flags win.
+- dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; host/port are Vite-native (the WS rides on that HTTP port).
 
 - `bun run build` = `tsc -b` (project references: `tsconfig.app.json` for
   `src/` + `tests/`, `tsconfig.node.json` for config files and build scripts),
@@ -334,6 +334,12 @@ Flag precedence by mode (the server API has no built-in DB default — `ServerOp
   anywhere — including config files — fail the build. A build-only Vite plugin (`localaction-sw`) then bakes a
   content-hashed precache manifest into `dist/sw.js`, which the service worker
   registered from `main.tsx` installs on first load.
+- **NixOS packaging:** `flake.nix` exposes the x86-64 package and
+  `nixosModules.default`. A fixed-output Bun cache pins the dependency closure;
+  the sandboxed package build installs from that cache offline and runs the
+  normal build pipeline. The module runs as a dynamic system user, binds
+  loopback by default, and keeps its SQLite database in
+  `/var/lib/localaction`.
 - **React Compiler** is on (`babel-plugin-react-compiler` via
   `@rolldown/plugin-babel`); code must stay compiler-clean.
 - TS quirks: `verbatimModuleSyntax` (use `import type`, no default React

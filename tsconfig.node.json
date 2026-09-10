@@ -25,6 +25,7 @@
     "playwright.offline.config.ts",
     "scripts/e2e.ts",
     "scripts/postinstall.ts",
+    "scripts/build-localaction.ts",
     "e2e/infra.ts"
   ]
 }

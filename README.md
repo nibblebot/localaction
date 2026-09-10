@@ -56,13 +56,31 @@ Production:
 
 ```bash
 bun run build
-bun run prod     # port 7373, SQLite in the platform user-data dir
-bun run preview  # port 7474, preview store (data-preview.db)
+bun pm pack
+bun install -g ./localaction-<version>.tgz
+localaction                  # port 7373, SQLite in the platform user-data dir
 ```
 
-`bun run prod`/`bun run preview` accept `--port <n>` and `--db <path>`; `--help` prints defaults.
+The installed `localaction` command is a Bun executable bundle containing the
+server and built web assets. It accepts the same `--port`, `--db`, `--preview`,
+and `--help` options as `bun run prod`.
 
-**Multi-device sync:** run `bun run prod` on a reachable host and point every client at that host. No auth at the moment.
+For an unreleased checkout, rebuild and replace the Bun-linked command:
+
+```bash
+bun run link:daemon
+localaction
+```
+
+`link:daemon` does not require a version bump or package tarball. It runs
+`bun link`, which exposes the current build at `~/.bun/bin/localaction`.
+Keep `~/.bun/bin` on `PATH`; rebuilding and linking again replaces the
+command with the latest checkout.
+
+`bun run prod` and `bun run preview` remain available for source checkouts;
+they accept `--port <n>` and `--db <path>`, and `--help` prints defaults.
+
+**Multi-device sync:** run `localaction` on a reachable host and point every client at that host. No auth at the moment.
 
 ## Stack & testing
 

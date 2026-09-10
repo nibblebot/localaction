@@ -292,21 +292,23 @@ sequenceDiagram
 
 One unified server serves both static assets and the sync socket:
 
-- `createStaticFileServer(dist)` — reads files from `dist/`, with an SPA
-  fallback to `index.html`, a path-traversal guard (`..` / `\0` rejected,
-  `target.startsWith(root)` enforced), and a `426` short-response for `/ws`
-  over plain HTTP. MIME lookup from a small allow-list; `cache-control: no-cache`.
+- `createStaticFileServer(dist)` — reads files from source `dist/`, then from
+  the bundled asset map in a packaged executable; a path-traversal guard (`..`
+  / `\0` rejected, `target.startsWith(root)` enforced) and a `426`
+  short-response for `/ws` over plain HTTP. MIME lookup comes from a small
+  allow-list; `cache-control: no-cache`.
 - `attachSyncServer(httpServer, opts)` — the sync handler above. Reused by every
   runtime mode so there is one source of truth.
 - `startServer(opts)` — wires static + sync onto one `http.Server` and listens.
 
-**Two entrypoints, one handler:**
+**Entrypoints, one handler:**
 
 | Mode | Command | Sync wired by |
 | --- | --- | --- |
 | dev | `bun run dev` (`scripts/dev.ts` → `bun --bun vite --configLoader runner`) | `vite.config.ts` plugin → `configureServer` |
 | prod | `bun run prod` (`bun server/index.ts`) | `startServer` directly (module `isMain`) |
 | preview | `bun run preview` (`bun server/index.ts --preview`) | `startServer` directly (module `isMain`) |
+| installed | `localaction` (`dist-bundle/localaction.js`) | `startServer` directly (module `isMain`) |
 
 Vite runs under Bun because `vite.config.ts` statically
 imports `server/index.ts` → `server/db.ts` → `bun:sqlite`. The
@@ -320,14 +322,18 @@ Flag precedence by mode (the server API has no built-in DB default — `ServerOp
 - preview (`bun run preview`): `--port` > `7474`; `--db` > `defaultPreviewDbPath()` (`data-preview.db` in the same platform user-data dir), explicit flags win.
 - dev (`bun run dev`): `scripts/dev.ts` always passes an explicit `--db` (the user's, or `defaultDevDbPath()` when absent), moved past Vite's `--` separator and read from `argv` by `vite.config.ts`; `--port` is Vite-native (the WS rides on that HTTP port).
 
-## Build & toolchain
-
 - `bun run build` = `tsc -b` (project references: `tsconfig.app.json` for
-  `src/` + `tests/`, `tsconfig.node.json` for config files) then
-  `bun --bun vite build`. TS errors anywhere — including config files —
-  fail the build. A build-only Vite plugin (`localaction-sw`) then bakes
-  a content-hashed precache manifest into `dist/sw.js`, which the
-  service worker registered from `main.tsx` installs on first load.
+  `src/` + `tests/`, `tsconfig.node.json` for config files and build scripts),
+  then `bun --bun vite build`, then `scripts/build-localaction.ts`. The final
+  step temporarily maps every Vite asset as a Bun `type: "file"` import and
+  bundles `server/index.ts` plus those emitted assets into `dist-bundle/`.
+  The source stub is restored before the build exits. `package.json` exposes
+  that Bun-shebang bundle as the `localaction` bin, so `bun pm pack` produces
+  an installable release tarball and `bun run link:daemon` registers the
+  current build through Bun at `~/.bun/bin` without a version bump. TS errors
+  anywhere — including config files — fail the build. A build-only Vite plugin (`localaction-sw`) then bakes a
+  content-hashed precache manifest into `dist/sw.js`, which the service worker
+  registered from `main.tsx` installs on first load.
 - **React Compiler** is on (`babel-plugin-react-compiler` via
   `@rolldown/plugin-babel`); code must stay compiler-clean.
 - TS quirks: `verbatimModuleSyntax` (use `import type`, no default React

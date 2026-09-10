@@ -1,8 +1,7 @@
-// Shared e2e infrastructure: free-port allocation, the owner-pid watchdog
-// armed inside e2e-spawned servers, the orphan reaper run before each e2e
-// run, and the Playwright-chromium self-heal. Imported by
-// playwright.config.ts, playwright.offline.config.ts, scripts/e2e.ts,
-// vite.config.ts (localaction-sync plugin) and server/index.ts.
+// Shared e2e infrastructure: free-port allocation, the orphan reaper run
+// before each e2e run, and the Playwright-chromium self-heal. The server
+// watchdog lives in server/e2e-watchdog.ts so the production daemon bundle
+// never pulls in Playwright's runtime tree.
 //
 // Free ports and configs: Playwright 1.61 loads config files through ESM
 // import() (this package is "type": "module") but does NOT await an async
@@ -11,25 +10,14 @@
 // resolve their port with top-level `await getE2eServerPort()` and
 // default-export a plain object; an `async () => config` export would be
 // handed to the validator as an unawaited Promise.
-//
-// Module-scope constraint: vite.config.ts and server/index.ts statically
-// import this module inside long-lived dev/prod processes, so nothing here
-// may import '@playwright/test' at top level — ensurePlaywrightChromium()
-// imports it lazily.
 
 import { spawnSync } from 'node:child_process';
-import { accessSync, constants, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import type { AddressInfo } from 'node:net';
-import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { E2E_SERVER_REGISTRY_DIR } from '../server/e2e-watchdog.ts';
 
-/**
- * Registry of e2e-spawned servers, one `<pid>.json` per armed watchdog.
- * Lets the reaper prove a process is a throwaway e2e server (and that its
- * owner is dead) without pattern-killing by port or vague argv matches.
- */
-export const E2E_SERVER_REGISTRY_DIR = join(tmpdir(), 'localaction-e2e-servers');
 
 /**
  * Throwaway-DB argv markers (see e2e/test-db-path.ts and
@@ -108,62 +96,6 @@ export async function getE2eServerPort(): Promise<number> {
   return getFreePort();
 }
 
-/**
- * No-op unless LOCALACTION_OWNER_PID names a live watch target. When armed:
- * polls the owner every 500ms and exits this process once the owner is gone
- * (ESRCH), so e2e-spawned servers self-terminate when the Playwright runner
- * dies. EPERM counts as alive (owner under another uid). Also writes a
- * registry file for reapOrphanE2eServers() and removes it on clean exit.
- */
-export function startOwnerWatchdog(info: { port?: number; dbPath?: string } = {}): void {
-  const raw = process.env['LOCALACTION_OWNER_PID'];
-  if (!raw) return;
-  const ownerPid = Number.parseInt(raw, 10);
-  if (!Number.isInteger(ownerPid) || ownerPid <= 0 || ownerPid === process.pid) return;
-
-  const registryFile = join(E2E_SERVER_REGISTRY_DIR, `${process.pid}.json`);
-  try {
-    mkdirSync(E2E_SERVER_REGISTRY_DIR, { recursive: true });
-    writeFileSync(
-      registryFile,
-      JSON.stringify({
-        pid: process.pid,
-        ownerPid,
-        ...(info.port !== undefined ? { port: info.port } : {}),
-        ...(info.dbPath !== undefined ? { dbPath: info.dbPath } : {}),
-        startedAt: new Date().toISOString(),
-      }),
-    );
-  } catch {
-    // The registry only helps the reaper; never block a server over it.
-  }
-
-  const removeRegistryFile = (): void => {
-    try {
-      rmSync(registryFile, { force: true });
-    } catch {
-      // best effort
-    }
-  };
-  process.once('exit', removeRegistryFile);
-  for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-    process.once(signal, () => {
-      removeRegistryFile();
-      // Re-raise so default termination semantics (exit code/signal) hold.
-      process.kill(process.pid, signal);
-    });
-  }
-
-  const timer = setInterval(() => {
-    if (pidAlive(ownerPid)) return;
-    process.stderr.write(
-      `localaction: owner process ${ownerPid} is gone; stopping e2e server (pid ${process.pid})\n`,
-    );
-    process.exit(0);
-  }, 500);
-  // The watchdog must never keep an otherwise-finished server alive.
-  timer.unref();
-}
 
 function pidAlive(pid: number): boolean {
   try {

@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { dirname, extname, join } from 'node:path';
@@ -7,9 +8,10 @@ import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
 import { defaultPreviewDbPath, defaultProdDbPath, openDatabase, type ServerDatabase } from './db.ts';
-import { startOwnerWatchdog } from '../e2e/infra.ts';
+import { startOwnerWatchdog } from './e2e-watchdog.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
+import { EMBEDDED_DIST } from './embedded-dist.ts';
 export const DEFAULT_PORT = 7373;
 // Default port for `bun run preview` (plain `bun run prod` uses `DEFAULT_PORT`).
 export const PREVIEW_PORT = 7474;
@@ -195,7 +197,13 @@ const MIME_TYPES: Readonly<Record<string, string>> = {
   '.webmanifest': 'application/manifest+json',
 };
 
-export function createStaticFileServer(staticRoot: string) {
+// Source runs read the Vite output from dist/. The package build replaces the
+// empty EMBEDDED_DIST stub with file imports, whose emitted paths live beside
+// the bundled executable in dist-bundle/.
+export function createStaticFileServer(
+  staticRoot: string,
+  bundledAssets: Readonly<Record<string, string>> = EMBEDDED_DIST,
+) {
   return function serve(req: IncomingMessage, res: ServerResponse): void {
     if (!req.url) {
       res.writeHead(400);
@@ -218,35 +226,44 @@ export function createStaticFileServer(staticRoot: string) {
       res.end();
       return;
     }
-    // A missing file is a 404, not a permission error. (403 here used to
-    // make Firefox report devtools-extension source-map requests for paths
-    // we don't serve — e.g. installHook.js.map — as "Forbidden".)
-    const target = resolveStaticPath(staticRoot, url.pathname);
-    if (!target) {
-      res.writeHead(404);
-      res.end('Not found');
-      return;
-    }
-    try {
-      const data = readFileSync(target);
-      res.writeHead(200, {
-        'content-type': mimeFor(target),
-        'cache-control': 'no-cache',
-      });
-      res.end(data);
-    } catch {
+
+    const diskPath = resolveStaticPath(staticRoot, url.pathname);
+    if (diskPath) {
       try {
-        const html = readFileSync(join(staticRoot, 'index.html'));
+        const data = readFileSync(diskPath);
         res.writeHead(200, {
-          'content-type': 'text/html; charset=utf-8',
+          'content-type': mimeFor(diskPath),
           'cache-control': 'no-cache',
         });
-        res.end(html);
+        res.end(data);
+        return;
       } catch {
-        res.writeHead(404);
-        res.end('Not found');
+        // The file disappeared or became unreadable after resolution. Try the
+        // bundled copy before reporting it missing.
       }
     }
+
+    const assetKey = url.pathname === '/' ? '/index.html' : url.pathname;
+    const bundledPath = bundledAssets[assetKey];
+    if (bundledPath) {
+      try {
+        const data = readFileSync(bundledPath);
+        res.writeHead(200, {
+          'content-type': mimeFor(assetKey),
+          'cache-control': 'no-cache',
+        });
+        res.end(data);
+        return;
+      } catch {
+        // The package is incomplete or the emitted asset was removed.
+      }
+    }
+
+    // A missing file is a 404, not a permission error. (403 here used to
+    // make Firefox report devtools-extension source-map requests for paths we
+    // don't serve — e.g. installHook.js.map — as "Forbidden".)
+    res.writeHead(404);
+    res.end('Not found');
   };
 }
 

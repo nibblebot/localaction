@@ -61,6 +61,42 @@ describe('static file server', () => {
     expect(asset.headers.get('content-type')).toContain('application/javascript');
   });
 
+  it('serves bundled assets when source dist is absent', async () => {
+    const bundledRoot = mkdtempSync(join(tmpdir(), 'localaction-bundled-'));
+    const indexPath = join(bundledRoot, 'index.html');
+    const assetPath = join(bundledRoot, 'app.js');
+    writeFileSync(indexPath, '<html><body>bundled shell</body></html>');
+    writeFileSync(assetPath, 'console.log("bundled asset");');
+
+    const bundledServer = createServer(
+      createStaticFileServer(join(bundledRoot, 'missing-dist'), {
+        '/index.html': indexPath,
+        '/app.js': assetPath,
+      }),
+    );
+    try {
+      await new Promise<void>((resolve) => bundledServer.listen(0, '127.0.0.1', resolve));
+      const address = bundledServer.address();
+      if (address === null || typeof address === 'string') {
+        throw new Error('unexpected server address');
+      }
+
+      const index = await fetch(`http://127.0.0.1:${address.port}/`);
+      expect(index.status).toBe(200);
+      expect(index.headers.get('content-type')).toContain('text/html');
+      expect(await index.text()).toBe('<html><body>bundled shell</body></html>');
+
+      const asset = await fetch(`http://127.0.0.1:${address.port}/app.js`);
+      expect(asset.status).toBe(200);
+      expect(asset.headers.get('content-type')).toContain('application/javascript');
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        bundledServer.close((err) => (err ? reject(err) : resolve())),
+      );
+      rmSync(bundledRoot, { recursive: true, force: true });
+    }
+  });
+
   it('answers missing paths with 404, not 403', async () => {
     const missing = await fetch(`http://127.0.0.1:${port}/installHook.js.map`);
     expect(missing.status).toBe(404);

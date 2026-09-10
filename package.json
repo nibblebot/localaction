@@ -4,9 +4,14 @@
   "license": "AGPL-3.0-or-later",
   "version": "0.0.0",
   "type": "module",
+  "bin": {
+    "localaction": "dist-bundle/localaction.js"
+  },
+  "files": [
+    "dist-bundle/"
+  ],
   "scripts": {
-    "dev": "bun scripts/dev.ts",
-    "build": "tsc -b && bun --bun vite build",
+    "build": "tsc -b && bun --bun vite build && bun scripts/build-localaction.ts",
     "lint": "oxlint",
     "prod": "bun server/index.ts",
     "preview": "bun server/index.ts --preview",
@@ -21,7 +26,8 @@
     "test:e2e:headed": "bun scripts/e2e.ts --headed",
     "test:e2e:offline": "bun run build && bun scripts/e2e.ts --offline",
     "postinstall": "bun scripts/postinstall.ts",
-    "demo:mobile": "scripts/demo-mobile.sh"
+    "demo:mobile": "scripts/demo-mobile.sh",
+    "link:daemon": "bun run build && bun link"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

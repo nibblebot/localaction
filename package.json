@@ -11,11 +11,13 @@
     "dist-bundle/"
   ],
   "scripts": {
+    "dev": "bun scripts/dev.ts",
     "build": "tsc -b && bun --bun vite build && bun scripts/build-localaction.ts",
     "lint": "oxlint",
     "prod": "bun server/index.ts",
     "preview": "bun server/index.ts --preview",
     "smoke": "bun scripts/smoke.ts",
+    "smoke:bundle": "bun scripts/smoke-bundle.ts",
     "backup-db": "bun scripts/backup-db.ts",
     "benchmark-size": "bun scripts/benchmark-size.ts",
     "test": "bun test",

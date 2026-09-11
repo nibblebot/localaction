@@ -7,13 +7,13 @@
 - Node is unpinned and only needed for Playwright/tsc/oxlint binaries. Stack versions are bleeding-edge; generic tutorials may target older majors.
 
 ## Commands
-- **Agent port rule:** never use the default ports (`5173`, `7373`) or their URLs for any server invocation. Always pass an explicit, currently unused port with `--strictPort` (or equivalent) and use that actual port in every URL you construct. Bare `bun run dev`/`preview`/`start` are prohibited; `bun run smoke` and `bun run test:e2e` satisfy the rule (their configs allocate non-default ports). Hardcoding ports (e.g. `5199`) is prohibited for e2e — `scripts/e2e.ts` allocates a free port per run (`getFreePort()`) and hands it to the Playwright configs via `LOCALACTION_E2E_PORT`; always go through the wrapper.
+- **Agent port rule:** never use the default ports (`5173`, `7373`) or their URLs for any server invocation. Always pass an explicit, currently unused port with `--strictPort` (or equivalent) and use that actual port in every URL you construct. Bare `bun run dev`/`prod`/`preview` are prohibited; `bun run smoke` and `bun run test:e2e` satisfy the rule (their configs allocate non-default ports). Hardcoding ports (e.g. `5199`) is prohibited for e2e — `scripts/e2e.ts` allocates a free port per run (`getFreePort()`) and hands it to the Playwright configs via `LOCALACTION_E2E_PORT`; always go through the wrapper.
 - **Agent process-kill rule:** never kill a process you didn't start — even an apparently orphaned server may be the user's live session. Pick another explicit non-default port or ask the user to stop it. Clean up processes you spawned when done.
 - `bun run dev` — Vite dev + HMR + TinyBase sync WS; `scripts/dev.ts` injects `--db` (default `defaultDevDbPath()`, kept separate from the prod store).
-- `bun run build` — `tsc -b` (both tsconfig projects) + `bun --bun vite build`; TS errors fail the build.
+- `bun run build` — `tsc -b` (both tsconfig projects) + `bun --bun vite build` + `bun scripts/build-localaction.ts` (daemon bundle `dist-bundle/localaction.js` with embedded assets); TS errors fail the build.
 - `bun run lint` — oxlint. `bun test` / `test:unit` / `test:integration` / `test:watch`.
-- `bun run preview` — serve `dist/` (same WS handler as dev). `bun run start` — prod server (`server/index.ts`): `--port` (default 7373), `--db` (default `defaultProdDbPath()`).
-- `bun run smoke` — WS sync between two TinyBase clients + SQLite persister round-trip, on a random port/DB.
+- `bun run prod` — prod server (`server/index.ts`): `--port` (default 7373), `--db` (default `defaultProdDbPath()`). `bun run preview` — same server in preview mode (port 7474, `defaultPreviewDbPath()`).
+- `bun run smoke` — WS sync between two TinyBase clients + SQLite persister round-trip against source `startServer`, on a random port/DB. `bun run smoke:bundle` — same assertions plus embedded-asset serving against the packaged daemon (`dist-bundle/localaction.js`); pre-push gate, needs a fresh `bun run build` first.
 - `bun run backup-db` / `bun run benchmark-size` — online `VACUUM INTO` backup; DB size-growth benchmark against a throwaway store.
 - `bun run test:e2e` / `:headed` / `:offline` — Playwright via `scripts/e2e.ts`: reaps orphaned e2e servers, verifies chromium is installed, then runs on a free port allocated per run. `:offline` builds first, then runs against the prod server (the SW registers only in prod builds). Extra args pass through (`bun scripts/e2e.ts e2e/app-boot.spec.ts --grep foo`).
 
@@ -22,17 +22,17 @@
 - `src/data/` — data-layer seam (TinyBase MergeableStore, OPFS persister, WS sync, `DataLayerProvider`). Data APIs via `src/data/index.ts`; TinyBase UI bindings are allowed at consumer sites.
 - `src/components/` — component tree by domain; `MainPane.tsx` dispatches routes, one branch per pane.
 - `server/` — prod server + `bun:sqlite` handle; re-exports `attachSyncServer` so Vite dev/preview reuse the same WS handler.
-- `scripts/` - scripts
-- `tests/` — bun-test tree: `data/`, `markdown/`, `integration/`, `router.test.ts`. `e2e/` — Playwright, one spec per user journey.
-- `public/` — static assets; `dist/` is build output; never hand-edit.
+- `scripts/` — `dev.ts` (Vite dev entry), `build-localaction.ts` (daemon bundle), `e2e.ts` (Playwright wrapper), `smoke.ts` (WS/SQLite round-trip), `backup-db.ts`, `benchmark-size.ts`, `seed-layout.ts`, `postinstall.ts` (Playwright chromium).
+- `tests/` — bun-test tree rooted at `tests/`: `data/`, `markdown/`, `integration/`, plus top-level suites (`router`, `dates`, `syncLogFormat`, drop). `e2e/` — Playwright, one spec per user journey.
+- `public/` — static assets; `dist/` (Vite) and `dist-bundle/` (daemon bundle) are build output; never hand-edit.
 - `docs/architecture.md`, `docs/ux.md`, `docs/glossary.md` — system shape, UX, vocabulary. Trust code for behavior, the glossary for vocabulary.
-- tsconfigs: `tsconfig.app.json` covers `src/` + `tests/`; `tsconfig.node.json` covers `vite.config.ts`, both `playwright*.config.ts`, `scripts/e2e.ts`, and `e2e/infra.ts`. `@types/bun` provides `bun:sqlite` / `bun:test` types.
+- tsconfigs: `tsconfig.app.json` covers `src/` + `tests/`; `tsconfig.node.json` covers `vite.config.ts`, both `playwright*.config.ts`, `scripts/e2e.ts`, `scripts/postinstall.ts`, `scripts/build-localaction.ts`, and `e2e/infra.ts`. `@types/bun` provides `bun:sqlite` / `bun:test` types.
 
 ## Quirks
 - React Compiler is enabled.
 - TS: `verbatimModuleSyntax` (use `import type`; automatic JSX runtime — no `import React`), `erasableSyntaxOnly` (no enums/namespaces), keep `.tsx` extensions in TS imports.
 - `tsc -b` uses project references — TS errors in `vite.config.ts` / `playwright.config.ts` block the build.
-- Every Vite invocation must be `bun --bun vite ...` — never bare `vite`. Dev/preview must also pass `--configLoader runner`: Vite's default rolldown config loader breaks `ws` upgrade handling under Bun. Also, Bun's `node:http` keeps upgraded WS sockets tracked, so `attachSyncServer.close()` destroys them from an explicit socket set or `httpServer.close()` never fires. Both are pinned in the scripts — do not remove.
+- Every Vite invocation must be `bun --bun vite ...` — never bare `vite`. Dev (`scripts/dev.ts`) must also pass `--configLoader runner`: Vite's default rolldown config loader breaks `ws` upgrade handling under Bun. Also, Bun's `node:http` keeps upgraded WS sockets tracked, so `attachSyncServer.close()` destroys them from an explicit socket set or `httpServer.close()` never fires. Both are pinned in the scripts — do not remove.
 - `bun test` shares one module registry across all files in a run — never `mock.module` app modules (registrations leak into later files). Inject fakes through option seams instead (e.g. `startSync`'s `synchronizerImpl`).
 - Playwright auto-starts `bun run dev` (or `bun run prod` for the offline suite) on a **free port allocated per run** (by `scripts/e2e.ts`, passed to the configs as `LOCALACTION_E2E_PORT` — the config file is re-loaded per worker process, so the port cannot be rolled per config load; `reuseExistingServer: false`); tests depend on the `/ws` handshake. E2e-spawned servers arm an owner watchdog (`LOCALACTION_OWNER_PID` + `startOwnerWatchdog()`) that exits the server within ~0.5s when the Playwright runner dies, and `scripts/e2e.ts` reaps any leftovers before each run (registry in `tmpdir()/localaction-e2e-servers` plus a `/proc` scan for throwaway-DB argv markers).
 - **Test DBs live in `os.tmpdir()`** — unique throwaway path per run (`e2e/test-db-path.ts` is the canonical helper). Never let an experimental run fall through to `defaultDevDbPath()`.
@@ -56,6 +56,13 @@ Behavioral rules; DESIGN.md stays normative for visual tokens.
 4. `bun run test:e2e` — only when UI behavior changed
 
 Tests exercise external behavior through the data-layer seam (typed hooks / sync protocol), never TinyBase internals.
+
+## NixOS service deploy
+- Service `localaction` (`nix/module.nix` → `systemd.services.localaction`) runs flake `packages.x86_64-linux.localaction` (`dist-bundle/localaction.js` + embedded assets). This machine: host `nixos-server`, system flake `/etc/nixos`, service on `127.0.0.1:7374` behind caddy (`host-server/service.localaction.nix`); input `localaction` tracks `?ref=main`.
+- Workflow: `bun run lint && bun test && bun run build && bun run smoke:bundle` → `git add -A && git commit && git push` (flake `src = ./.` ignores untracked files; `/etc/nixos/flake.lock` pins the rev, so push alone deploys nothing) → `nh os switch -U localaction` (bare = `/etc/nixos#nixos-server` via `NH_FLAKE` + local hostname; no sudo — `nh` elevates).
+- Local iteration without push: `nh os switch --override-input localaction path:/home/joshua/repos/localaction`.
+- Deps changed (`package.json`/`bun.lock`) → `bunDeps.outputHash` in `flake.nix` mismatches; paste the got-hash from the build error.
+- Verify: `systemctl status localaction`, `journalctl -u localaction --since -5min`. DB (`/var/lib/localaction/localaction.sqlite`, `StateDirectory`) survives rebuilds.
 
 ## Design context
 `PRODUCT.md` (positioning, brand personality), `DESIGN.md` (visual system), `.impeccable/design.json` (machine-readable tokens). Consult before UI work; normative for design decisions.

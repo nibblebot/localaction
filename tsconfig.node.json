@@ -26,6 +26,9 @@
     "scripts/e2e.ts",
     "scripts/postinstall.ts",
     "scripts/build-localaction.ts",
+    "scripts/smoke.ts",
+    "scripts/smoke-sync.ts",
+    "scripts/smoke-bundle.ts",
     "e2e/infra.ts"
   ]
 }

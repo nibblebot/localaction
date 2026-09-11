@@ -1,0 +1,25 @@
+#!/bin/sh
+# pre-push gate: full verification before code leaves the machine.
+# Installed by `bun run setup:hooks` (auto-run from postinstall on `bun install`).
+# Bypass in an emergency with `git push --no-verify`.
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+echo "pre-push: 1/5 bun run lint"
+bun run lint
+
+echo "pre-push: 2/5 bun test"
+bun test
+
+echo "pre-push: 3/5 bun run build"
+bun run build
+
+echo "pre-push: 4/5 bun run smoke:bundle"
+bun run smoke:bundle
+
+echo "pre-push: 5/5 bun run test:e2e"
+bun run test:e2e
+
+echo "pre-push: OK"

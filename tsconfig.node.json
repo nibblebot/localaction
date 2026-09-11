@@ -25,6 +25,7 @@
     "playwright.offline.config.ts",
     "scripts/e2e.ts",
     "scripts/postinstall.ts",
+    "scripts/setup-hooks.ts",
     "scripts/build-localaction.ts",
     "scripts/smoke.ts",
     "scripts/smoke-sync.ts",

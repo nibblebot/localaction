@@ -24,9 +24,12 @@ Run these in order before opening a PR:
 1. `bun run lint` — oxlint over the workspace.
 2. `bun test` — unit + integration suites.
 3. `bun run build` — typechecks both TS projects, then bundles.
-4. `bun run test:e2e` — Playwright; only needed when UI behavior changed.
+4. `bun run smoke:bundle` — WS sync + SQLite persistence against the packaged daemon (`dist-bundle/localaction.js`); needs a fresh `build` first.
+5. `bun run test:e2e` — Playwright; only needed when UI behavior changed.
 
 `bun run smoke` boots the prod server on a throwaway DB and asserts WS sync plus SQLite persistence — a quick end-to-end sanity check.
+
+A `pre-commit` hook runs the fast checks (`lint`, `bun test`, ~2s) on every commit, and a `pre-push` hook runs the full gate above on every push. `bun install` installs both automatically (via `postinstall`); existing clones run `bun run setup:hooks` once. Bypass in an emergency with `--no-verify`.
 
 ## Reporting issues
 

@@ -28,6 +28,7 @@
     "test:e2e:headed": "bun scripts/e2e.ts --headed",
     "test:e2e:offline": "bun run build && bun scripts/e2e.ts --offline",
     "postinstall": "bun scripts/postinstall.ts",
+    "setup:hooks": "bun scripts/setup-hooks.ts",
     "demo:mobile": "scripts/demo-mobile.sh",
     "link:daemon": "bun run build && bun link"
   },

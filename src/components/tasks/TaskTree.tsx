@@ -2,9 +2,10 @@
  * Unified task tree — the single renderer for task rows across the
  * area view, the inbox, task detail panes, and due panes. Every root
  * passed in renders its ENTIRE subtree inline (completed subtasks stay
- * in place, checked + struck through — there is no showCompleted
- * plumbing anymore; a subtree only disappears when its root is fully
- * done, which the data layer's pruneDoneTasks handles).
+ * in place, checked + struck through) with `showCompleted` on — the
+ * default; with it off, every completed row (and its whole subtree,
+ * which is necessarily done too) is pruned, and a subtree whose root
+ * is fully done disappears either way.
  *
  * Row chrome splits by leaf vs. parent, derived at render time:
  * - Leaf (no descendants)  — a stored-status checkbox, inline-editable
@@ -41,6 +42,7 @@ import {
   restoreSubtree,
   buildTaskTree,
   pruneDoneTasks,
+  pruneCompletedTasks,
   TASK_STATUS,
   NOTE_ENTITY_TYPE,
 } from '../../data/index.ts';
@@ -488,6 +490,7 @@ export default function TaskTree({
   rootIds,
   onMove,
   droppable = true,
+  showCompleted = true,
   externalDndContext = false,
   draftRootTaskId,
 }: {
@@ -502,6 +505,8 @@ export default function TaskTree({
   onMove: (activeId: string, newParentId: string | null, beforeId: string | undefined) => void;
   /** False renders the tree read-only (no drag chrome). */
   droppable?: boolean;
+  /** False prunes every completed row (and its subtree) from the tree. */
+  showCompleted?: boolean;
   /** True registers this tree into the enclosing DndContext instead of
    * owning one (RootGroups' hoisted group drops). */
   externalDndContext?: boolean;
@@ -523,9 +528,12 @@ export default function TaskTree({
   const draft = usePendingTaskDraft();
 
   const tree = buildTaskTree(store, allIds);
-  // pruneDoneTasks only prunes done-rooted subtrees now; completed
-  // subtasks of an active/backlog root stay visible in place.
-  const pruned = pruneDoneTasks(store, tree.children);
+  // Show mode prunes only fully-done root subtrees (completed subtasks
+  // of an active/backlog root stay visible in place, checked and
+  // struck through). Hide mode prunes every completed node instead.
+  const pruned = showCompleted
+    ? pruneDoneTasks(store, tree.children)
+    : pruneCompletedTasks(store, tree.children);
   let spliced = draft ? spliceTaskDraft(pruned, draft) : pruned;
   if (
     draft !== null &&

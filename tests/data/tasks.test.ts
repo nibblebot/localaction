@@ -20,6 +20,7 @@ import {
   childTaskIds,
   descendantTaskIds,
   buildTaskTree,
+  pruneCompletedTasks,
   encodePlacement,
   decodePlacement,
 } from '../../src/data/tasks.ts';
@@ -521,6 +522,59 @@ describe('buildTaskTree', () => {
     // Orphaned sub-task is rendered as a top-level row so it is not
     // dropped from the visible list.
     expect(tree.children.map((n) => n.id)).toEqual([orphan]);
+  });
+});
+
+describe('pruneCompletedTasks', () => {
+  let store: MergeableStore;
+  beforeEach(() => {
+    store = freshStore();
+  });
+
+  /** A root with two children, the first of them done. */
+  function mixedRoot(): { root: string; doneChild: string; openChild: string } {
+    const root = createTask(store, { title: 'root' });
+    const doneChild = createTask(store, {
+      title: 'done child',
+      placement: { kind: 'task', id: root },
+    });
+    const openChild = createTask(store, {
+      title: 'open child',
+      placement: { kind: 'task', id: root },
+      order: 500,
+    });
+    setTaskStatus(store, doneChild, TASK_STATUS.done);
+    return { root, doneChild, openChild };
+  }
+
+  it('drops a fully-completed root with its whole subtree', () => {
+    const { root, doneChild, openChild } = mixedRoot();
+    setTaskStatus(store, openChild, TASK_STATUS.done);
+    const tree = buildTaskTree(store, [root, doneChild, openChild]);
+    expect(pruneCompletedTasks(store, tree.children)).toEqual([]);
+  });
+
+  it('keeps a not-done parent and prunes only its completed children', () => {
+    const { root, doneChild, openChild } = mixedRoot();
+    const tree = buildTaskTree(store, [root, doneChild, openChild]);
+    const pruned = pruneCompletedTasks(store, tree.children);
+    expect(pruned.map((n) => n.id)).toEqual([root]);
+    expect(pruned[0]!.children.map((n) => n.id)).toEqual([openChild]);
+  });
+
+  it('preserves sibling order among the surviving roots', () => {
+    // Explicit orders: the default `nextOrder` is last+1000, so mixing
+    // default and explicit orders can collide and fall to the id
+    // tiebreak (nondeterministic UUIDs).
+    const first = createTask(store, { title: 'first', order: 1000 });
+    const second = createTask(store, { title: 'second', order: 2000 });
+    const third = createTask(store, { title: 'third', order: 3000 });
+    setTaskStatus(store, second, TASK_STATUS.done);
+    const tree = buildTaskTree(store, [first, second, third]);
+    expect(pruneCompletedTasks(store, tree.children).map((n) => n.id)).toEqual([
+      first,
+      third,
+    ]);
   });
 });
 

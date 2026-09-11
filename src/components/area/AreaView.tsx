@@ -7,6 +7,7 @@ import {
 import { useSelection } from '../context/useSelection.ts';
 import { INBOX } from '../../router.ts';
 import { useCollapsedPaneSections } from '../hooks/useCollapsedPaneSections.ts';
+import { useShowCompleted } from '../hooks/useShowCompleted.ts';
 import AreaHeader from './AreaHeader.tsx';
 import CollapsibleSection from './CollapsibleSection.tsx';
 import RootTaskGroups from './RootTaskGroups.tsx';
@@ -30,6 +31,7 @@ export default function AreaView({ areaId }: { areaId: string }): React.JSX.Elem
   const area = useArea(store, areaId);
 
   const collapsedPaneSections = useCollapsedPaneSections();
+  const { showCompleted, toggle: toggleShowCompleted } = useShowCompleted();
 
   const parent = useMemo<HeaderArea | null>(() => {
     if (!areaId) return null;
@@ -95,10 +97,12 @@ export default function AreaView({ areaId }: { areaId: string }): React.JSX.Elem
           name={area.name}
           color={area.color}
           parent={parent}
+          showCompleted={showCompleted}
+          onToggleCompleted={toggleShowCompleted}
           onNavigate={goToArea}
           onDeleteArea={goToInbox}
         />
-        <RootTaskGroups areaId={areaId} subAreas={subAreas} />
+        <RootTaskGroups areaId={areaId} subAreas={subAreas} showCompleted={showCompleted} />
         {NOTES_ENABLED && (
           <CollapsibleSection
             title="Notes"

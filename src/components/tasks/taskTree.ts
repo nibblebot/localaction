@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { MergeableStore } from 'tinybase';
-import { getPlacement, getRootTriState, useTableVersion, TABLES } from '../../data/index.ts';
+import { getPlacement, useTableVersion, TABLES } from '../../data/index.ts';
 
 /**
  * Depth-first collect of a task's descendant ids by following the
@@ -43,21 +43,4 @@ export function useDeepTaskIds(
     }
     return out;
   }, [topLevelIds, store, tasksV]);
-}
-
-/**
- * Count of visible top-level rows for a group. Completed tasks are
- * always visible in place under active/backlog roots (no showCompleted
- * plumbing anymore); only a fully-done root's subtree is pruned, so a
- * done-rooted top-level row counts as hidden.
- */
-export function countVisibleTopLevel(
-  store: MergeableStore,
-  ids: readonly string[],
-): number {
-  let n = 0;
-  for (const tid of ids) {
-    if (getRootTriState(store, tid) !== 'done') n += 1;
-  }
-  return n;
 }

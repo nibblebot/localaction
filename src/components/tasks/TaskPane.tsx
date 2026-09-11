@@ -21,8 +21,10 @@ import {
 } from '../../data/index.ts';
 import { useSelection } from '../context/useSelection.ts';
 import { useUndo } from '../context/useUndo.ts';
+import { useShowCompleted } from '../hooks/useShowCompleted.ts';
 import EmptyState from '../shared/EmptyState.tsx';
 import ConfirmModal from '../shared/ConfirmModal.tsx';
+import CompletedToggle from '../shared/CompletedToggle.tsx';
 import { INBOX } from '../../router.ts';
 import TaskTree from './TaskTree.tsx';
 import TaskDueDateButton from './TaskDueDateButton.tsx';
@@ -34,12 +36,12 @@ import TaskNotesBody from '../notes/TaskNotesBody.tsx';
 /**
  * Task detail pane (`#/t/<id>`) — the standalone form of a parent task,
  * reachable by clicking a parent task's name anywhere it renders. Works at
- * any depth: the header shows an inline rename, a due date, a delete, and
- * (roots only) a Backlog toggle; the body renders the task's children as
- * the roots of a subtree TaskTree. A back affordance returns to the parent
- * task's pane (sub-task) or to the owning area / inbox (root). The task's
- * note body editor lives below the subtree (task-scoped notes), gated by
- * NOTES_ENABLED.
+ * any depth: the header shows an inline rename, a due date, a delete, the
+ * completed-tasks visibility toggle, and (roots only) a Backlog toggle;
+ * the body renders the task's children as the roots of a subtree TaskTree.
+ * A back affordance returns to the parent task's pane (sub-task) or to the
+ * owning area / inbox (root). The task's note body editor lives below the
+ * subtree (task-scoped notes), gated by NOTES_ENABLED.
  */
 export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Element {
   const { store } = useDataLayer();
@@ -48,6 +50,7 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
   const task = useTask(store, taskId);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const { showCompleted, toggle: toggleShowCompleted } = useShowCompleted();
 
   // The task's own placement: `task:<parentId>` marks a sub-task whose
   // parent gets its own pane; anything else is a root.
@@ -195,6 +198,7 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
                 {triState === 'backlog' ? 'Backlog' : 'Active'}
               </button>
             )}
+            <CompletedToggle showCompleted={showCompleted} onToggle={toggleShowCompleted} />
             <TaskProgressMeter taskId={taskId} />
           </div>
           <ConfirmModal
@@ -226,7 +230,12 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
           />
         </div>
         <section className="tasks-tab project-pane-tasks" aria-label="Subtasks">
-          <TaskTree rootIds={childIds} onMove={onMove} draftRootTaskId={taskId} />
+          <TaskTree
+            rootIds={childIds}
+            onMove={onMove}
+            showCompleted={showCompleted}
+            draftRootTaskId={taskId}
+          />
           <div className="pane-section-head-actions">
             <button
               type="button"

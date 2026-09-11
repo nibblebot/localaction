@@ -485,6 +485,25 @@ export function pruneDoneTasks(
   return out;
 }
 
+/**
+ * Prune EVERY completed node out of a task tree — the "hide completed"
+ * view mode. A node is pruned iff its own derived status is `done`,
+ * which implies its whole subtree is done, so the subtree drops with
+ * it; a not-done parent keeps only its not-done descendants. Sibling
+ * order is preserved.
+ */
+export function pruneCompletedTasks(
+  store: MergeableStore,
+  nodes: readonly TaskTreeNode[],
+): TaskTreeNode[] {
+  const out: TaskTreeNode[] = [];
+  for (const node of nodes) {
+    if (getDerivedStatus(store, node.id) === TASK_STATUS.done) continue;
+    out.push({ id: node.id, children: pruneCompletedTasks(store, node.children) });
+  }
+  return out;
+}
+
 /** Canonical task ordering: `order` cell ascending, id as tiebreak. */
 export function sortTaskIds(store: MergeableStore, ids: readonly string[]): string[] {
   return [...ids].sort((a, b) => {

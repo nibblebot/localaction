@@ -82,6 +82,7 @@ export {
   descendantTaskIds,
   buildTaskTree,
   pruneDoneTasks,
+  pruneCompletedTasks,
   sortTaskIds,
   topLevelTaskIdsForPlacement,
   getInboxTaskIds,

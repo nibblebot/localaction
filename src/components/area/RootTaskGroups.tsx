@@ -28,9 +28,12 @@ import type { SubAreaRef } from './types.ts';
 export default function RootTaskGroups({
   areaId,
   subAreas,
+  showCompleted = true,
 }: {
   areaId: string;
   subAreas: readonly SubAreaRef[];
+  /** False hides the Done group and every completed row. */
+  showCompleted?: boolean;
 }): React.JSX.Element {
   const { store } = useDataLayer();
   // Top-level ids for every slice are read imperatively (one hook per
@@ -95,6 +98,7 @@ export default function RootTaskGroups({
     <section className="tasks-tab" aria-label="Tasks">
       <RootGroups
         slices={slices}
+        showCompleted={showCompleted}
         renderGroupAction={(group) => (
           <button
             type="button"

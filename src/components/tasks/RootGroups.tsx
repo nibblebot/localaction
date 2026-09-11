@@ -228,10 +228,12 @@ function SliceRows({
   slice,
   group,
   droppable,
+  showCompleted,
 }: {
   slice: RootGroupSlice;
   group: TaskGroupId;
   droppable: boolean;
+  showCompleted: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const ids = group === 'active' ? slice.active : group === 'backlog' ? slice.backlog : slice.done;
@@ -254,7 +256,13 @@ function SliceRows({
       {group === 'done' ? (
         ids.map((id) => <DoneTaskRow key={id} taskId={id} depth={0} />)
       ) : (
-        <TaskTree rootIds={ids} onMove={onMove} droppable={droppable} externalDndContext />
+        <TaskTree
+          rootIds={ids}
+          onMove={onMove}
+          droppable={droppable}
+          showCompleted={showCompleted}
+          externalDndContext
+        />
       )}
     </div>
   );
@@ -281,12 +289,16 @@ function SliceRows({
 export default function RootGroups({
   slices,
   droppable = true,
+  showCompleted = true,
   renderGroupAction,
   renderGroupFooter,
 }: {
   slices: readonly RootGroupSlice[];
   /** False renders every tree read-only. */
   droppable?: boolean;
+  /** False drops the Done group and prunes completed rows from every
+   * Active/Backlog tree. */
+  showCompleted?: boolean;
   /** Action at the right edge of the Active / Backlog group headers. */
   renderGroupAction?: (group: 'active' | 'backlog') => ReactNode;
   /** Content appended at the end of a group (e.g. an add-task input). A
@@ -386,8 +398,11 @@ export default function RootGroups({
   const activeFooter = renderGroupFooter?.('active') ?? null;
   const backlogFooter = renderGroupFooter?.('backlog') ?? null;
 
-  const renderGroup = (entry: (typeof GROUPS)[number]): React.JSX.Element => {
+  const renderGroup = (entry: (typeof GROUPS)[number]): React.JSX.Element | null => {
     const g = entry.id;
+    // "Hide completed" drops the Done group entirely (its rows are all
+    // completed) — Active/Backlog prune their completed rows instead.
+    if (g === 'done' && !showCompleted) return null;
     const total = slices.reduce((n, s) => n + s[g].length, 0);
     const footer = g === 'active' ? activeFooter : g === 'backlog' ? backlogFooter : null;
     const hasContent = total > 0 || footer !== null;
@@ -407,6 +422,7 @@ export default function RootGroups({
             slice={slice}
             group={g}
             droppable={droppable}
+            showCompleted={showCompleted}
           />
         ))}
         {footer}

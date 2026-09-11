@@ -127,7 +127,8 @@ name.
   at the top of the group with each sub-area's roots as a labeled slice
   below them (clickable sub-area heading). Every Active or Backlog root
   renders its **entire subtree inline** — completed subtasks stay visible
-  in place, checked and struck through — with a caret to collapse it.
+  in place, checked and struck through, while the completed toggle is on —
+  with a caret to collapse it.
   Parent rows show a done/total progress meter in place of a checkbox;
   leaf rows keep the checkbox. Only the caret expands a subtree in place;
   clicking a parent's name (or row body) opens the **task detail pane**.
@@ -141,6 +142,12 @@ name.
     always a visible drag away.
   - **Done** is derived (every descendant done) and static; it is never a
     drop target.
+- **Completed toggle** — a check button at the right edge of the area
+  header flips whether completed tasks show: on (default), **Done**
+  renders and completed subtasks stay in place struck through; off, the
+  **Done** group is dropped and every completed row (with its subtree)
+  is pruned from the Active / Backlog trees. The preference is shared
+  with the task detail pane and persists per device.
 - **Notes** — notes attached to this area or anywhere in its subtree (its
   own notes plus the subtree's task notes), each a line with title and
   markdown body preview, inline-editable, deletable behind a confirm. The
@@ -186,11 +193,13 @@ keyed independently per view. Empty state: *"Nothing in this view."*
 ### Task detail pane
 
 Clicking a parent task's name (`#/t/<id>`) opens its detail pane: a header
-with the task name (inline-renamable), the due-date affordance, a
-breadcrumb / back affordance toward the owning root or parent pane, and
-delete (which returns to the owning view). For a **root** task the header
-also carries the **Backlog** toggle — shelving or restoring the root and
-its whole subtree in one move. The body renders the task's full subtree
+with the task name (inline-renamable), the due-date affordance, the
+**completed-tasks toggle** (the same device-wide preference as the area
+header — off prunes completed rows from the subtree), a breadcrumb / back
+affordance toward the owning root or parent pane, and delete (which returns
+to the owning view). For a **root** task the header also carries the
+**Backlog** toggle — shelving or restoring the root and its whole subtree in
+one move. The body renders the task's full subtree
 with the same row chrome as the area view (parent rows show their
 done/total progress meter; leaves their checkbox), plus the task's **note
 body** — a markdown editor scoped to this task, the only place a

@@ -60,6 +60,8 @@ type Options = {
 type RunOptions = {
   cwd?: string;
   env?: Record<string, string>;
+  /** Stream stdout/stderr straight to the terminal instead of capturing them. */
+  inherit?: boolean;
 };
 
 type ShResult = { status: number; stdout: string; stderr: string };
@@ -80,18 +82,19 @@ function sh(command: string, args: string[], options: RunOptions = {}): ShResult
   const result = spawnSync(command, args, {
     cwd: options.cwd ?? ROOT,
     encoding: 'utf8',
+    stdio: options.inherit ? 'inherit' : 'pipe',
     env: { ...process.env, ...options.env },
   });
   if (result.error) throw new Error(`${command} could not start: ${result.error.message}`);
   return { status: result.status ?? 1, stdout: String(result.stdout ?? ''), stderr: String(result.stderr ?? '') };
 }
 
-/** Mutating command: echoed, output streamed, non-zero exit aborts the deploy. */
+/** Mutating command: echoed, output streamed to the terminal, non-zero exit aborts the deploy. */
 function run(command: string, args: string[], options: RunOptions = {}): void {
   info(`$ ${command} ${args.join(' ')}`);
   if (DRY_RUN) return;
-  const { status } = sh(command, args, options);
-  if (status !== 0) throw new Error(`${command} ${args.join(' ')} failed (exit ${status})`);
+  const { status } = sh(command, args, { ...options, inherit: true });
+  if (status !== 0) throw new Error(`${command} ${args.join(' ')} failed (exit ${status}; output above)`);
 }
 
 /** Read-only probe: captures stdout, throws on non-zero exit. */

@@ -18,6 +18,7 @@
     "preview": "bun server/index.ts --preview",
     "smoke": "bun scripts/smoke.ts",
     "smoke:bundle": "bun scripts/smoke-bundle.ts",
+    "deploy": "bun scripts/deploy.ts",
     "backup-db": "bun scripts/backup-db.ts",
     "benchmark-size": "bun scripts/benchmark-size.ts",
     "test": "bun test",

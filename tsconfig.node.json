@@ -30,6 +30,7 @@
     "scripts/smoke.ts",
     "scripts/smoke-sync.ts",
     "scripts/smoke-bundle.ts",
+    "scripts/deploy.ts",
     "e2e/infra.ts"
   ]
 }

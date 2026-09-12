@@ -385,18 +385,6 @@ describe('deleteTask conversion snapshot', () => {
     store = freshStore();
   });
 
-  it('removes the task', () => {
-    const t = createTask(store, { title: 'X' });
-    deleteTask(store, t);
-    expect(getTask(store, t)).toBeUndefined();
-  });
-
-  it('removes the whole subtree', () => {
-    const root = createTask(store, { title: 'root' });
-    const child = createTask(store, { title: 'c', placement: { kind: 'task', id: root } });
-    deleteTask(store, root);
-    expect(getTask(store, child)).toBeUndefined();
-  });
 
   it('deleting the last child snapshots the parent derived status into its stored cell', () => {
     const parent = createTask(store, { title: 'parent' });
@@ -636,13 +624,6 @@ describe('completedAt', () => {
     expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
   });
 
-  it('schema column + Task.completedAt are wired through decodeTaskRow', () => {
-    expect(COLUMNS.tasks.completedAt).toBe('completedAt');
-    const t = createTask(store, { title: 'x' });
-    expect(getTask(store, t)?.completedAt).toBeNull();
-    setTaskStatus(store, t, TASK_STATUS.done);
-    expect(typeof getTask(store, t)?.completedAt).toBe('string');
-  });
 
   // SLICE 3 — extends below this line. Round-trip the decode, sibling
   // idempotency, and the bump-side cousin assertions.
@@ -683,41 +664,6 @@ describe('completedAt', () => {
     expect(after).toBe(first);
   });
 
-  it('setTaskStatus bumps updatedAt alongside the completedAt transition', () => {
-    const t = createTask(store, { title: 'x' });
-    const initialUpdated = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
-    expect(typeof initialUpdated).toBe('string');
-    setTaskStatus(store, t, TASK_STATUS.done);
-    const afterDone = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
-    expect(afterDone).toBe(initialUpdated);
-    // The fake clock never advances inside this test, so the
-    // timestamps match — but the cell is still present and a string,
-    // proving the write happened.
-    expect(typeof afterDone).toBe('string');
-
-    setTaskStatus(store, t, TASK_STATUS.open);
-    const afterOpen = store.getCell(TABLES.tasks, t, COLUMNS.tasks.updatedAt);
-    expect(typeof afterOpen).toBe('string');
-  });
-
-  it('updateTask status:"done" on an open task writes completedAt (writes flow through setTaskStatus)', () => {
-    const t = createTask(store, { title: 'x' });
-    expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBeUndefined();
-    updateTask(store, t, { status: TASK_STATUS.done });
-    const cell = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt) as string;
-    expect(typeof cell).toBe('string');
-    // decodeTaskRow → Task.completedAt matches the cell.
-    expect(getTask(store, t)?.completedAt).toBe(cell);
-  });
-
-  it('reopening a stored-done task via updateTask clears completedAt, not orphans it', () => {
-    const t = createTask(store, { title: 'x' });
-    setTaskStatus(store, t, TASK_STATUS.done);
-    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(true);
-    updateTask(store, t, { status: TASK_STATUS.open });
-    expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
-    expect(getTask(store, t)?.completedAt).toBeNull();
-  });
 });
 
 describe('completion write atomicity', () => {

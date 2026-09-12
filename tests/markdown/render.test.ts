@@ -8,14 +8,12 @@ describe('renderMarkdown', () => {
     expect(html).toContain('<p>world</p>');
   });
 
-  it('does not turn double-bracket text into a link', () => {
-    const html = renderMarkdown('See [[Family]]');
-    expect(html).not.toContain('wiki-link');
-    expect(html).toContain('[[Family]]');
-  });
+  it('leaves double-bracket text literal instead of linking it', () => {
+    const inline = renderMarkdown('See [[Family]]');
+    expect(inline).toContain('[[Family]]');
+    expect(inline).not.toContain('<a ');
 
-  it('does not turn code spans into links', () => {
-    const html = renderMarkdown('`[[Family]]`');
-    expect(html).not.toContain('wiki-link');
+    const code = renderMarkdown('`[[Family]]`');
+    expect(code).toContain('<code>[[Family]]</code>');
   });
 });

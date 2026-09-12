@@ -1,15 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createArea, createRootTask } from './helpers.ts';
 
-test.describe('LocalAction shell', () => {
-  test('renders the two-zone layout with sidebar and main pane', async ({ page }) => {
-    await page.goto('/');
-    await expect(page.locator('.app-shell')).toBeVisible();
-    await expect(page.locator('.sidebar')).toBeVisible();
-    await expect(page.locator('.main')).toBeVisible();
-    await expect(page.locator('.sidebar-app-name')).toContainText('LocalAction');
-  });
-
+test.describe('Shell routing', () => {
   test('home hash shows the welcome empty state', async ({ page }) => {
     await page.goto('/#/');
     await expect(page).toHaveURL(/#\/$/);

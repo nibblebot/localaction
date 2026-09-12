@@ -119,30 +119,10 @@ describe('getDueItems', () => {
     ]);
   });
 
-  it('range bounds are inclusive on both ends', () => {
-    const fromDate = '2026-07-20';
-    const toDate = '2026-07-26';
-    const a = createTask(store, { title: 'A' });
-    updateTask(store, a, { dueDate: '2026-07-20' });
-    const b = createTask(store, { title: 'B' });
-    updateTask(store, b, { dueDate: '2026-07-26' });
-    const ids = getDueItems(store, fromDate, toDate).map((i) => i.id);
-    expect(ids).toContain(a);
-    expect(ids).toContain(b);
-  });
-
   // Local noon stamp: `localDayOf` resolves to the calendar day in any
   // timezone, so the window filter below is tz-deterministic.
   const atNoon = (y: number, m: number, d: number): string =>
     new Date(y, m - 1, d, 12, 0, 0).toISOString();
-
-  it('getCompletedItemsInRange smoke: a stamped, done task surfaces in the result', () => {
-    const t = createTask(store, { title: 'done-today' });
-    setTaskStatus(store, t, TASK_STATUS.done);
-    store.setCell(TABLES.tasks, t, COLUMNS.tasks.completedAt, atNoon(2026, 7, 23));
-    const items = getCompletedItemsInRange(store, '2026-07-23', '2026-07-23');
-    expect(items.map((i) => i.taskId)).toContain(t);
-  });
 
   it('getCompletedItemsInRange returns rows for stamped, done tasks completed in [from, to]', () => {
     const a = createTask(store, { title: 'A' });

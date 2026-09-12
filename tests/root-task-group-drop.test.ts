@@ -49,24 +49,14 @@ describe('parseGroupId', () => {
 });
 
 describe('resolveTaskGroupDrop', () => {
-  test('Backlog header drop shelves an active root (appends)', () => {
-    const resolved = resolveTaskGroupDrop(
-      't1',
-      headerContainerId('a', 'backlog'),
-      findPosition,
-      idsIn,
-    );
-    expect(resolved).toEqual({ kind: 'shelve', beforeId: undefined });
-  });
-
-  test('Backlog zone drop shelves and appends (empty group included)', () => {
-    const resolved = resolveTaskGroupDrop(
-      't1',
-      containerId('b', 'backlog'),
-      findPosition,
-      idsIn,
-    );
-    expect(resolved).toEqual({ kind: 'shelve', beforeId: undefined });
+  test('Backlog header/zone drop shelves an active root (appends)', () => {
+    expect(
+      resolveTaskGroupDrop('t1', headerContainerId('a', 'backlog'), findPosition, idsIn),
+    ).toEqual({ kind: 'shelve', beforeId: undefined });
+    // Area B has no backlog rows yet: dropping into the empty zone still shelves.
+    expect(
+      resolveTaskGroupDrop('t1', containerId('b', 'backlog'), findPosition, idsIn),
+    ).toEqual({ kind: 'shelve', beforeId: undefined });
   });
 
   test('Active header drop unshelves a backlog root (appends)', () => {

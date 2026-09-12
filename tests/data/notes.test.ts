@@ -57,7 +57,7 @@ describe('notes', () => {
       entityId: 'd1',
     });
     const slug = String(store.getCell(TABLES.notes, id, COLUMNS.notes.slug));
-    expect(slug.length).toBeGreaterThan(0);
+    expect(slug).toBe('note');
   });
 
   it('updateNote patches body and bumps updatedAt', () => {

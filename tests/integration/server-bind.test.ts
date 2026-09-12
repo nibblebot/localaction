@@ -1,17 +1,20 @@
 import { expect, test } from 'bun:test';
-import { rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { startServer } from '../../server/index.ts';
 
-test('startServer binds only the requested host', async () => {
-  const dbPath = join(
-    tmpdir(),
-    `localaction-bind-${Date.now()}-${process.pid}-${Math.random().toString(16).slice(2)}.db`,
-  );
+test('startServer binds only the requested host and serves its static root', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'localaction-bind-'));
+  const dbPath = join(dir, 'bind.db');
+  const staticRoot = join(dir, 'dist');
+  mkdirSync(staticRoot);
+  writeFileSync(join(staticRoot, 'index.html'), '<html><body>shell</body></html>');
+
   const server = await startServer({
     dbPath,
+    staticRoot,
     host: '127.0.0.1',
     port: 0,
   });
@@ -22,6 +25,6 @@ test('startServer binds only the requested host', async () => {
     expect((await fetch(`http://127.0.0.1:${address.port}/`)).status).toBe(200);
   } finally {
     await server.close();
-    rmSync(dbPath, { force: true });
+    rmSync(dir, { recursive: true, force: true });
   }
 });

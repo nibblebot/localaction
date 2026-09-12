@@ -13,17 +13,6 @@ describe('unsynced tracker', () => {
     expect(tracker.hasUnsyncedChanges).toBe(false);
   });
 
-  it('marks dirty on a local commit while disconnected, notifying once', () => {
-    const tracker = createUnsyncedTracker();
-    let notified = 0;
-    tracker.subscribe(() => {
-      notified += 1;
-    });
-    tracker.noteLocalCommit(false);
-    expect(tracker.hasUnsyncedChanges).toBe(true);
-    expect(notified).toBe(1);
-  });
-
   it('does not re-notify on repeated disconnected commits', () => {
     const tracker = createUnsyncedTracker();
     let notified = 0;

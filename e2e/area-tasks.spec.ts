@@ -40,6 +40,17 @@ test('area tasks: add, nest, complete', async ({ page }) => {
   ).toBeVisible();
   expect(await groupCount(page, 'Active')).toBe(1);
   expect(await groupCount(page, 'Done')).toBe(1);
+
+  // Once the last open descendant completes, the area has only Done
+  // work. Away from its selected state, it recedes and carries no
+  // actionable-task count chip.
+  await page.locator(`input[aria-label="Mark “Sub task ${tok}” done"]`).click();
+  await page.locator('.sidebar-inbox-link').click();
+  const areaRow = page.locator('.sidebar-item', {
+    has: page.locator('.sidebar-item-name', { hasText: area }),
+  });
+  await expect(areaRow).toHaveClass(/sidebar-item-dim/);
+  await expect(areaRow.locator('.sidebar-link-count')).toHaveCount(0);
 });
 
 test('the Backlog header "+" shelves a new area task', async ({ page }) => {

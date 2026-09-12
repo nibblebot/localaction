@@ -79,14 +79,15 @@ function SortableAreaRow({
   const count = node.count.openTaskCount;
   const hasChildren = node.children.length > 0;
   const classes = ['sidebar-item', 'sidebar-item-drag-handle'];
-  // Empty areas (nothing inside them yet) recede to 40% opacity,
-  // recovering on hover — but never while the area is the active one.
-  const empty =
-    node.count.taskCount === 0 &&
-    node.count.noteCount === 0;
+  // Empty areas and areas whose remaining tasks are all Done recede to
+  // 40% opacity. Notes-only areas stay fully visible, and the open-task
+  // counter is already omitted at zero. Keep the selected area emphasized.
+  const inactive =
+    node.count.openTaskCount === 0 &&
+    (node.count.taskCount > 0 || node.count.noteCount === 0);
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
-  if (empty && !isActive) classes.push('sidebar-item-dim');
+  if (inactive && !isActive) classes.push('sidebar-item-dim');
   return (
     <li
       ref={handle.ref}

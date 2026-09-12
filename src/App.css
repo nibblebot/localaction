@@ -1240,21 +1240,36 @@ body.sidebar-resizing {
   width: auto;
 }
 
-/* Row for a project that is itself due today: icon + name + badge,
-   click-through to the owning area. */
+/* Due-root row: flat at rest like task rows in every other pane.
+   The Today pane tightens single-day scan density while retaining a
+   32px control target; Week keeps the roomier multi-day rhythm. */
 .today-project-due {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: var(--space-2) var(--space-2);
+  padding: var(--space-2);
   font: inherit;
   color: var(--text-h);
-  background: var(--surface);
+  background: transparent;
   border: none;
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
+}
+
+.today-pane .today-project-due {
+  min-height: 32px;
+  padding-block: 0;
+}
+
+.today-pane .task-line {
+  padding-block: 0;
+}
+
+.today-pane .project-row-tasks {
+  padding: 0;
+  border-top: 0;
 }
 
 .today-project-due:hover {

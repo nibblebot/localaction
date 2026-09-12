@@ -488,7 +488,7 @@ export default function DuePane({
   }
 
   return (
-    <main className="main" aria-label={title}>
+    <main className={`main due-pane${from === to ? ' today-pane' : ''}`} aria-label={title}>
       <div className="main-body">
         <header className="main-pane-header">
           <h2 className="main-pane-title">{title}</h2>

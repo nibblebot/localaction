@@ -184,6 +184,18 @@ body.sidebar-resizing {
   min-width: 0;
 }
 
+/* Area rows and their type are 1.3× their former size. Because the
+   enlarged font already scales the line box, only the original padding
+   contribution needs its own 1.3× factor here. */
+.sidebar-area-row .sidebar-item {
+  min-block-size: calc(1lh + 10.4px);
+  font-size: 1.3rem;
+}
+
+.sidebar-area-row .sidebar-item-top {
+  min-block-size: calc(1lh + 15.6px);
+}
+
 
 .sidebar-item {
   display: flex;
@@ -3322,6 +3334,16 @@ button .svg-icon {
      row-level chrome. */
   .sidebar-item {
     min-height: 44px;
+  }
+
+  /* The area-specific height wins on specificity, so retain the shared
+     44px touch floor explicitly. */
+  .sidebar-area-row .sidebar-item {
+    min-block-size: max(44px, calc(1lh + 10.4px));
+  }
+
+  .sidebar-area-row .sidebar-item-top {
+    min-block-size: max(44px, calc(1lh + 15.6px));
   }
 
   /* Calendar day cells reach ~44px on phones. */

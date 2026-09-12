@@ -63,6 +63,34 @@ test.describe('Due panes render a due root like the area-view parent row', () =>
     await expect(todayDueRow.locator('.project-row-progress-count')).toHaveText('0 / 1');
     await expect(page.locator('.task-line', { hasText: sub })).toBeVisible();
   });
+  test('a due nested task expands its full descendant tree in Today', async ({ page }) => {
+    const tok = uniq();
+    const area = `Nested due tree ${tok}`;
+    const root = `Root ${tok}`;
+    const dueTask = `Due task ${tok}`;
+    const child = `Child ${tok}`;
+
+    await page.goto('/#/');
+    await createArea(page, area);
+    await createRootTask(page, root);
+    await addSubTaskToNamed(page, root, dueTask);
+    await addSubTaskToNamed(page, dueTask, child);
+    await setDueDateOnRow(page, dueTask, new Date().getDate());
+
+    await navigateToToday(page);
+    await expect(page.getByRole('heading', { name: root })).toBeVisible();
+
+    const dueRow = page.locator('.task-line', { hasText: dueTask });
+    const childRow = page.locator('.task-line', { hasText: child });
+    await expect(dueRow.locator('button[title="Collapse subtasks"]')).toBeVisible();
+    await expect(childRow).toBeVisible();
+
+    await dueRow.locator('button[title="Collapse subtasks"]').click();
+    await expect(childRow).toHaveCount(0);
+    await dueRow.locator('button[title="Expand subtasks"]').click();
+    await expect(childRow).toBeVisible();
+  });
+
   test('a due root with no subtasks renders a checkbox, not a caret', async ({ page }) => {
     const tok = uniq();
     const area = `Bare due ${tok}`;

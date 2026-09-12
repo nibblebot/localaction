@@ -155,9 +155,11 @@ function TaskTitleInput({
 function LeafTaskRow({
   taskId,
   handle,
+  showDueDate,
 }: {
   taskId: string;
   handle?: SortableHandleProps;
+  showDueDate: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const task = useTask(store, taskId);
@@ -264,7 +266,7 @@ function LeafTaskRow({
           </svg>
         </button>
       )}
-      {task.dueDate && (
+      {showDueDate && task.dueDate && (
         <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
           {weekdayWithDate(task.dueDate)}
         </span>
@@ -339,10 +341,12 @@ function ParentTaskRow({
   taskId,
   handle,
   collapsedRows,
+  showDueDate,
 }: {
   taskId: string;
   handle?: SortableHandleProps;
   collapsedRows: CollapsedSet;
+  showDueDate: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const task = useTask(store, taskId);
@@ -420,7 +424,7 @@ function ParentTaskRow({
       >
         {display}
       </button>
-      {task.dueDate && (
+      {showDueDate && task.dueDate && (
         <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
           {weekdayWithDate(task.dueDate)}
         </span>
@@ -450,17 +454,26 @@ function TaskTreeRow({
   taskId,
   handle,
   collapsedRows,
+  showDueDate,
 }: {
   taskId: string;
   handle?: SortableHandleProps;
   collapsedRows: CollapsedSet;
+  showDueDate: boolean;
 }): React.JSX.Element | null {
   const { store } = useDataLayer();
   const { total } = useSubtreeProgress(store, taskId);
   if (total > 0) {
-    return <ParentTaskRow taskId={taskId} handle={handle} collapsedRows={collapsedRows} />;
+    return (
+      <ParentTaskRow
+        taskId={taskId}
+        handle={handle}
+        collapsedRows={collapsedRows}
+        showDueDate={showDueDate}
+      />
+    );
   }
-  return <LeafTaskRow taskId={taskId} handle={handle} />;
+  return <LeafTaskRow taskId={taskId} handle={handle} showDueDate={showDueDate} />;
 }
 
 /**
@@ -491,6 +504,7 @@ export default function TaskTree({
   onMove,
   droppable = true,
   showCompleted = true,
+  showDueDate = true,
   externalDndContext = false,
   draftRootTaskId,
 }: {
@@ -507,6 +521,8 @@ export default function TaskTree({
   droppable?: boolean;
   /** False prunes every completed row (and its subtree) from the tree. */
   showCompleted?: boolean;
+  /** False suppresses static row dates when an enclosing bucket already provides the date. */
+  showDueDate?: boolean;
   /** True registers this tree into the enclosing DndContext instead of
    * owning one (RootGroups' hoisted group drops). */
   externalDndContext?: boolean;
@@ -560,7 +576,12 @@ export default function TaskTree({
         draft !== null && tid === draft.nodeId ? (
           <TaskDraftRow draft={draft} handle={handle} />
         ) : (
-          <TaskTreeRow taskId={tid} handle={droppable ? handle : undefined} collapsedRows={collapsedRows} />
+          <TaskTreeRow
+            taskId={tid}
+            handle={droppable ? handle : undefined}
+            collapsedRows={collapsedRows}
+            showDueDate={showDueDate}
+          />
         )
       }
     </SortableTree>

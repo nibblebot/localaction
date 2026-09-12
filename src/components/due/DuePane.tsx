@@ -11,6 +11,7 @@ import {
   areaColorHex,
   moveTask,
   childTaskIds,
+  getPlacement,
   sortTaskIds,
   useTableVersion,
   PLACEMENT_SEP,
@@ -121,6 +122,47 @@ function DueRootSubtree({
     return sortTaskIds(store, childTaskIds(store, rootTaskId));
   }, [store, v, rootTaskId]);
   return <TaskTree rootIds={childIds} onMove={onMove} draftRootTaskId={rootTaskId} />;
+}
+
+/**
+ * Due sub-tasks rendered as subtree roots. When both an ancestor and one
+ * of its descendants are due in this bucket, keep only the ancestor as a
+ * render root: TaskTree supplies the descendant in place, so listing both
+ * would duplicate that branch. Dragging stays disabled because these
+ * cross-cutting roots can belong to different immediate parents.
+ */
+function DueTaskTrees({
+  taskIds,
+  onMove,
+  showDueDate,
+}: {
+  taskIds: readonly string[];
+  onMove: (activeId: string, parentId: string | null, beforeId: string | undefined) => void;
+  showDueDate: boolean;
+}): React.JSX.Element {
+  const { store } = useDataLayer();
+  const rootIds = useMemo(() => {
+    const dueIds = new Set(taskIds);
+    return taskIds.filter((taskId) => {
+      const seen = new Set<string>([taskId]);
+      let placement = getPlacement(store, taskId);
+      while (placement.kind === 'task' && !seen.has(placement.id)) {
+        if (dueIds.has(placement.id)) return false;
+        seen.add(placement.id);
+        placement = getPlacement(store, placement.id);
+      }
+      return true;
+    });
+  }, [store, taskIds]);
+
+  return (
+    <TaskTree
+      rootIds={rootIds}
+      onMove={onMove}
+      droppable={false}
+      showDueDate={showDueDate}
+    />
+  );
 }
 
 /** A root task that is due in the current range, routed by its
@@ -314,10 +356,11 @@ function AreaGroups({
                   </div>
                 ) : (
                   root.taskIds.length > 0 && (
-                    // Per-row date labels only where rows date themselves
-                    // (overdue); the day header (Week) or single-day pane
-                    // (Today) carries the date elsewhere.
-                    <ReadOnlyTaskList ids={root.taskIds} showDueDate={showRowDates} />
+                    <DueTaskTrees
+                      taskIds={root.taskIds}
+                      onMove={onMove}
+                      showDueDate={showRowDates}
+                    />
                   )
                 )}
               </div>
@@ -332,19 +375,17 @@ function AreaGroups({
 /**
  * Shared body for the Today and Week views. The range filtering, header,
  * and badge label differ (`from === to` is the single-day Today view);
- * the row behavior is identical: a root task whose own due date falls in
+ * the row behavior is identical. A root task whose own due date falls in
  * range renders as a link row with a collapse caret and expands its full
- * subtree in place via the shared `TaskTree` — the same interactive
- * task/subtask rendering as the area view. Roots that are not themselves
- * due keep a plain heading plus the read-only list of their due subtasks.
+ * subtree in place. When only nested tasks are due, those tasks become
+ * roots of the same collapsible `TaskTree`, with their complete descendant
+ * branches shown inline instead of a flat due-only list.
+ *
  * The Overdue section (due before today) reuses the same Area → Root
  * grouping with per-row date labels; a divider separates it from the
- * in-range items when both are populated.
- * Today groups its in-range items straight under area headings; Week
- * buckets them by due day into collapsible per-day sections (ascending,
- * `weekdayWithDate` headers, persisted under `:due-days`), each re-grouped
- * with `groupDueItems` into the same area headings — rows inside a day
- * section carry no per-row weekday label since the day header dates it.
+ * in-range items. Today groups in-range items under area headings; Week
+ * buckets them by due day into collapsible sections and re-groups each day
+ * into the same area headings.
  */
 export default function DuePane({
   title,

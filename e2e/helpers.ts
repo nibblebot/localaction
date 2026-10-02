@@ -22,8 +22,7 @@ import type { MergeableStore } from 'tinybase';
  */
 
 /** Unique token so replayed state from prior runs is harmless. */
-export const uniq = (): string =>
-  `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+export const uniq = (): string => `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 /** Create an area from the sidebar and land on its main pane. */
 export async function createArea(page: Page, name: string): Promise<void> {
@@ -38,17 +37,18 @@ export async function createArea(page: Page, name: string): Promise<void> {
  * (the sidebar reparent drag is covered by reorder.spec). */
 export async function nestArea(page: Page, parentName: string, subName: string): Promise<void> {
   await page.evaluate(
-    async ([parent, sub]) => {
+    async ([parent, sub]: [string, string]) => {
       const w = window as unknown as { __LOCALACTION?: { store?: MergeableStore } };
-      let store = w.__LOCALACTION?.store;
+      let exposedStore = w.__LOCALACTION?.store;
       // Wait for the store to be exposed (dev hook).
-      for (let i = 0; i < 50 && !store; i += 1) {
+      for (let i = 0; i < 50 && !exposedStore; i += 1) {
         const { promise, resolve } = Promise.withResolvers<void>();
         setTimeout(resolve, 100);
         await promise;
-        store = w.__LOCALACTION?.store;
+        exposedStore = w.__LOCALACTION?.store;
       }
-      if (!store) throw new Error('localaction store not exposed on window');
+      if (!exposedStore) throw new Error('localaction store not exposed on window');
+      const store = exposedStore;
       const findByName = (name: string): string =>
         store.getRowIds('areas').find((id) => store.getCell('areas', id, 'name') === name) ??
         (() => {
@@ -59,7 +59,7 @@ export async function nestArea(page: Page, parentName: string, subName: string):
       const { moveArea } = await import('../src/data/index.ts');
       moveArea(store, findByName(sub), findByName(parent), undefined);
     },
-    [parentName, subName],
+    [parentName, subName] satisfies [string, string],
   );
 }
 
@@ -108,7 +108,10 @@ export function groupBox(page: Page, title: 'Active' | 'Backlog' | 'Done'): Loca
 }
 
 /** Numeric row count rendered in a group header's `.tab-group-count`. */
-export async function groupCount(page: Page, title: 'Active' | 'Backlog' | 'Done'): Promise<number> {
+export async function groupCount(
+  page: Page,
+  title: 'Active' | 'Backlog' | 'Done',
+): Promise<number> {
   const count = groupHead(page, title).locator('.tab-group-count');
   const text = (await count.textContent()) ?? '';
   return Number.parseInt(text, 10) || 0;

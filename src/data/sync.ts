@@ -31,7 +31,8 @@ function describeConnectFailure(err: unknown): string {
   const message = (err as Error).message ?? String(err);
   const match = /^tinybase:(\d+)$/.exec(message);
   if (!match) return message;
-  return TINYBASE_CONNECT_ERRORS[match[1]] ?? `TinyBase sync error ${match[1]}`;
+  const code = match[1]!; // The successful regex requires this digits capture.
+  return TINYBASE_CONNECT_ERRORS[code] ?? `TinyBase sync error ${code}`;
 }
 
 export interface SyncClient {
@@ -236,8 +237,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       if (!destroyed) {
         try {
           ws.close();
-        } catch {
-        }
+        } catch {}
         currentWs = undefined;
         scheduleReconnect(reasonForReconnect ?? message);
       }
@@ -250,8 +250,7 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
     if (destroyed) {
       try {
         ws.close();
-      } catch {
-      }
+      } catch {}
       currentWs = undefined;
       return;
     }
@@ -296,16 +295,14 @@ export function startSync(options: SyncClientOptions = {}): SyncClient {
       if (ws) {
         try {
           ws.close();
-        } catch {
-        }
+        } catch {}
       }
       const sync = currentSync;
       currentSync = undefined;
       if (sync) {
         try {
           await sync.destroy();
-        } catch {
-        }
+        } catch {}
       }
       logInfo('sync', 'destroyed');
     },

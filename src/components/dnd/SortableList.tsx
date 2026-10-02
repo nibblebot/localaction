@@ -94,15 +94,8 @@ function SortableSlot<TId extends string>({
   className,
   children: render,
 }: SortableSlotProps<TId>): ReactElement {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-    isOver,
-  } = useSortable({ id: id as string });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({ id: id as string });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -117,10 +110,7 @@ function SortableSlot<TId extends string>({
     isOver: isOver ?? false,
   };
   return (
-    <div
-      className={`sortable-item-slot${className ? ` ${className}` : ''}`}
-      role="listitem"
-    >
+    <div className={`sortable-item-slot${className ? ` ${className}` : ''}`} role="listitem">
       {render(handle)}
     </div>
   );
@@ -170,9 +160,7 @@ export function SortableList<TId extends string>({
         // the active row itself (because active was just above over),
         // skip it and use the one after that.
         const next = itemIds[overIdx + 1] as TId | undefined;
-        beforeId = next === activeIdStr
-          ? (itemIds[overIdx + 2] as TId | undefined)
-          : next;
+        beforeId = next === activeIdStr ? (itemIds[overIdx + 2] as TId | undefined) : next;
       } else {
         // Active is below over; the drop lands right before over.
         beforeId = itemIds[overIdx] as TId | undefined;
@@ -213,8 +201,7 @@ export function SortableList<TId extends string>({
             over
               ? `Dropped ${String(active.id)} on ${String(over.id)}.`
               : `Dropped ${String(active.id)} outside the list.`,
-          onDragCancel: ({ active }) =>
-            `Cancelled drag of ${String(active.id)}.`,
+          onDragCancel: ({ active }) => `Cancelled drag of ${String(active.id)}.`,
         },
         screenReaderInstructions: {
           draggable:

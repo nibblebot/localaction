@@ -16,9 +16,7 @@ import './App.css';
 // by Vite, so the dynamic import (and the whole ui-react-inspector chunk)
 // is tree-shaken out of production builds.
 const Inspector = import.meta.env.DEV
-  ? lazy(() =>
-      import('tinybase/ui-react-inspector').then((m) => ({ default: m.Inspector })),
-    )
+  ? lazy(() => import('tinybase/ui-react-inspector').then((m) => ({ default: m.Inspector })))
   : null;
 
 const store = getStore();
@@ -53,9 +51,7 @@ function App(): React.JSX.Element {
   return (
     <Provider store={store}>
       <AppearanceProvider>
-        <DataLayerProvider
-          syncEnabled={import.meta.env.VITE_LOCALACTION_SYNC_ENABLED !== 'false'}
-        >
+        <DataLayerProvider syncEnabled={import.meta.env.VITE_LOCALACTION_SYNC_ENABLED !== 'false'}>
           <SelectionProvider>
             <UndoProvider>
               <div className={`app-shell${drawerOpen ? ' drawer-open' : ''}`}>
@@ -86,6 +82,7 @@ function App(): React.JSX.Element {
                   />
                   {drawerOpen ? (
                     <div
+                      role="presentation"
                       className="drawer-backdrop"
                       onClick={() => setDrawerOpen(false)}
                     />

@@ -28,7 +28,7 @@ let debugPort: number | undefined;
 let urlPrefix: string | undefined;
 let readyFile: string | undefined;
 for (let i = 0; i < args.length; i++) {
-  const arg = args[i];
+  const arg = args[i]!;
   if (arg === '--debug-port') {
     debugPort = Number(args[++i]);
   } else if (arg.startsWith('--debug-port=')) {

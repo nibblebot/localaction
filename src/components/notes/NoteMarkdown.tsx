@@ -16,7 +16,17 @@ export default function NoteMarkdown({
   return (
     <div
       className="markdown-body note-line-rendered"
+      role="document"
+      aria-label="Note body — press Enter to edit"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        // Links in the rendered markdown keep their own keyboard behavior.
+        if (e.target === e.currentTarget && e.key === 'Enter') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
     />
   );

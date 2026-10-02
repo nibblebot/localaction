@@ -1,5 +1,5 @@
 #!/bin/sh
-# pre-commit: fast checks only (~2s). The full gate runs on pre-push.
+# pre-commit: lint, formatting, types, and tests. The full gate runs on pre-push.
 # Installed by `bun run setup:hooks` (auto-run from postinstall on `bun install`).
 # Bypass in an emergency with `git commit --no-verify`.
 set -eu
@@ -7,10 +7,16 @@ set -eu
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-echo "pre-commit: 1/2 bun run lint"
+echo "pre-commit: 1/4 bun run lint"
 bun run lint
 
-echo "pre-commit: 2/2 bun test"
+echo "pre-commit: 2/4 bun run format:check"
+bun run format:check
+
+echo "pre-commit: 3/4 bun run typecheck"
+bun run typecheck
+
+echo "pre-commit: 4/4 bun test"
 bun test
 
 echo "pre-commit: OK"

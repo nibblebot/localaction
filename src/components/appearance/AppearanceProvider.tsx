@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AppearanceContext } from './context.ts';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -84,17 +78,9 @@ function applyDensity(density: Density): void {
   document.documentElement.setAttribute(DENSITY_ATTR, density);
 }
 
-export function AppearanceProvider({
-  children,
-}: {
-  children: ReactNode;
-}): React.JSX.Element {
-  const [theme, setThemeState] = useState<ThemeMode>(
-    () => loadStored().theme ?? DEFAULT.theme,
-  );
-  const [font, setFontState] = useState<FontFamily>(
-    () => loadStored().font ?? DEFAULT.font,
-  );
+export function AppearanceProvider({ children }: { children: ReactNode }): React.JSX.Element {
+  const [theme, setThemeState] = useState<ThemeMode>(() => loadStored().theme ?? DEFAULT.theme);
+  const [font, setFontState] = useState<FontFamily>(() => loadStored().font ?? DEFAULT.font);
   const [density, setDensityState] = useState<Density>(
     () => loadStored().density ?? DEFAULT.density,
   );
@@ -115,7 +101,5 @@ export function AppearanceProvider({
     [theme, font, density, setTheme, setFont, setDensity],
   );
 
-  return (
-    <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>
-  );
+  return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }

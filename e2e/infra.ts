@@ -18,7 +18,6 @@ import type { AddressInfo } from 'node:net';
 import { join, resolve } from 'node:path';
 import { E2E_SERVER_REGISTRY_DIR } from '../server/e2e-watchdog.ts';
 
-
 /**
  * Throwaway-DB argv markers (see e2e/test-db-path.ts and
  * e2e/offline-test-db-path.ts). Only used to identify LEGACY orphans that
@@ -26,10 +25,7 @@ import { E2E_SERVER_REGISTRY_DIR } from '../server/e2e-watchdog.ts';
  * launched against a tmpdir throwaway DB and can never be a user's real
  * dev/prod server (those point at defaultDevDbPath()/defaultProdDbPath()).
  */
-const E2E_DB_MARKERS: readonly string[] = [
-  'localaction-test-e2e-',
-  'localaction-test-offline-',
-];
+const E2E_DB_MARKERS: readonly string[] = ['localaction-test-e2e-', 'localaction-test-offline-'];
 
 /** Absolute path of the Playwright CLI (`node_modules/.bin/playwright`). */
 export const PLAYWRIGHT_BIN_PATH = resolve(
@@ -95,7 +91,6 @@ export async function getE2eServerPort(): Promise<number> {
   if (Number.isInteger(fromEnv) && fromEnv > 0) return fromEnv;
   return getFreePort();
 }
-
 
 function pidAlive(pid: number): boolean {
   try {

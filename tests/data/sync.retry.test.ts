@@ -116,7 +116,11 @@ describe('startSync reconnect policy', () => {
       // Socket count = 1 (initial connect) + 1 per timer-fired retry so
       // far. Stacked timers per failure would blow past this.
       expect(fake.instances.length).toBe(i + 1);
-      expect(statuses.at(-1)).toMatchObject({ kind: 'retrying', attempt: i + 1, nextDelayMs: delay });
+      expect(statuses.at(-1)).toMatchObject({
+        kind: 'retrying',
+        attempt: i + 1,
+        nextDelayMs: delay,
+      });
       if (i === 0) {
         // retry() while a retry timer is pending is a no-op — the
         // button can only fire this in the terminal state, but the

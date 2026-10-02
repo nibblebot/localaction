@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  useDataLayer,
-  updateArea,
-  AREA_COLORS,
-  areaColorHex,
-} from '../../data/index.ts';
+import { useDataLayer, updateArea, AREA_COLORS, areaColorHex } from '../../data/index.ts';
 import type { AreaColorId } from '../../data/index.ts';
 import { useFocusTrap } from '../hooks/useFocusTrap.ts';
 
@@ -85,7 +80,7 @@ export default function AreaEditPopover({
 
   return (
     <>
-      <div className="area-edit-backdrop" onClick={onClose} />
+      <div className="area-edit-backdrop" role="presentation" onClick={onClose} />
       <div
         ref={dialogRef}
         className="area-edit"

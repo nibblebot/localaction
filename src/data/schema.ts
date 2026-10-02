@@ -5,7 +5,6 @@ export const TABLES = {
   tombstones: 'tombstones',
 } as const;
 
-
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
 
 export const COLUMNS = {
@@ -73,8 +72,7 @@ export const COLUMNS = {
 export type AreaColumn = (typeof COLUMNS.areas)[keyof typeof COLUMNS.areas];
 export type TaskColumn = (typeof COLUMNS.tasks)[keyof typeof COLUMNS.tasks];
 export type NoteColumn = (typeof COLUMNS.notes)[keyof typeof COLUMNS.notes];
-export type TombstoneColumn =
-  (typeof COLUMNS.tombstones)[keyof typeof COLUMNS.tombstones];
+export type TombstoneColumn = (typeof COLUMNS.tombstones)[keyof typeof COLUMNS.tombstones];
 
 export const TASK_STATUS = {
   open: 'open',
@@ -88,8 +86,7 @@ export const NOTE_ENTITY_TYPE = {
   task: 'task',
 } as const;
 
-export type NoteEntityType =
-  (typeof NOTE_ENTITY_TYPE)[keyof typeof NOTE_ENTITY_TYPE];
+export type NoteEntityType = (typeof NOTE_ENTITY_TYPE)[keyof typeof NOTE_ENTITY_TYPE];
 
 /**
  * Entity types a tombstone can name. Mirrors `NOTE_ENTITY_TYPE`: only

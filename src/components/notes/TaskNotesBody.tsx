@@ -39,9 +39,7 @@ export default function TaskNotesBody({ taskId }: { taskId: string }): React.JSX
       </ul>
       <InlineAddInput
         ref={addInputRef}
-        placeholder={
-          noteIds.length === 0 ? 'No notes yet — add the first one.' : 'New note…'
-        }
+        placeholder={noteIds.length === 0 ? 'No notes yet — add the first one.' : 'New note…'}
         ariaLabel="New note"
         onSubmit={addNote}
       />

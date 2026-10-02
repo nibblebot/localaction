@@ -13,16 +13,11 @@ function nextOrder(store: MergeableStore, parentId: string | null): number {
   return last.order + 1000;
 }
 
-export function createArea(
-  store: MergeableStore,
-  input: AreaInput,
-): string {
+export function createArea(store: MergeableStore, input: AreaInput): string {
   const id = newId();
   const ts = nowIso();
   const parentId = input.parentId ?? null;
-  const color: AreaColorId = isAreaColorId(input.color)
-    ? input.color
-    : 'gray';
+  const color: AreaColorId = isAreaColorId(input.color) ? input.color : 'gray';
   const order = nextOrder(store, parentId);
   store.setRow(
     TABLES.areas,
@@ -39,11 +34,7 @@ export function createArea(
   return id;
 }
 
-export function updateArea(
-  store: MergeableStore,
-  id: string,
-  patch: AreaPatch,
-): void {
+export function updateArea(store: MergeableStore, id: string, patch: AreaPatch): void {
   if (!store.hasRow(TABLES.areas, id)) return;
   const next: Record<string, string | number | null | undefined> = {
     [COLUMNS.areas.updatedAt]: nowIso(),
@@ -55,9 +46,7 @@ export function updateArea(
     next[COLUMNS.areas.parentId] = patch.parentId;
   }
   if (patch.color !== undefined) {
-    next[COLUMNS.areas.color] = isAreaColorId(patch.color)
-      ? patch.color
-      : 'gray';
+    next[COLUMNS.areas.color] = isAreaColorId(patch.color) ? patch.color : 'gray';
   }
   store.setPartialRow(TABLES.areas, id, row(next));
 }

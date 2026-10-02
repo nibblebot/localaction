@@ -74,18 +74,8 @@ export default function AppearanceMenu(): React.JSX.Element {
           aria-label="Appearance"
           ref={menuRef}
         >
-          <Segmented
-            label="Theme"
-            options={THEME_OPTIONS}
-            value={theme}
-            onChange={setTheme}
-          />
-          <Segmented
-            label="Font"
-            options={FONT_OPTIONS}
-            value={font}
-            onChange={setFont}
-          />
+          <Segmented label="Theme" options={THEME_OPTIONS} value={theme} onChange={setTheme} />
+          <Segmented label="Font" options={FONT_OPTIONS} value={font} onChange={setFont} />
           <Segmented
             label="Density"
             options={DENSITY_OPTIONS}

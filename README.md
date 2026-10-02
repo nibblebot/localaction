@@ -6,7 +6,10 @@
 
 Persists work locally for offline use and syncs w/ server for automatic conflict resolution.
 
-Offline-first: the app runs against an in-browser store persisted to OPFS — no account, no login, works without a network. Self-hosted: one Bun process serves static files, WebSocket sync, and one SQLite DB file. Clients converge over WebSocket via CRDT-style merge (per-cell HLC timestamps, last-writer-wins) — no conflict dialogs.
+Offline-first: the app runs against an in-browser store persisted to OPFS — no account, no login,
+works without a network. Self-hosted: one Bun process serves static files, WebSocket sync, and one
+SQLite DB file. Clients converge over WebSocket via CRDT-style merge (per-cell HLC timestamps,
+last-writer-wins) — no conflict dialogs.
 
 Stack: Vite 8 · React 19 · TypeScript · TinyBase 9 · SQLite (`bun:sqlite`) · `ws`.
 
@@ -21,7 +24,7 @@ Browser                        Server                            Browser
 
 ## Quick start
 
-Requires [Bun](https://bun.sh/) (package manager *and* runtime — the server uses `bun:sqlite`).
+Requires [Bun](https://bun.sh/) (package manager _and_ runtime — the server uses `bun:sqlite`).
 
 ```bash
 bun install
@@ -35,7 +38,8 @@ bun install -g ./localaction-<version>.tgz
 localaction                  # port 7373, SQLite in the platform user-data dir
 ```
 
-Daemon setup, NixOS module, and multi-device sync: see [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md).
+Daemon setup, NixOS module, and multi-device sync: see [CONTRIBUTING.md](CONTRIBUTING.md) and
+[AGENTS.md](AGENTS.md).
 
 Stack, commands, and verification: see [AGENTS.md](AGENTS.md).
 

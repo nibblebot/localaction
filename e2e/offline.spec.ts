@@ -72,7 +72,9 @@ test('app shell and data load with the network offline', async ({ page, context 
 
   // Lifecycle logs actually fired on the client.
   expect(consoleLines.some((l) => l.includes('[localaction] sw — registered'))).toBe(true);
-  expect(consoleLines.some((l) => l.includes('[localaction] persistence — loaded OPFS snapshot'))).toBe(true);
+  expect(
+    consoleLines.some((l) => l.includes('[localaction] persistence — loaded OPFS snapshot')),
+  ).toBe(true);
   expect(consoleLines.some((l) => l.includes('[localaction] sync — '))).toBe(true);
   // No spurious persister errors on either load (fresh snapshot or hydrate).
   expect(consoleLines.some((l) => l.includes('OPFS persister error'))).toBe(false);

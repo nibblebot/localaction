@@ -5,11 +5,7 @@ import { TABLES, COLUMNS, NOTE_ENTITY_TYPE } from '../../src/data/schema.ts';
 import { createTask, getTask } from '../../src/data/tasks.ts';
 import { createArea } from '../../src/data/areas.ts';
 import { createNote } from '../../src/data/notes.ts';
-import {
-  deleteArea,
-  deleteTask,
-  installTombstoneReconciler,
-} from '../../src/data/deletion.ts';
+import { deleteArea, deleteTask, installTombstoneReconciler } from '../../src/data/deletion.ts';
 import { captureSubtree, restoreSubtree } from '../../src/data/undo.ts';
 import { hasTombstone } from '../../src/data/tombstones.ts';
 
@@ -65,9 +61,18 @@ describe('captureSubtree / restoreSubtree', () => {
   it('round-trips an area cascade: sub-area and tasks', () => {
     const areaId = createArea(store, { name: 'Work', color: 'blue' });
     const subId = createArea(store, { name: 'Clients', color: 'green', parentId: areaId });
-    const areaTask = createTask(store, { title: 'Area task', placement: { kind: 'area', id: areaId } });
-    const subTask = createTask(store, { title: 'Sub task', placement: { kind: 'area', id: subId } });
-    const nested = createTask(store, { title: 'Nested', placement: { kind: 'task', id: areaTask } });
+    const areaTask = createTask(store, {
+      title: 'Area task',
+      placement: { kind: 'area', id: areaId },
+    });
+    const subTask = createTask(store, {
+      title: 'Sub task',
+      placement: { kind: 'area', id: subId },
+    });
+    const nested = createTask(store, {
+      title: 'Nested',
+      placement: { kind: 'task', id: areaTask },
+    });
 
     const snapshot = captureSubtree(store, NOTE_ENTITY_TYPE.area, areaId);
     deleteArea(store, areaId);

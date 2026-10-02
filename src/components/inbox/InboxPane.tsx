@@ -32,9 +32,7 @@ export default function InboxPane(): React.JSX.Element {
       else if (tri === 'backlog') backlog.push(tid);
       else active.push(tid);
     }
-    return [
-      { key: 'inbox', placement: null, active, backlog, done },
-    ];
+    return [{ key: 'inbox', placement: null, active, backlog, done }];
   }, [store, topLevelIds]);
 
   const [adding, setAdding] = useState<'active' | 'backlog' | null>(null);
@@ -63,9 +61,7 @@ export default function InboxPane(): React.JSX.Element {
               <button
                 type="button"
                 className="area-tab-action icon-button area-tab-action-add"
-                aria-label={
-                  group === 'active' ? 'Add task to Active' : 'Add task to Backlog'
-                }
+                aria-label={group === 'active' ? 'Add task to Active' : 'Add task to Backlog'}
                 title="Add task"
                 onClick={() => setAdding((cur) => (cur === group ? null : group))}
               >

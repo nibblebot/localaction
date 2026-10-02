@@ -143,14 +143,7 @@ describe('createTaskAfter', () => {
     const sub = createTask(store, { title: 'sub', placement: { kind: 'task', id: first } });
     const afterSub = createTaskAfter(store, sub, '');
     expect(getTask(store, afterSub!)?.placement).toEqual({ kind: 'task', id: first });
-    const tree = buildTaskTree(store, [
-      first,
-      between!,
-      second,
-      afterBetween!,
-      sub,
-      afterSub!,
-    ]);
+    const tree = buildTaskTree(store, [first, between!, second, afterBetween!, sub, afterSub!]);
     const firstNode = tree.children.find((n) => n.id === first)!;
     expect(firstNode.children.map((n) => n.id)).toEqual([sub, afterSub!]);
   });
@@ -385,7 +378,6 @@ describe('deleteTask conversion snapshot', () => {
     store = freshStore();
   });
 
-
   it('deleting the last child snapshots the parent derived status into its stored cell', () => {
     const parent = createTask(store, { title: 'parent' });
     const child = createTask(store, {
@@ -559,10 +551,7 @@ describe('pruneCompletedTasks', () => {
     const third = createTask(store, { title: 'third', order: 3000 });
     setTaskStatus(store, second, TASK_STATUS.done);
     const tree = buildTaskTree(store, [first, second, third]);
-    expect(pruneCompletedTasks(store, tree.children).map((n) => n.id)).toEqual([
-      first,
-      third,
-    ]);
+    expect(pruneCompletedTasks(store, tree.children).map((n) => n.id)).toEqual([first, third]);
   });
 });
 
@@ -624,7 +613,6 @@ describe('completedAt', () => {
     expect(store.hasCell(TABLES.tasks, t, COLUMNS.tasks.completedAt)).toBe(false);
   });
 
-
   // SLICE 3 — extends below this line. Round-trip the decode, sibling
   // idempotency, and the bump-side cousin assertions.
   it('decodeTaskRow normalises missing / empty / non-string completedAt cells to null', () => {
@@ -663,7 +651,6 @@ describe('completedAt', () => {
     const after = store.getCell(TABLES.tasks, t, COLUMNS.tasks.completedAt);
     expect(after).toBe(first);
   });
-
 });
 
 describe('completion write atomicity', () => {

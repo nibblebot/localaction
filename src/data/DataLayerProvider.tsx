@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import type { MergeableStore } from 'tinybase';
 import { getStore } from './store.ts';
@@ -23,17 +17,8 @@ import {
 } from './syncLog.ts';
 import { getSyncedAddRegistry } from './syncedAdds.ts';
 import { TABLES } from './schema.ts';
-import {
-  getHasUnsyncedChanges,
-  getUnsyncedTracker,
-  subscribeUnsynced,
-} from './unsynced.ts';
-import {
-  getSyncClient,
-  destroySyncClient,
-  type SyncClient,
-  type SyncStatus,
-} from './sync.ts';
+import { getHasUnsyncedChanges, getUnsyncedTracker, subscribeUnsynced } from './unsynced.ts';
+import { getSyncClient, destroySyncClient, type SyncClient, type SyncStatus } from './sync.ts';
 import { DataLayerContext } from './dataLayerContext.ts';
 import type { DataLayerValue } from './dataLayerContext.ts';
 
@@ -59,10 +44,7 @@ export function DataLayerProvider({
   const [persistenceReady, setPersistenceReady] = useState(false);
   const [sync, setSync] = useState<SyncClient | undefined>(undefined);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>({ kind: 'idle' });
-  const hasUnsyncedChanges = useSyncExternalStore(
-    subscribeUnsynced,
-    getHasUnsyncedChanges,
-  );
+  const hasUnsyncedChanges = useSyncExternalStore(subscribeUnsynced, getHasUnsyncedChanges);
 
   const persistenceReadyRef = useRef(persistenceReady);
   persistenceReadyRef.current = persistenceReady;
@@ -85,9 +67,7 @@ export function DataLayerProvider({
     // label ignores it, which is fine.
     let client: SyncClient | undefined;
     const unsubscribeLocalCommits = subscribeLocalCommits(() => {
-      getUnsyncedTracker().noteLocalCommit(
-        client?.status.kind === 'connected',
-      );
+      getUnsyncedTracker().noteLocalCommit(client?.status.kind === 'connected');
     });
 
     // Feed net-added sync arrivals to the synced-add registry, which the
@@ -167,9 +147,7 @@ export function DataLayerProvider({
     }
 
     const exposeDevHook =
-      typeof import.meta !== 'undefined' &&
-      'env' in import.meta &&
-      import.meta.env.DEV === true;
+      typeof import.meta !== 'undefined' && 'env' in import.meta && import.meta.env.DEV === true;
     if (exposeDevHook && typeof window !== 'undefined') {
       Object.defineProperty(window, '__LOCALACTION', {
         configurable: true,
@@ -209,7 +187,5 @@ export function DataLayerProvider({
     [store, sync, syncStatus, persistenceReady, hasUnsyncedChanges],
   );
 
-  return (
-    <DataLayerContext.Provider value={value}>{children}</DataLayerContext.Provider>
-  );
+  return <DataLayerContext.Provider value={value}>{children}</DataLayerContext.Provider>;
 }

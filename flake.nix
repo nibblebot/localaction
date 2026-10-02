@@ -39,7 +39,7 @@
           runHook postInstall
         '';
 
-        outputHash = "sha256-2882n7uOhzccxSOR1ncW+HcCEiotUQRMEVcjxGXWzyI=";
+        outputHash = "sha256-3gciblFcUTrFJE9Xa5O/NUdh+6gC9JJpjx+EWT9Sye0=";
         outputHashAlgo = "sha256";
         outputHashMode = "recursive";
       };

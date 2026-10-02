@@ -25,9 +25,7 @@
         };
         var font = 'dm';
         try {
-          var stored = JSON.parse(
-            localStorage.getItem('localaction.appearance.v1') || '{}',
-          );
+          var stored = JSON.parse(localStorage.getItem('localaction.appearance.v1') || '{}');
           if (stored && typeof stored.font === 'string' && FONT_FILES[stored.font]) {
             font = stored.font;
           }
@@ -46,7 +44,10 @@
     </script>
     <!-- interactive-widget=resizes-content: the layout viewport shrinks when
          the virtual keyboard opens, so focused inputs are never covered. -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>localaction</title>
   </head>
   <body>

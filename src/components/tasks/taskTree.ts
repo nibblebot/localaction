@@ -7,11 +7,7 @@ import { getPlacement, useTableVersion, TABLES } from '../../data/index.ts';
  * `task:<parentId>` placement of every row in the tasks table. Pushes
  * into the caller's buffer so it composes with the parent's own id.
  */
-export function collectChildIds(
-  store: MergeableStore,
-  parentId: string,
-  out: string[],
-): void {
+export function collectChildIds(store: MergeableStore, parentId: string, out: string[]): void {
   if (!parentId) return;
   for (const id of store.getRowIds(TABLES.tasks)) {
     const p = getPlacement(store, id);
@@ -29,10 +25,7 @@ export function collectChildIds(
  * is a stale gate when a parent's CHILD set changes without the root
  * list changing (e.g. adding a sub-task from a detail pane).
  */
-export function useDeepTaskIds(
-  store: MergeableStore,
-  topLevelIds: readonly string[],
-): string[] {
+export function useDeepTaskIds(store: MergeableStore, topLevelIds: readonly string[]): string[] {
   const tasksV = useTableVersion(store, TABLES.tasks);
   return useMemo(() => {
     void tasksV;

@@ -22,9 +22,7 @@ async function addPaneSubTask(page: Page, title: string): Promise<void> {
 }
 
 test.describe('Task detail pane header chrome', () => {
-  test('pane header mirrors the parent row: progress meter and due date', async ({
-    page,
-  }) => {
+  test('pane header mirrors the parent row: progress meter and due date', async ({ page }) => {
     const tok = uniq();
     const area = `Area ${tok}`;
     const task = `Task ${tok}`;
@@ -63,7 +61,8 @@ test.describe('Task detail pane header chrome', () => {
     // The trash rides the rename input: re-enter edit mode, then delete.
     await header.getByRole('button', { name: `Rename Renamed ${tok}` }).click();
     await header.getByRole('button', { name: 'Delete task' }).click();
-    await page.getByRole('dialog', { name: 'Delete task?' })
+    await page
+      .getByRole('dialog', { name: 'Delete task?' })
       .getByRole('button', { name: 'Delete' })
       .click();
     // A deleted root falls back to its owning area.
@@ -98,9 +97,7 @@ test.describe('Task detail pane header chrome', () => {
     await expect(backlogGroup.locator('.task-line', { hasText: seed })).toBeVisible();
   });
 
-  test('a parent row name opens its own pane; the back affordance returns', async ({
-    page,
-  }) => {
+  test('a parent row name opens its own pane; the back affordance returns', async ({ page }) => {
     const tok = uniq();
     const area = `NestPane ${tok}`;
     const parent = `Parent ${tok}`;
@@ -130,9 +127,13 @@ test.describe('Task detail pane header chrome', () => {
     const task = `Doomed ${tok}`;
     await openTaskPane(page, area, task);
 
-    await page.locator('.area-header').getByRole('button', { name: `Rename ${task}` }).click();
+    await page
+      .locator('.area-header')
+      .getByRole('button', { name: `Rename ${task}` })
+      .click();
     await page.locator('.area-header').getByRole('button', { name: 'Delete task' }).click();
-    await page.getByRole('dialog', { name: 'Delete task?' })
+    await page
+      .getByRole('dialog', { name: 'Delete task?' })
       .getByRole('button', { name: 'Delete' })
       .click();
     await expect(page.locator('.area-header-name')).toContainText(area);
@@ -143,7 +144,6 @@ test.describe('Task detail pane header chrome', () => {
     await expect(page.locator('.undo-toast')).toHaveCount(0);
   });
 });
-
 
 // The rename input and its trash must stay on one row at phone
 // widths — the pane header wraps on mobile, but the trash riding the
@@ -167,7 +167,10 @@ test.describe('Task detail pane header @ mobile', () => {
     await expect(page).toHaveURL(/#\/t\/[^/]+$/);
 
     // Enter edit mode by clicking the name.
-    await page.locator('.area-header').getByRole('button', { name: `Rename ${task}` }).click();
+    await page
+      .locator('.area-header')
+      .getByRole('button', { name: `Rename ${task}` })
+      .click();
     const editRow = page.locator('.area-header-edit-row');
     const input = editRow.locator('input[aria-label="Task name"]');
     const trash = editRow.locator('button[aria-label="Delete task"]');

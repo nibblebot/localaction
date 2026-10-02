@@ -10,8 +10,18 @@ interface Anchor {
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ] as const;
 
 function parseIso(iso: string | null): { year: number; month: number; day: number } | null {
@@ -180,19 +190,11 @@ function DueDateCalendar({
   // hides the dialog mid-tap. Picking, clearing, backdrop-tapping, or
   // Escaping all close the dialog while the row's capture handler
   // closes the strip, so the pair always dismisses together.
+  // The presentation wrapper is only an event boundary: the dialog keeps
+  // its semantics, and portal clicks cannot activate underlying rows.
   return createPortal(
-    <>
-      <div
-        className="due-calendar-backdrop"
-        onClick={(e) => {
-          // Portal events still bubble through the React tree into
-          // clickable rows (task row → detail pane) — keep
-          // backdrop/dialog clicks from reaching the row's own click
-          // target.
-          e.stopPropagation();
-          onClose();
-        }}
-      />
+    <div role="presentation" onClick={(e) => e.stopPropagation()}>
+      <div className="due-calendar-backdrop" role="presentation" onClick={onClose} />
       <div
         ref={dialogRef}
         className="due-calendar"
@@ -200,7 +202,6 @@ function DueDateCalendar({
         aria-modal="true"
         aria-label="Pick due date"
         style={{ top: pos.top, left: pos.left }}
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="due-calendar-header">
           <button
@@ -235,11 +236,7 @@ function DueDateCalendar({
           ))}
           {cells.map((day, i) =>
             day === null ? (
-              <span
-                key={`blank-${i}`}
-                className="due-calendar-blank"
-                aria-hidden="true"
-              />
+              <span key={`blank-${i}`} className="due-calendar-blank" aria-hidden="true" />
             ) : (
               <button
                 key={day}
@@ -247,9 +244,7 @@ function DueDateCalendar({
                 role="gridcell"
                 aria-describedby="due-calendar-title"
                 className={`due-calendar-day${
-                  toIso(view.year, view.month, day) === dueDate
-                    ? ' due-calendar-day-selected'
-                    : ''
+                  toIso(view.year, view.month, day) === dueDate ? ' due-calendar-day-selected' : ''
                 }${toIso(view.year, view.month, day) === today ? ' due-calendar-day-today' : ''}`}
                 onClick={() => onPick(toIso(view.year, view.month, day))}
               >
@@ -259,12 +254,7 @@ function DueDateCalendar({
           )}
         </div>
         <div className="due-calendar-actions">
-          <button
-            type="button"
-            className="btn btn-sm"
-            onClick={onClear}
-            disabled={!dueDate}
-          >
+          <button type="button" className="btn btn-sm" onClick={onClear} disabled={!dueDate}>
             Clear
           </button>
           <div className="due-calendar-spacer" />
@@ -273,7 +263,7 @@ function DueDateCalendar({
           </button>
         </div>
       </div>
-    </>,
+    </div>,
     document.body,
   );
 }

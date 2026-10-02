@@ -103,9 +103,7 @@ export default function RootTaskGroups({
           <button
             type="button"
             className="area-tab-action icon-button area-tab-action-add"
-            aria-label={
-              group === 'active' ? 'Add task to Active' : 'Add task to Backlog'
-            }
+            aria-label={group === 'active' ? 'Add task to Active' : 'Add task to Backlog'}
             title="Add task"
             onClick={() => setAdding((cur) => (cur === group ? null : group))}
           >

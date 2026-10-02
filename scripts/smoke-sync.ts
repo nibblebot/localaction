@@ -37,8 +37,16 @@ export async function assertSyncConvergence(target: SmokeTarget): Promise<void> 
   const a = createMergeableStore();
   const b = createMergeableStore();
 
-  const syncA = await withTimeout(createWsSynchronizer(a, new WebSocket(wsUrl)), 5000, 'syncA connect');
-  const syncB = await withTimeout(createWsSynchronizer(b, new WebSocket(wsUrl)), 5000, 'syncB connect');
+  const syncA = await withTimeout(
+    createWsSynchronizer(a, new WebSocket(wsUrl)),
+    5000,
+    'syncA connect',
+  );
+  const syncB = await withTimeout(
+    createWsSynchronizer(b, new WebSocket(wsUrl)),
+    5000,
+    'syncB connect',
+  );
   await syncA.startSync();
   await syncB.startSync();
   console.log(`${label}: both clients connected`);
@@ -93,10 +101,22 @@ export async function assertSyncConvergence(target: SmokeTarget): Promise<void> 
   );
   await freshSync.startSync();
   console.log(`${label}: fresh sync started`);
-  await withTimeout(waitForCell(fresh, 'areas', 'd1', 'name', 'Family'), 5000, 'fresh persist load');
+  await withTimeout(
+    waitForCell(fresh, 'areas', 'd1', 'name', 'Family'),
+    5000,
+    'fresh persist load',
+  );
   console.log(`${label}: fresh observed initial area`);
-  await withTimeout(waitForCell(fresh, 'tasks', 't1', 'title', 'Plan vacation'), 5000, 'fresh task load');
-  await withTimeout(waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1'), 5000, 'fresh sub-area load');
+  await withTimeout(
+    waitForCell(fresh, 'tasks', 't1', 'title', 'Plan vacation'),
+    5000,
+    'fresh task load',
+  );
+  await withTimeout(
+    waitForCell(fresh, 'areas', 'd2', 'parentId', 'd1'),
+    5000,
+    'fresh sub-area load',
+  );
   console.log(`${label}: fresh client loaded persisted state`);
   await freshSync.destroy();
 
@@ -166,5 +186,7 @@ async function waitForPersisted(
     db.close();
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw new Error(`timeout waiting for ${table}.${row}.${cell} to persist as ${JSON.stringify(value)}`);
+  throw new Error(
+    `timeout waiting for ${table}.${row}.${cell} to persist as ${JSON.stringify(value)}`,
+  );
 }

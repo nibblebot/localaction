@@ -196,7 +196,6 @@ body.sidebar-resizing {
   min-block-size: calc(1lh + 15.6px);
 }
 
-
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -212,7 +211,10 @@ body.sidebar-resizing {
   cursor: pointer;
   box-sizing: border-box;
   font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .sidebar-item:hover {
@@ -308,7 +310,6 @@ body.sidebar-resizing {
   background: var(--accent-tint);
   color: var(--accent);
 }
-
 
 .sidebar-area-children {
   list-style: none;
@@ -508,7 +509,6 @@ body.sidebar-resizing {
   gap: var(--space-2);
 }
 
-
 .area-edit-row {
   display: flex;
   align-items: center;
@@ -569,7 +569,10 @@ body.sidebar-resizing {
   cursor: pointer;
   padding: 0;
   font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .area-edit-delete:hover {
@@ -577,7 +580,6 @@ body.sidebar-resizing {
   background: var(--danger-bg);
   border-color: var(--danger-border);
 }
-
 
 /* ============================================================
    Inline add input — always-visible single-line text field
@@ -600,7 +602,9 @@ body.sidebar-resizing {
   margin: 6px 0 0;
   font-family: inherit;
   outline: none;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .inline-add-input::placeholder {
@@ -750,7 +754,9 @@ body.sidebar-resizing {
   cursor: pointer;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .area-tab-action:hover {
@@ -1037,7 +1043,9 @@ body.sidebar-resizing {
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .project-row-action:hover {
@@ -1592,7 +1600,9 @@ body.sidebar-resizing {
   justify-content: center;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .task-line-action:hover {
@@ -1647,7 +1657,9 @@ body.sidebar-resizing {
   cursor: text;
   text-align: start;
   width: 100%;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .note-line-empty:hover {
@@ -1698,7 +1710,9 @@ body.sidebar-resizing {
   justify-content: center;
   padding: 0;
   flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .note-line-action:hover {
@@ -2078,7 +2092,10 @@ body.sidebar-resizing {
   align-items: center;
   gap: 6px;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .btn:focus-visible {
@@ -2267,7 +2284,6 @@ body.sidebar-resizing {
   border-color: var(--accent);
 }
 
-
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -2290,12 +2306,22 @@ body.sidebar-resizing {
   color: var(--text-h);
 }
 
-.markdown-body h1 { font-size: var(--text-display); }
-.markdown-body h2 { font-size: var(--text-title); }
-.markdown-body h3 { font-size: var(--text-title); }
+.markdown-body h1 {
+  font-size: var(--text-display);
+}
+.markdown-body h2 {
+  font-size: var(--text-title);
+}
+.markdown-body h3 {
+  font-size: var(--text-title);
+}
 /* Pinned at the pre-rationalization treatment until the Notes heading
    ladder lands (deferred followup) — the global h4 is now body-strong. */
-.markdown-body h4 { font-size: var(--text-label); line-height: 1.5; text-wrap: wrap; }
+.markdown-body h4 {
+  font-size: var(--text-label);
+  line-height: 1.5;
+  text-wrap: wrap;
+}
 
 .markdown-body p {
   margin: 6px 0;
@@ -2498,7 +2524,6 @@ button .svg-icon {
   color: var(--text-h);
 }
 
-
 /* ============================================================
    Drag and drop (dnd-kit)
    ------------------------------------------------------------
@@ -2573,7 +2598,7 @@ button .svg-icon {
 }
 
 :is(.project-task-tree, .sidebar-section-body) .tree-branch::after {
-  content: "";
+  content: '';
   position: absolute;
   top: 50%;
   left: 0;
@@ -2648,15 +2673,15 @@ button .svg-icon {
    picks up the `sortable-row-placeholder` class via the row's
    own hover/drag-over detection. We use the `data-drag-over`
    attribute set by SortableList for a portable selector. */
-.sortable-row[data-drag-over="true"] {
+.sortable-row[data-drag-over='true'] {
   outline: 2px dashed var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-md);
 }
 
-.sortable-row[data-drag-over="above"]::before,
-.sortable-row[data-drag-over="below"]::after {
-  content: "";
+.sortable-row[data-drag-over='above']::before,
+.sortable-row[data-drag-over='below']::after {
+  content: '';
   position: absolute;
   left: 0;
   right: 0;
@@ -2666,11 +2691,11 @@ button .svg-icon {
   pointer-events: none;
 }
 
-.sortable-row[data-drag-over="above"]::before {
+.sortable-row[data-drag-over='above']::before {
   top: -1px;
 }
 
-.sortable-row[data-drag-over="below"]::after {
+.sortable-row[data-drag-over='below']::after {
   bottom: -1px;
 }
 
@@ -3064,7 +3089,9 @@ button .svg-icon {
   .app-shell.drawer-open .sidebar-app-name-row {
     min-height: var(--icon-button-control);
     padding-top: 0;
-    padding-inline-start: calc(env(safe-area-inset-left, 0px) + var(--space-2) + var(--icon-button-control) + var(--space-2));
+    padding-inline-start: calc(
+      env(safe-area-inset-left, 0px) + var(--space-2) + var(--icon-button-control) + var(--space-2)
+    );
   }
 
   /* The open drawer's close affordance is the toggle itself (its
@@ -3227,7 +3254,7 @@ button .svg-icon {
     bottom: calc(57px + env(safe-area-inset-bottom, 0px));
     width: auto;
   }
- }
+}
 
 /* ============================================================
    Coarse pointer (touch) — 44px hit areas
@@ -3308,7 +3335,6 @@ button .svg-icon {
   .project-row-drag-handle {
     display: none;
   }
-
 
   /* Every icon button is a 32px visual control; the invisible halo
      extends the hit region to the 44px touch minimum. (.icon-button

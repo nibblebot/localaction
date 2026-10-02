@@ -13,7 +13,9 @@ import { PLAYWRIGHT_BIN_PATH, systemChromiumPath } from '../e2e/infra.ts';
 try {
   setupHooks();
 } catch (err) {
-  process.stderr.write(`localaction: hook install failed (re-run with \`bun run setup:hooks\`): ${err instanceof Error ? err.message : err}\n`);
+  process.stderr.write(
+    `localaction: hook install failed (re-run with \`bun run setup:hooks\`): ${err instanceof Error ? err.message : err}\n`,
+  );
 }
 
 if (existsSync('/etc/NIXOS')) {

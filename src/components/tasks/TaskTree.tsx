@@ -274,6 +274,7 @@ function LeafTaskRow({
       {menuOpen && (
         <div
           className="task-menu-backdrop"
+          role="presentation"
           onClick={(e) => {
             e.stopPropagation();
             setMenuOpen(false);

@@ -6,8 +6,8 @@ import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
 import type { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { startSync } from '../../src/data/sync.ts';
 
-const rejectingSynchronizer = ((() =>
-  Promise.reject(new Error('tinybase:5'))) as unknown) as typeof createWsSynchronizer;
+const rejectingSynchronizer = (() =>
+  Promise.reject(new Error('tinybase:5'))) as unknown as typeof createWsSynchronizer;
 
 function makeDeadWebSocket(): typeof WebSocket {
   class DeadWS {

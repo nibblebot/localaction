@@ -93,7 +93,10 @@ export function connectionDescription(status: SyncStatus): string {
 }
 
 /** One-line popover row for an event ("Pulled 8 Tasks, 2 Notes"). */
-export function eventLine(event: SyncLogEvent, summarize: (tables: SyncTableStats) => string): string {
+export function eventLine(
+  event: SyncLogEvent,
+  summarize: (tables: SyncTableStats) => string,
+): string {
   switch (event.kind) {
     case 'pull':
       return `Pulled ${summarize(event.tables)}`;
@@ -147,7 +150,7 @@ export function connectTimeMs(
   const index = events.indexOf(event);
   if (index < 0) return undefined;
   for (let i = index - 1; i >= 0; i--) {
-    const prev = events[i];
+    const prev = events[i]!; // indexOf and the loop bounds keep i within the log.
     if (prev.kind !== 'connection') continue;
     if (prev.status.kind === 'connecting') return event.at - prev.at;
     if (prev.status.kind !== 'retrying') return undefined;

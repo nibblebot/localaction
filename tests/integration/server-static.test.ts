@@ -18,10 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-  createServer,
-  type Server,
-} from 'node:http';
+import { createServer, type Server } from 'node:http';
 import { connect } from 'node:net';
 import { createStaticFileServer } from '../../server/index.ts';
 
@@ -108,12 +105,10 @@ describe('static file server', () => {
     // speak HTTP/1.1 raw like a hostile client would.
     const status = await new Promise<number>((resolve, reject) => {
       const sock = connect(port, '127.0.0.1', () => {
-        sock.write(
-          `GET /../secret.txt HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`,
-        );
+        sock.write(`GET /../secret.txt HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n`);
       });
       sock.on('data', (chunk) => {
-        const head = chunk.toString().split('\r\n')[0];
+        const head = chunk.toString().split('\r\n')[0]!;
         if (head.startsWith('HTTP/')) resolve(Number(head.split(' ')[1]));
       });
       sock.on('error', reject);

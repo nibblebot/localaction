@@ -9,7 +9,4 @@ import { join } from 'node:path';
  * `webServer.command`.
  * Don't shell-quote it a second time out of habit.
  */
-export const TEST_DB_PATH = join(
-  tmpdir(),
-  `localaction-test-e2e-${Date.now()}-${process.pid}.db`,
-);
+export const TEST_DB_PATH = join(tmpdir(), `localaction-test-e2e-${Date.now()}-${process.pid}.db`);

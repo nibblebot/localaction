@@ -7,9 +7,9 @@
 //      changes are staged and must be committed by this run (`--message`),
 //      because the system flake pins the *pushed* revision and untracked
 //      files are invisible to the flake's `src = ./.`.
-//   2. gate: `bun run lint`, `bun test`, `bun run build`, `bun run
-//      smoke:bundle` — prepares and exercises the executable
-//      (`dist-bundle/localaction.js`).
+//   2. gate: `bun run lint`, `bun run format:check`, `bun test`, `bun run
+//      build`, `bun run smoke:bundle` — prepares and exercises the executable
+//      (`dist-bundle/localaction.js`); build includes the complete typecheck.
 //   3. `nix build .#localaction` — the derivation `nix/module.nix` installs.
 //   4. commit (if staged) + `git push forgejo main`; the repo's pre-push hook
 //      runs the full gate (e2e included) unless `--skip-checks`.
@@ -43,8 +43,8 @@ push ${REMOTE}/${BRANCH} → repin ${SYSTEM_FLAKE}/flake.lock → nh os switch.
 
   -m, --message <message>  commit message for working-tree changes (required
                            when the tree is dirty)
-      --skip-checks        skip the lint/test/build/smoke gate and push with
-                           --no-verify (the pre-push hook is bypassed too)
+      --skip-checks        skip the lint/format/test/build/smoke gate and push
+                           with --no-verify (the pre-push hook is bypassed too)
       --dry-run            print the commands that would run; read-only probes
                            still run, but nothing is staged, built, pushed,
                            or activated
@@ -86,7 +86,11 @@ function sh(command: string, args: string[], options: RunOptions = {}): ShResult
     env: { ...process.env, ...options.env },
   });
   if (result.error) throw new Error(`${command} could not start: ${result.error.message}`);
-  return { status: result.status ?? 1, stdout: String(result.stdout ?? ''), stderr: String(result.stderr ?? '') };
+  return {
+    status: result.status ?? 1,
+    stdout: String(result.stdout ?? ''),
+    stderr: String(result.stderr ?? ''),
+  };
 }
 
 /** Mutating command: echoed, output streamed to the terminal, non-zero exit aborts the deploy. */
@@ -94,14 +98,17 @@ function run(command: string, args: string[], options: RunOptions = {}): void {
   info(`$ ${command} ${args.join(' ')}`);
   if (DRY_RUN) return;
   const { status } = sh(command, args, { ...options, inherit: true });
-  if (status !== 0) throw new Error(`${command} ${args.join(' ')} failed (exit ${status}; output above)`);
+  if (status !== 0)
+    throw new Error(`${command} ${args.join(' ')} failed (exit ${status}; output above)`);
 }
 
 /** Read-only probe: captures stdout, throws on non-zero exit. */
 function capture(command: string, args: string[], options: RunOptions = {}): string {
   const { status, stdout, stderr } = sh(command, args, options);
   if (status !== 0) {
-    throw new Error(`${command} ${args.join(' ')} failed (exit ${status})\n${stderr.trim() || stdout.trim()}`);
+    throw new Error(
+      `${command} ${args.join(' ')} failed (exit ${status})\n${stderr.trim() || stdout.trim()}`,
+    );
   }
   return stdout.trim();
 }
@@ -113,7 +120,7 @@ function short(rev: string): string {
 function parseArgs(argv: string[]): Options {
   const options: Options = { skipChecks: false, dryRun: false, help: false };
   for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '-h' || arg === '--help') options.help = true;
     else if (arg === '--skip-checks') options.skipChecks = true;
     else if (arg === '--dry-run') options.dryRun = true;
@@ -136,7 +143,9 @@ function preflight(options: Options): boolean {
 
   const branch = capture('git', ['branch', '--show-current']);
   if (branch !== BRANCH) {
-    throw new Error(`system flake pins input ${INPUT} at ref=${BRANCH} — deploy from ${BRANCH} (currently on ${branch || 'detached HEAD'})`);
+    throw new Error(
+      `system flake pins input ${INPUT} at ref=${BRANCH} — deploy from ${BRANCH} (currently on ${branch || 'detached HEAD'})`,
+    );
   }
 
   info(`remote ${REMOTE} = ${capture('git', ['remote', 'get-url', REMOTE])}`);
@@ -158,12 +167,13 @@ function preflight(options: Options): boolean {
 }
 
 function gate(options: Options): void {
-  begin('executable: lint, test, build, smoke:bundle');
+  begin('executable: lint, format:check, test, build, smoke:bundle');
   if (options.skipChecks) {
     info('skipped (--skip-checks)');
     return;
   }
   run('bun', ['run', 'lint']);
+  run('bun', ['run', 'format:check']);
   run('bun', ['test']);
   run('bun', ['run', 'build']);
   run('bun', ['run', 'smoke:bundle']);
@@ -181,13 +191,19 @@ function buildFlake(): void {
 function publish(dirty: boolean, options: Options): string {
   begin(`publish: commit, push ${REMOTE}/${BRANCH}`);
   if (dirty) run('git', ['commit', '-m', options.message ?? '']);
-  run('git', options.skipChecks ? ['push', '--no-verify', REMOTE, BRANCH] : ['push', REMOTE, BRANCH]);
+  run(
+    'git',
+    options.skipChecks ? ['push', '--no-verify', REMOTE, BRANCH] : ['push', REMOTE, BRANCH],
+  );
 
   const head = capture('git', ['rev-parse', 'HEAD']);
   if (DRY_RUN) return head;
-  const remoteHead = capture('git', ['ls-remote', REMOTE, `refs/heads/${BRANCH}`]).split(/\s+/)[0] ?? '';
+  const remoteHead =
+    capture('git', ['ls-remote', REMOTE, `refs/heads/${BRANCH}`]).split(/\s+/)[0] ?? '';
   if (remoteHead !== head) {
-    throw new Error(`${REMOTE}/${BRANCH} is ${short(remoteHead) || '(missing)'} but HEAD is ${short(head)} — push did not land; nothing was repinned`);
+    throw new Error(
+      `${REMOTE}/${BRANCH} is ${short(remoteHead) || '(missing)'} but HEAD is ${short(head)} — push did not land; nothing was repinned`,
+    );
   }
   info(`pushed ${short(head)}`);
   return head;
@@ -206,7 +222,8 @@ function readLocked(lockPath: string): LockedInput {
 
 function repin(head: string): void {
   const lockPath = join(SYSTEM_FLAKE, 'flake.lock');
-  if (!existsSync(join(SYSTEM_FLAKE, 'flake.nix'))) throw new Error(`no flake.nix in ${SYSTEM_FLAKE}`);
+  if (!existsSync(join(SYSTEM_FLAKE, 'flake.nix')))
+    throw new Error(`no flake.nix in ${SYSTEM_FLAKE}`);
   const before = readLocked(lockPath);
 
   begin(`system flake: repin ${INPUT} to ${short(head)} (${SYSTEM_FLAKE})`);
@@ -215,7 +232,9 @@ function repin(head: string): void {
 
   const after = readLocked(lockPath);
   if (after.rev !== head) {
-    throw new Error(`${lockPath} pins ${INPUT} at ${short(after.rev)}, not the pushed ${short(head)} — refusing to activate`);
+    throw new Error(
+      `${lockPath} pins ${INPUT} at ${short(after.rev)}, not the pushed ${short(head)} — refusing to activate`,
+    );
   }
   if (before.rev === after.rev && before.narHash === after.narHash) {
     info(`${short(after.rev)} unchanged (narHash ${after.narHash})`);
@@ -227,7 +246,10 @@ function repin(head: string): void {
 function activate(): void {
   begin('activate: nh os switch');
   try {
-    run('nh', ['os', 'switch', '--hostname', HOST], { cwd: SYSTEM_FLAKE, env: { NH_FLAKE: SYSTEM_FLAKE } });
+    run('nh', ['os', 'switch', '--hostname', HOST], {
+      cwd: SYSTEM_FLAKE,
+      env: { NH_FLAKE: SYSTEM_FLAKE },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(
@@ -280,13 +302,17 @@ async function main(): Promise<void> {
   activate();
   await verifyService();
 
-  console.log(`\n[deploy] done — ${REMOTE}/${BRANCH} @ ${short(head)}, ${SYSTEM_FLAKE}/flake.lock repinned, system switched`);
+  console.log(
+    `\n[deploy] done — ${REMOTE}/${BRANCH} @ ${short(head)}, ${SYSTEM_FLAKE}/flake.lock repinned, system switched`,
+  );
   if (!DRY_RUN && existsSync(join(SYSTEM_FLAKE, '.git'))) {
     info(`note: ${SYSTEM_FLAKE}/flake.lock is modified but uncommitted`);
   }
 }
 
 main().catch((error: unknown) => {
-  process.stderr.write(`\n[deploy] FAILED: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `\n[deploy] FAILED: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exit(1);
 });

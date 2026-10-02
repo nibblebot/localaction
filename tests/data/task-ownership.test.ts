@@ -10,11 +10,7 @@ import {
   reconcileTombstones,
   installTombstoneReconciler,
 } from '../../src/data/deletion.ts';
-import {
-  hasTombstone,
-  getTombstone,
-  tombstoneId,
-} from '../../src/data/tombstones.ts';
+import { hasTombstone, getTombstone, tombstoneId } from '../../src/data/tombstones.ts';
 import { TABLES, COLUMNS, NOTE_ENTITY_TYPE, TASK_STATUS } from '../../src/data/schema.ts';
 
 function freshStore(): MergeableStore {

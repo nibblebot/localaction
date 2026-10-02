@@ -241,7 +241,7 @@ describe('formatConnectTime', () => {
 describe('connectTimeMs', () => {
   it('measures from the nearest preceding connecting event', () => {
     const events = [conn(1, 1000, connecting), conn(2, 2200, connected)];
-    expect(connectTimeMs(events, events[1])).toBe(1200);
+    expect(connectTimeMs(events, events[1]!)).toBe(1200);
   });
 
   it('skips retrying events to find the successful attempt start', () => {
@@ -253,7 +253,7 @@ describe('connectTimeMs', () => {
       conn(5, 5000, connecting),
       conn(6, 6200, connected),
     ];
-    expect(connectTimeMs(events, events[5])).toBe(1200);
+    expect(connectTimeMs(events, events[5]!)).toBe(1200);
   });
 
   it('does not cross an earlier episode boundary', () => {
@@ -263,21 +263,17 @@ describe('connectTimeMs', () => {
       conn(3, 3000, connecting),
       conn(4, 4200, connected),
     ];
-    expect(connectTimeMs(events, events[3])).toBe(1200);
+    expect(connectTimeMs(events, events[3]!)).toBe(1200);
   });
 
   it('stops at an error boundary', () => {
-    const events = [
-      conn(1, 1000, connecting),
-      conn(2, 2000, error),
-      conn(3, 3200, connected),
-    ];
-    expect(connectTimeMs(events, events[2])).toBeUndefined();
+    const events = [conn(1, 1000, connecting), conn(2, 2000, error), conn(3, 3200, connected)];
+    expect(connectTimeMs(events, events[2]!)).toBeUndefined();
   });
 
   it('ignores non-connection events while scanning', () => {
     const events = [conn(1, 1000, connecting), pull(2, 1500), conn(3, 2200, connected)];
-    expect(connectTimeMs(events, events[2])).toBe(1200);
+    expect(connectTimeMs(events, events[2]!)).toBe(1200);
   });
 
   it('returns undefined for non-connected events and bare logs', () => {

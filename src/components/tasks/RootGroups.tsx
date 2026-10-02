@@ -18,16 +18,8 @@ import { useCollapsedTaskGroups } from '../hooks/useCollapsedTaskGroups.ts';
 import { useCollapsedTaskRows } from '../hooks/useCollapsedTaskRows.ts';
 import Group from './Group.tsx';
 import TaskTree from './TaskTree.tsx';
-import {
-  containerId,
-  headerContainerId,
-  resolveTaskGroupDrop,
-} from '../dnd/rootTaskGroupDrop.ts';
-import type {
-  GroupTarget,
-  RootPosition,
-  RootTaskGroup,
-} from '../dnd/rootTaskGroupDrop.ts';
+import { containerId, headerContainerId, resolveTaskGroupDrop } from '../dnd/rootTaskGroupDrop.ts';
+import type { GroupTarget, RootPosition, RootTaskGroup } from '../dnd/rootTaskGroupDrop.ts';
 
 export type TaskGroupId = 'active' | 'backlog' | 'done';
 
@@ -109,9 +101,7 @@ function DoneTaskRow({
         </button>
         {isParent && <StaticDoneMeter done={total} total={total} />}
       </div>
-      {isParent && !isCollapsed && (
-        <StaticDoneChildren parentId={taskId} depth={depth + 1} />
-      )}
+      {isParent && !isCollapsed && <StaticDoneChildren parentId={taskId} depth={depth + 1} />}
     </>
   );
 }
@@ -238,11 +228,7 @@ function SliceRows({
   const { store } = useDataLayer();
   const ids = group === 'active' ? slice.active : group === 'backlog' ? slice.backlog : slice.done;
   if (ids.length === 0) return null;
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
+  function onMove(activeId: string, parentId: string | null, beforeId: string | undefined): void {
     moveTask(
       store,
       activeId,
@@ -431,7 +417,11 @@ export default function RootGroups({
     if (g === 'done') {
       // Done is never a drop target: no droppable wrapper, no header
       // target — the Group renders bare.
-      return <Group key={g} {...groupProps}>{body}</Group>;
+      return (
+        <Group key={g} {...groupProps}>
+          {body}
+        </Group>
+      );
     }
     const target = g === 'active' ? activeTarget : backlogTarget;
     return (

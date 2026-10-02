@@ -18,10 +18,7 @@ const trapStack: HTMLElement[] = [];
  * The hook does not steal focus on open — callers keep their own
  * autofocus — it only prevents focus from *leaving* the container.
  */
-export function useFocusTrap(
-  ref: RefObject<HTMLElement | null>,
-  active: boolean,
-): void {
+export function useFocusTrap(ref: RefObject<HTMLElement | null>, active: boolean): void {
   useEffect(() => {
     if (!active) return;
     const container = ref.current;

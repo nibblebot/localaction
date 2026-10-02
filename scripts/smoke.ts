@@ -18,8 +18,7 @@ async function main() {
     await server.close();
     try {
       unlinkSync(DB_PATH);
-    } catch {
-    }
+    } catch {}
   }
 }
 

@@ -6,9 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Area header editing', () => {
-  test('clicking the name opens the editor; Enter renames header and sidebar', async ({
-    page,
-  }) => {
+  test('clicking the name opens the editor; Enter renames header and sidebar', async ({ page }) => {
     const name = `Health ${uniq()}`;
     const renamed = `Wellness ${uniq()}`;
     await createArea(page, name);
@@ -29,9 +27,7 @@ test.describe('Area header editing', () => {
     await expect(page.locator('.area-header-name')).toContainText(renamed);
   });
 
-  test('a color swatch recolors immediately and Escape closes the editor', async ({
-    page,
-  }) => {
+  test('a color swatch recolors immediately and Escape closes the editor', async ({ page }) => {
     const name = `Work ${uniq()}`;
     await createArea(page, name);
 
@@ -45,9 +41,9 @@ test.describe('Area header editing', () => {
 
     // Reopening shows the persisted color as active.
     await page.locator('.area-header-name-edit').click();
-    await expect(
-      page.locator('.area-edit-color-swatch[title="Blue"]'),
-    ).toHaveAttribute('data-active', 'true');
+    await expect(page.locator('.area-edit-color-swatch[title="Blue"]')).toHaveAttribute(
+      'data-active',
+      'true',
+    );
   });
-
 });

@@ -8,11 +8,7 @@ import type { Note, NoteInput, NotePatch } from './types.ts';
 
 const PLACEHOLDER_SLUG_PREFIX = 'note';
 
-function uniqueSlug(
-  store: MergeableStore,
-  title: string,
-  exceptId?: string,
-): string {
+function uniqueSlug(store: MergeableStore, title: string, exceptId?: string): string {
   const base = slugify(title);
   const root = base.length === 0 ? PLACEHOLDER_SLUG_PREFIX : base;
   const taken = new Set(
@@ -123,8 +119,7 @@ function getNoteIdsForEntity(
   const all = ids ?? store.getRowIds(TABLES.notes);
   const out: string[] = [];
   for (const id of all) {
-    if (store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) !== entityType)
-      continue;
+    if (store.getCell(TABLES.notes, id, COLUMNS.notes.entityType) !== entityType) continue;
     if (store.getCell(TABLES.notes, id, COLUMNS.notes.entityId) !== entityId) continue;
     out.push(id);
   }

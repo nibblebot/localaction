@@ -76,15 +76,21 @@ async function main(): Promise<void> {
   const baseUrl = `http://127.0.0.1:${port}`;
   let child: ChildProcess | undefined;
   try {
-    child = spawn(process.execPath, [bundle, '--host', '127.0.0.1', '--port', String(port), '--db', DB_PATH], {
-      stdio: ['ignore', 'inherit', 'inherit'],
-    });
+    child = spawn(
+      process.execPath,
+      [bundle, '--host', '127.0.0.1', '--port', String(port), '--db', DB_PATH],
+      {
+        stdio: ['ignore', 'inherit', 'inherit'],
+      },
+    );
     console.log(`bundle-smoke: daemon pid=${child.pid} on :${port}, db=${DB_PATH}, stage=${stage}`);
     const root = await waitForHttpOk(`${baseUrl}/`);
     const contentType = root.headers.get('content-type') ?? '';
     await root.arrayBuffer();
     if (!contentType.includes('text/html')) {
-      throw new Error(`GET / served unexpected content-type ${JSON.stringify(contentType)} — embedded dist broken?`);
+      throw new Error(
+        `GET / served unexpected content-type ${JSON.stringify(contentType)} — embedded dist broken?`,
+      );
     }
     console.log('bundle-smoke: GET / serves the app shell (embedded dist OK)');
     await assertSyncConvergence({

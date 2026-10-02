@@ -40,14 +40,20 @@ export default function ConfirmModal({
 
   if (!open) return null;
   return (
-    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (e.target === e.currentTarget) onCancel();
+      }}
+    >
       <div
         ref={dialogRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
-        onClick={(e) => e.stopPropagation()}
       >
         <h3 id="confirm-modal-title">{title}</h3>
         {message && <p className="modal-message">{message}</p>}
@@ -55,12 +61,7 @@ export default function ConfirmModal({
           <button type="button" className="btn" onClick={onCancel}>
             {cancelLabel}
           </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            className="btn btn-danger"
-            onClick={onConfirm}
-          >
+          <button ref={confirmRef} type="button" className="btn btn-danger" onClick={onConfirm}>
             {confirmLabel}
           </button>
         </div>

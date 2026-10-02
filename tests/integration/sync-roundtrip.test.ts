@@ -14,22 +14,14 @@
  *
  * Runs under `bun test` (real `ws` + `bun:sqlite` modules, no DOM).
  */
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  it,
-} from 'bun:test';
+import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
 import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { WebSocket } from 'ws';
 import { createMergeableStore, createStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
-import {
-  createWsSynchronizer,
-} from 'tinybase/synchronizers/synchronizer-ws-client';
+import { createWsSynchronizer } from 'tinybase/synchronizers/synchronizer-ws-client';
 import { startServer, type RunningServer } from '../../server/index.ts';
 import { openDatabase } from '../../server/db.ts';
 import { createServerTabularPersister } from '../../server/persister.ts';
@@ -49,10 +41,7 @@ let url: string;
 
 beforeAll(async () => {
   port = 5190 + Math.floor(Math.random() * 100);
-  dbPath = join(
-    tmpdir(),
-    `localaction-integration-${Date.now()}-${process.pid}.db`,
-  );
+  dbPath = join(tmpdir(), `localaction-integration-${Date.now()}-${process.pid}.db`);
   url = `ws://localhost:${port}/ws`;
   server = await startServer({ port, dbPath });
 });
@@ -110,11 +99,7 @@ async function waitForRowAbsent(
       return;
     }
     if (Date.now() > deadline) {
-      reject(
-        new Error(
-          `timeout waiting for ${table}.${row} to be deleted (still present)`,
-        ),
-      );
+      reject(new Error(`timeout waiting for ${table}.${row} to be deleted (still present)`));
       return;
     }
     setTimeout(tick, 50);
@@ -265,11 +250,7 @@ describe('sync server round-trip', () => {
       taskId = createTask(a, { title: 'completed-roundtrip' });
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
-      const dueTomorrow = toIso(
-        tomorrow.getFullYear(),
-        tomorrow.getMonth(),
-        tomorrow.getDate(),
-      );
+      const dueTomorrow = toIso(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
       updateTask(a, taskId, { dueDate: dueTomorrow });
       setTaskStatus(a, taskId, TASK_STATUS.done);
 
@@ -279,13 +260,7 @@ describe('sync server round-trip', () => {
       expect(typeof completedOnB).toBe('string');
       expect((completedOnB as string).length).toBeGreaterThan(0);
 
-      await waitForPersisted(
-        dbPath,
-        'tasks',
-        taskId,
-        'completedAt',
-        completedOnB,
-      );
+      await waitForPersisted(dbPath, 'tasks', taskId, 'completedAt', completedOnB);
     } finally {
       await syncA.destroy();
       await syncB.destroy();
@@ -297,13 +272,7 @@ describe('sync server round-trip', () => {
     const fresh = createMergeableStore();
     const freshSync = await connectClient(fresh);
     try {
-      await waitForCell(
-        fresh,
-        'tasks',
-        taskId,
-        'completedAt',
-        completedOnB,
-      );
+      await waitForCell(fresh, 'tasks', taskId, 'completedAt', completedOnB);
       expect(fresh.getCell('tasks', taskId, 'completedAt')).toBe(completedOnB as string);
     } finally {
       await freshSync.destroy();

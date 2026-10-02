@@ -58,11 +58,11 @@ Behavioral rules; DESIGN.md stays normative for visual tokens.
 Tests exercise external behavior through the data-layer seam (typed hooks / sync protocol), never TinyBase internals.
 
 ## NixOS service deploy
-- Service `localaction` (`nix/module.nix` → `systemd.services.localaction`) runs flake `packages.x86_64-linux.localaction` (`dist-bundle/localaction.js` + embedded assets). This machine: host `nixos-server`, system flake `/etc/nixos`, service on `127.0.0.1:7374` behind caddy (`host-server/service.localaction.nix`); input `localaction` tracks `?ref=main`.
-- Workflow: `bun run deploy` (`scripts/deploy.ts`) runs the whole sequence: gate (`lint` + `test` + `build` + `smoke:bundle`) → `nix build .#localaction` → commit working-tree changes (`-m "type(scope): …"`, staged with `git add -A`; required when the tree is dirty) → `git push forgejo main` (the pre-push hook adds e2e) → `nix flake update localaction` in `/etc/nixos` (flake `src = ./.` ignores untracked files, and `/etc/nixos/flake.lock` pins the rev, so push alone deploys nothing) → `nh os switch` (bare = `/etc/nixos#nixos-server` via `NH_FLAKE` + local hostname; no sudo — `nh` elevates) → assert the unit came back active. `--skip-checks` skips the gate and pushes `--no-verify`; `--dry-run` prints the steps.
-- Local iteration without push: `nh os switch --override-input localaction path:/home/joshua/repos/localaction`.
-- Deps changed (`package.json`/`bun.lock`) → `bunDeps.outputHash` in `flake.nix` mismatches; paste the got-hash from the build error.
+- Service `localaction` (`nix/module.nix` → `systemd.services.localaction`) runs flake `packages.x86_64-linux.localaction`. Host `nixos-server` (`/etc/nixos`), `127.0.0.1:7374` behind caddy, input tracks `?ref=main`.
+- Workflow: `bun run deploy` (`scripts/deploy.ts`): gate (`lint` + `test` + `build` + `smoke:bundle`) → `nix build .#localaction` → commit if dirty (`git add -A`) → `git push forgejo main` → `nix flake update localaction` in `/etc/nixos` (push alone deploys nothing — the lockfile pins the rev) → `nh os switch` (no sudo — `nh` elevates) → assert the unit is active. `--skip-checks` skips the gate and pushes `--no-verify`; `--dry-run` prints the steps.
+- Local iteration: `nh os switch --override-input localaction path:/home/joshua/repos/localaction`.
+- Deps changed → `bunDeps.outputHash` mismatches; paste the got-hash from the build error.
 - Verify: `systemctl status localaction`, `journalctl -u localaction --since -5min`. DB (`/var/lib/localaction/localaction.sqlite`, `StateDirectory`) survives rebuilds.
 
 ## Design context
-`PRODUCT.md` (positioning, brand personality), `DESIGN.md` (visual system), `.impeccable/design.json` (machine-readable tokens). Consult before UI work; normative for design decisions.
+`PRODUCT.md` (positioning), `DESIGN.md` (visuals, normative) — consult before UI work.

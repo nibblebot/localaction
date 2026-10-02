@@ -1,9 +1,4 @@
-import {
-  useDataLayer,
-  useTask,
-  setTaskStatus,
-  TASK_STATUS,
-} from '../../data/index.ts';
+import { useDataLayer, useTask, setTaskStatus, TASK_STATUS } from '../../data/index.ts';
 import { useUndo } from '../context/useUndo.ts';
 import { weekdayWithDate } from '../shared/dates.ts';
 

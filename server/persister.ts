@@ -49,10 +49,7 @@ const onIgnoredError = (error: unknown): void => {
  * The `onIgnoredError` handler keeps tabular save failures from vanishing
  * silently (the old server passed no handler at all).
  */
-export function createServerTabularPersister(
-  store: Store,
-  db: ServerDatabase,
-): SqliteBunPersister {
+export function createServerTabularPersister(store: Store, db: ServerDatabase): SqliteBunPersister {
   return createSqliteBunPersister(store, db, TABULAR_CONFIG, undefined, onIgnoredError);
 }
 
@@ -71,9 +68,7 @@ function cleanTables(tables: Tables): Tables {
     for (const [rowId, cells] of Object.entries(rows)) {
       // TinyBase's `Cell` type is wider (allows arbitrary objects) than the
       // primitives this app writes; `row()` only filters null/undefined.
-      cleanRows[rowId] = row(
-        cells as Record<string, string | number | boolean | null | undefined>,
-      );
+      cleanRows[rowId] = row(cells as Record<string, string | number | boolean | null | undefined>);
     }
     out[tableId] = cleanRows;
   }
@@ -127,9 +122,7 @@ export function createServerPersister(
     }
   });
 
-  const startAutoLoad = async (
-    initialContent?: unknown,
-  ): Promise<SqliteBunPersister> => {
+  const startAutoLoad = async (initialContent?: unknown): Promise<SqliteBunPersister> => {
     // `createWsServer` calls `startAutoLoad()` on the persister it receives.
     // We still want the initial `load(initialContent)` so a freshly-spawned
     // server client restores persisted state from SQLite, but we skip the

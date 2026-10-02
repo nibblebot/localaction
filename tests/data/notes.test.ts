@@ -2,12 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, NOTE_ENTITY_TYPE, TABLES } from '../../src/data/schema.ts';
-import {
-  createNote,
-  updateNote,
-  deleteNote,
-  getNote,
-} from '../../src/data/notes.ts';
+import { createNote, updateNote, deleteNote, getNote } from '../../src/data/notes.ts';
 
 function freshStore(): MergeableStore {
   return createMergeableStore();

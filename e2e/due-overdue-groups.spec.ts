@@ -48,9 +48,8 @@ function partsOf(iso: string): { year: number; month: number; day: number } {
 
 function weekdayShort(iso: string): string {
   const { year, month, day } = partsOf(iso);
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][
-    new Date(year, month, day).getDay()
-  ];
+  // Callers supply locally generated valid dates, so getDay() is in 0–6.
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(year, month, day).getDay()]!;
 }
 
 function monthDayShort(iso: string): string {
@@ -219,9 +218,7 @@ test.describe('Due pane overdue Area grouping and divider', () => {
     // seeded leaf carries its actual date label.
     const overdue = page.locator('section.today-overdue');
     await expect(overdue).toBeVisible();
-    await expect(
-      overdue.locator('h3.today-group-title', { hasText: area }),
-    ).toBeVisible();
+    await expect(overdue.locator('h3.today-group-title', { hasText: area })).toBeVisible();
     const row = overdue.locator('.task-line', { hasText: leaf });
     await expect(row).toBeVisible();
     await expect(row.locator('.task-line-due-date')).toHaveText(weekdayWithDate(yesterday));
@@ -282,9 +279,7 @@ test.describe('Due pane overdue Area grouping and divider', () => {
     // The inner AreaGroups sections are direct children of the overdue
     // section, whose own toggle heading is excluded by the `:scope >`
     // pin.
-    const headings = overdue.locator(
-      ':scope > section.today-group > h3.today-group-title',
-    );
+    const headings = overdue.locator(':scope > section.today-group > h3.today-group-title');
     await expect(headings.first()).toHaveText('Inbox');
     await expect(headings.filter({ hasText: areaA }).first()).toBeVisible();
     await expect(headings.filter({ hasText: areaB }).first()).toBeVisible();

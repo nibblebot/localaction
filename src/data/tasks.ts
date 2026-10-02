@@ -45,12 +45,7 @@ export function decodePlacement(raw: unknown): TaskPlacement {
 }
 
 function nextOrder(store: MergeableStore, placement: string | null): number {
-  const siblings = readSiblingOrders(
-    store,
-    TABLES.tasks,
-    COLUMNS.tasks.placement,
-    placement,
-  );
+  const siblings = readSiblingOrders(store, TABLES.tasks, COLUMNS.tasks.placement, placement);
   const last = siblings[siblings.length - 1];
   if (!last) return 1000;
   return last.order + 1000;
@@ -162,11 +157,7 @@ export function writeCompletionTimestamp(
   const current = store.getCell(TABLES.tasks, id, COLUMNS.tasks.status);
   const currentIsDone = current === TASK_STATUS.done;
   if (next === TASK_STATUS.done && !currentIsDone) {
-    store.setPartialRow(
-      TABLES.tasks,
-      id,
-      row({ [COLUMNS.tasks.completedAt]: nowIso() }),
-    );
+    store.setPartialRow(TABLES.tasks, id, row({ [COLUMNS.tasks.completedAt]: nowIso() }));
   } else if (next !== TASK_STATUS.done && currentIsDone) {
     store.delCell(TABLES.tasks, id, COLUMNS.tasks.completedAt);
   }
@@ -262,11 +253,7 @@ export function getRootTriState(
  * backlog cell; false deletes it (Active is the default — absent cell).
  * Only meaningful on roots; subtasks inherit through ancestry.
  */
-export function setRootBacklog(
-  store: MergeableStore,
-  rootId: string,
-  shelved: boolean,
-): void {
+export function setRootBacklog(store: MergeableStore, rootId: string, shelved: boolean): void {
   if (!store.hasRow(TABLES.tasks, rootId)) return;
   store.transaction(() => {
     if (shelved) {
@@ -444,21 +431,23 @@ export function buildTaskTree(store: MergeableStore, taskIds: readonly string[])
     const childIds = childMap.get(id) ?? [];
     return { id, children: childIds.map(build) };
   };
-  return { id: '__root__', children: taskIds.filter((id) => {
-    const p = getPlacement(store, id);
-    return p.kind !== 'task' || !taskIds.includes(p.id);
-  }).sort((a, b) => {
-    const oa = orderOf(a);
-    const ob = orderOf(b);
-    return oa !== ob ? oa - ob : a.localeCompare(b);
-  }).map(build) };
+  return {
+    id: '__root__',
+    children: taskIds
+      .filter((id) => {
+        const p = getPlacement(store, id);
+        return p.kind !== 'task' || !taskIds.includes(p.id);
+      })
+      .sort((a, b) => {
+        const oa = orderOf(a);
+        const ob = orderOf(b);
+        return oa !== ob ? oa - ob : a.localeCompare(b);
+      })
+      .map(build),
+  };
 }
 
-function collectDescendants(
-  store: MergeableStore,
-  parentId: string,
-  out: string[],
-): void {
+function collectDescendants(store: MergeableStore, parentId: string, out: string[]): void {
   for (const child of childTaskIds(store, parentId)) {
     out.push(child);
     collectDescendants(store, child, out);
@@ -541,7 +530,7 @@ function decodeTaskRow(id: string, r: Record<string, unknown>): Task {
     id,
     title: String(r[COLUMNS.tasks.title] ?? ''),
     placement: decodePlacement(r[COLUMNS.tasks.placement]),
-    status: (String(r[COLUMNS.tasks.status] ?? TASK_STATUS.open)) as TaskStatus,
+    status: String(r[COLUMNS.tasks.status] ?? TASK_STATUS.open) as TaskStatus,
     backlog: Boolean(r[COLUMNS.tasks.backlog]),
     dueDate: normalizeRelation(r[COLUMNS.tasks.dueDate]),
     completedAt: normalizeCompletedAt(r[COLUMNS.tasks.completedAt]),

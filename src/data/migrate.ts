@@ -71,19 +71,16 @@ export function migrateProjectsToTasks(store: MergeableStore): void {
       Number(store.getCell(table, rowId, 'order') ?? 0);
 
     const projects = projectIds
-      .map(
-        (id): LegacyProjectSnapshot => ({
-          id,
-          name: legacyCell(LEGACY_TABLES.projects, id, 'name') ?? '',
-          areaId: legacyCell(LEGACY_TABLES.projects, id, 'areaId'),
-          dueDate: legacyCell(LEGACY_TABLES.projects, id, 'dueDate'),
-          backlog:
-            store.getCell(LEGACY_TABLES.projects, id, 'status') === LEGACY_STATUS_BACKLOG,
-          order: legacyOrder(LEGACY_TABLES.projects, id),
-          createdAt: legacyCell(LEGACY_TABLES.projects, id, 'createdAt') ?? '',
-          updatedAt: legacyCell(LEGACY_TABLES.projects, id, 'updatedAt') ?? '',
-        }),
-      )
+      .map((id): LegacyProjectSnapshot => ({
+        id,
+        name: legacyCell(LEGACY_TABLES.projects, id, 'name') ?? '',
+        areaId: legacyCell(LEGACY_TABLES.projects, id, 'areaId'),
+        dueDate: legacyCell(LEGACY_TABLES.projects, id, 'dueDate'),
+        backlog: store.getCell(LEGACY_TABLES.projects, id, 'status') === LEGACY_STATUS_BACKLOG,
+        order: legacyOrder(LEGACY_TABLES.projects, id),
+        createdAt: legacyCell(LEGACY_TABLES.projects, id, 'createdAt') ?? '',
+        updatedAt: legacyCell(LEGACY_TABLES.projects, id, 'updatedAt') ?? '',
+      }))
       .sort((a, b) =>
         a.order !== b.order
           ? a.order - b.order
@@ -124,37 +121,21 @@ export function migrateProjectsToTasks(store: MergeableStore): void {
       const unsectioned = legacyTasksWithPlacement(store, LEGACY_PROJECT_PLACEMENT + p.id);
       const sections = store
         .getRowIds(LEGACY_TABLES.sections)
-        .map(
-          (id): SectionRef => ({
-            id,
-            projectId: String(
-              store.getCell(LEGACY_TABLES.sections, id, 'projectId') ?? '',
-            ),
-            order: legacyOrder(LEGACY_TABLES.sections, id),
-          }),
-        )
+        .map((id): SectionRef => ({
+          id,
+          projectId: String(store.getCell(LEGACY_TABLES.sections, id, 'projectId') ?? ''),
+          order: legacyOrder(LEGACY_TABLES.sections, id),
+        }))
         .filter((s) => s.projectId === p.id)
-        .sort((a, b) =>
-          a.order !== b.order ? a.order - b.order : a.id.localeCompare(b.id),
-        );
+        .sort((a, b) => (a.order !== b.order ? a.order - b.order : a.id.localeCompare(b.id)));
       const children = [...unsectioned];
       for (const s of sections) {
         children.push(...legacyTasksWithPlacement(store, LEGACY_SECTION_PLACEMENT + s.id));
       }
       for (let i = 0; i < children.length; i += 1) {
         const child = children[i]!;
-        store.setCell(
-          TABLES.tasks,
-          child.id,
-          COLUMNS.tasks.placement,
-          `task:${rootId}`,
-        );
-        store.setCell(
-          TABLES.tasks,
-          child.id,
-          COLUMNS.tasks.order,
-          (i + 1) * ORDER_SPACING,
-        );
+        store.setCell(TABLES.tasks, child.id, COLUMNS.tasks.placement, `task:${rootId}`);
+        store.setCell(TABLES.tasks, child.id, COLUMNS.tasks.order, (i + 1) * ORDER_SPACING);
       }
     }
 
@@ -200,12 +181,7 @@ export function migrateProjectsToTasks(store: MergeableStore): void {
             : a.id.localeCompare(b.id),
       );
       for (let i = 0; i < siblings.length; i += 1) {
-        store.setCell(
-          TABLES.tasks,
-          siblings[i]!.id,
-          COLUMNS.tasks.order,
-          (i + 1) * ORDER_SPACING,
-        );
+        store.setCell(TABLES.tasks, siblings[i]!.id, COLUMNS.tasks.order, (i + 1) * ORDER_SPACING);
       }
     }
 
@@ -241,10 +217,7 @@ export function migrateProjectsToTasks(store: MergeableStore): void {
 }
 
 /** Top-level legacy tasks whose placement cell equals exactly `encoded`. */
-function legacyTasksWithPlacement(
-  store: MergeableStore,
-  encoded: string,
-): LegacyTaskOrder[] {
+function legacyTasksWithPlacement(store: MergeableStore, encoded: string): LegacyTaskOrder[] {
   const out: LegacyTaskOrder[] = [];
   for (const id of store.getRowIds(TABLES.tasks)) {
     const p = store.getCell(TABLES.tasks, id, COLUMNS.tasks.placement);
@@ -254,8 +227,6 @@ function legacyTasksWithPlacement(
       order: Number(store.getCell(TABLES.tasks, id, COLUMNS.tasks.order) ?? 0),
     });
   }
-  out.sort((a, b) =>
-    a.order !== b.order ? a.order - b.order : a.id.localeCompare(b.id),
-  );
+  out.sort((a, b) => (a.order !== b.order ? a.order - b.order : a.id.localeCompare(b.id)));
   return out;
 }

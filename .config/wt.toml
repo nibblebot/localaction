@@ -1,1 +1,1 @@
-pre-start="bun install"
+pre-start = "bun install"

@@ -7,7 +7,12 @@ import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket as WsWebSocket } from 'ws';
 import { createMergeableStore } from 'tinybase';
 import { createWsServer } from 'tinybase/synchronizers/synchronizer-ws-server';
-import { defaultPreviewDbPath, defaultProdDbPath, openDatabase, type ServerDatabase } from './db.ts';
+import {
+  defaultPreviewDbPath,
+  defaultProdDbPath,
+  openDatabase,
+  type ServerDatabase,
+} from './db.ts';
 import { startOwnerWatchdog } from './e2e-watchdog.ts';
 import { createServerPersister, dropLegacyJsonTable } from './persister.ts';
 import { logInfo, logWarn } from '../src/log.ts';
@@ -296,13 +301,14 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   );
 
   const httpServer = createServer(createStaticFileServer(staticRoot));
-  const { wsServer, tinyServer, close: closeSync } = await attachSyncServer(
-    httpServer,
-    {
-      secret,
-      dbPath,
-    },
-  );
+  const {
+    wsServer,
+    tinyServer,
+    close: closeSync,
+  } = await attachSyncServer(httpServer, {
+    secret,
+    dbPath,
+  });
 
   await new Promise<void>((resolve) => {
     if (host) {
@@ -343,8 +349,7 @@ export async function startServer(options: ServerOptions): Promise<RunningServer
   };
 }
 
-const isMain =
-  process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
 interface CliArgs {
   dbPath?: string;
   host?: string;
@@ -363,7 +368,7 @@ interface CliArgs {
 function parseServerArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { help: false, preview: false };
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '--help' || arg === '-h') {
       out.help = true;
     } else if (arg === '--db') {

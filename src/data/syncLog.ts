@@ -125,11 +125,7 @@ export function recordConnectionEvent(log: SyncLog, status: SyncStatus): void {
 function sameStatus(a: SyncStatus, b: SyncStatus): boolean {
   if (a.kind !== b.kind) return false;
   if (a.kind === 'retrying' && b.kind === 'retrying') {
-    return (
-      a.attempt === b.attempt &&
-      a.nextDelayMs === b.nextDelayMs &&
-      a.reason === b.reason
-    );
+    return a.attempt === b.attempt && a.nextDelayMs === b.nextDelayMs && a.reason === b.reason;
   }
   if (a.kind === 'error' && b.kind === 'error') {
     return a.message === b.message;
@@ -193,9 +189,7 @@ const localCommitListeners = new Set<(tables: SyncTableStats) => void>();
  * transactions out, and zero-net-row transactions are skipped. Sweep
  * events fire too — tombstone cascades are local writes that must sync.
  */
-export function subscribeLocalCommits(
-  listener: (tables: SyncTableStats) => void,
-): () => void {
+export function subscribeLocalCommits(listener: (tables: SyncTableStats) => void): () => void {
   localCommitListeners.add(listener);
   return () => {
     localCommitListeners.delete(listener);
@@ -338,10 +332,12 @@ function collectNetAddedRowIds(
 // classifyNetPull), not the incoming body, so echo/re-applies — which
 // merge to zero net rows — never double-count.
 // The public type hides `__`; narrow it at runtime (version-drift guard).
-function internalApplySlot(store: MergeableStore): {
-  slots: unknown[];
-  original: (changes: MergeableChanges) => unknown;
-} | undefined {
+function internalApplySlot(store: MergeableStore):
+  | {
+      slots: unknown[];
+      original: (changes: MergeableChanges) => unknown;
+    }
+  | undefined {
   if (!('__' in store)) return undefined;
   const slots: unknown = store.__;
   if (!Array.isArray(slots)) return undefined;

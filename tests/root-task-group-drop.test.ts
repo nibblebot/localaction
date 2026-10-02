@@ -31,7 +31,10 @@ function idsIn(pos: RootPosition): string[] {
 describe('parseGroupId', () => {
   test('parses container and group header ids alike', () => {
     expect(parseGroupId(containerId('a', 'backlog'))).toEqual({ scopeKey: 'a', group: 'backlog' });
-    expect(parseGroupId(headerContainerId('a', 'active'))).toEqual({ scopeKey: 'a', group: 'active' });
+    expect(parseGroupId(headerContainerId('a', 'active'))).toEqual({
+      scopeKey: 'a',
+      group: 'active',
+    });
   });
 
   test('keeps colons inside the scope key (group is the trailing segment)', () => {
@@ -54,9 +57,10 @@ describe('resolveTaskGroupDrop', () => {
       resolveTaskGroupDrop('t1', headerContainerId('a', 'backlog'), findPosition, idsIn),
     ).toEqual({ kind: 'shelve', beforeId: undefined });
     // Area B has no backlog rows yet: dropping into the empty zone still shelves.
-    expect(
-      resolveTaskGroupDrop('t1', containerId('b', 'backlog'), findPosition, idsIn),
-    ).toEqual({ kind: 'shelve', beforeId: undefined });
+    expect(resolveTaskGroupDrop('t1', containerId('b', 'backlog'), findPosition, idsIn)).toEqual({
+      kind: 'shelve',
+      beforeId: undefined,
+    });
   });
 
   test('Active header drop unshelves a backlog root (appends)', () => {

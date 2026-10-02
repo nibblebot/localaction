@@ -48,9 +48,7 @@ test('parent-row caret collapses one subtree; collapse persists across reload', 
   await expect(page.locator('.task-line', { hasText: child })).toHaveCount(0);
 });
 
-test('a completed subtree keeps its parent row with a full progress meter', async ({
-  page,
-}) => {
+test('a completed subtree keeps its parent row with a full progress meter', async ({ page }) => {
   const tok = uniq();
   const area = `DoneCollapse ${tok}`;
   const parent = `P ${tok}`;

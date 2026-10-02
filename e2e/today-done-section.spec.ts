@@ -40,9 +40,7 @@ test.describe('Today / Week Done section', () => {
     await navigateToToday(page);
     const doneSection = page.locator('section[aria-label="Done"]');
     await expect(doneSection).toBeVisible();
-    await expect(
-      doneSection.locator('section[aria-label="Done today"]'),
-    ).toBeVisible();
+    await expect(doneSection.locator('section[aria-label="Done today"]')).toBeVisible();
     await expect(doneSection.locator('.task-line', { hasText: tDue })).toBeVisible();
     await expect(doneSection.locator('.task-line', { hasText: tNoDue })).toBeVisible();
 
@@ -53,12 +51,8 @@ test.describe('Today / Week Done section', () => {
     // section's task rows carry the checkbox with the same
     // "Mark … not done" label, so we click it from the Today view
     // rather than navigating back to the area.
-    await doneSection
-      .locator(`input[aria-label="Mark “${tNoDue}” not done"]`)
-      .click();
-    await expect(
-      doneSection.locator('.task-line', { hasText: tNoDue }),
-    ).toHaveCount(0);
+    await doneSection.locator(`input[aria-label="Mark “${tNoDue}” not done"]`).click();
+    await expect(doneSection.locator('.task-line', { hasText: tNoDue })).toHaveCount(0);
     await expect(doneSection.locator('.task-line', { hasText: tDue })).toBeVisible();
   });
 
@@ -107,15 +101,17 @@ function weekdayShort(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   if (!y || !m || !d) return '';
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[new Date(y, m - 1, d).getDay()];
+  // The ISO comes from today's local date, so getDay() is in 0–6.
+  return days[new Date(y, m - 1, d).getDay()]!;
 }
 
 // Mirror of src/components/shared/dates.ts `weekdayWithDate` — kept
 // local so e2e stays self-contained (no src imports in this tree).
 function weekdayWithDate(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
+  // The caller builds YYYY-MM-DD from today's valid local date.
   const monthDay = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(
-    new Date(y, m - 1, d),
+    new Date(y!, m! - 1, d!),
   );
   return `${weekdayShort(iso)}, ${monthDay}`;
 }

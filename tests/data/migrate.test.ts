@@ -104,11 +104,7 @@ function setNote(
   });
 }
 
-function setTombstone(
-  store: MergeableStore,
-  entityType: string,
-  entityId: string,
-): void {
+function setTombstone(store: MergeableStore, entityType: string, entityId: string): void {
   store.setRow('tombstones', `${entityType}:${entityId}`, {
     entityType,
     entityId,
@@ -473,11 +469,9 @@ describe('migrateProjectsToTasks', () => {
 
     expect(f.store.getCell(TABLES.notes, f.nArea, COLUMNS.notes.entityType)).toBe('area');
     expect(f.store.getCell(TABLES.notes, f.nArea, COLUMNS.notes.entityId)).toBe(f.areaA);
-    expect(
-      allNotes(f.store).some(
-        (n) => n.entityType === 'task' && n.entityId === f.tUnsec1,
-      ),
-    ).toBe(true);
+    expect(allNotes(f.store).some((n) => n.entityType === 'task' && n.entityId === f.tUnsec1)).toBe(
+      true,
+    );
     expect(allNotes(f.store).some((n) => n.entityType === 'project')).toBe(false);
   });
 
@@ -509,9 +503,7 @@ describe('migrateProjectsToTasks', () => {
     migrateProjectsToTasks(f.store);
 
     // The pre-existing task is untouched; the migrated root got a fresh id.
-    expect(f.store.getCell(TABLES.tasks, f.pArea, COLUMNS.tasks.title)).toBe(
-      'Pre-existing task',
-    );
+    expect(f.store.getCell(TABLES.tasks, f.pArea, COLUMNS.tasks.title)).toBe('Pre-existing task');
     const migratedRoots = siblingsOfPlacement(f.store, `area:${f.areaA}`).filter(
       (id) => f.store.getCell(TABLES.tasks, id, COLUMNS.tasks.title) === 'Area project',
     );

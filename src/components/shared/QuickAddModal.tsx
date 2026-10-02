@@ -52,14 +52,26 @@ export default function QuickAddModal(): React.JSX.Element | null {
 
   if (!open) return null;
   return (
-    <div className="modal-backdrop" role="presentation" onClick={close}>
+    <div
+      className="modal-backdrop"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (e.target === e.currentTarget) close();
+      }}
+    >
       <div
         ref={dialogRef}
         className="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="quick-add-title"
-        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            close();
+          }
+        }}
       >
         <h3 id="quick-add-title">Quick add</h3>
         <input
@@ -74,9 +86,6 @@ export default function QuickAddModal(): React.JSX.Element | null {
             if (e.key === 'Enter') {
               e.preventDefault();
               commit();
-            } else if (e.key === 'Escape') {
-              e.preventDefault();
-              close();
             }
           }}
         />

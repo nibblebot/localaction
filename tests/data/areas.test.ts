@@ -2,11 +2,7 @@ import { describe, expect, it, beforeEach } from 'bun:test';
 import { createMergeableStore } from 'tinybase';
 import type { MergeableStore } from 'tinybase';
 import { COLUMNS, TABLES } from '../../src/data/schema.ts';
-import {
-  createArea,
-  updateArea,
-  getArea,
-} from '../../src/data/areas.ts';
+import { createArea, updateArea, getArea } from '../../src/data/areas.ts';
 import { deleteArea } from '../../src/data/deletion.ts';
 
 function freshStore(): MergeableStore {

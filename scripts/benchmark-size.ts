@@ -9,13 +9,7 @@
  *
  * Run: bun run benchmark-size
  */
-import {
-  copyFileSync,
-  mkdirSync,
-  readdirSync,
-  statSync,
-  unlinkSync,
-} from 'node:fs';
+import { copyFileSync, mkdirSync, readdirSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createMergeableStore, type MergeableStore } from 'tinybase';
@@ -23,10 +17,7 @@ import { openDatabase, type ServerDatabase } from '../server/db.ts';
 import { createServerPersister } from '../server/persister.ts';
 import { createArea } from '../src/data/areas.ts';
 import { createTask } from '../src/data/tasks.ts';
-import {
-  deleteArea,
-  deleteTask,
-} from '../src/data/deletion.ts';
+import { deleteArea, deleteTask } from '../src/data/deletion.ts';
 import { TABLES } from '../src/data/schema.ts';
 
 // Dedicated tmpdir subdir: never in the repo, and the readdir sweeps below
@@ -49,10 +40,56 @@ function mulberry32(seed: number): () => number {
 }
 const rand = mulberry32(42);
 
-const AREA_WORDS = ['Family', 'Health', 'Work', 'Finance', 'Home', 'Travel', 'Learning', 'Side efforts', 'Admin', 'Fitness'];
-const ROOT_WORDS = ['Plan vacation', 'Quarterly budget', 'Kitchen renovation', 'Tax filing', 'Marathon training', 'Website redesign', 'Reading list', 'Car maintenance', 'Garden overhaul', 'Conference talk'];
-const TASK_WORDS = ['review', 'draft', 'schedule', 'call', 'buy', 'research', 'book', 'write', 'fix', 'compare', 'submit', 'organize'];
-const TASK_OBJECTS = ['quarterly budget proposal', 'flight options', 'insurance paperwork', 'meeting notes', 'vendor quotes', 'weekend itinerary', 'grocery list', 'tax documents', 'training plan', 'design mockups'];
+const AREA_WORDS = [
+  'Family',
+  'Health',
+  'Work',
+  'Finance',
+  'Home',
+  'Travel',
+  'Learning',
+  'Side efforts',
+  'Admin',
+  'Fitness',
+];
+const ROOT_WORDS = [
+  'Plan vacation',
+  'Quarterly budget',
+  'Kitchen renovation',
+  'Tax filing',
+  'Marathon training',
+  'Website redesign',
+  'Reading list',
+  'Car maintenance',
+  'Garden overhaul',
+  'Conference talk',
+];
+const TASK_WORDS = [
+  'review',
+  'draft',
+  'schedule',
+  'call',
+  'buy',
+  'research',
+  'book',
+  'write',
+  'fix',
+  'compare',
+  'submit',
+  'organize',
+];
+const TASK_OBJECTS = [
+  'quarterly budget proposal',
+  'flight options',
+  'insurance paperwork',
+  'meeting notes',
+  'vendor quotes',
+  'weekend itinerary',
+  'grocery list',
+  'tax documents',
+  'training plan',
+  'design mockups',
+];
 
 const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
 const areaName = (i: number) => `${pick(AREA_WORDS)} ${i}`;
@@ -93,7 +130,9 @@ async function waitForCounts(
     const match = Object.entries(expected).every(([t, n]) => counts[t] === n);
     if (match) return;
     if (Date.now() > deadline) {
-      throw new Error(`timed out waiting for ${JSON.stringify(expected)}; have ${JSON.stringify(counts)}`);
+      throw new Error(
+        `timed out waiting for ${JSON.stringify(expected)}; have ${JSON.stringify(counts)}`,
+      );
     }
     await sleep(250);
   }
@@ -117,7 +156,8 @@ async function snapshot(db: ServerDatabase, label: string, fileBase: string): Pr
   const totalBytes = files.reduce((s, f) => s + f.bytes, 0);
   const pageCount = (await all<{ page_count: number }>(db, 'PRAGMA page_count'))[0]!.page_count;
   const pageSize = (await all<{ page_size: number }>(db, 'PRAGMA page_size'))[0]!.page_size;
-  const freelistPages = (await all<{ freelist_count: number }>(db, 'PRAGMA freelist_count'))[0]!.freelist_count;
+  const freelistPages = (await all<{ freelist_count: number }>(db, 'PRAGMA freelist_count'))[0]!
+    .freelist_count;
   const counts = await tableCounts(db);
   const snap: Snapshot = { label, files, totalBytes, pageCount, pageSize, freelistPages, counts };
   printSnapshot(snap);
@@ -131,7 +171,9 @@ function printSnapshot(s: Snapshot): void {
   console.log(`\n=== ${s.label} ===`);
   for (const f of s.files) console.log(`  ${f.name}  ${f.bytes} B (${fmt(f.bytes)})`);
   console.log(`  total: ${s.totalBytes} B (${fmt(s.totalBytes)})`);
-  console.log(`  pages: ${s.pageCount} x ${s.pageSize} B, freelist: ${s.freelistPages} pages (${fmt(s.freelistPages * s.pageSize)})`);
+  console.log(
+    `  pages: ${s.pageCount} x ${s.pageSize} B, freelist: ${s.freelistPages} pages (${fmt(s.freelistPages * s.pageSize)})`,
+  );
   console.log(`  rows: ${JSON.stringify(s.counts)}`);
 }
 
@@ -193,7 +235,9 @@ async function main(): Promise<void> {
 
   // Case 1a: brand-new file, nothing written yet.
   const snaps: Snapshot[] = [];
-  snaps.push(await snapshot(db, '1a. empty file (openDatabase only, no writes)', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(db, '1a. empty file (openDatabase only, no writes)', 'test-bench-size.db'),
+  );
 
   // Case 1b: first boot — no version stamp, no eager table creation; the
   // file stays empty until the first user row. The settle delay makes the
@@ -201,28 +245,36 @@ async function main(): Promise<void> {
   await persister.startAutoLoad();
   await persister.startAutoSave();
   await sleep(500);
-  snaps.push(await snapshot(db, '1b. initial boot (no writes, no user data)', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(db, '1b. initial boot (no writes, no user data)', 'test-bench-size.db'),
+  );
 
   // Case 2: 10 areas, 30 root tasks, 100 subtasks.
   let t0 = Date.now();
   seedTo(store, 10, 30, 100);
   await waitForCounts(db, { areas: 10, tasks: 130 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '2. 10 areas / 30 root tasks / 100 subtasks', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(db, '2. 10 areas / 30 root tasks / 100 subtasks', 'test-bench-size.db'),
+  );
 
   // Case 3: 100 areas, 500 root tasks, 1000 subtasks.
   t0 = Date.now();
   seedTo(store, 100, 500, 1000);
   await waitForCounts(db, { areas: 100, tasks: 1500 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '3. 100 areas / 500 root tasks / 1000 subtasks', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(db, '3. 100 areas / 500 root tasks / 1000 subtasks', 'test-bench-size.db'),
+  );
 
   // Case 4: 1000 areas, 5000 root tasks, 10000 subtasks.
   t0 = Date.now();
   seedTo(store, 1000, 5000, 10000);
   await waitForCounts(db, { areas: 1000, tasks: 15000 });
   console.log(`  (seeded in ${Date.now() - t0} ms)`);
-  snaps.push(await snapshot(db, '4. 1000 areas / 5000 root tasks / 10000 subtasks', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(db, '4. 1000 areas / 5000 root tasks / 10000 subtasks', 'test-bench-size.db'),
+  );
 
   // Case 5: delete half the entities via the app's cascade deleters.
   t0 = Date.now();
@@ -255,13 +307,21 @@ async function main(): Promise<void> {
     tasks: remaining.tasks,
     tombstones: remaining.tombstones,
   });
-  snaps.push(await snapshot(db, '5. after deleting half (cascade deleters, with tombstones)', 'test-bench-size.db'));
+  snaps.push(
+    await snapshot(
+      db,
+      '5. after deleting half (cascade deleters, with tombstones)',
+      'test-bench-size.db',
+    ),
+  );
 
   // Supplementary: same content after VACUUM (on a copy).
   copyFileSync(DB_PATH, VACUUM_PATH);
   const vacDb = await openDatabase(VACUUM_PATH);
   await all(vacDb, 'VACUUM');
-  snaps.push(await snapshot(vacDb, '5b. case 5 content after VACUUM (copy)', 'test-bench-size-vacuum.db'));
+  snaps.push(
+    await snapshot(vacDb, '5b. case 5 content after VACUUM (copy)', 'test-bench-size-vacuum.db'),
+  );
   vacDb.close();
 
   // Summary table.

@@ -1,9 +1,5 @@
 import { useMemo } from 'react';
-import {
-  useDataLayer,
-  useArea,
-  useAreaCounts,
-} from '../../data/index.ts';
+import { useDataLayer, useArea, useAreaCounts } from '../../data/index.ts';
 import { useSelection } from '../context/useSelection.ts';
 import { INBOX } from '../../router.ts';
 import { useCollapsedPaneSections } from '../hooks/useCollapsedPaneSections.ts';

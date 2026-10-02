@@ -45,12 +45,10 @@ export function installLongPressArming(): () => void {
       disarm();
       return;
     }
-    const target = event.target instanceof Element
-      ? event.target.closest('.sortable-row')
-      : null;
+    const target = event.target instanceof Element ? event.target.closest('.sortable-row') : null;
     disarm();
     if (target) {
-      const touch = event.touches[0];
+      const touch = event.touches[0]!; // The touch count above is exactly one.
       startX = touch.clientX;
       startY = touch.clientY;
       armed = target;
@@ -60,7 +58,7 @@ export function installLongPressArming(): () => void {
 
   const onTouchMove = (event: TouchEvent): void => {
     if (!armed || event.touches.length !== 1) return;
-    const touch = event.touches[0];
+    const touch = event.touches[0]!; // The touch count above is exactly one.
     if (
       Math.abs(touch.clientX - startX) > TOLERANCE_PX ||
       Math.abs(touch.clientY - startY) > TOLERANCE_PX

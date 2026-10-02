@@ -28,7 +28,7 @@ interface CliArgs {
 function parseArgs(argv: readonly string[]): CliArgs {
   const out: CliArgs = { dbPath: defaultProdDbPath(), help: false };
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '--db') {
       const next = argv[++i];
       if (next) out.dbPath = next;
@@ -95,9 +95,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   if (existsSync(outPath) && statSync(outPath).size > 0) {
-    process.stderr.write(
-      `error: destination already exists (refusing to overwrite): ${outPath}\n`,
-    );
+    process.stderr.write(`error: destination already exists (refusing to overwrite): ${outPath}\n`);
     process.exit(1);
   }
 
@@ -112,9 +110,7 @@ async function main(): Promise<void> {
   }
 
   const size = statSync(outPath).size;
-  process.stdout.write(
-    `[backup-db] ${dbPath} -> ${outPath} (${(size / 1024).toFixed(1)} KiB)\n`,
-  );
+  process.stdout.write(`[backup-db] ${dbPath} -> ${outPath} (${(size / 1024).toFixed(1)} KiB)\n`);
 }
 
 main().then(

@@ -36,9 +36,9 @@
 
 :root {
   /* Surfaces — cool lavender canvas */
-  --bg: #f5f3fa;            /* app canvas (light lavender) */
-  --bg-elevated: #f8f6fc;   /* sidebar / rail */
-  --surface: #ffffff;       /* cards, rows */
+  --bg: #f5f3fa; /* app canvas (light lavender) */
+  --bg-elevated: #f8f6fc; /* sidebar / rail */
+  --surface: #ffffff; /* cards, rows */
   --surface-hover: #f1ecfa; /* row hover (lavender tint) */
   --surface-active: #ece6fb;
 
@@ -61,9 +61,9 @@
   /* Accent — vivid purple */
   --accent: #7c3aed;
   --accent-hover: #6d28d9;
-  --accent-bg: #ece6fb;          /* selected row / chip wash */
+  --accent-bg: #ece6fb; /* selected row / chip wash */
   --accent-border: #c4b5fd;
-  --accent-tint: #e9e3fa;        /* active tab pill bg */
+  --accent-tint: #e9e3fa; /* active tab pill bg */
 
   /* Tag chip — purple */
   --tag-bg: #ece6fb;
@@ -90,7 +90,6 @@
   --warning-bright: #facc15;
   --warning-bg: #fef3c7;
   --warning-border: #fcd34d;
-
 
   /* Shadow — barely there, elevation-by-tone preferred. Tinted toward the
      violet ink family (Single Hue Family Rule), never warm.
@@ -155,11 +154,11 @@
        h4 there is pinned until that followup lands.
      ============================================================ */
   --text-display: 1.36rem; /* ~20px — page-title row: pane/area titles, breadcrumb chain */
-  --text-title: 1.07rem;   /* ~16px — group headers: projects, today groups, dialog titles, brand */
-  --text-body: 1rem;       /* 15px — content, controls, inputs; + weight 600 = "body-strong" sub-heads */
-  --text-sm: 0.89rem;      /* ~13px — UPPERCASE chrome eyebrows only (pane sections) */
-  --text-label: 0.79rem;   /* ~12px — UPPERCASE section labels, tabular meta (counts, badges, chips), status, compact chrome (btn-sm, pill) */
-  --text-code: 0.89rem;    /* ~13px — mono inline code, tags, pre (split from --text-sm: not a header tier) */
+  --text-title: 1.07rem; /* ~16px — group headers: projects, today groups, dialog titles, brand */
+  --text-body: 1rem; /* 15px — content, controls, inputs; + weight 600 = "body-strong" sub-heads */
+  --text-sm: 0.89rem; /* ~13px — UPPERCASE chrome eyebrows only (pane sections) */
+  --text-label: 0.79rem; /* ~12px — UPPERCASE section labels, tabular meta (counts, badges, chips), status, compact chrome (btn-sm, pill) */
+  --text-code: 0.89rem; /* ~13px — mono inline code, tags, pre (split from --text-sm: not a header tier) */
 
   /* Radius */
   --radius-sm: 6px;
@@ -215,14 +214,14 @@
 
 /* Dark theme tokens — applied via :root[data-la-theme="dark"] or the system
    media query when the user hasn't forced light/dark. */
-:root[data-la-theme="dark"] {
-  --bg: #0f1115;            /* near-black canvas */
-  --bg-elevated: #14171c;   /* sidebar / rail */
-  --surface: #181b21;       /* cards, inputs */
+:root[data-la-theme='dark'] {
+  --bg: #0f1115; /* near-black canvas */
+  --bg-elevated: #14171c; /* sidebar / rail */
+  --surface: #181b21; /* cards, inputs */
   --surface-hover: #1d2128;
   --surface-active: #232830;
 
-  --border: rgba(237, 237, 237, 0.10);
+  --border: rgba(237, 237, 237, 0.1);
   --border-strong: rgba(237, 237, 237, 0.18);
 
   --text: #9aa3ad;
@@ -236,7 +235,7 @@
   --accent: #a78bfa;
   --accent-hover: #8b5cf6;
   --accent-bg: rgba(167, 139, 250, 0.18);
-  --accent-border: rgba(167, 139, 250, 0.50);
+  --accent-border: rgba(167, 139, 250, 0.5);
   --accent-tint: rgba(167, 139, 250, 0.22);
 
   --tag-bg: rgba(167, 139, 250, 0.18);
@@ -248,12 +247,12 @@
 
   --success: #4caf50;
   --success-bg: rgba(76, 175, 80, 0.14);
-  --success-border: rgba(76, 175, 80, 0.40);
+  --success-border: rgba(76, 175, 80, 0.4);
 
   --warning: #d4a72c;
   --warning-bright: #facc15;
   --warning-bg: rgba(212, 167, 44, 0.14);
-  --warning-border: rgba(212, 167, 44, 0.40);
+  --warning-border: rgba(212, 167, 44, 0.4);
 
   --danger: #f2635f;
   --danger-bg: rgba(242, 99, 95, 0.08);
@@ -267,14 +266,14 @@
 
 /* "System" follows the OS preference until the user pins light/dark. */
 @media (prefers-color-scheme: dark) {
-  :root[data-la-theme="system"] {
+  :root[data-la-theme='system'] {
     --bg: #0f1115;
     --bg-elevated: #14171c;
     --surface: #181b21;
     --surface-hover: #1d2128;
     --surface-active: #232830;
 
-    --border: rgba(237, 237, 237, 0.10);
+    --border: rgba(237, 237, 237, 0.1);
     --border-strong: rgba(237, 237, 237, 0.18);
 
     --text: #9aa3ad;
@@ -288,7 +287,7 @@
     --accent: #a78bfa;
     --accent-hover: #8b5cf6;
     --accent-bg: rgba(167, 139, 250, 0.18);
-    --accent-border: rgba(167, 139, 250, 0.50);
+    --accent-border: rgba(167, 139, 250, 0.5);
     --accent-tint: rgba(167, 139, 250, 0.22);
 
     --tag-bg: rgba(167, 139, 250, 0.18);
@@ -300,15 +299,15 @@
 
     --success: #4caf50;
     --success-bg: rgba(76, 175, 80, 0.14);
-    --success-border: rgba(76, 175, 80, 0.40);
+    --success-border: rgba(76, 175, 80, 0.4);
 
     --warning: #d4a72c;
     --warning-bright: #facc15;
     --warning-bg: rgba(212, 167, 44, 0.14);
-    --warning-border: rgba(212, 167, 44, 0.40);
+    --warning-border: rgba(212, 167, 44, 0.4);
 
     --danger: #ef5350;
-    --danger-bg: rgba(239, 83, 80, 0.10);
+    --danger-bg: rgba(239, 83, 80, 0.1);
     --danger-border: rgba(239, 83, 80, 0.36);
 
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
@@ -318,28 +317,32 @@
 }
 
 /* Font family — overrides --font-sans for the whole app. */
-:root[data-la-font="jakarta"] {
+:root[data-la-font='jakarta'] {
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="plex"] {
+:root[data-la-font='plex'] {
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="general"] {
+:root[data-la-font='general'] {
   --font-sans: 'General Sans Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="manrope"] {
+:root[data-la-font='manrope'] {
   --font-sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
-:root[data-la-font="dm"] {
+:root[data-la-font='dm'] {
   --font-sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Density — scales the root font-size so every rem-derived size shifts together. */
-:root[data-la-density="compact"] { font-size: 13px; }
-:root[data-la-density="normal"]  { font-size: 15px; }
-:root[data-la-density="cozy"]    { font-size: 17px; }
-
-
+:root[data-la-density='compact'] {
+  font-size: 13px;
+}
+:root[data-la-density='normal'] {
+  font-size: 15px;
+}
+:root[data-la-density='cozy'] {
+  font-size: 17px;
+}
 
 body {
   margin: 0;
@@ -359,7 +362,12 @@ a,
   touch-action: manipulation;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-sans);
   color: var(--text-h);
   margin: 0;
@@ -371,14 +379,29 @@ h1, h2, h3, h4, h5, h6 {
   text-wrap: balance;
 }
 
-h1 { font-size: var(--text-display); font-weight: 600; }
-h2 { font-size: var(--text-title); font-weight: 600; }
-h3 { font-size: var(--text-title); font-weight: 600; }
-h4 { font-size: var(--text-body); font-weight: 600; } /* body-strong sub-head (only JSX use: .today-project-title) */
+h1 {
+  font-size: var(--text-display);
+  font-weight: 600;
+}
+h2 {
+  font-size: var(--text-title);
+  font-weight: 600;
+}
+h3 {
+  font-size: var(--text-title);
+  font-weight: 600;
+}
+h4 {
+  font-size: var(--text-body);
+  font-weight: 600;
+} /* body-strong sub-head (only JSX use: .today-project-title) */
 
-p { margin: 0; }
+p {
+  margin: 0;
+}
 
-code, pre {
+code,
+pre {
   font-family: var(--font-mono);
   color: var(--text-h);
 }
@@ -389,14 +412,15 @@ code {
   background: var(--code-bg);
 }
 
-
 #root {
   width: 100%;
   min-height: 100svh;
 }
 
 /* Hide outline only for mouse, preserve for keyboard */
-:focus:not(:focus-visible) { outline: none; }
+:focus:not(:focus-visible) {
+  outline: none;
+}
 :focus-visible {
   outline: 2px solid var(--accent-border);
   outline-offset: 1px;
@@ -404,7 +428,9 @@ code {
 
 /* Reduced motion — collapse transitions/animations to instant state changes. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

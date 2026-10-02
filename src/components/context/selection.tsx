@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
-import {
-  formatRoute,
-  parseRoute,
-  routeEquals,
-} from '../../router.ts';
+import { formatRoute, parseRoute, routeEquals } from '../../router.ts';
 import type { Selection } from '../../router.ts';
 import { SelectionContext } from './selectionContext.ts';
 
@@ -30,13 +26,6 @@ export default function SelectionProvider({ children }: { children: ReactNode })
     window.location.hash = next;
   }, []);
 
-  const contextValue = useMemo(
-    () => ({ selection, navigate }),
-    [selection, navigate],
-  );
-  return (
-    <SelectionContext.Provider value={contextValue}>
-      {children}
-    </SelectionContext.Provider>
-  );
+  const contextValue = useMemo(() => ({ selection, navigate }), [selection, navigate]);
+  return <SelectionContext.Provider value={contextValue}>{children}</SelectionContext.Provider>;
 }

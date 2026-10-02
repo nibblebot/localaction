@@ -66,7 +66,9 @@ test('the Backlog header "+" shelves a new area task', async ({ page }) => {
 
   // The task lands shelved in Backlog; Active stays empty, and the
   // revealed input collapses after the commit.
-  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title })).toHaveCount(1);
+  await expect(
+    groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title }),
+  ).toHaveCount(1);
   expect(await groupCount(page, 'Backlog')).toBe(1);
   expect(await groupCount(page, 'Active')).toBe(0);
   await expect(input).toHaveCount(0);
@@ -86,20 +88,21 @@ test('Shift+Enter in the Backlog add input shelves and keeps adding', async ({ p
 
   // The first task lands shelved; the input stays open, cleared and
   // focused, so the second also lands in Backlog.
-  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: alpha })).toHaveCount(1);
+  await expect(
+    groupBox(page, 'Backlog').locator('.task-line-title', { hasText: alpha }),
+  ).toHaveCount(1);
   await expect(input).toBeFocused();
   await input.fill(beta);
   await input.press('Enter');
-  await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: beta })).toHaveCount(1);
+  await expect(
+    groupBox(page, 'Backlog').locator('.task-line-title', { hasText: beta }),
+  ).toHaveCount(1);
   expect(await groupCount(page, 'Backlog')).toBe(2);
   expect(await groupCount(page, 'Active')).toBe(0);
   await expect(input).toHaveCount(0);
 });
 
-
-test('sub-area roots render under their own header and navigate on click', async ({
-  page,
-}) => {
+test('sub-area roots render under their own header and navigate on click', async ({ page }) => {
   const tok = uniq();
   const area = `Parent ${tok}`;
   const sub = `Sub ${tok}`;
@@ -152,9 +155,7 @@ test('sub-area roots render under their own header and navigate on click', async
   await expect(page.locator('.area-header-name')).toContainText(sub);
   await expect(page.locator('.task-line', { hasText: subTask })).toBeVisible();
 });
-test('parent "+" draft survives when sibling slices mount their own trees', async ({
-  page,
-}) => {
+test('parent "+" draft survives when sibling slices mount their own trees', async ({ page }) => {
   const tok = uniq();
   const area = `Area ${tok}`;
   const sub = `Sub ${tok}`;
@@ -178,9 +179,7 @@ test('parent "+" draft survives when sibling slices mount their own trees', asyn
   await createRootTask(page, `Sub root ${tok}`);
   await page.locator('.sidebar-item-name', { hasText: area }).click();
   await expect(page.locator('.area-header-name')).toContainText(area);
-  await expect(
-    page.locator('.subarea-header-name', { hasText: sub }),
-  ).toBeVisible();
+  await expect(page.locator('.subarea-header-name', { hasText: sub })).toBeVisible();
 
   const row = page.locator('.task-line', { hasText: parentTask });
   await row.hover();

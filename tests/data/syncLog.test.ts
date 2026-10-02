@@ -9,13 +9,7 @@
  * `applyMergeableChanges` directly would pass while real sync logs
  * nothing, so it is not accepted as proof.
  */
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -38,11 +32,7 @@ import {
   summarizeTables,
   totalRows,
 } from '../../src/data/syncLog.ts';
-import type {
-  SyncLog,
-  SyncLogEvent,
-  SyncTableStats,
-} from '../../src/data/syncLog.ts';
+import type { SyncLog, SyncLogEvent, SyncTableStats } from '../../src/data/syncLog.ts';
 
 // TinyBase's public types don't name the synchronizer returned by
 // `createWsSynchronizer`; `connectClient` lets inference carry it.
@@ -89,9 +79,7 @@ function eventsOfKind<K extends SyncLogEvent['kind']>(
   log: SyncLog,
   kind: K,
 ): Extract<SyncLogEvent, { kind: K }>[] {
-  return log.events.filter(
-    (e): e is Extract<SyncLogEvent, { kind: K }> => e.kind === kind,
-  );
+  return log.events.filter((e): e is Extract<SyncLogEvent, { kind: K }> => e.kind === kind);
 }
 
 afterEach(() => {
@@ -177,9 +165,7 @@ describe('summarizeTables / totalRows', () => {
       }),
     ).toBe('3 Tasks, 1 Note, 2 Tombstones');
     expect(summarizeTables({})).toBe('No changes');
-    expect(
-      summarizeTables({ tasks: { added: 0, updated: 0, removed: 0 } }),
-    ).toBe('No changes');
+    expect(summarizeTables({ tasks: { added: 0, updated: 0, removed: 0 } })).toBe('No changes');
   });
 
   it('totalRows sums added+updated+removed across tables', () => {
@@ -331,11 +317,7 @@ describe('subscribeLocalCommits', () => {
       fired += 1;
     });
 
-    if (
-      !('__' in store) ||
-      !Array.isArray(store.__) ||
-      typeof store.__[4] !== 'function'
-    ) {
+    if (!('__' in store) || !Array.isArray(store.__) || typeof store.__[4] !== 'function') {
       throw new Error('internal apply slot missing');
     }
     const apply = store.__[4] as (c: MergeableChanges) => unknown;
@@ -433,11 +415,7 @@ describe('pull capture via the internal apply slot', () => {
 
     // Runtime-narrowed access to the (now wrapped) internal apply slot —
     // the same `in`/`Array.isArray`/`typeof` narrowing as production.
-    if (
-      !('__' in store) ||
-      !Array.isArray(store.__) ||
-      typeof store.__[4] !== 'function'
-    ) {
+    if (!('__' in store) || !Array.isArray(store.__) || typeof store.__[4] !== 'function') {
       throw new Error('internal apply slot missing');
     }
     const apply = store.__[4] as (c: MergeableChanges) => unknown;
@@ -530,9 +508,7 @@ describe('pull capture over real WS sync', () => {
         removed: 0,
       });
       // Capture only reads: both stores hold the same rows.
-      expect(target.getRowIds(TABLES.tasks)).toEqual(
-        source.getRowIds(TABLES.tasks),
-      );
+      expect(target.getRowIds(TABLES.tasks)).toEqual(source.getRowIds(TABLES.tasks));
     } finally {
       uninstall();
       await syncTarget.destroy();

@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import {
-  SIDEBAR_MAX_PX,
-  SIDEBAR_MIN_PX,
-  useSidebarWidth,
-} from './useSidebarWidth.ts';
+import { SIDEBAR_MAX_PX, SIDEBAR_MIN_PX, useSidebarWidth } from './useSidebarWidth.ts';
 
 interface DragState {
   /** Pointer X at the time of pointerdown. */

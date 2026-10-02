@@ -170,9 +170,7 @@ describe('getDueItems', () => {
     setTaskStatus(store, outside, TASK_STATUS.done);
     store.setCell(TABLES.tasks, outside, COLUMNS.tasks.completedAt, atNoon(2026, 7, 27));
 
-    const ids = getCompletedItemsInRange(store, '2026-07-22', '2026-07-26').map(
-      (i) => i.taskId,
-    );
+    const ids = getCompletedItemsInRange(store, '2026-07-22', '2026-07-26').map((i) => i.taskId);
     expect(ids).toEqual(expect.arrayContaining([noDue, futureDue, pastDue]));
     expect(ids).not.toContain(outside);
   });
@@ -215,11 +213,7 @@ describe('getDueItems', () => {
 
     const items = getCompletedItemsInRange(store, '2026-07-23', '2026-07-26');
     expect(items.map((i) => i.taskId)).toEqual([t2, t1, t3]);
-    expect(items.map((i) => i.localDay)).toEqual([
-      '2026-07-23',
-      '2026-07-23',
-      '2026-07-25',
-    ]);
+    expect(items.map((i) => i.localDay)).toEqual(['2026-07-23', '2026-07-23', '2026-07-25']);
   });
 
   it('getCompletedItemsInRange resolves areaId and rootTaskId through the root placement', () => {
@@ -257,13 +251,9 @@ describe('getDueItems', () => {
     setTaskStatus(store, t, TASK_STATUS.done);
     store.setCell(TABLES.tasks, t, COLUMNS.tasks.completedAt, atNoon(2026, 7, 23));
     expect(
-      getCompletedItemsInRange(store, '2026-07-23', '2026-07-23').map(
-        (i) => i.taskId,
-      ),
+      getCompletedItemsInRange(store, '2026-07-23', '2026-07-23').map((i) => i.taskId),
     ).toContain(t);
     setTaskStatus(store, t, TASK_STATUS.open);
-    expect(
-      getCompletedItemsInRange(store, '2026-07-23', '2026-07-23'),
-    ).toEqual([]);
+    expect(getCompletedItemsInRange(store, '2026-07-23', '2026-07-23')).toEqual([]);
   });
 });

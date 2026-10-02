@@ -52,11 +52,7 @@ function capturedStore(): {
 } {
   const store = createMergeableStore();
   installSyncLogCapture(store, createSyncLog());
-  if (
-    !('__' in store) ||
-    !Array.isArray(store.__) ||
-    typeof store.__[4] !== 'function'
-  ) {
+  if (!('__' in store) || !Array.isArray(store.__) || typeof store.__[4] !== 'function') {
     throw new Error('internal apply slot missing');
   }
   return { store, apply: store.__[4] as (c: MergeableChanges) => unknown };
@@ -135,17 +131,13 @@ describe('subscribeSyncedRowAdds', () => {
     expect(calls).toEqual([[TABLES.tasks, ['t1']]]);
 
     // Update: t1 exists on the target → classified updated, not added.
-    apply(
-      pullChanges((s) => s.setCell(TABLES.tasks, 't1', 'title', 'a2'), source),
-    );
+    apply(pullChanges((s) => s.setCell(TABLES.tasks, 't1', 'title', 'a2'), source));
     // Removal: a deleted row is not an arrival.
     apply(pullChanges((s) => s.delRow(TABLES.tasks, 't1'), source));
     expect(calls).toHaveLength(1);
 
     // Echo: re-applying the original add nets zero rows → no notify.
-    apply(
-      pullChanges((s) => s.setRow(TABLES.tasks, 't9', { title: 'x' }), source),
-    );
+    apply(pullChanges((s) => s.setRow(TABLES.tasks, 't9', { title: 'x' }), source));
     expect(calls).toHaveLength(2); // sanity: the t9 add itself notified
     const echoSource = createMergeableStore();
     const echo = pullChanges((s) => s.setRow(TABLES.tasks, 't9', { title: 'x' }), echoSource);

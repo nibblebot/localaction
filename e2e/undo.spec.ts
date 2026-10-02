@@ -11,12 +11,16 @@ test.describe('Undo toast', () => {
     // Completed subtasks stay in place now (no show-completed pruning):
     // the row remains, checked, and the toast names the action.
     await page.locator(`input[aria-label="Mark “Finish me ${tok}” done"]`).click();
-    await expect(page.locator('.task-line.task-line-done', { hasText: `Finish me ${tok}` })).toBeVisible();
+    await expect(
+      page.locator('.task-line.task-line-done', { hasText: `Finish me ${tok}` }),
+    ).toBeVisible();
     await expect(page.locator('.undo-toast-label')).toHaveText(`Completed “Finish me ${tok}”`);
 
     await page.locator('.undo-toast-action').click();
     await expect(page.locator('.task-line', { hasText: `Finish me ${tok}` })).toBeVisible();
-    await expect(page.locator('.task-line', { hasText: `Finish me ${tok}` })).not.toHaveClass(/task-line-done/);
+    await expect(page.locator('.task-line', { hasText: `Finish me ${tok}` })).not.toHaveClass(
+      /task-line-done/,
+    );
     await expect(page.locator('.undo-toast')).toHaveCount(0);
   });
 

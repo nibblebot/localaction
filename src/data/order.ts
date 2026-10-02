@@ -30,9 +30,7 @@ interface SiblingRow {
   order: number;
 }
 
-type OrderedTable =
-  | typeof TABLES.areas
-  | typeof TABLES.tasks;
+type OrderedTable = typeof TABLES.areas | typeof TABLES.tasks;
 
 interface OrderColumns {
   table: OrderedTable;
@@ -106,11 +104,7 @@ export function readSiblingOrders(
  * starting at `RENORMALIZE_SPACING`. Single transaction so subscribers
  * see one change.
  */
-function renormalize(
-  store: MergeableStore,
-  table: OrderedTable,
-  siblings: SiblingRow[],
-): void {
+function renormalize(store: MergeableStore, table: OrderedTable, siblings: SiblingRow[]): void {
   store.transaction(() => {
     for (let i = 0; i < siblings.length; i += 1) {
       const item = siblings[i]!;
@@ -138,9 +132,7 @@ function computeInsertOrder(
   beforeId: string | undefined,
 ): number {
   const filtered = siblings.filter((s) => s.id !== movingId);
-  const beforeIdx = beforeId
-    ? filtered.findIndex((s) => s.id === beforeId)
-    : -1;
+  const beforeIdx = beforeId ? filtered.findIndex((s) => s.id === beforeId) : -1;
   if (beforeIdx === -1) {
     // Move to end
     const last = filtered[filtered.length - 1];
@@ -166,11 +158,7 @@ function computeInsertOrder(
     return half;
   }
   const midpoint = (prev.order + next.order) / 2;
-  if (
-    !Number.isFinite(midpoint) ||
-    midpoint === prev.order ||
-    midpoint === next.order
-  ) {
+  if (!Number.isFinite(midpoint) || midpoint === prev.order || midpoint === next.order) {
     renormalize(store, table, filtered);
     return computeInsertOrder(store, table, filtered, movingId, beforeId);
   }
@@ -239,13 +227,7 @@ export function moveArea(
       cur = normalizeRelation(store.getCell(TABLES.areas, cur, COLUMNS.areas.parentId));
     }
   }
-  moveWithinSiblings(
-    store,
-    ORDER_COLUMNS[TABLES.areas],
-    parentId,
-    areaId,
-    beforeId,
-  );
+  moveWithinSiblings(store, ORDER_COLUMNS[TABLES.areas], parentId, areaId, beforeId);
 }
 
 // --- parent→leaf conversion snapshot (local to avoid a cycle) ---------
@@ -336,9 +318,7 @@ export function moveTask(
       let cur: string | null = parentRef;
       while (cur !== null) {
         if (cur === taskId) return;
-        const p = normalizeRelation(
-          store.getCell(TABLES.tasks, cur, COLUMNS.tasks.placement),
-        );
+        const p = normalizeRelation(store.getCell(TABLES.tasks, cur, COLUMNS.tasks.placement));
         cur = p !== null && p.startsWith('task:') ? p.slice(5) : null;
       }
     } else if (kind === 'area') {
@@ -356,21 +336,12 @@ export function moveTask(
   );
   if (oldPlacement !== null && oldPlacement.startsWith('task:')) {
     const oldParent = oldPlacement.slice(5);
-    if (
-      store.hasRow(TABLES.tasks, oldParent) &&
-      localChildIds(store, oldParent).length === 1
-    ) {
+    if (store.hasRow(TABLES.tasks, oldParent) && localChildIds(store, oldParent).length === 1) {
       localSnapshotDerivedIntoStored(store, oldParent);
     }
   }
 
-  moveWithinSiblings(
-    store,
-    ORDER_COLUMNS[TABLES.tasks],
-    placement,
-    taskId,
-    beforeId,
-  );
+  moveWithinSiblings(store, ORDER_COLUMNS[TABLES.tasks], placement, taskId, beforeId);
 }
 
 /**
@@ -392,9 +363,7 @@ export function moveRootToBacklog(
   if (beforeId !== undefined && !store.hasRow(TABLES.tasks, beforeId)) return;
   if (beforeId === rootId) return;
   const columns = ORDER_COLUMNS[TABLES.tasks];
-  const placement = normalizeRelation(
-    store.getCell(TABLES.tasks, rootId, columns.parent),
-  );
+  const placement = normalizeRelation(store.getCell(TABLES.tasks, rootId, columns.parent));
   const siblings = readSiblingOrders(store, columns.table, columns.parent, placement);
   const newOrder = computeInsertOrder(store, columns.table, siblings, rootId, beforeId);
   store.transaction(() => {

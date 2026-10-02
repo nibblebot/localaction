@@ -54,7 +54,9 @@ test.describe('Shell routing', () => {
     await expect(page).toHaveURL(/#\/t\/[^/]+$/);
     await expect(page.locator('.area-header-name')).toContainText('Plan trip');
     // The detail pane shows the same task surface as the tree row.
-    await expect(page.locator('.project-pane-tasks .task-line', { hasText: 'Book flights' })).toBeVisible();
+    await expect(
+      page.locator('.project-pane-tasks .task-line', { hasText: 'Book flights' }),
+    ).toBeVisible();
     // The breadcrumb returns to the area.
     await page.locator('.area-header-crumb').click();
     await expect(page).toHaveURL(/#\/a\/[^/]+$/);

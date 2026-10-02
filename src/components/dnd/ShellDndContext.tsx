@@ -52,11 +52,7 @@ const AREA_PREFIX = `area${PLACEMENT_SEP}`;
  * area row — external-mode trees skip their own overlays, so exactly one
  * preview renders for any drag.
  */
-export function ShellDndContext({
-  children,
-}: {
-  children: ReactNode;
-}): React.JSX.Element {
+export function ShellDndContext({ children }: { children: ReactNode }): React.JSX.Element {
   const { store } = useDataLayer();
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -156,6 +152,7 @@ function OverlayTaskRow({ taskId }: { taskId: string }): React.JSX.Element | nul
     <div className="task-line task-line-dragging">
       <textarea
         className="task-line-title"
+        aria-label="Task title"
         rows={1}
         readOnly
         value={task.title || 'Untitled'}

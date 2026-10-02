@@ -53,9 +53,7 @@ test.describe('Week view groups open due items per due day', () => {
       const p = partsOf(iso);
       return p.year === todayParts.year && p.month === todayParts.month;
     });
-    const usable = pickable.filter(
-      (iso) => iso !== today && partsOf(iso).day !== 14,
-    );
+    const usable = pickable.filter((iso) => iso !== today && partsOf(iso).day !== 14);
     // Deterministic for any run date: the two latest usable days keep the
     // buckets past today (never colliding with the sibling seeds above).
     // When fewer than two remain — today is Sunday, or the week's tail
@@ -110,54 +108,37 @@ test.describe('Week view groups open due items per due day', () => {
       // Header counts match the seeded open due items per day. Both days
       // are past today and never the 14th, so no sibling spec can add
       // items to them — the counts are exact.
-      await expect(
-        pairBucket.locator('.today-due-day-toggle .sidebar-link-count'),
-      ).toHaveText('2');
-      await expect(
-        soloBucket.locator('.today-due-day-toggle .sidebar-link-count'),
-      ).toHaveText('1');
+      await expect(pairBucket.locator('.today-due-day-toggle .sidebar-link-count')).toHaveText('2');
+      await expect(soloBucket.locator('.today-due-day-toggle .sidebar-link-count')).toHaveText('1');
     } else {
       // Single-bucket fallback (today only): the two pair subtasks are
       // always open and due today, and sibling specs may leave their own
       // open due-today items in the shared DB, so assert the count only
       // as a floor at least as large as this run's contribution.
       const countText =
-        (await pairBucket
-          .locator('.today-due-day-toggle .sidebar-link-count')
-          .textContent()) ?? '0';
+        (await pairBucket.locator('.today-due-day-toggle .sidebar-link-count').textContent()) ??
+        '0';
       expect(Number(countText)).toBeGreaterThanOrEqual(2);
     }
 
     // Each task sits inside its own day bucket and nowhere else.
-    await expect(
-      pairBucket.locator('.task-line', { hasText: sPairA }),
-    ).toBeVisible();
-    await expect(
-      pairBucket.locator('.task-line', { hasText: sPairB }),
-    ).toBeVisible();
+    await expect(pairBucket.locator('.task-line', { hasText: sPairA })).toBeVisible();
+    await expect(pairBucket.locator('.task-line', { hasText: sPairB })).toBeVisible();
     if (distinctDays) {
       // When the solo subtask shares today's bucket (Sunday), this
       // cross-check would be wrong — it belongs to the same bucket.
       await expect(pairBucket.locator('.task-line', { hasText: sSolo })).toHaveCount(0);
     }
     if (twoBuckets) {
-      await expect(
-        soloBucket.locator('.task-line', { hasText: sSolo }),
-      ).toBeVisible();
-      await expect(
-        soloBucket.locator('.task-line', { hasText: sPairA }),
-      ).toHaveCount(0);
-      await expect(
-        soloBucket.locator('.task-line', { hasText: sPairB }),
-      ).toHaveCount(0);
+      await expect(soloBucket.locator('.task-line', { hasText: sSolo })).toBeVisible();
+      await expect(soloBucket.locator('.task-line', { hasText: sPairA })).toHaveCount(0);
+      await expect(soloBucket.locator('.task-line', { hasText: sPairB })).toHaveCount(0);
     }
 
     // The day bucket carries the familiar Area → Root grouping inside.
     const areaGroup = pairBucket.locator('section.today-group');
     await expect(areaGroup).toBeVisible();
-    await expect(
-      areaGroup.locator('h3.today-group-title', { hasText: area }),
-    ).toBeVisible();
+    await expect(areaGroup.locator('h3.today-group-title', { hasText: area })).toBeVisible();
 
     // Day buckets collapse: rows disappear, aria-expanded flips, and a
     // second click restores the rows.
@@ -169,9 +150,7 @@ test.describe('Week view groups open due items per due day', () => {
     await expect(pairBucket.locator('.task-line')).toHaveCount(0);
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(
-      pairBucket.locator('.task-line', { hasText: sPairA }),
-    ).toBeVisible();
+    await expect(pairBucket.locator('.task-line', { hasText: sPairA })).toBeVisible();
 
     // The day header carries the date, so read-only rows inside the
     // bucket show no per-row due-date label (the labels would appear
@@ -206,7 +185,8 @@ function partsOf(iso: string): { year: number; month: number; day: number } {
 function weekdayShort(iso: string): string {
   const { year, month, day } = partsOf(iso);
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  return days[new Date(year, month, day).getDay()];
+  // Callers supply locally generated valid dates, so getDay() is in 0–6.
+  return days[new Date(year, month, day).getDay()]!;
 }
 
 function monthDayShort(iso: string): string {

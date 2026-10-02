@@ -46,7 +46,8 @@ function generateEmbeddedDist(): string {
       `import file${index} from ${JSON.stringify(`../dist/${file}`)} with { type: 'file' };`,
   );
   const entries = files.map(
-    (file, index) => `  ${JSON.stringify(`/${file}`)}: new URL(file${index}, import.meta.url).pathname,`,
+    (file, index) =>
+      `  ${JSON.stringify(`/${file}`)}: new URL(file${index}, import.meta.url).pathname,`,
   );
   entries.push(`  '/': new URL(file${indexAt}, import.meta.url).pathname,`);
 

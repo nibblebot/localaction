@@ -35,11 +35,7 @@ test.describe('Reorder rendering', () => {
     await createArea(page, `Bravo ${tok}`);
     await createArea(page, `Charlie ${tok}`);
     const order = await sidebarOrder(page, tok);
-    expect(order).toEqual([
-      `Alpha ${tok}`,
-      `Bravo ${tok}`,
-      `Charlie ${tok}`,
-    ]);
+    expect(order).toEqual([`Alpha ${tok}`, `Bravo ${tok}`, `Charlie ${tok}`]);
   });
 
   test('root tasks render in created order', async ({ page }) => {
@@ -49,11 +45,7 @@ test.describe('Reorder rendering', () => {
     await createRootTask(page, `Task Bravo ${tok}`);
     await createRootTask(page, `Task Charlie ${tok}`);
     const order = await rootOrder(page, tok);
-    expect(order).toEqual([
-      `Task Alpha ${tok}`,
-      `Task Bravo ${tok}`,
-      `Task Charlie ${tok}`,
-    ]);
+    expect(order).toEqual([`Task Alpha ${tok}`, `Task Bravo ${tok}`, `Task Charlie ${tok}`]);
   });
 
   test('sub-tasks render under their parent after creation', async ({ page }) => {
@@ -80,9 +72,7 @@ test.describe('Reorder rendering', () => {
         '.sortable-list .task-line .project-row-name, .sortable-list .task-line .task-line-title',
       )
       .evaluateAll((els) =>
-        els.map((el) =>
-          el instanceof HTMLTextAreaElement ? el.value : (el.textContent ?? ''),
-        ),
+        els.map((el) => (el instanceof HTMLTextAreaElement ? el.value : (el.textContent ?? ''))),
       );
     expect(rowLabels.filter((v) => v.includes(tok))).toEqual([
       `My Task ${tok}`,
@@ -134,17 +124,11 @@ test.describe('Reorder rendering', () => {
 
     // Alpha lands in Backlog; Bravo stays Active (roots are leaf rows
     // here, so scope by `.task-line`).
-    await expect(
-      backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` }),
-    ).toBeVisible();
-    await expect(
-      activeGroup.locator('.task-line', { hasText: `Bravo ${tok}` }),
-    ).toBeVisible();
+    await expect(backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` })).toBeVisible();
+    await expect(activeGroup.locator('.task-line', { hasText: `Bravo ${tok}` })).toBeVisible();
 
     // The shelf persists across reload.
     await page.reload();
-    await expect(
-      backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` }),
-    ).toBeVisible();
+    await expect(backlogGroup.locator('.task-line', { hasText: `Alpha ${tok}` })).toBeVisible();
   });
 });

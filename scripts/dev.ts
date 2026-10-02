@@ -31,7 +31,7 @@ function rewriteArgv(argv: readonly string[]): string[] {
   const native: string[] = [];
   const dbTokens: string[] = [];
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '--db') {
       const next = argv[i + 1];
       if (!next || next.startsWith('-')) {

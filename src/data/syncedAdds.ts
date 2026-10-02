@@ -33,9 +33,7 @@ export interface SyncedAddRegistryOptions {
 const TTL_MS = 10_000;
 const MAX_BATCH = 24;
 
-export function createSyncedAddRegistry(
-  options: SyncedAddRegistryOptions = {},
-): SyncedAddRegistry {
+export function createSyncedAddRegistry(options: SyncedAddRegistryOptions = {}): SyncedAddRegistry {
   const now = options.now ?? Date.now;
   const marks = new Map<string, number>();
 

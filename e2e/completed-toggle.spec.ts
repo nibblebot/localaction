@@ -80,13 +80,19 @@ test('task detail pane shares the completed preference with the area view', asyn
   // Open the parent's detail pane: completed subtasks show in place.
   await page.locator('.task-line', { hasText: parent }).locator('.project-row-name').click();
   await expect(paneToggle(page)).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.project-pane-tasks .task-line', { hasText: doneChild })).toBeVisible();
+  await expect(
+    page.locator('.project-pane-tasks .task-line', { hasText: doneChild }),
+  ).toBeVisible();
 
   // Hiding from the pane prunes the completed subtask there…
   await paneToggle(page).click();
   await expect(paneToggle(page)).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('.project-pane-tasks .task-line', { hasText: doneChild })).toHaveCount(0);
-  await expect(page.locator('.project-pane-tasks .task-line', { hasText: openChild })).toBeVisible();
+  await expect(page.locator('.project-pane-tasks .task-line', { hasText: doneChild })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.locator('.project-pane-tasks .task-line', { hasText: openChild }),
+  ).toBeVisible();
 
   // …and the area view reflects the same device-wide preference.
   await page.locator('.area-header-crumb').click();

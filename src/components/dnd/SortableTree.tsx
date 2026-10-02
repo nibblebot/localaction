@@ -12,12 +12,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type {
-  DragEndEvent,
-  DragMoveEvent,
-  DragOverEvent,
-  DragStartEvent,
-} from '@dnd-kit/core';
+import type { DragEndEvent, DragMoveEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
 import {
   SortableContext,
   arrayMove,
@@ -257,9 +252,7 @@ function flattenTree<TId extends string>(
       // so a root-level group's gutter terminates at the last task
       // inside it. Phantom rows have no column of their own, so they
       // push nothing either way.
-      const passDown = !isLast && parentCol >= 0
-        ? [...inherited, parentCol]
-        : inherited;
+      const passDown = !isLast && parentCol >= 0 ? [...inherited, parentCol] : inherited;
       out.push({
         id: n.id,
         parentId,
@@ -271,8 +264,7 @@ function flattenTree<TId extends string>(
       });
       // Phantom rows group their children without an indent level:
       // the children walk at the phantom's own visual depth.
-      const childVisual =
-        isPhantom?.(n.id) === true ? visualDepth : visualDepth + 1;
+      const childVisual = isPhantom?.(n.id) === true ? visualDepth : visualDepth + 1;
       walk(n.children, n.id, depth + 1, childVisual, passDown);
     }
   };
@@ -337,7 +329,7 @@ function getProjection<TId extends string>(
   // drop before the ancestor.
   let dropIndex = overIndex;
   if (projectedDepth >= overItem.depth + 1) {
-    for (let cur = activeItem.parentId; cur !== null; ) {
+    for (let cur = activeItem.parentId; cur !== null;) {
       if (cur === overId) {
         dropIndex = overIndex + 1;
         break;
@@ -351,10 +343,7 @@ function getProjection<TId extends string>(
   const previousItem = newItems[dropIndex - 1] as FlattenedItem<TId> | undefined;
   const nextItem = newItems[dropIndex + 1] as FlattenedItem<TId> | undefined;
 
-  const maxDepth = Math.min(
-    previousItem ? previousItem.depth + 1 : 0,
-    maxDepthLimit,
-  );
+  const maxDepth = Math.min(previousItem ? previousItem.depth + 1 : 0, maxDepthLimit);
   const minDepth = nextItem ? nextItem.depth : 0;
   let depth = projectedDepth;
   if (depth >= maxDepth) depth = maxDepth;
@@ -468,15 +457,8 @@ function SortableTreeSlot<TId extends string>({
   disabled = false,
   children: render,
 }: SortableTreeSlotProps<TId>): ReactElement {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-    isOver,
-  } = useSortable({ id: id as string, disabled });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } =
+    useSortable({ id: id as string, disabled });
   const style: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -578,8 +560,7 @@ export function SortableTree<TId extends string>({
   );
 
   // Depth limit for the row currently being dragged.
-  const activeMaxDepth =
-    activeId !== null && maxDepthOf ? maxDepthOf(activeId) : maxDepth;
+  const activeMaxDepth = activeId !== null && maxDepthOf ? maxDepthOf(activeId) : maxDepth;
 
   const projected =
     activeId !== null && overId !== null
@@ -765,8 +746,7 @@ export function SortableTree<TId extends string>({
             over
               ? `Dropped ${String(active.id)} on ${String(over.id)}.`
               : `Dropped ${String(active.id)} outside the tree.`,
-          onDragCancel: ({ active }) =>
-            `Cancelled drag of ${String(active.id)}.`,
+          onDragCancel: ({ active }) => `Cancelled drag of ${String(active.id)}.`,
         },
         screenReaderInstructions: {
           draggable:

@@ -44,13 +44,7 @@ export default function SyncLogPane(): React.JSX.Element {
   }
 
   if (events.length === 0) {
-    return (
-      <EmptyState
-        title="Sync log"
-        message="No sync activity yet."
-        ariaLabel="Sync log"
-      />
-    );
+    return <EmptyState title="Sync log" message="No sync activity yet." ariaLabel="Sync log" />;
   }
 
   const now = Date.now();
@@ -60,11 +54,7 @@ export default function SyncLogPane(): React.JSX.Element {
         <header className="main-pane-header">
           <h2 className="main-pane-title">Sync log</h2>
           <div className="sync-log-actions">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={copyLog}
-            >
+            <button type="button" className="btn btn-secondary btn-sm" onClick={copyLog}>
               {copied ? 'Copied' : 'Copy log'}
             </button>
             <button
@@ -96,9 +86,7 @@ function SyncLogRow({
   now: number;
 }): React.JSX.Element {
   const chip =
-    event.kind === 'connection'
-      ? connectionChip(event.status)
-      : KIND_PRESENTATION[event.kind];
+    event.kind === 'connection' ? connectionChip(event.status) : KIND_PRESENTATION[event.kind];
   const ttc =
     event.kind === 'connection' && event.status.kind === 'connected'
       ? connectTimeMs(events, event)

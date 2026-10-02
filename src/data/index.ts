@@ -1,10 +1,4 @@
-export {
-  TABLES,
-  COLUMNS,
-  TASK_STATUS,
-  NOTE_ENTITY_TYPE,
-  TOMBSTONE_ENTITY_TYPE,
-} from './schema.ts';
+export { TABLES, COLUMNS, TASK_STATUS, NOTE_ENTITY_TYPE, TOMBSTONE_ENTITY_TYPE } from './schema.ts';
 export type {
   TableName,
   AreaColumn,
@@ -22,11 +16,7 @@ export { useTableVersion, localDayOf } from './internal.ts';
 export { startLocalPersistence, OPFS_FILE_NAME } from './persistence.ts';
 export type { LocalActionDebug } from './DataLayerProvider.tsx';
 
-export {
-  startSync,
-  getSyncClient,
-  destroySyncClient,
-} from './sync.ts';
+export { startSync, getSyncClient, destroySyncClient } from './sync.ts';
 export type { SyncClient, SyncClientOptions, SyncStatus } from './sync.ts';
 
 export { DataLayerContext, useDataLayer } from './dataLayerContext.ts';
@@ -49,13 +39,7 @@ export type {
   Tombstone,
 } from './types.ts';
 
-export {
-  createArea,
-  updateArea,
-  getArea,
-  useArea,
-  descendantAreaIds,
-} from './areas.ts';
+export { createArea, updateArea, getArea, useArea, descendantAreaIds } from './areas.ts';
 export {
   createTask,
   createTaskAfter,

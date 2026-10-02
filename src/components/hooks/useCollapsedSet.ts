@@ -51,36 +51,27 @@ export function useCollapsedSet(storageKey: string): CollapsedSet {
     persist(storageKey, collapsed);
   }, [collapsed, storageKey]);
 
-  const toggle = useCallback(
-    (id: string): void => {
-      setCollapsed((prev) => {
-        const next = new Set(prev);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
-    },
-    [],
-  );
+  const toggle = useCallback((id: string): void => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
-  const expand = useCallback(
-    (id: string): void => {
-      setCollapsed((prev) => {
-        if (!prev.has(id)) return prev;
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    },
-    [],
-  );
+  const expand = useCallback((id: string): void => {
+    setCollapsed((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }, []);
 
-  const replace = useCallback(
-    (ids: Iterable<string>): void => {
-      setCollapsed(new Set(ids));
-    },
-    [],
-  );
+  const replace = useCallback((ids: Iterable<string>): void => {
+    setCollapsed(new Set(ids));
+  }, []);
 
   return { collapsed, toggle, expand, replace };
 }

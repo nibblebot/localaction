@@ -12,7 +12,9 @@ async function inboxCount(page: Page): Promise<number> {
 async function inboxTitles(page: Page): Promise<string[]> {
   return page
     .locator('main[aria-label="Inbox"] .task-line-title')
-    .evaluateAll((els) => els.map((el) => (el as HTMLTextAreaElement).value ?? el.textContent ?? ''));
+    .evaluateAll((els) =>
+      els.map((el) => (el as HTMLTextAreaElement).value ?? el.textContent ?? ''),
+    );
 }
 
 async function openInbox(page: Page): Promise<void> {
@@ -21,9 +23,7 @@ async function openInbox(page: Page): Promise<void> {
 }
 
 async function createInboxTask(page: Page, title: string): Promise<void> {
-  await page
-    .locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')
-    .click();
+  await page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]').click();
   const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
   await input.fill(title);
   await input.press('Enter');
@@ -53,9 +53,13 @@ test.describe('inbox visibility', () => {
     await page.waitForSelector('.sidebar-inbox-link');
   });
 
-  test('a freshly-added inbox task appears immediately in the sidebar count and the inbox body', async ({ page }) => {
+  test('a freshly-added inbox task appears immediately in the sidebar count and the inbox body', async ({
+    page,
+  }) => {
     await openInbox(page);
-    await expect(page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')).toBeVisible();
+    await expect(
+      page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]'),
+    ).toBeVisible();
 
     const title = `Fresh inbox task ${uniq()}`;
     const before = await inboxCount(page);
@@ -68,7 +72,9 @@ test.describe('inbox visibility', () => {
     await expect.poll(() => inboxTitles(page)).toContain(title);
   });
 
-  test('the Backlog header "+" shelves a new task, and no ghost placeholder rows remain', async ({ page }) => {
+  test('the Backlog header "+" shelves a new task, and no ghost placeholder rows remain', async ({
+    page,
+  }) => {
     await openInbox(page);
 
     // The dashed ghost row under an empty Backlog and the standing Active
@@ -77,16 +83,16 @@ test.describe('inbox visibility', () => {
     await expect(page.locator('main[aria-label="Inbox"] .inline-add-input')).toHaveCount(0);
 
     const title = `Backlog inbox task ${uniq()}`;
-    await page
-      .locator('main[aria-label="Inbox"] button[aria-label="Add task to Backlog"]')
-      .click();
+    await page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Backlog"]').click();
     const input = page.locator('main[aria-label="Inbox"] input[aria-label="New backlog task"]');
     await input.fill(title);
     await input.press('Enter');
 
     // The task lands shelved in Backlog; Active stays empty, and the
     // revealed input collapses after the commit.
-    await expect(groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title })).toHaveCount(1);
+    await expect(
+      groupBox(page, 'Backlog').locator('.task-line-title', { hasText: title }),
+    ).toHaveCount(1);
     expect(await groupCount(page, 'Backlog')).toBe(1);
     expect(await groupCount(page, 'Active')).toBe(0);
     await expect(input).toHaveCount(0);
@@ -98,23 +104,25 @@ test.describe('inbox visibility', () => {
     const beta = `Quick two ${tok}`;
     await openInbox(page);
 
-    await page
-      .locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]')
-      .click();
+    await page.locator('main[aria-label="Inbox"] button[aria-label="Add task to Active"]').click();
     const input = page.locator('main[aria-label="Inbox"] input[aria-label="New inbox task"]');
     await input.fill(alpha);
     await input.press('Shift+Enter');
 
     // The first task commits to Active; the input stays open, cleared
     // and focused, for the next one.
-    await expect(groupBox(page, 'Active').locator('.task-line-title', { hasText: alpha })).toHaveCount(1);
+    await expect(
+      groupBox(page, 'Active').locator('.task-line-title', { hasText: alpha }),
+    ).toHaveCount(1);
     await expect(input).toBeFocused();
     await expect(input).toHaveValue('');
 
     // Plain Enter commits the second and closes the field.
     await input.fill(beta);
     await input.press('Enter');
-    await expect(groupBox(page, 'Active').locator('.task-line-title', { hasText: beta })).toHaveCount(1);
+    await expect(
+      groupBox(page, 'Active').locator('.task-line-title', { hasText: beta }),
+    ).toHaveCount(1);
     expect(await groupCount(page, 'Active')).toBe(2);
     await expect(input).toHaveCount(0);
   });
@@ -145,7 +153,6 @@ test.describe('inbox visibility', () => {
     ).toBeVisible();
   });
 
-
   test('inbox tasks survive a page reload', async ({ page }) => {
     const title = `Persisted inbox task ${uniq()}`;
     await openInbox(page);
@@ -163,7 +170,9 @@ test.describe('inbox visibility', () => {
     await expect.poll(() => inboxTitles(page)).toContain(title);
   });
 
-  test('Shift+Enter in a task title saves it and opens a focused empty sibling below', async ({ page }) => {
+  test('Shift+Enter in a task title saves it and opens a focused empty sibling below', async ({
+    page,
+  }) => {
     const tok = uniq();
     const alpha = `Alpha ${tok}`;
     const beta = `Beta ${tok}`;

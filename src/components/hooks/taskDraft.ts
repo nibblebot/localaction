@@ -79,7 +79,11 @@ function subscribe(onChange: () => void): () => void {
 
 /** The currently open draft, or null. Stable identities between emits. */
 export function usePendingTaskDraft(): PendingTaskDraft | null {
-  return useSyncExternalStore(subscribe, () => pending, () => null);
+  return useSyncExternalStore(
+    subscribe,
+    () => pending,
+    () => null,
+  );
 }
 
 function placementMatches(a: TaskPlacement, b: TaskPlacement): boolean {

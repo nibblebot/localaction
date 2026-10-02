@@ -83,8 +83,7 @@ function SortableAreaRow({
   // 40% opacity. Notes-only areas stay fully visible, and the open-task
   // counter is already omitted at zero. Keep the selected area emphasized.
   const inactive =
-    node.count.openTaskCount === 0 &&
-    (node.count.taskCount > 0 || node.count.noteCount === 0);
+    node.count.openTaskCount === 0 && (node.count.taskCount > 0 || node.count.noteCount === 0);
   if (isActive) classes.push('sidebar-item-active');
   if (isTopLevel) classes.push('sidebar-item-top');
   if (inactive && !isActive) classes.push('sidebar-item-dim');
@@ -167,8 +166,9 @@ export default function Sidebar({
   }, [showNewArea]);
   // Sidebar area collapse — pure view state, localStorage-backed like
   // the other collapse sets (device-local, never synced).
-  const { collapsed: collapsedAreas, toggle: toggleAreaCollapsed } =
-    useCollapsedSet('localaction.sidebar.collapsedAreaIds');
+  const { collapsed: collapsedAreas, toggle: toggleAreaCollapsed } = useCollapsedSet(
+    'localaction.sidebar.collapsedAreaIds',
+  );
   const tree = useMemo(() => buildTree(counts), [counts]);
   const sortableNodes = useMemo<readonly SortableTreeNode<string>[]>(() => {
     // Collapsed parents pass `children: []` — the SortableTree contract
@@ -214,16 +214,13 @@ export default function Sidebar({
   // Match Today/Week (open items only) and the area pills
   // (openTaskCount): a Done root is visible in the Inbox pane but no
   // longer actionable, so it leaves the sidebar count.
-  const inboxOpenCount = inboxIds.filter(
-    (id) => getRootTriState(store, id) !== 'done',
-  ).length;
+  const inboxOpenCount = inboxIds.filter((id) => getRootTriState(store, id) !== 'done').length;
   const todayItems = useDueItems(store, todayIso(), todayIso());
   const todayOpenCount = todayItems.filter((i) => !i.done).length;
 
   const week = weekBoundsIso();
   const weekItems = useDueItems(store, week.from, week.to);
   const weekOpenCount = weekItems.filter((i) => !i.done).length;
-
 
   function createNew(name: string): void {
     const id = createArea(store, { name, color: activeColor });
@@ -296,11 +293,7 @@ export default function Sidebar({
         </a>
       </div>
 
-
-      <div
-        className="sidebar-section"
-        style={{ flex: '1 1 auto', overflow: 'auto' }}
-      >
+      <div className="sidebar-section" style={{ flex: '1 1 auto', overflow: 'auto' }}>
         <h2 className="sidebar-section-title">
           <span>Areas</span>
           <button

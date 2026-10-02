@@ -1,40 +1,40 @@
-import { defineConfig } from 'vite'
-import react, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'
-import { attachSyncServer } from './server/index.ts'
-import { defaultDevDbPath } from './server/db.ts'
-import { startOwnerWatchdog } from './server/e2e-watchdog.ts'
-import { logInfo } from './src/log.ts'
-import type { Server } from 'node:http'
-import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-import { join, resolve, sep } from 'node:path'
+import { defineConfig } from 'vite';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
+import { attachSyncServer } from './server/index.ts';
+import { defaultDevDbPath } from './server/db.ts';
+import { startOwnerWatchdog } from './server/e2e-watchdog.ts';
+import { logInfo } from './src/log.ts';
+import type { Server } from 'node:http';
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { join, resolve, sep } from 'node:path';
 // Read `--db <path>` / `--db=<path>` from argv. `scripts/dev.ts` forwards our
 // `--db` past Vite's `--` separator (Vite's `cac` rejects unknown options), so
 // it reaches us here even though Vite's own CLI ignores it. `--port` stays
 // native to Vite.
 function readDbPathFromArgv(argv: readonly string[]): string | undefined {
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i]
+    const arg = argv[i]!;
     if (arg === '--db') {
-      const next = argv[i + 1]
-      if (next) return resolve(next)
+      const next = argv[i + 1];
+      if (next) return resolve(next);
     } else if (arg.startsWith('--db=')) {
-      return resolve(arg.slice('--db='.length))
+      return resolve(arg.slice('--db='.length));
     }
   }
-  return undefined
+  return undefined;
 }
-const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDevDbPath()
+const syncDbPath = readDbPathFromArgv(process.argv) ?? defaultDevDbPath();
 
 // Absolute dist/ path, captured in `configResolved` (the config may be
 // bundled to a temp file at build time, so import.meta.url is unreliable).
-let outDir = ''
+let outDir = '';
 
 // Fonts loaded on demand (everything except the default, DM Sans) are kept
 // out of the service-worker precache — see the localaction-sw plugin and
 // public/sw.js's runtime font caching.
-const LAZY_FONT = /^fonts\/(?!DMSans-)/
+const LAZY_FONT = /^fonts\/(?!DMSans-)/;
 
 // Served by the dev server in place of public/sw.js (see the
 // localaction-sw-dev-cleanup plugin). A prod build served on this
@@ -67,7 +67,7 @@ self.addEventListener('activate', (event) => {
       .then((clients) => Promise.all(clients.map((client) => client.navigate(client.url))))
   );
 });
-`
+`;
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -92,8 +92,8 @@ export default defineConfig({
         // (Playwright webServer env); a no-op for normal `bun run dev`.
         // The port is not bound yet at configure time, so only the DB path
         // is recorded in the registry entry.
-        startOwnerWatchdog({ dbPath: syncDbPath })
-        await attachSyncToVite(server, syncDbPath)
+        startOwnerWatchdog({ dbPath: syncDbPath });
+        await attachSyncToVite(server, syncDbPath);
       },
     },
     // Dev-only: intercept /sw.js before the static middleware can serve the
@@ -105,10 +105,10 @@ export default defineConfig({
       name: 'localaction-sw-dev-cleanup',
       configureServer(server) {
         server.middlewares.use('/sw.js', (_req, res) => {
-          res.setHeader('content-type', 'application/javascript; charset=utf-8')
-          res.setHeader('cache-control', 'no-cache')
-          res.end(DEV_CLEANUP_SW)
-        })
+          res.setHeader('content-type', 'application/javascript; charset=utf-8');
+          res.setHeader('cache-control', 'no-cache');
+          res.end(DEV_CLEANUP_SW);
+        });
       },
     },
     // Bakes the precache manifest into dist/sw.js. Runs after the build has
@@ -124,7 +124,7 @@ export default defineConfig({
       name: 'localaction-sw',
       apply: 'build',
       configResolved(config) {
-        outDir = resolve(config.root, config.build.outDir)
+        outDir = resolve(config.root, config.build.outDir);
       },
       closeBundle() {
         const dist = outDir;
@@ -142,7 +142,9 @@ export default defineConfig({
               .sort()
               .map(
                 (f) =>
-                  `${f}:${createHash('sha256').update(readFileSync(join(dist, f))).digest('hex')}`,
+                  `${f}:${createHash('sha256')
+                    .update(readFileSync(join(dist, f)))
+                    .digest('hex')}`,
               )
               .join('\n'),
           )
@@ -151,7 +153,7 @@ export default defineConfig({
         const swPath = join(dist, 'sw.js');
         const out = readFileSync(swPath, 'utf8')
           .replaceAll('__CACHE_VERSION__', version)
-          .replaceAll('"__PRECACHE_URLS__"', JSON.stringify(urls));
+          .replaceAll(/(['"])__PRECACHE_URLS__\1/g, () => JSON.stringify(urls));
         if (out.includes('__CACHE_VERSION__') || out.includes('__PRECACHE_URLS__')) {
           throw new Error('localaction-sw: token substitution failed in dist/sw.js');
         }
@@ -174,20 +176,17 @@ export default defineConfig({
     // raw ESM (which keeps their `import 'react'` on the deduped path).
     include: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
   },
-})
+});
 // listener, so gate on the `.on` capability rather than checking for any
 // `http.Server`-specific property. The DB path (`--db`) is read from
 // `process.argv` — `scripts/dev.ts` moves it past Vite's `--` separator so
 // `cac` ignores it, and always injects `defaultDevDbPath()` when the user
 // didn't pass one; the `?? defaultDevDbPath()` above covers bare Vite
 // invocations. The HTTP/WS port is whatever Vite binds (native `--port`).
-async function attachSyncToVite(
-  server: { httpServer: unknown },
-  dbPath: string,
-): Promise<void> {
-  const httpServer = server.httpServer
-  if (httpServer == null || typeof httpServer !== 'object') return
-  if (!('on' in httpServer) || typeof httpServer.on !== 'function') return
-  logInfo('server', 'attached WS sync handler (vite dev)')
-  await attachSyncServer(httpServer as Server, { dbPath })
+async function attachSyncToVite(server: { httpServer: unknown }, dbPath: string): Promise<void> {
+  const httpServer = server.httpServer;
+  if (httpServer == null || typeof httpServer !== 'object') return;
+  if (!('on' in httpServer) || typeof httpServer.on !== 'function') return;
+  logInfo('server', 'attached WS sync handler (vite dev)');
+  await attachSyncServer(httpServer as Server, { dbPath });
 }

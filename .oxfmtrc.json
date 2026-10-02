@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "singleQuote": true,
+  "sortImports": false,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    "dist/",
+    "dist-bundle/",
+    "dist-ssr/",
+    "coverage/",
+    "reports/",
+    "playwright-report/",
+    "test-results/"
+  ],
+  "overrides": [
+    {
+      "files": ["**/*.md"],
+      "options": {
+        "proseWrap": "always"
+      }
+    }
+  ]
+}

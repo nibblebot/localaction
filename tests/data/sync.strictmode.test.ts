@@ -83,7 +83,7 @@ describe('startSync under StrictMode double-mount', () => {
     // is still pending. The in-flight WS must be closed synchronously — that's
     // the bug fix.
     const firstDestroy = first.destroy();
-    expect(fake.instances[0].closed).toBe(true);
+    expect(fake.instances[0]!.closed).toBe(true);
 
     // Mount #2: a fresh client opens a new WS. With the fix, only WS2 is live.
     const second = startSync({
@@ -94,12 +94,12 @@ describe('startSync under StrictMode double-mount', () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(fake.instances.length).toBe(2);
-    expect(fake.instances[1].closed).toBe(false);
+    expect(fake.instances[1]!.closed).toBe(false);
 
     // Both clients are destroyed cleanly. firstDestroy is awaited to drain
     // any pending rejection from the hanging synchronizer.
     const secondDestroy = second.destroy();
-    expect(fake.instances[1].closed).toBe(true);
+    expect(fake.instances[1]!.closed).toBe(true);
     // Swallow the never-resolving synchronizer promises — they were
     // intentionally left hanging to simulate the race window.
     firstDestroy.catch(() => undefined);

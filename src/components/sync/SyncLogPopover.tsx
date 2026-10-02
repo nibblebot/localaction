@@ -56,10 +56,7 @@ export default function SyncLogPopover({
         <ul className="sync-popover-list">
           {recent.map((row) => (
             <li className="sync-popover-item" key={row.id}>
-              <time
-                className="sync-popover-item-time"
-                dateTime={new Date(row.at).toISOString()}
-              >
+              <time className="sync-popover-item-time" dateTime={new Date(row.at).toISOString()}>
                 {relativeTime(row.at, now)}
               </time>
               <span className="sync-popover-item-line">{row.line}</span>
@@ -68,11 +65,7 @@ export default function SyncLogPopover({
         </ul>
       )}
       <div className="sync-popover-footer">
-        <a
-          className="sync-popover-open"
-          href={formatRoute(SYNC_LOG)}
-          onClick={onClose}
-        >
+        <a className="sync-popover-open" href={formatRoute(SYNC_LOG)} onClick={onClose}>
           Open full sync log
         </a>
       </div>

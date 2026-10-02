@@ -1,11 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import {
-  createArea,
-  createRootTask,
-  nestArea,
-  uniq,
-  groupCount,
-} from './helpers.ts';
+import { createArea, createRootTask, nestArea, uniq, groupCount } from './helpers.ts';
 
 // Desktop only: the sidebar is a drawer below 768px, and the shell-level
 // drag under test crosses sidebar ⇄ main pane, which the drawer hides.

@@ -25,8 +25,8 @@ export function partsOf(iso: string): { year: number; month: number; day: number
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 
-/** Short weekday name (e.g. "Mon") for a local-date ISO string. */
-export function weekdayShort(iso: string): string {
+/** Short weekday name (e.g. "Mon"), or undefined for an invalid local date. */
+export function weekdayShort(iso: string): string | undefined {
   const { year, month, day } = partsOf(iso);
   return WEEKDAY_SHORT[new Date(year, month, day).getDay()];
 }
@@ -80,6 +80,10 @@ export function rangeLabel(from: string, to: string): string {
     const fmt = new Intl.DateTimeFormat(undefined, { month: 'short' });
     return `${fmt.format(new Date(a.year, a.month, a.day))} ${a.day} – ${fmt.format(new Date(b.year, b.month, b.day))} ${b.day}`;
   }
-  const fmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const fmt = new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
   return `${fmt.format(new Date(a.year, a.month, a.day))} – ${fmt.format(new Date(b.year, b.month, b.day))}`;
 }

@@ -92,7 +92,9 @@ function groupDueItems(
     a.order !== b.order ? a.order - b.order : a.name.localeCompare(b.name),
   );
   for (const area of sorted) {
-    area.roots.sort((a, b) => a.order !== b.order ? a.order - b.order : a.rootTaskId.localeCompare(b.rootTaskId));
+    area.roots.sort((a, b) =>
+      a.order !== b.order ? a.order - b.order : a.rootTaskId.localeCompare(b.rootTaskId),
+    );
   }
   return sorted;
 }
@@ -155,14 +157,7 @@ function DueTaskTrees({
     });
   }, [store, taskIds]);
 
-  return (
-    <TaskTree
-      rootIds={rootIds}
-      onMove={onMove}
-      droppable={false}
-      showDueDate={showDueDate}
-    />
-  );
+  return <TaskTree rootIds={rootIds} onMove={onMove} droppable={false} showDueDate={showDueDate} />;
 }
 
 /** A root task that is due in the current range, routed by its
@@ -252,6 +247,7 @@ function RootTaskDueRow({
         type="button"
         className="project-row-caret icon-button"
         aria-expanded={!collapsed}
+        aria-label={collapsed ? 'Expand subtasks' : 'Collapse subtasks'}
         title={collapsed ? 'Expand subtasks' : 'Collapse subtasks'}
         onClick={onToggleCollapse}
       >
@@ -270,10 +266,7 @@ function RootTaskDueRow({
         </span>
         <TaskProgressMeter taskId={rootTaskId} />
         {showRowDates && task.dueDate ? (
-          <span
-            className="task-line-due-date"
-            aria-label={`Due ${weekdayWithDate(task.dueDate)}`}
-          >
+          <span className="task-line-due-date" aria-label={`Due ${weekdayWithDate(task.dueDate)}`}>
             {weekdayWithDate(task.dueDate)}
           </span>
         ) : (
@@ -315,11 +308,7 @@ function AreaGroups({
   return (
     <>
       {groups.map((area) => (
-        <section
-          key={area.areaId ?? 'inbox'}
-          className="today-group"
-          aria-label={areaLabel(area)}
-        >
+        <section key={area.areaId ?? 'inbox'} className="today-group" aria-label={areaLabel(area)}>
           <h3 className="today-group-title">
             {area.areaId !== null && (
               <span
@@ -439,10 +428,7 @@ export default function DuePane({
     [counts],
   );
 
-  const groups = useMemo(
-    () => groupDueItems(store, inRange, areaMeta),
-    [store, inRange, areaMeta],
-  );
+  const groups = useMemo(() => groupDueItems(store, inRange, areaMeta), [store, inRange, areaMeta]);
 
   // Overdue reuses the same Area → Root grouping; rows keep per-row
   // date labels since each overdue item can carry a different past date.
@@ -474,17 +460,8 @@ export default function DuePane({
   const doneCollapsed = collapsed.has('done');
   const showRowDates = from !== to;
 
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
-    moveTask(
-      store,
-      activeId,
-      parentId ? `task${PLACEMENT_SEP}${parentId}` : null,
-      beforeId,
-    );
+  function onMove(activeId: string, parentId: string | null, beforeId: string | undefined): void {
+    moveTask(store, activeId, parentId ? `task${PLACEMENT_SEP}${parentId}` : null, beforeId);
   }
 
   return (
@@ -497,81 +474,79 @@ export default function DuePane({
           <p className="today-empty">Nothing in this view.</p>
         ) : (
           <>
-        {overdue.length > 0 && (
-          <section className="today-group today-overdue" aria-label="Overdue">
-            <button
-              type="button"
-              className="today-section-toggle today-overdue-toggle"
-              aria-expanded={!overdueCollapsed}
-              onClick={() => toggle('overdue')}
-            >
-              <svg className="svg-icon" aria-hidden="true">
-                <use
-                  href={`/icons.svg#${overdueCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
-                />
-              </svg>
-              <h3 className="today-group-title">Overdue</h3>
-              <span className="sidebar-link-count">{overdue.length}</span>
-            </button>
-            {!overdueCollapsed && (
-              <AreaGroups
-                groups={overdueGroups}
-                areaLabel={(area) => `${area.name} items overdue`}
-                collapsed={collapsed}
-                toggleRoot={toggle}
-                dueBadgeLabel="Overdue"
-                onMove={onMove}
-                showRowDates
-              />
-            )}
-          </section>
-        )}
-        {overdue.length > 0 && inRange.length > 0 && (
-          <hr className="today-overdue-divider" />
-        )}
-        {from === to && (
-          <AreaGroups
-            groups={groups}
-            areaLabel={(area) => `${area.name} items in ${title.toLowerCase()}`}
-            collapsed={collapsed}
-            toggleRoot={toggle}
-            dueBadgeLabel={dueBadgeLabel}
-            onMove={onMove}
-          />
-        )}
-        {from !== to &&
-          dayGroups.map(({ day, count, areas }) => {
-            const dayCollapsed = collapsedDueDays.has(day);
-            const dayLabel = weekdayWithDate(day);
-            return (
-              <section key={day} className="today-due-day" aria-label={dayLabel}>
+            {overdue.length > 0 && (
+              <section className="today-group today-overdue" aria-label="Overdue">
                 <button
                   type="button"
-                  className="today-due-day-toggle"
-                  aria-expanded={!dayCollapsed}
-                  onClick={() => toggleDueDay(day)}
+                  className="today-section-toggle today-overdue-toggle"
+                  aria-expanded={!overdueCollapsed}
+                  onClick={() => toggle('overdue')}
                 >
                   <svg className="svg-icon" aria-hidden="true">
                     <use
-                      href={`/icons.svg#${dayCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
+                      href={`/icons.svg#${overdueCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
                     />
                   </svg>
-                  <h4 className="today-group-title">{dayLabel}</h4>
-                  <span className="sidebar-link-count">{count}</span>
+                  <h3 className="today-group-title">Overdue</h3>
+                  <span className="sidebar-link-count">{overdue.length}</span>
                 </button>
-                {!dayCollapsed && (
+                {!overdueCollapsed && (
                   <AreaGroups
-                    groups={areas}
-                    areaLabel={(area) => `${area.name} items due ${dayLabel}`}
+                    groups={overdueGroups}
+                    areaLabel={(area) => `${area.name} items overdue`}
                     collapsed={collapsed}
                     toggleRoot={toggle}
-                    dueBadgeLabel={dueBadgeLabel}
+                    dueBadgeLabel="Overdue"
                     onMove={onMove}
+                    showRowDates
                   />
                 )}
               </section>
-            );
-          })}
+            )}
+            {overdue.length > 0 && inRange.length > 0 && <hr className="today-overdue-divider" />}
+            {from === to && (
+              <AreaGroups
+                groups={groups}
+                areaLabel={(area) => `${area.name} items in ${title.toLowerCase()}`}
+                collapsed={collapsed}
+                toggleRoot={toggle}
+                dueBadgeLabel={dueBadgeLabel}
+                onMove={onMove}
+              />
+            )}
+            {from !== to &&
+              dayGroups.map(({ day, count, areas }) => {
+                const dayCollapsed = collapsedDueDays.has(day);
+                const dayLabel = weekdayWithDate(day);
+                return (
+                  <section key={day} className="today-due-day" aria-label={dayLabel}>
+                    <button
+                      type="button"
+                      className="today-due-day-toggle"
+                      aria-expanded={!dayCollapsed}
+                      onClick={() => toggleDueDay(day)}
+                    >
+                      <svg className="svg-icon" aria-hidden="true">
+                        <use
+                          href={`/icons.svg#${dayCollapsed ? 'chevron-right-icon' : 'chevron-down-icon'}`}
+                        />
+                      </svg>
+                      <h4 className="today-group-title">{dayLabel}</h4>
+                      <span className="sidebar-link-count">{count}</span>
+                    </button>
+                    {!dayCollapsed && (
+                      <AreaGroups
+                        groups={areas}
+                        areaLabel={(area) => `${area.name} items due ${dayLabel}`}
+                        collapsed={collapsed}
+                        toggleRoot={toggle}
+                        dueBadgeLabel={dueBadgeLabel}
+                        onMove={onMove}
+                      />
+                    )}
+                  </section>
+                );
+              })}
           </>
         )}
         {completed.length > 0 && (
@@ -621,10 +596,7 @@ export default function DuePane({
                   );
                 })
               ) : (
-                <section
-                  className="today-done-day today-done-day--single"
-                  aria-label="Done today"
-                >
+                <section className="today-done-day today-done-day--single" aria-label="Done today">
                   <ReadOnlyTaskList
                     ids={completed.map((item) => item.taskId)}
                     showDueDate={showRowDates}

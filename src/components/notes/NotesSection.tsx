@@ -15,20 +15,10 @@ import { stripPreview } from './note-helpers.ts';
 
 const NoteMarkdown = lazy(() => import('./NoteMarkdown.tsx'));
 
-export default function NotesSection({
-  areaId,
-}: {
-  areaId: string;
-}): React.JSX.Element {
+export default function NotesSection({ areaId }: { areaId: string }): React.JSX.Element {
   const { store } = useDataLayer();
-  const { areaNotes, taskNotes } = useNotesForAreaTree(
-    store,
-    areaId,
-  );
-  const allIds = useMemo(
-    () => [...areaNotes, ...taskNotes],
-    [areaNotes, taskNotes],
-  );
+  const { areaNotes, taskNotes } = useNotesForAreaTree(store, areaId);
+  const allIds = useMemo(() => [...areaNotes, ...taskNotes], [areaNotes, taskNotes]);
 
   return (
     <section className="notes-tab" aria-label="Notes">
@@ -44,7 +34,13 @@ export default function NotesSection({
 /** The "+" in the NOTES section header: reveals a focused input in the
  * header row itself. Creation lives here (not in NotesSection) because
  * the header is rendered by MainPane's CollapsibleSection. */
-export function AddNoteButton({ areaId, onOpen }: { areaId: string; onOpen: () => void }): React.JSX.Element {
+export function AddNoteButton({
+  areaId,
+  onOpen,
+}: {
+  areaId: string;
+  onOpen: () => void;
+}): React.JSX.Element {
   const { store } = useDataLayer();
   return (
     <InlineAddButton
@@ -107,11 +103,7 @@ export function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
       </div>
       {!editing && body.trim().length > 0 && (
         <Suspense
-          fallback={
-            <div className="markdown-body note-line-rendered">
-              {stripPreview(body)}
-            </div>
-          }
+          fallback={<div className="markdown-body note-line-rendered">{stripPreview(body)}</div>}
         >
           <NoteMarkdown
             body={body}
@@ -150,9 +142,7 @@ export function NoteLine({ noteId }: { noteId: string }): React.JSX.Element {
           }}
           onBlur={() => {
             const next = draft;
-            const cur = String(
-              store.getCell(TABLES.notes, noteId, COLUMNS.notes.body) ?? '',
-            );
+            const cur = String(store.getCell(TABLES.notes, noteId, COLUMNS.notes.body) ?? '');
             if (next !== cur) {
               if (next.trim().length === 0) {
                 deleteNote(store, noteId);

@@ -38,9 +38,7 @@ export function localDayOf(iso: string): string {
   return `${y}-${m}-${day}`;
 }
 
-export function row(
-  cells: Record<string, string | number | boolean | null | undefined>,
-): Row {
+export function row(cells: Record<string, string | number | boolean | null | undefined>): Row {
   const out: Row = {};
   for (const [key, value] of Object.entries(cells)) {
     if (value !== undefined && value !== null) out[key] = value;

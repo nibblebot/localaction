@@ -70,9 +70,7 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
   const childIds = useMemo(
     () =>
       task
-        ? sortTaskIds(store, childTaskIds(store, taskId)).filter(
-            (_, i) => i >= 0 || tasksV > -1,
-          )
+        ? sortTaskIds(store, childTaskIds(store, taskId)).filter((_, i) => i >= 0 || tasksV > -1)
         : [],
     [store, task, taskId, tasksV],
   );
@@ -105,19 +103,10 @@ export default function TaskPane({ taskId }: { taskId: string }): React.JSX.Elem
     else navigate(INBOX);
   }
 
-  function onMove(
-    activeId: string,
-    parentId: string | null,
-    beforeId: string | undefined,
-  ): void {
+  function onMove(activeId: string, parentId: string | null, beforeId: string | undefined): void {
     // A root-level drop inside this pane means "direct child of the
     // viewed task"; a nested drop targets the named parent task.
-    moveTask(
-      store,
-      activeId,
-      `task${PLACEMENT_SEP}${parentId ?? taskId}`,
-      beforeId,
-    );
+    moveTask(store, activeId, `task${PLACEMENT_SEP}${parentId ?? taskId}`, beforeId);
   }
 
   return (

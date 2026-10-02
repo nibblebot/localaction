@@ -21,9 +21,7 @@ function order(store: MergeableStore, table: string, id: string): number {
 }
 
 function areaOrder(store: MergeableStore, parentId: string | null): string[] {
-  return readSiblingOrders(store, TABLES.areas, COLUMNS.areas.parentId, parentId).map(
-    (s) => s.id,
-  );
+  return readSiblingOrders(store, TABLES.areas, COLUMNS.areas.parentId, parentId).map((s) => s.id);
 }
 
 function taskOrder(store: MergeableStore, placement: string | null): string[] {
@@ -219,7 +217,10 @@ describe('moveTask', () => {
   it('refuses to parent a task under its own descendant (cycle)', () => {
     const t = createTask(store, { title: 't' });
     const child = createTask(store, { title: 'child', placement: { kind: 'task', id: t } });
-    const grandchild = createTask(store, { title: 'grandchild', placement: { kind: 'task', id: child } });
+    const grandchild = createTask(store, {
+      title: 'grandchild',
+      placement: { kind: 'task', id: child },
+    });
     moveTask(store, t, `task:${grandchild}`, undefined);
     expect(store.getCell(TABLES.tasks, t, COLUMNS.tasks.placement)).toBeUndefined();
     expect(taskOrder(store, `task:${grandchild}`)).toEqual([]);

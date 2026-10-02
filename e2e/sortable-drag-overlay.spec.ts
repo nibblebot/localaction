@@ -33,9 +33,7 @@ test.describe('Drag overlay preview', () => {
     await expect(page.locator('.task-line')).toHaveCount(2);
 
     const name = `Task Alpha ${tok}`;
-    const handle = page
-      .locator('.task-line', { hasText: name })
-      .locator('.task-line-drag-handle');
+    const handle = page.locator('.task-line', { hasText: name }).locator('.task-line-drag-handle');
     await dragHandle(page, handle, 60);
     await expect(page.locator('.drag-overlay')).toContainText(name);
     await page.mouse.up();

@@ -5,7 +5,10 @@ import { logInfo, logWarn } from '../log.ts';
 export const OPFS_FILE_NAME = 'localaction.json';
 
 const onError = (err: unknown): void => {
-  logWarn('persistence', `OPFS persister error: ${err instanceof Error ? err.message : String(err)}`);
+  logWarn(
+    'persistence',
+    `OPFS persister error: ${err instanceof Error ? err.message : String(err)}`,
+  );
 };
 
 let started: Promise<OpfsPersister> | undefined;
@@ -14,9 +17,7 @@ export function startLocalPersistence(): Promise<OpfsPersister> {
   if (started) return started;
   started = (async () => {
     if (typeof navigator === 'undefined' || !navigator.storage?.getDirectory) {
-      throw new Error(
-        'OPFS / File System Access API unavailable — persistence disabled',
-      );
+      throw new Error('OPFS / File System Access API unavailable — persistence disabled');
     }
     const root = await navigator.storage.getDirectory();
     const handle = await root.getFileHandle(OPFS_FILE_NAME, { create: true });

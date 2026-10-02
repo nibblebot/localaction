@@ -17,18 +17,11 @@ import type { Row, Tables } from 'tinybase';
 import { openDatabase } from '../server/db.ts';
 import { createServerTabularPersister } from '../server/persister.ts';
 import { newId, nowIso } from '../src/data/internal.ts';
-import {
-  TABLES,
-  TASK_STATUS,
-  NOTE_ENTITY_TYPE,
-} from '../src/data/schema.ts';
+import { TABLES, TASK_STATUS, NOTE_ENTITY_TYPE } from '../src/data/schema.ts';
 
 // Unique per run, so a stale -wal/-shm pair from a previous seed can never
 // trip the open; the OS reaps tmp.
-const DB_PATH = join(
-  tmpdir(),
-  `localaction-test-layout-${Date.now()}-${process.pid}.db`,
-);
+const DB_PATH = join(tmpdir(), `localaction-test-layout-${Date.now()}-${process.pid}.db`);
 
 function buildTables(): Tables {
   const ts = nowIso();
@@ -206,7 +199,8 @@ function buildTables(): Tables {
   };
   const tSqlite = newId();
   tasks[tSqlite] = {
-    title: 'A very long task title that should wrap inside the row without breaking the card layout or pushing the actions cluster out of the available width — used to verify the squint test under text-heavy content',
+    title:
+      'A very long task title that should wrap inside the row without breaking the card layout or pushing the actions cluster out of the available width — used to verify the squint test under text-heavy content',
     placement: `task${':'}${rMigration}`,
     status: TASK_STATUS.open,
     order: 2000,

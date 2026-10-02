@@ -50,11 +50,8 @@ test('re-tapping the current route still closes the drawer', async ({ page }) =>
   await expect(page.locator('main[aria-label="Inbox"]')).toBeVisible();
 });
 
-test('section-title actions stay tappable next to their touch halos', async ({
-  page,
-}) => {
+test('section-title actions stay tappable next to their touch halos', async ({ page }) => {
   await openDrawer(page);
   await page.tap('button[aria-label="New area"]');
   await expect(page.locator('.sidebar-section-add .inline-add-input')).toBeFocused();
 });
-

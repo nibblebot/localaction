@@ -7,7 +7,7 @@
 // src/serviceWorkerRegistration.ts only registers in prod builds.
 const VERSION = '__CACHE_VERSION__';
 const CACHE = `localaction-${VERSION}`;
-const PRECACHE = "__PRECACHE_URLS__";
+const PRECACHE = '__PRECACHE_URLS__';
 
 // Inlined from src/log.ts — public/sw.js is served verbatim, not bundled.
 const log = (msg) => console.info(`[localaction] sw — ${msg}`);

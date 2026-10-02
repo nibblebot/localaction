@@ -1,36 +1,19 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023", "ES2024.Promise"],
-    "types": ["node", "bun"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
+    "lib": ["ES2023", "ES2024.Promise", "DOM"],
+    "types": ["vite/client", "node", "bun"],
+    "allowArbitraryExtensions": true,
     "module": "nodenext",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "jsx": "react-jsx"
   },
   "include": [
     "vite.config.ts",
     "playwright.config.ts",
     "playwright.offline.config.ts",
-    "scripts/e2e.ts",
-    "scripts/postinstall.ts",
-    "scripts/setup-hooks.ts",
-    "scripts/build-localaction.ts",
-    "scripts/smoke.ts",
-    "scripts/smoke-sync.ts",
-    "scripts/smoke-bundle.ts",
-    "scripts/deploy.ts",
-    "e2e/infra.ts"
+    "server",
+    "scripts",
+    "e2e"
   ]
 }

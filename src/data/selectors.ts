@@ -16,10 +16,7 @@ import type { Area } from './types.ts';
  * the due-item and completed-item selectors so the two can never
  * drift). Inbox-rooted or orphaned tasks return null.
  */
-function taskOwnership(
-  store: MergeableStore,
-  taskId: string,
-): { areaId: string | null } {
+function taskOwnership(store: MergeableStore, taskId: string): { areaId: string | null } {
   const root = getRootPlacement(store, taskId);
   if (root.kind === 'area') return { areaId: root.id };
   return { areaId: null };
@@ -312,11 +309,7 @@ export function getCompletedItemsInRange(
 ): CompletedItem[] {
   const items: CompletedItem[] = [];
   for (const tid of store.getRowIds(TABLES.tasks)) {
-    const completedRaw = store.getCell(
-      TABLES.tasks,
-      tid,
-      COLUMNS.tasks.completedAt,
-    );
+    const completedRaw = store.getCell(TABLES.tasks, tid, COLUMNS.tasks.completedAt);
     const completedAt = normalizeCompletedAt(completedRaw);
     if (completedAt === null) continue;
     const localDay = localDayOf(completedAt);
